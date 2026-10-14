@@ -7,6 +7,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
 const DEVICE_KEY = "mbp_device_id";
+const MANUAL_OFFLINE_KEY = "mbp_manual_offline";
 
 const getDeviceId = () => {
   let id = localStorage.getItem(DEVICE_KEY);
@@ -28,15 +29,19 @@ export default function useBoatStore() {
   const [pending, setPending] = useState(() => Number(localStorage.getItem(OUTBOX_KEY) || 0));
   const [browserOnline, setBrowserOnline] = useState(navigator.onLine);
   const [reachable, setReachable] = useState(true);
+  const [manualOffline, setManualOffline] = useState(() => localStorage.getItem(MANUAL_OFFLINE_KEY) === "1");
   const queuedOffline = useRef(pending > 0);
   const stateRef = useRef(state);
   const pendingRef = useRef(pending);
   stateRef.current = state;
   pendingRef.current = pending;
-  const online = browserOnline && reachable;
+  const online = browserOnline && reachable && !manualOffline;
+  const onlineRef = useRef(online);
+  onlineRef.current = online;
 
   useEffect(() => { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }, [state]);
   useEffect(() => { localStorage.setItem(OUTBOX_KEY, String(pending)); }, [pending]);
+  useEffect(() => { localStorage.setItem(MANUAL_OFFLINE_KEY, manualOffline ? "1" : "0"); }, [manualOffline]);
 
   useEffect(() => {
     const up = () => { setBrowserOnline(true); setReachable(true); };
@@ -47,7 +52,7 @@ export default function useBoatStore() {
   }, []);
 
   useEffect(() => {
-    if (!navigator.onLine || pendingRef.current > 0) return;
+    if (!navigator.onLine || manualOffline || pendingRef.current > 0) return;
     axios.get(`${API}/boats/${deviceId}`).then(({ data }) => {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
@@ -57,7 +62,7 @@ export default function useBoatStore() {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));
       else if (!e.response) setReachable(false);
     });
-  }, [deviceId]);
+  }, [deviceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (pending === 0 || !online) return undefined;
@@ -86,8 +91,16 @@ export default function useBoatStore() {
   const mutate = useCallback((fn, { count = true } = {}) => {
     setState((prev) => ({ ...fn(prev), updated_at: new Date().toISOString() }));
     setPending((p) => (count ? p + 1 : Math.max(p, 1)));
-    if (!(navigator.onLine && reachable)) queuedOffline.current = true;
-  }, [reachable]);
+    if (!onlineRef.current) queuedOffline.current = true;
+  }, []);
 
-  return { state, mutate, pending, online };
+  const goOffline = useCallback(() => setManualOffline(true), []);
+  const goOnline = useCallback(() => {
+    if (!navigator.onLine) return false;
+    setManualOffline(false);
+    setReachable(true);
+    return true;
+  }, []);
+
+  return { state, mutate, pending, online, goOffline, goOnline };
 }

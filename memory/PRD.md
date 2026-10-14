@@ -20,7 +20,13 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Installable PWA, works offline
 - Tested: backend 100%, frontend 100% (iteration_1)
 
+## Iteration 2 (2026-06)
+- Ship Log help text updated to user's wording + "Skipper's Tip" line
+- Restored manual Status: Online/Offline toggle with "Tap to toggle" label; going online asks "Sync Cloud Database with Offline changes?" (still auto-detects real signal loss)
+- Mayday position line: dropped "passed Rock"
+- User declined: AI starter checklists, log history, landmark field
+
 ## Backlog
-- P1: AI checklist generation for new list names; AI tidy ship-log entry (Emergent Universal Key)
-- P1: Multi-entry ship's log history
+- P1: Ship Log rework: user to supply the changes lost from the Gemini version
+- P1: Export/email ship's logs (from Skipper's Tip)
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation

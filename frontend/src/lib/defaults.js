@@ -34,7 +34,7 @@ export const DEFAULT_DATA = {
     { dynamic: "maydayCallsign", label: "Callsign <Callsign>" },
     { dynamic: "maydayVesselCallsign", label: "MAYDAY [Vessel Name] [Callsign]" },
     "State Call Sign MMSI number and a brief description of the boat",
-    { dynamic: "maydayGps", label: "Report position [Position] passed Rock" },
+    { dynamic: "maydayGps", label: "Report position [Position]" },
     "Nature of distress sinking fire medical emergency",
     "Immediate assistance required",
     "Number of persons on board POB and vital information",
@@ -70,7 +70,7 @@ export const displayLabel = (item, ctx) => {
     case "maydayVessel": return `This is ${v}, ${v}, ${v}`;
     case "maydayCallsign": return `Callsign ${c}`;
     case "maydayVesselCallsign": return `MAYDAY ${v} ${c}`;
-    case "maydayGps": return `Report position ${ctx.position} passed Rock`;
+    case "maydayGps": return `Report position ${ctx.position}`;
     case "panPanGps": return `Check GPS position ${ctx.position}`;
     default: return item.label;
   }

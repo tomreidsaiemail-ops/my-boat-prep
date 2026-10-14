@@ -1,4 +1,5 @@
-import { MapPin, Wifi, WifiOff } from "lucide-react";
+import { MapPin } from "lucide-react";
+import { NetworkToggle } from "@/components/boat/NetworkToggle";
 
 export const BrandMark = () => (
   <div className="mbp-mark" aria-hidden="true">
@@ -9,20 +10,14 @@ export const BrandMark = () => (
   </div>
 );
 
-export const Header = ({ gps, online }) => (
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline }) => (
   <header className="flex items-center justify-between gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-2.5">
       <BrandMark />
-      <h1 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
+      <h1 className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
     </div>
     <div className="flex flex-col items-end gap-1.5 text-right">
-      <div
-        data-testid="network-status"
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider text-white ${online ? "bg-[var(--green)]" : "bg-[var(--red)]"}`}
-      >
-        {online ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
-        {online ? "Online" : "Offline"}
-      </div>
+      <NetworkToggle online={online} pending={pending} onGoOffline={onGoOffline} onGoOnline={onGoOnline} />
       <div className={`flex items-start gap-1 font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
         <MapPin className="mt-px h-3 w-3 shrink-0" />
         <span>{gps.text}</span>

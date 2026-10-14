@@ -26,7 +26,7 @@ const useWarn = () => {
 };
 
 export default function BoatPrep() {
-  const { state, mutate, pending, online } = useBoatStore();
+  const { state, mutate, pending, online, goOffline, goOnline } = useBoatStore();
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -84,7 +84,7 @@ export default function BoatPrep() {
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
-      <Header gps={gps} online={online} />
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} />
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} shortDate={SHORT_DATE} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
