@@ -53,6 +53,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Ship's Log panel: optional "Shore Contact" email; Ship's Log email goes to skipper + shore contact; sent tick shows both
 - Engine Service panel: Engine Hours Log (hours, service date, notes; last service summary; delete entries), synced to cloud (engine_log)
 
+## Iteration 8 (2026-06)
+- Ship's Log help is collapsible ("Hide help" / "Show Ship's Log help"); stays hidden on the device until restored
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
