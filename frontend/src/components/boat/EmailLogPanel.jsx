@@ -19,12 +19,12 @@ const SentStatus = ({ logSent }) => (
   </div>
 );
 
-export const EmailLogPanel = ({ email, onEmailChange, online, logSent, guard, onSend }) => {
+export const EmailLogPanel = ({ email, online, logSent, guard, onSend }) => {
   const [busy, setBusy] = useState(false);
 
   const send = async () => {
     if (!guard()) return;
-    if (!EMAIL_RE.test(email.trim())) { toast.error("Please enter a valid email address"); return; }
+    if (!EMAIL_RE.test(email.trim())) { toast.error("Please enter a valid email address at the top"); return; }
     setBusy(true);
     try {
       const res = await onSend();
@@ -38,12 +38,13 @@ export const EmailLogPanel = ({ email, onEmailChange, online, logSent, guard, on
 
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="email-log-panel">
-      <label htmlFor="log-email" className="field-label">Email Ship's Log to</label>
-      <input id="log-email" type="email" inputMode="email" autoComplete="email" value={email} placeholder="skipper@example.com"
-        onChange={(e) => onEmailChange(e.target.value)} className="field-input" data-testid="log-email-input" />
+      <div className="text-sm" data-testid="log-email-recipient">
+        <span className="field-label">Sends to </span>
+        {email.trim() ? <b className="break-all">{email.trim()}</b> : <span className="font-semibold text-[var(--muted)]">add your email at the top</span>}
+      </div>
       <button type="button" onClick={send} disabled={!online || busy} className="btn-solid w-full text-sm disabled:cursor-not-allowed disabled:opacity-50" data-testid="log-email-send-btn">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-        {busy ? "Sending..." : "Email Log PDF"}
+        {busy ? "Sending..." : "Email Ship's Log"}
       </button>
       {!online && <p className="text-center text-xs font-bold text-[var(--muted)]" data-testid="log-email-offline-hint">Go online to email the log</p>}
       {logSent && <SentStatus logSent={logSent} />}

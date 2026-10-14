@@ -14,9 +14,8 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 
-const now = new Date();
-const SHORT_DATE = now.toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" });
-const VERBOSE_DATE = now.toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
 
 const useWarn = () => {
@@ -33,10 +32,12 @@ export default function BoatPrep() {
   const [warn, showWarn] = useWarn();
   const [dialog, setDialog] = useState(null);
   const [printMode, setPrintMode] = useState(null);
+  const [tripDate, setTripDate] = useState(todayISO);
+  const VERBOSE_DATE = verbose(tripDate);
   const { boat, registry, data } = state;
   const active = registry.find((l) => l.id === activeId) || registry[0];
   const items = data[active.id] || [];
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -85,14 +86,14 @@ export default function BoatPrep() {
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} />
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} />
       <SyncBanner online={online} pending={pending} />
-      <BoatDetails boat={boat} onChange={updateBoat} shortDate={SHORT_DATE} />
+      <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
       <ListIntro listId={active.id} />
       {active.id === "shipsLog" && (
-        <EmailLogPanel email={boat.log_email || ""} onEmailChange={(v) => updateBoat("log_email", v)} online={online}
+        <EmailLogPanel email={boat.log_email || ""} online={online}
           logSent={state.log_sent} guard={() => guard()} onSend={() => emailLog(VERBOSE_DATE)} />
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}

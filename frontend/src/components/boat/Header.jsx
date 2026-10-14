@@ -10,15 +10,22 @@ export const BrandMark = () => (
   </div>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline }) => (
-  <header className="flex items-center justify-between gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
-    <div className="flex min-w-0 items-center gap-2.5">
-      <BrandMark />
-      <h1 className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
-    </div>
-    <div className="flex flex-col items-end gap-1.5 text-right">
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange }) => (
+  <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <BrandMark />
+        <h1 className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
+      </div>
       <NetworkToggle online={online} pending={pending} onGoOffline={onGoOffline} onGoOnline={onGoOnline} />
-      <div className={`flex items-start gap-1 font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
+    </div>
+    <div className="flex items-center justify-between gap-3">
+      <label className="flex items-center gap-2" htmlFor="trip-date">
+        <span className="field-label">Date</span>
+        <input id="trip-date" type="date" value={tripDate} onChange={(e) => e.target.value && onDateChange(e.target.value)}
+          className="h-11 rounded-md bg-[var(--navy)] px-2.5 font-mono text-sm font-bold text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
+      </label>
+      <div className={`flex items-start gap-1 text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
         <MapPin className="mt-px h-3 w-3 shrink-0" />
         <span>{gps.text}</span>
       </div>
