@@ -10,6 +10,8 @@ export const DEFAULT_REGISTRY = [
   { id: "routeHazards", name: "Route Hazards", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
+  { id: "head", name: "Head (Toilet)", isSystem: true },
+  { id: "engineService", name: "Engine Service", isSystem: true },
   { id: "shipsLog", name: "Ship's Log", isSystem: true },
   { id: "grabBag", name: "Grab Bag", isSystem: true },
   { id: "mayDay", name: "May Day", isSystem: true },
@@ -24,6 +26,8 @@ export const DEFAULT_DATA = {
   routeHazards: mk(38, ["Tide times check", "Shallow areas identified", "Weather alerts", "Local notices to mariners", "Dangerous rocks"]),
   crewPrep: mk(43, ["Hat with lanyard", "Glasses", "Sun glasses", "Sunscreen", "Insect repellent", "Scarf", "Gloves", "Jacket", "Sleeping bag", "Towel", "Toothbrush", "Brush", "Phone", "Credit cards", "Cash", "Phone cables", "Power banks", "Sea sickness tablets", "White soled trainers"]),
   provisions: mk(62, ["Water", "Beer", "Wine", "Nuts", "Crisps", "Dips", "Milk", "Powdered milk", "Tea", "Coffee", "Juice", "Bacon", "Sausage", "Eggs", "Bread", "Pasta", "Pasta sauce", "Mince", "Chicken", "Burgers", "Rice", "Potatoes", "Carrot", "Onion", "Tins various"]),
+  head: mk(123, ["(Skipper) Sea Cocks open", "(Skipper) Redirect to holding tank when at dock", "Check readiness of toilet with skipper", "Only Flush 2 sheets of toilet paper", "Leave toilet as you found it", "10 seconds max for electric flush"]),
+  engineService: mk(129, ["Fuel filter", "Oil filter", "Alternator belt", "Impeller", "Oil change", "Leak check", "Gearbox oil change", "Engine anode", "Exhaust elbow check"]),
   shipsLog: mk(87, [{ dynamic: "logDate", label: "Departed [DATE] at <Time> for <Destination> with <Persons on Board> POB, expected arrival time <Time>." }]),
   grabBag: mk(88, ["EPIRB Activate and ensure it stays clear of obstructions", "Handheld VHF Radio Set to Channel 16 High Power", "Handheld GPS and spare batteries", "SART Search and Rescue Transponder", "Distress Flares Hand flares parachute rockets smoke signals", "Thermal Protective Aids TPAs Space blankets", "Waterproof torch flashlight and spare batteries", "Vessel documentation crew passports and ship logs", "Emergency drinking water and high energy rations", "First aid kit and critical personal medications", "Multi tool pocket knife and signaling mirror", "Handheld laser flare whistle"]),
   mayDay: mk(100, [
@@ -63,10 +67,23 @@ export const freshState = () => ({
   updated_at: new Date(0).toISOString(),
 });
 
-export const migrateState = (s) => s && {
+const addMissingLists = (s) => {
+  let registry = [...s.registry];
+  const data = { ...s.data };
+  ["head", "engineService"].forEach((id) => {
+    const def = DEFAULT_REGISTRY.find((l) => l.id === id);
+    if (registry.some((l) => l.id === id || l.name.toLowerCase() === def.name.toLowerCase())) return;
+    const at = registry.findIndex((l) => l.id === "shipsLog");
+    registry.splice(at < 0 ? registry.length : at, 0, { ...def });
+    data[id] = JSON.parse(JSON.stringify(DEFAULT_DATA[id]));
+  });
+  return { ...s, registry, data };
+};
+
+export const migrateState = (s) => s && addMissingLists({
   ...s,
   registry: s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l)),
-};
+});
 
 export const displayLabel = (item, ctx) => {
   const v = ctx.vessel || "Vessel Name";

@@ -56,7 +56,8 @@ export default function useBoatStore() {
     axios.get(`${API}/boats/${deviceId}`).then(({ data }) => {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
-        setState({ boat: data.boat, registry: migrateState(data).registry, data: data.data, updated_at: data.updated_at, log_sent: data.log_sent || null });
+        const m = migrateState(data);
+        setState({ boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null });
       }
     }).catch((e) => {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));

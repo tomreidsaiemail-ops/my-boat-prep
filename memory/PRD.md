@@ -45,6 +45,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - New boat icon (sail + hull + MBP + small green tick) for header, PWA icons, favicon; toasts moved to bottom
 - Tested iteration_4: 100%
 
+## Iteration 6 (2026-06)
+- Skipper's Tip wording updated
+- New built-in lists: Head (Toilet) (6 items), Engine Service (9 items), placed after Provisions; auto-added to existing devices
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
