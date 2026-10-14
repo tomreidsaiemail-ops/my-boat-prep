@@ -1,0 +1,21 @@
+{
+  "summary": "Iteration 2 verifies the new Email-Log and manual Online/Offline toggle features. Backend: 9/9 pytest cases pass in /app/backend/tests/test_email_log.py covering 404 (no boat), 400 (missing vessel/skipper/callsign), 400 (invalid email), success response shape (log_sent.to, title 'Ship\\u2019s Log - TEST_Kia Ora (ZMA123) - Wednesday, 14 October 2026', log_id, pdf_url), persistence of log_sent on boat doc, PDF endpoint returns %PDF with application/pdf content-type, 404 for unknown uuid log_id, 422 for malformed path, and PUT /boats round-trips boat.log_email and log_sent. Daily limit 429 path intentionally not exercised to preserve real email quota (only 1 real send performed through pytest, plus 1 from UI). Frontend (mobile 390x844): on Ship's Log, email-log-panel shows log-email-input and log-email-send-btn 'Email Log PDF'; clicking without vessel details raises top-validation-bar; invalid email shows error toast with 'valid email'; valid send to delivered@resend.dev shows green log-email-status 'Emailed to delivered@resend.dev' with en-NZ date/time (14/10/2026, 9:45 pm) and log-email-view-pdf anchor pointing to /api/ship-logs/<uuid>.pdf; status persists across page reload. Manual network toggle: initial label 'Tap to toggle OFFLINE'; tap -> Status: Offline + 'Tap to toggle ONLINE'; send btn disabled with log-email-offline-hint visible; editing vessel queues outbox-banner; tapping again opens sync-confirm-dialog ('Sync Cloud Database with Offline changes?'), Cancel stays Offline, OK syncs, outbox clears, 'Changes successfully synchronized to cloud database' toast appears. Ship Log intro shows log-skipper-tip ('Skipper\\u2019s Tip: export and email ship\\u2019s logs...'); May Day item 107 renders 'Position unavailable' with no 'passed Rock' text.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_email_log.py", "/app/test_reports/pytest/pytest_email.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py email_ship_log stores created_at as ISO string and the 429 limit query uses ISO string gte comparison - works but string comparison on ISO is fragile if a non-UTC/alt format ever creeps in; consider storing BSON datetime.",
+    "email_ship_log catches EmailNotValidError but misses the explicit 'from e' re-raise; the HTTPException masks underlying detail which is fine for UX.",
+    "EmailLogPanel.send toasts generic failure on any 4xx/5xx except explicit detail; works because axios error includes response.data.detail.",
+    "Note: send_email raises 503 on daily_limit_reached which bypasses the Mongo count-based 429; both paths look fine but duplicate logic could be unified."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_log.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (all 7 flows)"},
+  "test_credentials": "N/A",
+  "seed_data_creation": "Each test creates a boat under test-<random> device_id; only 1 real email sent through pytest (to delivered@resend.dev) + 1 through UI = 2 total, well under the 10/day limit and the 4 budgeted.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Boat details testids are 'vessel-input','skipper-input','callsign-input' (NOT 'boat-vessel-input'). List selector is a native select: use page.select_option('select[data-testid=\\'list-selector\\']', value='shipsLog'|'mayDay'|...). EmailLogPanel only renders when activeId==='shipsLog'. Only use delivered@resend.dev as recipient. The /api/ship-logs/{log_id}.pdf path requires strict 36-char UUID (regex-validated), anything else => 422.",
+  "rca of the issue": "N/A - no bugs found"
+}

@@ -26,7 +26,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Mayday position line: dropped "passed Rock"
 - User declined: AI starter checklists, log history, landmark field
 
+## Iteration 3 (2026-06)
+- Ship Log panel: email address field + "Email Log PDF" button (enabled only when Online)
+- Backend builds PDF (reportlab), emails via Emergent managed Resend (from "My Boat Prep") with log summary + PDF download link (proxy has no attachments); title "Ship's Log - Vessel (Callsign) - Date"
+- Emailed status kept with green tick, recipient, time, PDF link (synced); 10 emails/device/day limit
+- Tested iteration_2: 100%
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
-- P1: Export/email ship's logs (from Skipper's Tip)
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
