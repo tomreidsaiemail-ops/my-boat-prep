@@ -49,6 +49,7 @@ class BoatDetails(BaseModel):
     callsign: str = ""
     log_email: str = ""
     shore_email: str = ""
+    shore_enabled: bool = False
 
 
 class BoatStateIn(BaseModel):
@@ -157,7 +158,7 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
     pdf_url = f"{PUBLIC_APP_URL}/api/ship-logs/{log['log_id']}.pdf"
     recipients = [to]
     shore = b.shore_email.strip()
-    if payload.list_ids == ["shipsLog"] and shore:
+    if payload.list_ids == ["shipsLog"] and b.shore_enabled and shore:
         try:
             shore = validate_email(shore, check_deliverability=False).normalized
         except EmailNotValidError:

@@ -16,17 +16,21 @@ const SentStatus = ({ logSent }) => (
   </div>
 );
 
-export const EmailLogPanel = ({ email, shore, onShoreChange, online, logSent, busy, onSend }) => (
+export const EmailLogPanel = ({ email, shore, onShoreChange, shoreOn, onShoreToggle, online, logSent, busy, onSend }) => (
   <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="email-log-panel">
     <div className="text-sm" data-testid="log-email-recipient">
       <span className="field-label">Sends to </span>
       {email.trim() ? <b className="break-all">{email.trim()}</b> : <span className="font-semibold text-[var(--muted)]">add your email at the top</span>}
     </div>
-    <label className="flex flex-col gap-1" htmlFor="shore-email">
-      <span className="field-label">Shore Contact: <span className="normal-case tracking-normal">(optional, also gets a copy)</span></span>
+    <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5" data-testid="shore-toggle-label">
+      <input type="checkbox" checked={shoreOn} onChange={(e) => onShoreToggle(e.target.checked)} className="h-6 w-6 accent-[var(--navy)]" data-testid="shore-toggle" />
+      <span className="field-label">Also send to Shore Contact</span>
+    </label>
+    {shoreOn && <label className="flex flex-col gap-1" htmlFor="shore-email">
+      <span className="field-label">Shore Contact:</span>
       <input id="shore-email" type="email" inputMode="email" value={shore} placeholder="shore.contact@email.com" onChange={(e) => onShoreChange(e.target.value)}
         className="field-input" data-testid="shore-email-input" />
-    </label>
+    </label>}
     <button type="button" onClick={onSend} disabled={!online || busy} className="btn-solid w-full text-sm disabled:cursor-not-allowed disabled:opacity-50" data-testid="log-email-send-btn">
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
       {busy ? "Sending..." : "Email Ship's Log"}

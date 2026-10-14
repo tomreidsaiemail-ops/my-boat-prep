@@ -108,7 +108,8 @@ export default function BoatPrep() {
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
       <ListIntro listId={active.id} />
       {active.id === "shipsLog" && (
-        <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)} online={online} logSent={state.log_sent} busy={mail.sending}
+        <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
+          shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => guard() && mail.requestSend(["shipsLog"], "Ship's Log")} />
       )}
       {active.id === "engineService" && (

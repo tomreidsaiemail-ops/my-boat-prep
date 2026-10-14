@@ -56,6 +56,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Iteration 8 (2026-06)
 - Ship's Log help is collapsible ("Hide help" / "Show Ship's Log help"); stays hidden on the device until restored
 
+## Iteration 9 (2026-06)
+- "Also send to Shore Contact" tick box; Shore Contact field only shown (and only emailed) when ticked; address kept when unticked
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
