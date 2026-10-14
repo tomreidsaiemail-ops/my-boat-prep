@@ -97,7 +97,8 @@ export default function BoatPrep() {
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
         onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />
-      <AddItemForm key={active.id} listName={active.name} onAdd={addItem} />
+      <AddItemForm key={active.id} onAdd={addItem}
+        placeholder={active.id === "shipsLog" ? "My own Ship's Log..." : `My own ${active.name} task name...`} />
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} />
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
         onConfirm={createList} onClose={() => setDialog(null)} />

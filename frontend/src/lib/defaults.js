@@ -10,7 +10,7 @@ export const DEFAULT_REGISTRY = [
   { id: "routeHazards", name: "Route Hazards", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
-  { id: "shipsLog", name: "Ship Log", isSystem: true },
+  { id: "shipsLog", name: "Ship's Log", isSystem: true },
   { id: "grabBag", name: "Grab Bag", isSystem: true },
   { id: "mayDay", name: "May Day", isSystem: true },
   { id: "panPan", name: "Pan Pan", isSystem: true },
@@ -62,6 +62,11 @@ export const freshState = () => ({
   data: JSON.parse(JSON.stringify(DEFAULT_DATA)),
   updated_at: new Date(0).toISOString(),
 });
+
+export const migrateState = (s) => s && {
+  ...s,
+  registry: s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l)),
+};
 
 export const displayLabel = (item, ctx) => {
   const v = ctx.vessel || "Vessel Name";

@@ -154,7 +154,7 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
 async def ship_log_pdf(log_id: LogId):
     log = await db.ship_logs.find_one({"log_id": log_id}, {"_id": 0})
     if not log:
-        raise HTTPException(status_code=404, detail="Ship log not found")
+        raise HTTPException(status_code=404, detail="Ship's Log not found")
     filename = log_title(log).replace("'", "").replace("/", "-") + ".pdf"
     return Response(build_pdf(log), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
 

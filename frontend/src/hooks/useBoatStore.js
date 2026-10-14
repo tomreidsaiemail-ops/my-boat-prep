@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
-import { freshState } from "@/lib/defaults";
+import { freshState, migrateState } from "@/lib/defaults";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATE_KEY = "mbp_state_v3";
@@ -19,7 +19,7 @@ const getDeviceId = () => {
 };
 
 const loadLocal = () => {
-  try { return JSON.parse(localStorage.getItem(STATE_KEY)); } catch { return null; }
+  try { return migrateState(JSON.parse(localStorage.getItem(STATE_KEY))); } catch { return null; }
 };
 
 export default function useBoatStore() {
@@ -56,7 +56,7 @@ export default function useBoatStore() {
     axios.get(`${API}/boats/${deviceId}`).then(({ data }) => {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
-        setState({ boat: data.boat, registry: data.registry, data: data.data, updated_at: data.updated_at, log_sent: data.log_sent || null });
+        setState({ boat: data.boat, registry: migrateState(data).registry, data: data.data, updated_at: data.updated_at, log_sent: data.log_sent || null });
       }
     }).catch((e) => {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));
