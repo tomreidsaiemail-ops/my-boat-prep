@@ -32,6 +32,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Emailed status kept with green tick, recipient, time, PDF link (synced); 10 emails/device/day limit
 - Tested iteration_2: 100%
 
+## Iteration 4 (2026-06)
+- "Ship Log" renamed "Ship's Log" (auto-migrates saved data); add placeholder "My own Ship's Log..."
+- Boat details: Vessel|Callsign / Skipper|Email; editable Date moved to header left of GPS (drives log, print, email date)
+- Email panel button "Email Ship's Log", sends to email from top bar
+- Tested iteration_3: 100%
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
