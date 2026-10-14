@@ -13,7 +13,7 @@ export default function useEmailSender({ savedEmail, saveEmail, emailLog, localD
     try {
       const res = await emailLog({ localDate, listIds, position, email });
       setSentKey(listIds.join(","));
-      toast.success(`${title} emailed to ${res.to}`);
+      toast.success(`${title} emailed to ${res.to}${res.shore ? ` and ${res.shore}` : ""}`);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Couldn't send the email. Check your signal and try again.");
     } finally {

@@ -48,6 +48,7 @@ class BoatDetails(BaseModel):
     skipper: str = ""
     callsign: str = ""
     log_email: str = ""
+    shore_email: str = ""
 
 
 class BoatStateIn(BaseModel):
@@ -56,6 +57,7 @@ class BoatStateIn(BaseModel):
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
+    engine_log: List[Dict[str, Any]] = []
 
 
 class BoatState(BaseDocument):
@@ -65,6 +67,7 @@ class BoatState(BaseDocument):
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
+    engine_log: List[Dict[str, Any]] = []
     synced_at: str
 
 
@@ -75,6 +78,7 @@ class BoatStateOut(BaseModel):
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
+    engine_log: List[Dict[str, Any]] = []
     synced_at: str
 
 
@@ -107,6 +111,7 @@ async def save_boat(payload: BoatStateIn, device_id: DeviceId):
         data=payload.data,
         updated_at=payload.updated_at,
         log_sent=payload.log_sent,
+        engine_log=payload.engine_log,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
     await db.boats.update_one({"device_id": device_id}, {"$set": state.to_mongo()}, upsert=True)
@@ -150,9 +155,18 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
     pdf_url = f"{PUBLIC_APP_URL}/api/ship-logs/{log['log_id']}.pdf"
-    email_id = await send_email(to=to, subject=log_title(log), html=build_email_html(log, pdf_url, EMAIL_FROM_NAME))
+    recipients = [to]
+    shore = b.shore_email.strip()
+    if payload.list_ids == ["shipsLog"] and shore:
+        try:
+            shore = validate_email(shore, check_deliverability=False).normalized
+        except EmailNotValidError:
+            raise HTTPException(status_code=400, detail="Please enter a valid Shore Contact email")
+        if shore.lower() != to.lower():
+            recipients.append(shore)
+    email_id = await send_email(to=recipients, subject=log_title(log), html=build_email_html(log, pdf_url, EMAIL_FROM_NAME))
     await db.ship_logs.insert_one({**log, "email_id": email_id})
-    log_sent = {"to": to, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
+    log_sent = {"to": to, "shore": recipients[1] if len(recipients) > 1 else None, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
     if payload.list_ids == ["shipsLog"]:
         await db.boats.update_one({"device_id": device_id}, {"$set": {"log_sent": log_sent}})
     return {"log_sent": log_sent}

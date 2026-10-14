@@ -14,6 +14,7 @@ import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
+import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
 
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
@@ -107,8 +108,13 @@ export default function BoatPrep() {
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
       <ListIntro listId={active.id} />
       {active.id === "shipsLog" && (
-        <EmailLogPanel email={boat.log_email || ""} online={online} logSent={state.log_sent} busy={mail.sending}
+        <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => guard() && mail.requestSend(["shipsLog"], "Ship's Log")} />
+      )}
+      {active.id === "engineService" && (
+        <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}
+          onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
+          onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
         onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />

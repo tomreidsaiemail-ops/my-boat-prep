@@ -49,6 +49,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Skipper's Tip wording updated
 - New built-in lists: Head (Toilet) (6 items), Engine Service (9 items), placed after Provisions; auto-added to existing devices
 
+## Iteration 7 (2026-06)
+- Ship's Log panel: optional "Shore Contact" email; Ship's Log email goes to skipper + shore contact; sent tick shows both
+- Engine Service panel: Engine Hours Log (hours, service date, notes; last service summary; delete entries), synced to cloud (engine_log)
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation

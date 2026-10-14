@@ -60,8 +60,9 @@ export const DEFAULT_DATA = {
 };
 
 export const freshState = () => ({
-  boat: { vessel: "", skipper: "", callsign: "", log_email: "" },
+  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "" },
   log_sent: null,
+  engine_log: [],
   registry: DEFAULT_REGISTRY.map((r) => ({ ...r })),
   data: JSON.parse(JSON.stringify(DEFAULT_DATA)),
   updated_at: new Date(0).toISOString(),
