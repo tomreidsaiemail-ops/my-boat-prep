@@ -4,7 +4,7 @@ const INTROS = {
   shipsLog: {
     cls: "border-sky-200 bg-sky-50 text-sky-950", Icon: BookOpen, testId: "log-instructions",
     text: "A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board. However, you can add other note worthy logs as you decide. The offline mode lets you do that at sea. The idea here is that once you have reached your destination you can print off this log and add it to the Ship's Log binder on board.",
-    tip: "export and email ship's logs, accumulate them and then bulk print them at your local print shop.",
+    tip: "complete Ship's Log below for this voyage then click Email Ship's Log below when back at the dock, accumulate the Ship's Logs in your Ship's Logs email folder and then bulk print them at your local print shop, and then add them to the binder onboard.",
   },
   mayDay: {
     cls: "border-[var(--red)] bg-[var(--red)] text-white", Icon: Siren, testId: "mayday-banner",
