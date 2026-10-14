@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
+import useEmailSender from "@/hooks/useEmailSender";
 import { displayLabel } from "@/lib/defaults";
 import { Header } from "@/components/boat/Header";
 import { BoatDetails } from "@/components/boat/BoatDetails";
@@ -77,11 +78,24 @@ export default function BoatPrep() {
     return true;
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });
+  const emailPrompt = (
+    <TextDialog open={!!mail.prompt} title="Where should we send it?" description="Enter the email address for your PDFs. It's saved next to Skipper for next time."
+      inputType="email" placeholder="you@email.com" confirmLabel="Send" testId="email-prompt" initial={mail.prompt?.initial || ""}
+      onConfirm={mail.confirmEmail} onClose={mail.closePrompt} />
+  );
 
   if (printMode) {
     const lists = printMode === "current" ? [active] : registry;
-    return <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE}
-      title={printMode === "current" ? active.name : "Vessel Manifest Master Logs"} onBack={() => setPrintMode(null)} />;
+    const title = printMode === "current" ? active.name : "Vessel Manifest Master Logs";
+    const ids = lists.map((l) => l.id);
+    return (
+      <>
+        <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
+          onEmail={() => mail.requestSend(ids, title)} online={online} sending={mail.sending} emailed={mail.sentKey === ids.join(",")} />
+        {emailPrompt}
+      </>
+    );
   }
 
   return (
@@ -93,8 +107,8 @@ export default function BoatPrep() {
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
       <ListIntro listId={active.id} />
       {active.id === "shipsLog" && (
-        <EmailLogPanel email={boat.log_email || ""} online={online}
-          logSent={state.log_sent} guard={() => guard()} onSend={() => emailLog(VERBOSE_DATE)} />
+        <EmailLogPanel email={boat.log_email || ""} online={online} logSent={state.log_sent} busy={mail.sending}
+          onSend={() => guard() && mail.requestSend(["shipsLog"], "Ship's Log")} />
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
         onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />
@@ -106,6 +120,7 @@ export default function BoatPrep() {
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+      {emailPrompt}
     </main>
   );
 }

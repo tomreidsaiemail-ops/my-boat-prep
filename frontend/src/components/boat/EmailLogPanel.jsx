@@ -1,8 +1,5 @@
-import { useState } from "react";
-import { toast } from "sonner";
 import { CheckCircle2, ExternalLink, Loader2, Mail } from "lucide-react";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const fmt = (iso) => new Date(iso).toLocaleString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit" });
 
 const SentStatus = ({ logSent }) => (
@@ -19,35 +16,17 @@ const SentStatus = ({ logSent }) => (
   </div>
 );
 
-export const EmailLogPanel = ({ email, online, logSent, guard, onSend }) => {
-  const [busy, setBusy] = useState(false);
-
-  const send = async () => {
-    if (!guard()) return;
-    if (!EMAIL_RE.test(email.trim())) { toast.error("Please enter a valid email address at the top"); return; }
-    setBusy(true);
-    try {
-      const res = await onSend();
-      toast.success(`Ship's Log emailed to ${res.to}`);
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Couldn't send the email. Check your signal and try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="email-log-panel">
-      <div className="text-sm" data-testid="log-email-recipient">
-        <span className="field-label">Sends to </span>
-        {email.trim() ? <b className="break-all">{email.trim()}</b> : <span className="font-semibold text-[var(--muted)]">add your email at the top</span>}
-      </div>
-      <button type="button" onClick={send} disabled={!online || busy} className="btn-solid w-full text-sm disabled:cursor-not-allowed disabled:opacity-50" data-testid="log-email-send-btn">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-        {busy ? "Sending..." : "Email Ship's Log"}
-      </button>
-      {!online && <p className="text-center text-xs font-bold text-[var(--muted)]" data-testid="log-email-offline-hint">Go online to email the log</p>}
-      {logSent && <SentStatus logSent={logSent} />}
-    </section>
-  );
-};
+export const EmailLogPanel = ({ email, online, logSent, busy, onSend }) => (
+  <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="email-log-panel">
+    <div className="text-sm" data-testid="log-email-recipient">
+      <span className="field-label">Sends to </span>
+      {email.trim() ? <b className="break-all">{email.trim()}</b> : <span className="font-semibold text-[var(--muted)]">add your email at the top</span>}
+    </div>
+    <button type="button" onClick={onSend} disabled={!online || busy} className="btn-solid w-full text-sm disabled:cursor-not-allowed disabled:opacity-50" data-testid="log-email-send-btn">
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+      {busy ? "Sending..." : "Email Ship's Log"}
+    </button>
+    {!online && <p className="text-center text-xs font-bold text-[var(--muted)]" data-testid="log-email-offline-hint">Go online to email the log</p>}
+    {logSent && <SentStatus logSent={logSent} />}
+  </section>
+);

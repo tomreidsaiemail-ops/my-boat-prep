@@ -115,6 +115,8 @@ async def save_boat(payload: BoatStateIn, device_id: DeviceId):
 
 class EmailLogIn(BaseModel):
     local_date: str = Field(min_length=4, max_length=60)
+    list_ids: List[str] = Field(default=["shipsLog"], min_length=1, max_length=60)
+    position: str = Field(default="Position unavailable", max_length=80)
 
 
 LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
@@ -140,13 +142,19 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
     log = {
         "log_id": str(uuid.uuid4()), "device_id": device_id, "to": to, "created_at": now,
         "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
-        "local_date": payload.local_date.strip(), "items": render_items(state.data.get("shipsLog", []), payload.local_date.strip()),
+        "local_date": payload.local_date.strip(),
     }
+    ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"]}
+    names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
+    log["lists"] = [{"name": names[i], "items": render_items(state.data.get(i, []), ctx)} for i in payload.list_ids if i in names]
+    if not log["lists"]:
+        raise HTTPException(status_code=400, detail="Nothing to email")
     pdf_url = f"{PUBLIC_APP_URL}/api/ship-logs/{log['log_id']}.pdf"
     email_id = await send_email(to=to, subject=log_title(log), html=build_email_html(log, pdf_url, EMAIL_FROM_NAME))
     await db.ship_logs.insert_one({**log, "email_id": email_id})
     log_sent = {"to": to, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
-    await db.boats.update_one({"device_id": device_id}, {"$set": {"log_sent": log_sent}})
+    if payload.list_ids == ["shipsLog"]:
+        await db.boats.update_one({"device_id": device_id}, {"$set": {"log_sent": log_sent}})
     return {"log_sent": log_sent}
 
 

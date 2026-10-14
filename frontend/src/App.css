@@ -78,7 +78,6 @@ body {
 .print-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #ddd; font-size: 15px; break-inside: avoid; }
 .print-box { width: 18px; height: 18px; border: 2px solid #000; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; }
 .print-box.checked::after { content: "✕"; font-size: 12px; font-weight: 900; }
-.print-sign { margin-top: 28px; font-size: 12px; font-weight: 600; }
 
 @media print {
   body { background: #fff; }

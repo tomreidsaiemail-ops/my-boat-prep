@@ -1,4 +1,4 @@
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Mail, Printer } from "lucide-react";
 
 const Meta = ({ boat, verboseDate }) => (
   <div className="print-meta">
@@ -22,16 +22,20 @@ const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
         <span className={item.checked ? "line-through text-neutral-500" : ""}>{labelFor(item)}</span>
       </div>
     ))}
-    <div className="print-sign">Checked by (Skipper): ____________________________ &nbsp; Time: __________</div>
   </section>
 );
 
-export const PrintView = ({ lists, data, labelFor, boat, verboseDate, title, onBack }) => (
+export const PrintView = ({ lists, data, labelFor, boat, verboseDate, title, onBack, onEmail, online, sending, emailed }) => (
   <div className="mx-auto max-w-3xl p-4 sm:p-8" data-testid="print-view">
-    <div className="no-print mb-6 flex flex-wrap items-center gap-2 rounded-lg border-[1.5px] border-amber-300 bg-amber-50 p-3">
-      <button type="button" className="btn-solid px-5" onClick={() => window.print()} data-testid="print-save-pdf-btn"><Printer className="h-4 w-4" /> Save PDF</button>
-      <button type="button" className="btn-ghost px-5" onClick={onBack} data-testid="print-back-btn"><ArrowLeft className="h-4 w-4" /> Back to Edit App</button>
-      <span className="ml-auto text-xs font-bold text-amber-900" data-testid="print-view-title">{title} · lamination layout</span>
+    <div className="no-print mb-6 grid grid-cols-3 gap-2 rounded-lg border-[1.5px] border-amber-300 bg-amber-50 p-3">
+      <button type="button" className="btn-solid" onClick={() => window.print()} data-testid="print-save-pdf-btn"><Printer className="h-4 w-4" /> Save PDF</button>
+      <button type="button" className="btn-solid disabled:cursor-not-allowed disabled:opacity-50" onClick={onEmail} disabled={!online || sending}
+        title={online ? "Email this PDF" : "Go online to email"} data-testid="print-email-pdf-btn">
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : emailed ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <Mail className="h-4 w-4" />}
+        {sending ? "Sending..." : emailed ? "Emailed" : "Email PDF"}
+      </button>
+      <button type="button" className="btn-ghost" onClick={onBack} data-testid="print-back-btn"><ArrowLeft className="h-4 w-4" /> Back to Edit App</button>
+      <span className="col-span-3 text-right text-xs font-bold text-amber-900" data-testid="print-view-title">{title} · lamination layout</span>
     </div>
     {lists.map((list, i) => (
       <ListPage key={list.id} list={list} index={i} items={data[list.id] || []} labelFor={labelFor} boat={boat} verboseDate={verboseDate} />

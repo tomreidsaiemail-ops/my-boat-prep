@@ -102,12 +102,13 @@ export default function useBoatStore() {
     return true;
   }, []);
 
-  const emailLog = useCallback(async (localDate) => {
+  const emailLog = useCallback(async ({ localDate, listIds, position, email }) => {
     const sent = pendingRef.current;
-    await axios.put(`${API}/boats/${deviceId}`, stateRef.current, { timeout: 10000 });
+    const cur = stateRef.current;
+    await axios.put(`${API}/boats/${deviceId}`, { ...cur, boat: { ...cur.boat, log_email: email } }, { timeout: 10000 });
     setPending((p) => Math.max(0, p - sent));
-    const { data } = await axios.post(`${API}/boats/${deviceId}/email-log`, { local_date: localDate }, { timeout: 40000 });
-    mutate((s) => ({ ...s, log_sent: data.log_sent }), { count: false });
+    const { data } = await axios.post(`${API}/boats/${deviceId}/email-log`, { local_date: localDate, list_ids: listIds, position }, { timeout: 40000 });
+    if (listIds.length === 1 && listIds[0] === "shipsLog") mutate((s) => ({ ...s, log_sent: data.log_sent }), { count: false });
     return data.log_sent;
   }, [deviceId, mutate]);
 
