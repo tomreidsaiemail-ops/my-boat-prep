@@ -1,1 +1,21 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="10" time="4.038" timestamp="2026-10-14T21:07:07.056995+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_boats" name="test_root" time="0.213" /><testcase classname="tests.test_boats" name="test_get_unknown_404" time="0.245" /><testcase classname="tests.test_boats" name="test_put_then_get" time="0.301" /><testcase classname="tests.test_boats" name="test_put_upsert" time="0.488" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[short]" time="0.538" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[has space1]" time="0.629" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[has$special!]" time="0.430" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]" time="0.257" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[dropit; drop]" time="0.255" /><testcase classname="tests.test_boats" name="test_put_invalid_body" time="0.166" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="4" failures="0" skipped="0" tests="14" time="3.136" timestamp="2026-10-14T21:59:49.759230+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="" name="tests.test_email_log" time="0.000"><error message="collection failure">backend/tests/test_email_log.py:8: in &lt;module&gt;
+    BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'REACT_APP_BACKEND_URL'</error><error message="collection failure">backend/tests/test_email_log.py:8: in &lt;module&gt;
+    BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'REACT_APP_BACKEND_URL'</error></testcase><testcase classname="" name="tests.test_email_log_lists" time="0.000"><error message="collection failure">backend/tests/test_email_log_lists.py:8: in &lt;module&gt;
+    BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'REACT_APP_BACKEND_URL'</error><error message="collection failure">backend/tests/test_email_log_lists.py:8: in &lt;module&gt;
+    BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'REACT_APP_BACKEND_URL'</error></testcase><testcase classname="tests.test_boats" name="test_root" time="0.286" /><testcase classname="tests.test_boats" name="test_get_unknown_404" time="0.131" /><testcase classname="tests.test_boats" name="test_put_then_get" time="0.306" /><testcase classname="tests.test_boats" name="test_put_upsert" time="0.415" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[short]" time="0.287" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[has space1]" time="0.250" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[has$special!]" time="0.249" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]" time="0.268" /><testcase classname="tests.test_boats" name="test_invalid_device_id_rejected[dropit; drop]" time="0.263" /><testcase classname="tests.test_boats" name="test_put_invalid_body" time="0.154" /></testsuite></testsuites>

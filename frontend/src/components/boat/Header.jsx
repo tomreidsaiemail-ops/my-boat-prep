@@ -2,12 +2,16 @@ import { MapPin } from "lucide-react";
 import { NetworkToggle } from "@/components/boat/NetworkToggle";
 
 export const BrandMark = () => (
-  <div className="mbp-mark" aria-hidden="true">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-      <path d="M2 22h20M12 2v20M12 2C7 7 7 14 12 22M12 2c5 5 5 12 0 20" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-    <span>MBP</span>
-  </div>
+  <svg viewBox="0 0 48 48" className="h-12 w-12 shrink-0" role="img" aria-label="My Boat Prep" data-testid="brand-mark">
+    <circle cx="24" cy="24" r="22.5" fill="#fff" stroke="var(--navy)" strokeWidth="2.5" />
+    <path d="M23 8v21" stroke="var(--navy)" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M24.2 9.5 34 28h-9.8z" fill="var(--navy)" />
+    <path d="M21.8 13 14 28h7.8z" fill="var(--blue)" />
+    <path d="M10 30.5h28l-3.6 5.2a2 2 0 0 1-1.6.8H15.2a2 2 0 0 1-1.6-.8z" fill="var(--navy)" />
+    <text x="24" y="43.5" textAnchor="middle" fontSize="7" fontWeight="800" fontFamily="Public Sans, sans-serif" fill="var(--navy)">MBP</text>
+    <circle cx="37.5" cy="11" r="5" fill="var(--green)" stroke="#fff" strokeWidth="1.4" />
+    <path d="m35.2 11.1 1.6 1.6 3-3.2" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
 );
 
 export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange }) => (

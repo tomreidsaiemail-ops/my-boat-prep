@@ -38,6 +38,13 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Email panel button "Email Ship's Log", sends to email from top bar
 - Tested iteration_3: 100%
 
+## Iteration 5 (2026-06)
+- "Email PDF" button in print view (between Save PDF and Back to Edit App) emails the current list or all lists (multi-page PDF)
+- Missing email -> prompt dialog everywhere, saved to top Email field
+- Removed "Checked by (Skipper) / Time" line from print + PDF
+- New boat icon (sail + hull + MBP + small green tick) for header, PWA icons, favicon; toasts moved to bottom
+- Tested iteration_4: 100%
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
