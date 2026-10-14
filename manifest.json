@@ -1,0 +1,15 @@
+{
+  "short_name": "MyBoatPrep",
+  "name": "My Boat Prep Checklist System",
+  "description": "Minimalist Local-First Marine Checklist App with Deep Offline Operations.",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": "/index.html",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "navigation"]
+}
