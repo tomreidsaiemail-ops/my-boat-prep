@@ -15,7 +15,7 @@ export const TextDialog = ({ open, title, description, initial = "", placeholder
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" data-testid={`${testId}-dialog`}>
+      <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" data-testid={`${testId}-dialog`} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
