@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam
+from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,10 +8,18 @@ import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
 from typing import Annotated, Optional, List, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import uuid
+from email_validator import validate_email, EmailNotValidError
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+from email_service import send_email, EMAIL_FROM_NAME  # noqa: E402
+from ship_log import build_pdf, build_email_html, render_items, log_title  # noqa: E402
+
+PUBLIC_APP_URL = os.environ['PUBLIC_APP_URL'].rstrip('/')
+DAILY_EMAIL_LIMIT = 10
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
 db = client[os.environ['DB_NAME']]
@@ -39,6 +47,7 @@ class BoatDetails(BaseModel):
     vessel: str = ""
     skipper: str = ""
     callsign: str = ""
+    log_email: str = ""
 
 
 class BoatStateIn(BaseModel):
@@ -46,6 +55,7 @@ class BoatStateIn(BaseModel):
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
+    log_sent: Optional[Dict[str, Any]] = None
 
 
 class BoatState(BaseDocument):
@@ -54,6 +64,7 @@ class BoatState(BaseDocument):
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
+    log_sent: Optional[Dict[str, Any]] = None
     synced_at: str
 
 
@@ -63,6 +74,7 @@ class BoatStateOut(BaseModel):
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
     updated_at: str
+    log_sent: Optional[Dict[str, Any]] = None
     synced_at: str
 
 
@@ -94,10 +106,57 @@ async def save_boat(payload: BoatStateIn, device_id: DeviceId):
         registry=payload.registry,
         data=payload.data,
         updated_at=payload.updated_at,
+        log_sent=payload.log_sent,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
     await db.boats.update_one({"device_id": device_id}, {"$set": state.to_mongo()}, upsert=True)
     return to_out(state)
+
+
+class EmailLogIn(BaseModel):
+    local_date: str = Field(min_length=4, max_length=60)
+
+
+LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
+
+
+@api_router.post("/boats/{device_id}/email-log")
+async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
+    doc = await db.boats.find_one({"device_id": device_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No saved boat for this device")
+    state = BoatState.from_mongo(doc)
+    b = state.boat
+    if not (b.vessel.strip() and b.skipper.strip() and b.callsign.strip()):
+        raise HTTPException(status_code=400, detail="Please enter vessel details first")
+    try:
+        to = validate_email(b.log_email.strip(), check_deliverability=False).normalized
+    except EmailNotValidError:
+        raise HTTPException(status_code=400, detail="Please enter a valid email address")
+    since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    if await db.ship_logs.count_documents({"device_id": device_id, "created_at": {"$gte": since}}) >= DAILY_EMAIL_LIMIT:
+        raise HTTPException(status_code=429, detail="Daily email limit reached, try again tomorrow")
+    now = datetime.now(timezone.utc).isoformat()
+    log = {
+        "log_id": str(uuid.uuid4()), "device_id": device_id, "to": to, "created_at": now,
+        "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
+        "local_date": payload.local_date.strip(), "items": render_items(state.data.get("shipsLog", []), payload.local_date.strip()),
+    }
+    pdf_url = f"{PUBLIC_APP_URL}/api/ship-logs/{log['log_id']}.pdf"
+    email_id = await send_email(to=to, subject=log_title(log), html=build_email_html(log, pdf_url, EMAIL_FROM_NAME))
+    await db.ship_logs.insert_one({**log, "email_id": email_id})
+    log_sent = {"to": to, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
+    await db.boats.update_one({"device_id": device_id}, {"$set": {"log_sent": log_sent}})
+    return {"log_sent": log_sent}
+
+
+@api_router.get("/ship-logs/{log_id}.pdf")
+async def ship_log_pdf(log_id: LogId):
+    log = await db.ship_logs.find_one({"log_id": log_id}, {"_id": 0})
+    if not log:
+        raise HTTPException(status_code=404, detail="Ship log not found")
+    filename = log_title(log).replace("'", "").replace("/", "-") + ".pdf"
+    return Response(build_pdf(log), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
 
 
 app.include_router(api_router)

@@ -56,7 +56,7 @@ export default function useBoatStore() {
     axios.get(`${API}/boats/${deviceId}`).then(({ data }) => {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
-        setState({ boat: data.boat, registry: data.registry, data: data.data, updated_at: data.updated_at });
+        setState({ boat: data.boat, registry: data.registry, data: data.data, updated_at: data.updated_at, log_sent: data.log_sent || null });
       }
     }).catch((e) => {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));
@@ -102,5 +102,14 @@ export default function useBoatStore() {
     return true;
   }, []);
 
-  return { state, mutate, pending, online, goOffline, goOnline };
+  const emailLog = useCallback(async (localDate) => {
+    const sent = pendingRef.current;
+    await axios.put(`${API}/boats/${deviceId}`, stateRef.current, { timeout: 10000 });
+    setPending((p) => Math.max(0, p - sent));
+    const { data } = await axios.post(`${API}/boats/${deviceId}/email-log`, { local_date: localDate }, { timeout: 40000 });
+    mutate((s) => ({ ...s, log_sent: data.log_sent }), { count: false });
+    return data.log_sent;
+  }, [deviceId, mutate]);
+
+  return { state, mutate, pending, online, goOffline, goOnline, emailLog };
 }

@@ -12,6 +12,7 @@ import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
+import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 
 const now = new Date();
 const SHORT_DATE = now.toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -26,7 +27,7 @@ const useWarn = () => {
 };
 
 export default function BoatPrep() {
-  const { state, mutate, pending, online, goOffline, goOnline } = useBoatStore();
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore();
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -90,6 +91,10 @@ export default function BoatPrep() {
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
       <ListIntro listId={active.id} />
+      {active.id === "shipsLog" && (
+        <EmailLogPanel email={boat.log_email || ""} onEmailChange={(v) => updateBoat("log_email", v)} online={online}
+          logSent={state.log_sent} guard={() => guard()} onSend={() => emailLog(VERBOSE_DATE)} />
+      )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
         onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />
       <AddItemForm key={active.id} listName={active.name} onAdd={addItem} />
