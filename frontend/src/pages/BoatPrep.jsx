@@ -1,0 +1,104 @@
+import { useMemo, useRef, useState } from "react";
+import useBoatStore from "@/hooks/useBoatStore";
+import useGps from "@/hooks/useGps";
+import { displayLabel } from "@/lib/defaults";
+import { Header } from "@/components/boat/Header";
+import { BoatDetails } from "@/components/boat/BoatDetails";
+import { ActionBar } from "@/components/boat/ActionBar";
+import { SyncBanner } from "@/components/boat/SyncBanner";
+import { ListSelector } from "@/components/boat/ListSelector";
+import { ListIntro } from "@/components/boat/ListIntro";
+import { Checklist } from "@/components/boat/Checklist";
+import { AddItemForm } from "@/components/boat/AddItemForm";
+import { TextDialog } from "@/components/boat/TextDialog";
+import { PrintView } from "@/components/boat/PrintView";
+
+const now = new Date();
+const SHORT_DATE = now.toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" });
+const VERBOSE_DATE = now.toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const EMERGENCY = { mayDay: "red", panPan: "amber" };
+
+const useWarn = () => {
+  const [warn, setWarn] = useState(null);
+  const t = useRef();
+  const show = (zone) => { setWarn(zone); clearTimeout(t.current); t.current = setTimeout(() => setWarn(null), 4000); };
+  return [warn, show];
+};
+
+export default function BoatPrep() {
+  const { state, mutate, pending, online } = useBoatStore();
+  const gps = useGps();
+  const [activeId, setActiveId] = useState("leavingDock");
+  const [warn, showWarn] = useWarn();
+  const [dialog, setDialog] = useState(null);
+  const [printMode, setPrintMode] = useState(null);
+  const { boat, registry, data } = state;
+  const active = registry.find((l) => l.id === activeId) || registry[0];
+  const items = data[active.id] || [];
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text]);
+  const labelFor = (item) => displayLabel(item, ctx);
+
+  const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
+  const guard = (zone = "top") => {
+    if (ready) return true;
+    showWarn(zone);
+    return false;
+  };
+  const setItems = (fn) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: fn(s.data[active.id] || []) } }));
+  const isDup = (text, exceptId) => items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
+
+  const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
+  const remove = (id) => guard() && setItems((list) => list.filter((i) => i.id !== id));
+  const reset = (zone) => guard(zone) && setItems((list) => list.map((i) => ({ ...i, checked: false })));
+  const exportLists = (current, zone) => guard(zone) && setPrintMode(current ? "current" : "all");
+  const addItem = (text) => {
+    if (!guard("bottom")) return null;
+    if (!text) return "Nothing to add";
+    if (isDup(text)) return `${text} already exists`;
+    setItems((list) => [...list, { id: Date.now(), label: text, checked: false }]);
+    return true;
+  };
+  const saveEdit = (item) => (text) => {
+    if (!text) return "Item text cannot be empty";
+    if (isDup(text, item.id)) return `${text} already exists`;
+    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, label: text } : i)));
+    setDialog(null);
+    return true;
+  };
+  const createList = (name) => {
+    if (!name) return "Please enter a list name";
+    if (registry.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    const id = `custom_${Date.now()}`;
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: [] } }));
+    setActiveId(id);
+    setDialog(null);
+    return true;
+  };
+  const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+
+  if (printMode) {
+    const lists = printMode === "current" ? [active] : registry;
+    return <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE}
+      title={printMode === "current" ? active.name : "Vessel Manifest Master Logs"} onBack={() => setPrintMode(null)} />;
+  }
+
+  return (
+    <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
+      <Header gps={gps} online={online} />
+      <SyncBanner online={online} pending={pending} />
+      <BoatDetails boat={boat} onChange={updateBoat} shortDate={SHORT_DATE} />
+      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
+      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
+      <ListIntro listId={active.id} />
+      <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
+        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />
+      <AddItemForm key={active.id} listName={active.name} onAdd={addItem} />
+      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} />
+      <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
+        onConfirm={createList} onClose={() => setDialog(null)} />
+      <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
+        initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
+        onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+    </main>
+  );
+}

@@ -1,0 +1,99 @@
+{
+  "project_name": "My Boat Prep",
+  "archetype": "Swiss & Tactical High-Contrast Marine Utility",
+  "target_audience": "Recreational and commercial skippers, boat owners, marine navigators in NZ and AU",
+  "theme": "Marine High-Contrast Light/Dark sunlight readable PWA",
+  "typography": {
+    "heading_font": "Outfit, sans-serif",
+    "body_font": "Inter, system-ui, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1": "text-2xl sm:text-3xl font-extrabold tracking-tight",
+      "h2": "text-xl sm:text-2xl font-bold tracking-tight",
+      "h3": "text-lg sm:text-xl font-semibold",
+      "body": "text-base font-normal leading-relaxed",
+      "small_label": "text-xs font-mono uppercase tracking-widest"
+    }
+  },
+  "colors": {
+    "primary_navy": "#0F172A",
+    "marine_blue": "#0284C7",
+    "marine_cyan": "#06B6D4",
+    "background_light": "#F8FAFC",
+    "surface_light": "#FFFFFF",
+    "text_main": "#0F172A",
+    "text_muted": "#475569",
+    "emergency_red": "#DC2626",
+    "emergency_red_bg": "#FEF2F2",
+    "panpan_amber": "#D97706",
+    "panpan_amber_bg": "#FFFBEB",
+    "success_green": "#16A34A",
+    "border_light": "#E2E8F0"
+  },
+  "touch_and_accessibility": {
+    "min_touch_target": "48px x 48px minimum for ocean stability",
+    "sunlight_readability": "High-contrast borders (1.5px solid), crisp typography, clear visual status indicators",
+    "data_testid_requirement": "Mandatory data-testid attribute on all interactive inputs, buttons, checklist checkboxes, tabs, emergency triggers, and export actions"
+  },
+  "key_features_and_components": {
+    "boat_details_bar": {
+      "fields": ["vessel_name", "skipper_name", "callsign", "date"],
+      "validation": "Must prompt or require filling before checklist edits, exports, or emergency calls",
+      "gps_display": "Degrees-Minutes live GPS position indicator e.g. 36° 50.4' S, 174° 46.2' E"
+    },
+    "tabs_selector": {
+      "built_in_lists": [
+        "Leaving Dock",
+        "Returning to Dock",
+        "Arriving at Destination",
+        "Safety",
+        "Route Hazards",
+        "Crew Prep",
+        "Provisions",
+        "Ship Log",
+        "Grab Bag",
+        "May Day",
+        "Pan Pan"
+      ],
+      "custom_list_creation": "Plus '+' button modal to add new skipper-defined custom checklist"
+    },
+    "emergency_scripts": {
+      "mayday": "Emergency Red heavy contrast modal & card with voice script pre-filled with Vessel, Callsign, GPS, and Mayday protocol steps",
+      "panpan": "Urgency Amber heavy contrast modal & card with official radio script pre-filled with Vessel, Callsign, and GPS"
+    },
+    "checklist_actions": ["tick/untick", "add item", "edit item", "delete item", "reset list", "reset all"],
+    "export_system": {
+      "print_layout": "Lamination-ready print view (@media print), one list per page with vessel details header, checkbox circles, and skipper signoff line",
+      "options": ["Export Current List", "Export All Lists"]
+    },
+    "pwa_and_offline": {
+      "outbox_banner": "Outbox: N unsynced changes banner displayed when offline",
+      "toast_notifications": "Sonner toast notifications on sync status and list actions"
+    }
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1498623116890-37e912163d5d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxzYWlsYm9hdCUyMG9jZWFuJTIwbWFyaW5lJTIwc2tpcHBlciUyMGJvYXQlMjBuYXZpZ2F0aW9ufGVufDB8fHx8MTc5MjAxMTcwMnww&ixlib=rb-4.1.0&q=85",
+      "description": "Sailboat helm and ocean horizon hero visual",
+      "category": "hero_background"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1501771924607-209f42a6e7e4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwyfHxzYWlsYm9hdCUyMG9jZWFuJTIwbWFyaW5lJTIwc2tpcHBlciUyMGJvYXQlMjBuYXZpZ2F0aW9ufGVufDB8fHx8MTc5MjAxMTcwMnww&ixlib=rb-4.1.0&q=85",
+      "description": "Marine fleet on water background accent",
+      "category": "fleet_overview"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1776347568367-e8f56443648f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwzfHx5YWNodCUyMGNvbXBhc3MlMjBzZWElMjBuYXV0aWNhbCUyMHZlY3RvciUyMGJhbm5lcnxlbnwwfHx8fDE3OTIwMTE3MDJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Boat compass close-up icon visual",
+      "category": "navigation_compass"
+    }
+  ],
+  "instructions_to_main_agent": "Rebuild My Boat Prep as a clean, high-contrast, phone-first PWA marine checklist app. Ensure all 11 built-in lists are available with full edit/add/delete/tick/reset features, emergency Mayday/Pan Pan scripts auto-formatted with live GPS and boat detail bar values, lamination-ready print export layout, offline status banner, and strict data-testid attributes for automated testing.",
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Ensure minimum touch targets of 48x48px across all checklist checkboxes and buttons.",
+    "Do NOT use universal transition all.",
+    "Always include data-testid on every interactive element using kebab-case role-based names.",
+    "Ensure sunlight readability with high APCA contrast ratios and crisp borders.",
+    "Sonner for toasts via /app/src/components/ui/sonner.jsx or toast utility."
+  ]
+}
