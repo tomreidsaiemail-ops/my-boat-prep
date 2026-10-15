@@ -86,6 +86,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Free tier: AdSense banner at bottom (placeholder until REACT_APP_ADSENSE_CLIENT / REACT_APP_ADSENSE_SLOT set)
 - Tested iteration_9/10: 100% after fixes
 
+## Iteration 15 (2026-06)
+- Sign-out warning when unsynced offline changes exist (count, Stay signed in / Sign out anyway)
+- Skipper's Tips: shared master list (db.tips) shown to all users at end of list menu; only admin can add/edit/reorder/delete (PUT /api/admin/tips); cached for offline; numbered in print/PDF; email PDF supported
+- Tested iteration_11: 100% (minor UX fixes applied after)
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P1: Real AdSense IDs (needs approved AdSense account on myboatprep.com)

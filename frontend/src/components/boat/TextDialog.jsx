@@ -7,9 +7,9 @@ export const TextDialog = ({ open, title, description, initial = "", placeholder
 
   useEffect(() => { if (open) { setValue(initial); setError(""); } }, [open, initial]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const res = onConfirm(value.trim());
+    const res = await onConfirm(value.trim());
     if (typeof res === "string") setError(res);
   };
 

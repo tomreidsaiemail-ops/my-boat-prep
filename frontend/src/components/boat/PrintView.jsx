@@ -16,9 +16,9 @@ const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
       <span className="print-brand">My Boat Prep</span>
     </div>
     <Meta boat={boat} verboseDate={verboseDate} />
-    {items.map((item) => (
+    {items.map((item, n) => (
       <div key={item.id} className="print-row">
-        <span className={`print-box ${item.checked ? "checked" : ""}`} />
+        {list.isShared ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
         <span className={item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}>
           {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{labelFor(item)}
         </span>

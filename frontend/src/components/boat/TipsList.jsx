@@ -5,13 +5,13 @@ import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 
 const TipRow = ({ tip, n, admin, first, last, onEdit, onDelete, onMove, busy }) => (
-  <li className="checklist-row" data-testid={`tip-item-${tip.id}`}>
-    <div className="flex min-h-[56px] flex-1 items-start gap-3 py-3 pl-3">
+  <li className="checklist-row flex-col" data-testid={`tip-item-${tip.id}`}>
+    <div className="flex min-h-[56px] w-full items-start gap-3 px-3 py-3">
       <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 font-mono text-xs font-bold text-amber-900">{n}</span>
       <span className="item-text pt-0.5" data-testid={`tip-text-${tip.id}`}>{tip.label}</span>
     </div>
     {admin && (
-      <div className="flex shrink-0 items-start pr-1 pt-1.5">
+      <div className="-mt-2 flex items-center gap-1 pb-2 pl-12" data-testid={`tip-tools-${tip.id}`}>
         <button type="button" className="prio-btn" disabled={first || busy} onClick={() => onMove(-1)} aria-label="Move tip up" data-testid={`tip-up-${tip.id}`}><ArrowUp className="h-5 w-5" /></button>
         <button type="button" className="prio-btn" disabled={last || busy} onClick={() => onMove(1)} aria-label="Move tip down" data-testid={`tip-down-${tip.id}`}><ArrowDown className="h-5 w-5" /></button>
         <button type="button" className="icon-btn" disabled={busy} onClick={onEdit} aria-label="Edit tip" data-testid={`tip-edit-${tip.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
@@ -33,17 +33,16 @@ export const TipsList = ({ tips, admin, online, onSave }) => {
     catch (e) { toast.error(e.response?.data?.detail || "Couldn't save tips"); return false; }
     finally { setBusy(false); }
   };
-  const add = (text) => {
+  const add = async (text) => {
     if (!text) return "Nothing to add";
     if (isDup(text)) return `${text} already exists`;
-    commit([...tips, { id: Date.now(), label: text }]);
-    return true;
+    return (await commit([...tips, { id: Date.now(), label: text }])) || "Not saved, please try again";
   };
   const move = (i, dir) => { const next = [...tips]; [next[i], next[i + dir]] = [next[i + dir], next[i]]; commit(next); };
-  const saveEdit = (text) => {
+  const saveEdit = async (text) => {
     if (!text) return "Tip text cannot be empty";
     if (isDup(text, editing.id)) return `${text} already exists`;
-    commit(tips.map((t) => (t.id === editing.id ? { ...t, label: text } : t)));
+    if (!(await commit(tips.map((t) => (t.id === editing.id ? { ...t, label: text } : t))))) return "Not saved, please try again";
     setEditing(null);
     return true;
   };

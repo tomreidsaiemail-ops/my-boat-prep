@@ -4,9 +4,9 @@ export const AddItemForm = ({ placeholder, onAdd }) => {
   const [text, setText] = useState("");
   const [alert, setAlert] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const res = onAdd(text.trim());
+    const res = await onAdd(text.trim());
     if (res === true) { setText(""); setAlert(""); return; }
     if (res) {
       setAlert(res);

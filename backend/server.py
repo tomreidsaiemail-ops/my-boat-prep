@@ -166,7 +166,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
     log["lists"] = [
-        {"name": "Skipper's Tips", "items": render_items(tips, ctx)} if i == "skippersTips"
+        {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
         else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
         for i in payload.list_ids if i in names or i == "skippersTips"
     ]

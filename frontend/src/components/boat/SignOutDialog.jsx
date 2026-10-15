@@ -9,8 +9,8 @@ export const SignOutDialog = ({ open, pending, onConfirm, onClose }) => (
       <AlertDialogHeader>
         <AlertDialogTitle className="font-display">Unsaved changes</AlertDialogTitle>
         <AlertDialogDescription data-testid="signout-warning-text">
-          You have {pending} {pending === 1 ? "change" : "changes"} that haven't been saved to the cloud yet. If you sign out now, they'll be lost.
-          Set Status to Online when you have signal to sync them first.
+          You have {pending} {pending === 1 ? "change that hasn't" : "changes that haven't"} been saved to the cloud yet. They stay on this phone,
+          but they'll be lost if someone else signs in here. Set Status to Online when you have signal to sync them first.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

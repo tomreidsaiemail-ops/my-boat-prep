@@ -11,7 +11,7 @@ TIPS_KEY = "master"
 
 class TipItem(BaseModel):
     id: Union[int, str]
-    label: str = Field(min_length=1, max_length=500)
+    label: str = Field(max_length=500)
 
 
 class TipsIn(BaseModel):

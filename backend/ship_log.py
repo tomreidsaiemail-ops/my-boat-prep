@@ -57,7 +57,8 @@ def build_pdf(log: dict) -> bytes:
     for n, lst in enumerate(log_lists(log)):
         if n:
             story.append(PageBreak())
-        rows = [[Paragraph("[X]" if i["checked"] else "[  ]", ITEM), _item_para(i)] for i in lst["items"]]
+        mark = (lambda n, i: f"{n}.") if lst.get("numbered") else (lambda n, i: "[X]" if i["checked"] else "[  ]")
+        rows = [[Paragraph(mark(n, i), ITEM), _item_para(i)] for n, i in enumerate(lst["items"], 1)]
         story += [Paragraph(escape(lst["name"].upper()), TITLE), Spacer(1, 4), meta, Spacer(1, 12)]
         if rows:
             tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
