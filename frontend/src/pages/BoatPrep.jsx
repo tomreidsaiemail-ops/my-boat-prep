@@ -3,7 +3,7 @@ import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import { toast } from "sonner";
-import { displayLabel, restoreDeletedLists } from "@/lib/defaults";
+import { displayLabel, resetSuppliedLists } from "@/lib/defaults";
 import { Header } from "@/components/boat/Header";
 import { BoatDetails } from "@/components/boat/BoatDetails";
 import { ActionBar } from "@/components/boat/ActionBar";
@@ -17,6 +17,7 @@ import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
+import { ResetAllDialog } from "@/components/boat/ResetAllDialog";
 
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
@@ -68,14 +69,11 @@ export default function BoatPrep() {
     [next[i], next[j]] = [next[j], next[i]];
     return next;
   });
-  const reset = (zone) => {
-    if (!guard(zone)) return;
-    const { names } = restoreDeletedLists(state);
-    mutate((s) => {
-      const r = restoreDeletedLists(s).state;
-      return { ...r, data: { ...r.data, [active.id]: (r.data[active.id] || []).map((i) => ({ ...i, checked: false })) } };
-    });
-    if (names.length) toast.success(`Restored: ${names.join(", ")}`);
+  const reset = (zone) => guard(zone) && setDialog({ type: "reset" });
+  const confirmReset = () => {
+    mutate(resetSuppliedLists);
+    setDialog(null);
+    toast.success("Supplied lists reset to their original items");
   };
   const askDeleteList = () => {
     if (!guard()) return;
@@ -169,6 +167,7 @@ export default function BoatPrep() {
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+      <ResetAllDialog open={dialog?.type === "reset"} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>

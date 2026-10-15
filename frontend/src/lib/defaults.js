@@ -89,6 +89,16 @@ const addMissingLists = (s) => {
   return { ...s, registry, data, deleted_lists: deleted };
 };
 
+export const PRESERVED_LISTS = ["shipsLog", "myTodo"];
+
+export const resetSuppliedLists = (s) => {
+  const { state } = restoreDeletedLists(s);
+  const data = { ...state.data };
+  state.registry.filter((l) => l.isSystem && !PRESERVED_LISTS.includes(l.id) && DEFAULT_DATA[l.id])
+    .forEach((l) => { data[l.id] = JSON.parse(JSON.stringify(DEFAULT_DATA[l.id])); });
+  return { ...state, data };
+};
+
 export const restoreDeletedLists = (s) => {
   const registry = [...s.registry];
   const data = { ...s.data };
