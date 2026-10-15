@@ -77,6 +77,17 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Iteration 13 (2026-06)
 - Emailed PDF links now use the host the app was opened on (preview, live gemini-prototype.emergent.host, or future custom domain), validated hostname; PUBLIC_APP_URL only a fallback (iteration_8 100%)
 
+## Iteration 14 (2026-06): User tiers
+- Emergent Google Sign-In required (login page, AuthCallback, cached user for offline use, waits for /auth/me when online)
+- users collection with role free | beta_tester | pro; admin = ADMIN_EMAIL (tomreidsaiemail@gmail.com); /admin page to set tiers
+- Boat data now per user (/api/me/boat, user_boats collection); local data claimed per account (mbp_owner)
+- Pro = Stripe yearly subscription NZD 4.99 (claimable sandbox, tax mode: Stripe calculates only), checkout, status polling, webhook, cancel/resume renewal
+- Pro/Beta only: Export All, Email PDF, Email Ship's Log, create own lists, hide help, unlimited To Do (free max 5); server enforces email gating
+- Free tier: AdSense banner at bottom (placeholder until REACT_APP_ADSENSE_CLIENT / REACT_APP_ADSENSE_SLOT set)
+- Tested iteration_9/10: 100% after fixes
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
+- P1: Real AdSense IDs (needs approved AdSense account on myboatprep.com)
+- P1: Define Beta 'early features'
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation

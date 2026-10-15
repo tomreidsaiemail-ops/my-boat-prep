@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
-      const { data } = await api.get("/auth/me");
+      const { data } = await api.get("/auth/me", { timeout: 8000 });
       setUser(data);
       return data;
     } catch (e) {

@@ -210,3 +210,27 @@ class TestPayments:
     def test_webhook_bad_sig_400(self):
         r = requests.post(f"{API}/stripe/webhook", data=b"{}", headers={"stripe-signature": "bad"})
         assert r.status_code == 400
+
+
+# --- iteration 10: admin downgrade of a paying user, adaptive pricing off ---
+class TestIter10:
+    def test_downgrade_paying_user_409(self):
+        mdb.users.update_one({"user_id": UID["pro"]}, {"$set": {"stripe_subscription_id": "sub_TEST_fake", "subscription_status": "active"}})
+        try:
+            r = requests.patch(f"{API}/admin/users/{UID['pro']}", json={"role": "free"}, headers=H("admin"))
+            assert r.status_code == 409, r.text
+            assert "subscription" in r.json()["detail"].lower()
+            assert mdb.users.find_one({"user_id": UID["pro"]})["role"] == "pro"
+            r2 = requests.patch(f"{API}/admin/users/{UID['pro']}", json={"role": "beta_tester"}, headers=H("admin"))
+            assert r2.status_code == 200 and r2.json()["role"] == "beta_tester"
+        finally:
+            mdb.users.update_one({"user_id": UID["pro"]}, {"$set": {"role": "pro"}, "$unset": {"stripe_subscription_id": "", "subscription_status": ""}})
+
+    def test_checkout_adaptive_pricing_disabled(self):
+        import stripe
+        stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
+        r = requests.post(f"{API}/payments/checkout", json={"origin_url": BASE_URL}, headers=H("free"), timeout=30)
+        assert r.status_code == 200, r.text
+        s = stripe.checkout.Session.retrieve(r.json()["session_id"])
+        assert s.currency == "nzd"
+        assert s.adaptive_pricing["enabled"] is False
