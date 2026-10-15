@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Loader2, Mail } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, Lock, Mail } from "lucide-react";
 
 const fmt = (iso) => new Date(iso).toLocaleString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "numeric", minute: "2-digit" });
 
@@ -16,7 +16,7 @@ const SentStatus = ({ logSent }) => (
   </div>
 );
 
-export const EmailLogPanel = ({ email, shore, onShoreChange, shoreOn, onShoreToggle, online, logSent, busy, onSend }) => (
+export const EmailLogPanel = ({ email, shore, onShoreChange, shoreOn, onShoreToggle, online, logSent, busy, onSend, locked }) => (
   <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="email-log-panel">
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
     <div className="min-w-0 text-sm" data-testid="log-email-recipient">
@@ -34,7 +34,7 @@ export const EmailLogPanel = ({ email, shore, onShoreChange, shoreOn, onShoreTog
         className="field-input" data-testid="shore-email-input" />
     </label>}
     <button type="button" onClick={onSend} disabled={!online || busy} className="btn-solid w-full text-sm disabled:cursor-not-allowed disabled:opacity-50" data-testid="log-email-send-btn">
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" data-testid="log-email-lock" /> : <Mail className="h-4 w-4" />}
       {busy ? "Sending..." : "Email Ship's Log"}
     </button>
     {!online && <p className="text-center text-xs font-bold text-[var(--muted)]" data-testid="log-email-offline-hint">Go online to email the log</p>}

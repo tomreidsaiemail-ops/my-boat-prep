@@ -2,6 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
+import { useAuth } from "@/context/AuthContext";
+import { useUpgrade } from "@/context/UpgradeContext";
+import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
 import { displayLabel, resetSuppliedLists } from "@/lib/defaults";
 import { Header } from "@/components/boat/Header";
@@ -22,6 +25,7 @@ import { ResetAllDialog } from "@/components/boat/ResetAllDialog";
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
+const FREE_TODO_LIMIT = 5;
 
 const useWarn = () => {
   const [warn, setWarn] = useState(null);
@@ -31,7 +35,11 @@ const useWarn = () => {
 };
 
 export default function BoatPrep() {
-  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore();
+  const { user } = useAuth();
+  const { askUpgrade } = useUpgrade();
+  const premium = !!user.premium;
+  const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore(user.user_id);
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -93,11 +101,15 @@ export default function BoatPrep() {
     setDialog(null);
     toast.success(`${dialog.list.name} deleted`);
   };
-  const exportLists = (current, zone) => guard(zone) && setPrintMode(current ? "current" : "all");
+  const exportLists = (current, zone) => guard(zone) && (current || needPro("Export All lists")) && setPrintMode(current ? "current" : "all");
   const addItem = (text) => {
     if (!guard("bottom")) return null;
     if (!text) return "Nothing to add";
     if (isDup(text)) return `${text} already exists`;
+    if (active.id === "myTodo" && !premium && items.length >= FREE_TODO_LIMIT) {
+      askUpgrade("More than 5 To Do items");
+      return `The Free plan holds ${FREE_TODO_LIMIT} To Do items. Go Pro for unlimited.`;
+    }
     setItems((list) => [...list, { id: Date.now(), label: text, checked: false }]);
     return true;
   };
@@ -132,7 +144,8 @@ export default function BoatPrep() {
     return (
       <>
         <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
-          onEmail={() => mail.requestSend(ids, title)} online={online} sending={mail.sending} emailed={mail.sentKey === ids.join(",")} />
+          onEmail={() => needPro("Email PDF") && mail.requestSend(ids, title)} online={online} sending={mail.sending}
+          emailed={mail.sentKey === ids.join(",")} locked={!premium} />
         {emailPrompt}
       </>
     );
@@ -143,13 +156,13 @@ export default function BoatPrep() {
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} />
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} />
-      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
-      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
-      <ListIntro key={`intro-${active.id}`} listId={active.id} />
+      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
+      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && needPro("Create your own lists") && setDialog({ type: "list" })} />
+      <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
-          onSend={() => guard() && mail.requestSend(["shipsLog"], "Ship's Log")} />
+          onSend={() => guard() && needPro("Email Ship's Log") && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
       {active.id === "engineService" && (
         <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}
@@ -161,7 +174,8 @@ export default function BoatPrep() {
         {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
       <AddItemForm key={`add-${active.id}`} onAdd={addItem}
         placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
-      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} />
+      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
+      {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
         onConfirm={createList} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"

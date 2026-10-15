@@ -1,29 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { freshState, migrateState } from "@/lib/defaults";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
-const DEVICE_KEY = "mbp_device_id";
+const OWNER_KEY = "mbp_owner";
 const MANUAL_OFFLINE_KEY = "mbp_manual_offline";
 
-const getDeviceId = () => {
-  let id = localStorage.getItem(DEVICE_KEY);
-  if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, "");
-    localStorage.setItem(DEVICE_KEY, id);
+// Local data belongs to one account: a different sign-in on this phone starts from its own cloud copy.
+const claimLocal = (userId) => {
+  const owner = localStorage.getItem(OWNER_KEY);
+  if (owner && owner !== userId) {
+    localStorage.removeItem(STATE_KEY);
+    localStorage.setItem(OUTBOX_KEY, "0");
   }
-  return id;
+  localStorage.setItem(OWNER_KEY, userId);
+  return userId;
 };
 
 const loadLocal = () => {
   try { return migrateState(JSON.parse(localStorage.getItem(STATE_KEY))); } catch { return null; }
 };
 
-export default function useBoatStore() {
-  const deviceId = useRef(getDeviceId()).current;
+export default function useBoatStore(userId) {
+  const ownerId = useRef(null);
+  if (ownerId.current === null) ownerId.current = claimLocal(userId);
   const hadLocal = useRef(!!loadLocal());
   const [state, setState] = useState(() => loadLocal() || freshState());
   const [pending, setPending] = useState(() => Number(localStorage.getItem(OUTBOX_KEY) || 0));
@@ -53,7 +55,7 @@ export default function useBoatStore() {
 
   useEffect(() => {
     if (!navigator.onLine || manualOffline || pendingRef.current > 0) return;
-    axios.get(`${API}/boats/${deviceId}`).then(({ data }) => {
+    api.get("/me/boat").then(({ data }) => {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
         const m = migrateState(data);
@@ -63,25 +65,25 @@ export default function useBoatStore() {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));
       else if (!e.response) setReachable(false);
     });
-  }, [deviceId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (pending === 0 || !online) return undefined;
     const timer = setTimeout(async () => {
       const sent = pendingRef.current;
       try {
-        await axios.put(`${API}/boats/${deviceId}`, stateRef.current, { timeout: 10000 });
+        await api.put("/me/boat", stateRef.current, { timeout: 10000 });
         setPending((p) => Math.max(0, p - sent));
         if (queuedOffline.current) {
           queuedOffline.current = false;
           toast.success("Changes successfully synchronized to cloud database");
         }
-      } catch {
-        setReachable(false);
+      } catch (e) {
+        if (e.response?.status !== 401) setReachable(false);
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [pending, online, deviceId, state]);
+  }, [pending, online, state]);
 
   useEffect(() => {
     if (reachable || !browserOnline) return undefined;
@@ -106,12 +108,12 @@ export default function useBoatStore() {
   const emailLog = useCallback(async ({ localDate, listIds, position, email }) => {
     const sent = pendingRef.current;
     const cur = stateRef.current;
-    await axios.put(`${API}/boats/${deviceId}`, { ...cur, boat: { ...cur.boat, log_email: email } }, { timeout: 10000 });
+    await api.put("/me/boat", { ...cur, boat: { ...cur.boat, log_email: email } }, { timeout: 10000 });
     setPending((p) => Math.max(0, p - sent));
-    const { data } = await axios.post(`${API}/boats/${deviceId}/email-log`, { local_date: localDate, list_ids: listIds, position }, { timeout: 40000 });
+    const { data } = await api.post("/me/email-log", { local_date: localDate, list_ids: listIds, position }, { timeout: 40000 });
     if (listIds.length === 1 && listIds[0] === "shipsLog") mutate((s) => ({ ...s, log_sent: data.log_sent }), { count: false });
     return data.log_sent;
-  }, [deviceId, mutate]);
+  }, [mutate]);
 
   return { state, mutate, pending, online, goOffline, goOnline, emailLog };
 }

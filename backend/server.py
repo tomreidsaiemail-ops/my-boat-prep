@@ -1,7 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response, Request, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import os
 import re
@@ -18,6 +17,9 @@ load_dotenv(ROOT_DIR / '.env')
 
 from email_service import send_email, EMAIL_FROM_NAME  # noqa: E402
 from ship_log import build_pdf, build_email_html, render_items, log_title  # noqa: E402
+from db import db, client  # noqa: E402
+from auth import router as auth_router, get_current_user, require_premium  # noqa: E402
+from payments import router as payments_router  # noqa: E402
 
 PUBLIC_APP_URL = os.environ['PUBLIC_APP_URL'].rstrip('/')
 HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
@@ -26,10 +28,9 @@ HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a
 def public_base(request: Request) -> str:
     host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip().lower()
     return f"https://{host}" if HOST_RE.match(host) else PUBLIC_APP_URL
-DAILY_EMAIL_LIMIT = 10
 
-client = AsyncIOMotorClient(os.environ['MONGO_URL'])
-db = client[os.environ['DB_NAME']]
+
+DAILY_EMAIL_LIMIT = 10
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -70,7 +71,7 @@ class BoatStateIn(BaseModel):
 
 
 class BoatState(BaseDocument):
-    device_id: str
+    owner_id: str
     boat: BoatDetails
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
@@ -82,7 +83,7 @@ class BoatState(BaseDocument):
 
 
 class BoatStateOut(BaseModel):
-    device_id: str
+    owner_id: str
     boat: BoatDetails
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
@@ -91,9 +92,6 @@ class BoatStateOut(BaseModel):
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     synced_at: str
-
-
-DeviceId = Annotated[str, PathParam(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9\-]+$")]
 
 
 def to_out(state: BoatState) -> BoatStateOut:
@@ -105,18 +103,19 @@ async def root():
     return {"message": "My Boat Prep API"}
 
 
-@api_router.get("/boats/{device_id}", response_model=BoatStateOut)
-async def get_boat(device_id: DeviceId):
-    doc = await db.boats.find_one({"device_id": device_id})
+@api_router.get("/me/boat", response_model=BoatStateOut)
+async def get_boat(user: dict = Depends(get_current_user)):
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"]})
     if not doc:
-        raise HTTPException(status_code=404, detail="No saved boat for this device")
+        raise HTTPException(status_code=404, detail="No saved boat yet")
     return to_out(BoatState.from_mongo(doc))
 
 
-@api_router.put("/boats/{device_id}", response_model=BoatStateOut)
-async def save_boat(payload: BoatStateIn, device_id: DeviceId):
+@api_router.put("/me/boat", response_model=BoatStateOut)
+async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)):
+    owner_id = user["user_id"]
     state = BoatState(
-        device_id=device_id,
+        owner_id=owner_id,
         boat=payload.boat,
         registry=payload.registry,
         data=payload.data,
@@ -126,7 +125,7 @@ async def save_boat(payload: BoatStateIn, device_id: DeviceId):
         deleted_lists=payload.deleted_lists,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
-    await db.boats.update_one({"device_id": device_id}, {"$set": state.to_mongo()}, upsert=True)
+    await db.user_boats.update_one({"owner_id": owner_id}, {"$set": state.to_mongo()}, upsert=True)
     return to_out(state)
 
 
@@ -139,11 +138,12 @@ class EmailLogIn(BaseModel):
 LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
 
 
-@api_router.post("/boats/{device_id}/email-log")
-async def email_ship_log(payload: EmailLogIn, device_id: DeviceId, request: Request):
-    doc = await db.boats.find_one({"device_id": device_id})
+@api_router.post("/me/email-log")
+async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Depends(require_premium)):
+    owner_id = user["user_id"]
+    doc = await db.user_boats.find_one({"owner_id": owner_id})
     if not doc:
-        raise HTTPException(status_code=404, detail="No saved boat for this device")
+        raise HTTPException(status_code=404, detail="No saved boat yet")
     state = BoatState.from_mongo(doc)
     b = state.boat
     if not (b.vessel.strip() and b.skipper.strip() and b.callsign.strip()):
@@ -153,11 +153,11 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId, request: Requ
     except EmailNotValidError:
         raise HTTPException(status_code=400, detail="Please enter a valid email address")
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    if await db.ship_logs.count_documents({"device_id": device_id, "created_at": {"$gte": since}}) >= DAILY_EMAIL_LIMIT:
+    if await db.ship_logs.count_documents({"owner_id": owner_id, "created_at": {"$gte": since}}) >= DAILY_EMAIL_LIMIT:
         raise HTTPException(status_code=429, detail="Daily email limit reached, try again tomorrow")
     now = datetime.now(timezone.utc).isoformat()
     log = {
-        "log_id": str(uuid.uuid4()), "device_id": device_id, "to": to, "created_at": now,
+        "log_id": str(uuid.uuid4()), "owner_id": owner_id, "to": to, "created_at": now,
         "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
         "local_date": payload.local_date.strip(),
     }
@@ -180,7 +180,7 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId, request: Requ
     await db.ship_logs.insert_one({**log, "email_id": email_id})
     log_sent = {"to": to, "shore": recipients[1] if len(recipients) > 1 else None, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
     if payload.list_ids == ["shipsLog"]:
-        await db.boats.update_one({"device_id": device_id}, {"$set": {"log_sent": log_sent}})
+        await db.user_boats.update_one({"owner_id": owner_id}, {"$set": {"log_sent": log_sent}})
     return {"log_sent": log_sent}
 
 
@@ -194,6 +194,8 @@ async def ship_log_pdf(log_id: LogId):
 
 
 app.include_router(api_router)
+app.include_router(auth_router)
+app.include_router(payments_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -208,7 +210,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 @app.on_event("startup")
 async def create_indexes():
-    await db.boats.create_index("device_id", unique=True)
+    await db.user_boats.create_index("owner_id", unique=True)
+    await db.users.create_index("email", unique=True)
+    await db.users.create_index("user_id", unique=True)
+    await db.user_sessions.create_index("session_token", unique=True)
+    await db.payment_transactions.create_index("session_id", unique=True)
 
 
 @app.on_event("shutdown")

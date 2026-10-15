@@ -24,14 +24,19 @@ const INTROS = {
   },
 };
 
-export const ListIntro = ({ listId }) => {
+export const ListIntro = ({ listId, canHide, onLockedHide }) => {
   const intro = INTROS[listId];
-  const [hidden, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
+  const [stored, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
+  const hidden = stored && canHide;
   if (!intro) return null;
   const { cls, Icon, title, text, tip, testId, hideKey, showLabel } = intro;
   const collapsible = !!hideKey;
   const prefix = listId === "shipsLog" ? "log" : "todo";
-  const setHide = (v) => { setHidden(v); localStorage.setItem(hideKey, v ? "1" : "0"); };
+  const setHide = (v) => {
+    if (v && !canHide) { onLockedHide(); return; }
+    setHidden(v);
+    localStorage.setItem(hideKey, v ? "1" : "0");
+  };
   if (collapsible && hidden) {
     return (
       <button type="button" onClick={() => setHide(false)} data-testid={`${prefix}-help-show-btn`}

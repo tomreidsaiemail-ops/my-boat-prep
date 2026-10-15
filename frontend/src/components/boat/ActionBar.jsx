@@ -1,4 +1,4 @@
-import { FileDown, Files, RotateCcw, AlertTriangle } from "lucide-react";
+import { FileDown, Files, Lock, RotateCcw, AlertTriangle } from "lucide-react";
 
 export const ValidationBar = ({ show, testId }) =>
   show ? (
@@ -7,7 +7,7 @@ export const ValidationBar = ({ show, testId }) =>
     </div>
   ) : null;
 
-export const ActionBar = ({ zone, warn, onReset, onExport }) => (
+export const ActionBar = ({ zone, warn, onReset, onExport, locked }) => (
   <div className="flex flex-col gap-2">
     <ValidationBar show={warn} testId={`${zone}-validation-bar`} />
     <div className="grid grid-cols-3 gap-2">
@@ -18,7 +18,7 @@ export const ActionBar = ({ zone, warn, onReset, onExport }) => (
         <FileDown className="h-4 w-4" /> Export Current
       </button>
       <button type="button" data-testid={`${zone}-export-all-btn`} onClick={() => onExport(false)} className="btn-solid">
-        <Files className="h-4 w-4" /> Export All
+        {locked ? <Lock className="h-4 w-4" data-testid={`${zone}-export-all-lock`} /> : <Files className="h-4 w-4" />} Export All
       </button>
     </div>
   </div>

@@ -1,5 +1,6 @@
 import { MapPin } from "lucide-react";
 import { NetworkToggle } from "@/components/boat/NetworkToggle";
+import { AccountMenu } from "@/components/boat/AccountMenu";
 
 export const BrandMark = () => (
   <svg viewBox="0 0 48 48" className="h-12 w-12 shrink-0" role="img" aria-label="My Boat Prep" data-testid="brand-mark">
@@ -29,10 +30,11 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
         <input id="trip-date" type="date" value={tripDate} onChange={(e) => e.target.value && onDateChange(e.target.value)}
           className="h-11 rounded-md bg-[var(--navy)] px-2.5 font-mono text-sm font-bold text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
       </label>
-      <div className={`flex items-start gap-1 text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
+      <div className={`ml-auto flex items-start gap-1 text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
         <MapPin className="mt-px h-3 w-3 shrink-0" />
         <span>{gps.text}</span>
       </div>
+      <AccountMenu />
     </div>
   </header>
 );
