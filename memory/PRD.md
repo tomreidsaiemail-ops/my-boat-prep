@@ -69,6 +69,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Iteration 11 (2026-06)
 - My To Do List priorities: red flag (moves item to top + red highlight; unflag removes highlight only), up/down arrows to reorder; flags shown in print view, PDF ("FLAGGED:") and email
 
+## Iteration 12 (2026-06)
+- Reset All: confirm dialog explaining behaviour; resets all supplied lists to original items (except Ship's Log and My To Do List), restores deleted supplied lists, leaves user-created lists untouched (iteration_6 100%)
+- Boat details panel collapses to one line (Vessel + Callsign + expand chevron) once Vessel/Callsign/Skipper/valid Email are entered and focus leaves the panel; stays open while incomplete (iteration_7 100%)
+- Note: published version predates these; redeploy needed. PUBLIC_APP_URL still points at preview URL - needs live URL
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
