@@ -109,7 +109,8 @@ async def me(user: dict = Depends(get_current_user)):
 
 @router.post("/auth/logout")
 async def logout(request: Request, response: Response):
-    token = request.cookies.get("session_token")
+    auth = request.headers.get("authorization", "")
+    token = request.cookies.get("session_token") or (auth[7:] if auth.lower().startswith("bearer ") else None)
     if token:
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie("session_token", path="/", secure=True, samesite="none")
@@ -128,7 +129,10 @@ async def list_users(_: dict = Depends(require_admin)):
 
 @router.patch("/admin/users/{user_id}", response_model=UserOut)
 async def set_role(user_id: str, payload: RoleIn, _: dict = Depends(require_admin)):
-    res = await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role}})
-    if not res.matched_count:
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
         raise HTTPException(status_code=404, detail="User not found")
+    if payload.role == "free" and to_user_out(target).has_subscription:
+        raise HTTPException(status_code=409, detail="This user pays for Pro. Their plan drops to Free when their subscription ends.")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role}})
     return to_user_out(await db.users.find_one({"user_id": user_id}, {"_id": 0}))

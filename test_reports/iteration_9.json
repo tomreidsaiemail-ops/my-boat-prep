@@ -1,0 +1,45 @@
+{
+  "summary": "Tested the 3-tier update (free/beta_tester/pro) end to end at 390x844: Google-auth gating, /api/auth/me, logout, per-user /api/me/boat, email-log gating, admin endpoints and page, free-tier locks/ads/plan dialog, premium UI, account menu, the real Stripe sandbox checkout (test card) to Pro, renewal cancel, the payment cancel page, and checklist regressions. Backend: 32/33 pytest pass (1 minor). Frontend: everything works except a HIGH-priority stale-cached-user bug. When the session cookie changes without signing out, the previous user's local boat data is shown and their role is used.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/logout", "issue": "Only reads the session_token cookie. A Bearer-only logout returns ok:true but the session stays valid (test_logout_with_bearer_only). Fall back to the Authorization header like get_current_user does."},
+      {"endpoint": "PATCH /api/admin/users/{id}", "issue": "Setting a paying Pro user to 'free' leaves the Stripe subscription active: has_subscription stays true, checkout returns 400 'You already have Pro', and the next customer.subscription.updated webhook flips them back to pro. Consider warning the admin or cancelling/ignoring the subscription."},
+      {"endpoint": "Stripe Checkout", "issue": "Adaptive pricing shows US$2.92/year by default (NZD is a toggle) for non-NZ browsers. If NZD-only display is wanted, turn off adaptive pricing in the Stripe dashboard or session."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AuthContext + RequireAuth + useBoatStore", "issue": "The cached localStorage mbp_user is trusted before /auth/me returns. With the free cookie swapped for the pro cookie (no logout), the pro user saw the free user's vessel 'TEST_FreeLocalOnly' and mbp_owner stayed 'test-user-free'. Cause: BoatPrep mounts with the cached free user, and useBoatStore runs claimLocal() only once (ownerId ref), so when refresh() later returns the pro user the local state is never re-claimed. If the outbox is pending (offline edits), the previous user's data would be PUT into the new user's cloud boat. The same stale cache made an admin visiting /admin get redirected to / (cached beta user had is_admin=false). Signing out properly works correctly (mbp_user is cleared and the next user gets their own data).", "selector": "[data-testid=summary-vessel]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin page search", "issues": ["FIXED by tester: the search icon overlapped the placeholder text because .field-input padding overrode pl-9. Changed to !pl-9."]},
+      {"screen": "Header", "issues": ["Trip date still uses the native <input type=date> picker (existing, not a shadcn calendar)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_tiers_auth.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "HIGH: Fix the stale cached user. Options: (a) render <BoatPrep key={user.user_id} /> and make useBoatStore re-run claimLocal (and clear the outbox/state) when userId changes; (b) in RequireAuth admin routes and the boat store, wait for refresh() when online before trusting the cached user; (c) never PUT pending local state unless mbp_owner === the current /auth/me user_id.",
+    "Minor: make /api/auth/logout also accept a Bearer token.",
+    "Minor: handle an admin downgrading a user who has an active Stripe subscription.",
+    "Optional: disable Stripe adaptive pricing if NZD-only display is wanted."
+  ],
+  "critical_code_review_comments": [
+    "useBoatStore.claimLocal runs once per mount with the possibly-stale cached user id; owner checks should use the server-confirmed user.",
+    "Free-tier gates for Create list and Email Ship's Log run guard() (vessel details required) before needPro, so a free user without boat details sees the details warning instead of the upgrade dialog. This is acceptable but inconsistent.",
+    "payments.status endpoint is unauthenticated (session_id is unguessable, so this is acceptable). It returns status only, with no PII."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_tiers_auth.py (new)",
+    "/app/backend/tests/legacy/*.py.legacy (old /api/boats/{device_id} tests moved out of collection)",
+    "/app/frontend/src/pages/Admin.jsx (search input !pl-9)"
+  ],
+  "success_rate": {"backend": "97% (32/33)", "frontend": "~93% (all listed flows pass except the account-switch isolation test)"},
+  "seed_data_creation": "No new users. Used throwaway sessions test_session_tmp_* (deleted). Free user: completed a real sandbox checkout (sub_1UQwVp8ZEkybgkKQU0iC89Fl), then cancelled it in Stripe; role reset to free and stripe_* fields unset. All roles restored to seeded values. Boat docs contain TEST_ vessels for free/pro/beta. Free user's My To Do List has 5 'TEST todo N' items. Admin boat vessel/skipper/callsign reset to empty. 1 real email sent to delivered@resend.dev (pro user).",
+  "test_credentials": "As in /app/memory/test_credentials.md (seeded sessions valid until 2026-10-22).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_tiers_auth.py (it uses pymongo for throwaway sessions and restores roles in teardown). To retest the HIGH bug: in one browser context, sign in with cookie test_session_free_1, edit the vessel, then clear cookies, add test_session_pro_1 (no logout) and reload. The pro user must not see the free vessel, and mbp_owner must become test-user-pro. Also check that admin /admin works after switching from a beta cookie. Stripe checkout with 4242 card and an NZ address works in the sandbox. Status polling flips the role to pro without the webhook.",
+  "rca of the issue": "Repro: localStorage mbp_user=free user (cached by AuthContext). Cookie changed to the pro user. On load, RequireAuth renders BoatPrep at once with the cached free user, and useBoatStore(user.user_id) calls claimLocal('test-user-free'), so local state is kept. refresh() then sets the pro user, but ownerId is a ref set once, so claimLocal never runs for the pro id and the state stays the free user's. The PUT outbox uses the pro cookie, so any pending free edits would be written to the pro account. Mitigation: key the BoatPrep tree by user_id and re-claim when userId changes, or block rendering until /auth/me resolves when online."
+}

@@ -157,12 +157,12 @@ export default function BoatPrep() {
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && needPro("Create your own lists") && setDialog({ type: "list" })} />
+      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
-          onSend={() => guard() && needPro("Email Ship's Log") && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
+          onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
       {active.id === "engineService" && (
         <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}

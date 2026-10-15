@@ -68,7 +68,7 @@ export default function Admin() {
       </p>
       <label className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="field-input w-full pl-9" data-testid="admin-search-input" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="field-input w-full !pl-9" data-testid="admin-search-input" />
       </label>
       {!users ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="admin-user-list">
