@@ -72,7 +72,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Iteration 12 (2026-06)
 - Reset All: confirm dialog explaining behaviour; resets all supplied lists to original items (except Ship's Log and My To Do List), restores deleted supplied lists, leaves user-created lists untouched (iteration_6 100%)
 - Boat details panel collapses to one line (Vessel + Callsign + expand chevron) once Vessel/Callsign/Skipper/valid Email are entered and focus leaves the panel; stays open while incomplete (iteration_7 100%)
-- Note: published version predates these; redeploy needed. PUBLIC_APP_URL still points at preview URL - needs live URL
+- Note: published version predates these; redeploy needed
+
+## Iteration 13 (2026-06)
+- Emailed PDF links now use the host the app was opened on (preview, live gemini-prototype.emergent.host, or future custom domain), validated hostname; PUBLIC_APP_URL only a fallback (iteration_8 100%)
 
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
