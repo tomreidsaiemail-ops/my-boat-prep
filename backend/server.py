@@ -20,6 +20,7 @@ from ship_log import build_pdf, build_email_html, render_items, log_title  # noq
 from db import db, client  # noqa: E402
 from auth import router as auth_router, get_current_user, require_premium  # noqa: E402
 from payments import router as payments_router  # noqa: E402
+from tips import router as tips_router, load_tips  # noqa: E402
 
 PUBLIC_APP_URL = os.environ['PUBLIC_APP_URL'].rstrip('/')
 HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
@@ -163,7 +164,12 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     }
     ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"]}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
-    log["lists"] = [{"name": names[i], "items": render_items(state.data.get(i, []), ctx)} for i in payload.list_ids if i in names]
+    tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
+    log["lists"] = [
+        {"name": "Skipper's Tips", "items": render_items(tips, ctx)} if i == "skippersTips"
+        else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
+        for i in payload.list_ids if i in names or i == "skippersTips"
+    ]
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
     pdf_url = f"{public_base(request)}/api/ship-logs/{log['log_id']}.pdf"
@@ -196,6 +202,7 @@ async def ship_log_pdf(log_id: LogId):
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(payments_router)
+app.include_router(tips_router)
 
 app.add_middleware(
     CORSMiddleware,

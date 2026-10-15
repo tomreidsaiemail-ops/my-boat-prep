@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Crown, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import {
@@ -5,6 +6,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
+import { SignOutDialog } from "@/components/boat/SignOutDialog";
+
+const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
 
 const TIER = { free: "Free", beta_tester: "Beta", pro: "Pro" };
 
@@ -19,8 +23,11 @@ export const AccountMenu = () => {
   const { user, logout } = useAuth();
   const { openPlan } = useUpgrade();
   const navigate = useNavigate();
+  const [warnCount, setWarnCount] = useState(0);
   if (!user) return null;
+  const signOut = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label="Account" data-testid="account-menu-btn"
@@ -37,8 +44,10 @@ export const AccountMenu = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}
-        <DropdownMenuItem onSelect={logout} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
+        <DropdownMenuItem onSelect={signOut} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
+    </>
   );
 };

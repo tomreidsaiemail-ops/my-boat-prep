@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
+import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
+import { TipsList } from "@/components/boat/TipsList";
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
@@ -47,8 +49,12 @@ export default function BoatPrep() {
   const [printMode, setPrintMode] = useState(null);
   const [tripDate, setTripDate] = useState(todayISO);
   const VERBOSE_DATE = verbose(tripDate);
-  const { boat, registry, data } = state;
-  const active = registry.find((l) => l.id === activeId) || registry[0];
+  const { tips, save: saveTips } = useTips(online);
+  const { boat, registry } = state;
+  const data = { ...state.data, [TIPS_ID]: tips };
+  const allLists = [...registry, TIPS_LIST];
+  const active = allLists.find((l) => l.id === activeId) || registry[0];
+  const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
@@ -122,7 +128,7 @@ export default function BoatPrep() {
   };
   const createList = (name) => {
     if (!name) return "Please enter a list name";
-    if (registry.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const id = `custom_${Date.now()}`;
     mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: [] } }));
     setActiveId(id);
@@ -157,7 +163,7 @@ export default function BoatPrep() {
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
+      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
@@ -169,11 +175,15 @@ export default function BoatPrep() {
           onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
-      <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
-        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
-        {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
-      <AddItemForm key={`add-${active.id}`} onAdd={addItem}
-        placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
+      {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} /> : (
+        <>
+          <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
+            onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
+            {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
+          <AddItemForm key={`add-${active.id}`} onAdd={addItem}
+            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
+        </>
+      )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
