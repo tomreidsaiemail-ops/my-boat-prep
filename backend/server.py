@@ -1,9 +1,10 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response, Request
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import os
+import re
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
@@ -19,6 +20,12 @@ from email_service import send_email, EMAIL_FROM_NAME  # noqa: E402
 from ship_log import build_pdf, build_email_html, render_items, log_title  # noqa: E402
 
 PUBLIC_APP_URL = os.environ['PUBLIC_APP_URL'].rstrip('/')
+HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+
+
+def public_base(request: Request) -> str:
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip().lower()
+    return f"https://{host}" if HOST_RE.match(host) else PUBLIC_APP_URL
 DAILY_EMAIL_LIMIT = 10
 
 client = AsyncIOMotorClient(os.environ['MONGO_URL'])
@@ -133,7 +140,7 @@ LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
 
 
 @api_router.post("/boats/{device_id}/email-log")
-async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
+async def email_ship_log(payload: EmailLogIn, device_id: DeviceId, request: Request):
     doc = await db.boats.find_one({"device_id": device_id})
     if not doc:
         raise HTTPException(status_code=404, detail="No saved boat for this device")
@@ -159,7 +166,7 @@ async def email_ship_log(payload: EmailLogIn, device_id: DeviceId):
     log["lists"] = [{"name": names[i], "items": render_items(state.data.get(i, []), ctx)} for i in payload.list_ids if i in names]
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
-    pdf_url = f"{PUBLIC_APP_URL}/api/ship-logs/{log['log_id']}.pdf"
+    pdf_url = f"{public_base(request)}/api/ship-logs/{log['log_id']}.pdf"
     recipients = [to]
     shore = b.shore_email.strip()
     if payload.list_ids == ["shipsLog"] and b.shore_enabled and shore:
