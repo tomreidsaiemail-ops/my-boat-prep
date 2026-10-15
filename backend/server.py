@@ -59,6 +59,7 @@ class BoatStateIn(BaseModel):
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
+    deleted_lists: List[str] = []
 
 
 class BoatState(BaseDocument):
@@ -69,6 +70,7 @@ class BoatState(BaseDocument):
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
+    deleted_lists: List[str] = []
     synced_at: str
 
 
@@ -80,6 +82,7 @@ class BoatStateOut(BaseModel):
     updated_at: str
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
+    deleted_lists: List[str] = []
     synced_at: str
 
 
@@ -113,6 +116,7 @@ async def save_boat(payload: BoatStateIn, device_id: DeviceId):
         updated_at=payload.updated_at,
         log_sent=payload.log_sent,
         engine_log=payload.engine_log,
+        deleted_lists=payload.deleted_lists,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
     await db.boats.update_one({"device_id": device_id}, {"$set": state.to_mongo()}, upsert=True)

@@ -14,9 +14,15 @@ const Row = ({ item, text, onToggle, onEdit, onDelete, emergency }) => (
   </li>
 );
 
-export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, emergency }) => (
+export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency }) => (
   <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="checklist">
-    {items.length === 0 && <li className="p-5 text-center text-sm font-medium text-[var(--muted)]" data-testid="checklist-empty">No items yet. Add your first task below.</li>}
+    {items.length === 0 && (
+      <li className="flex items-center justify-between gap-3 p-4 text-sm font-medium text-[var(--muted)]" data-testid="checklist-empty">
+        <span>No items yet. Add your first task below.</span>
+        <button type="button" className="icon-btn shrink-0 hover:text-[var(--red)]" aria-label="Delete this list" title="Delete this list"
+          onClick={onDeleteList} data-testid="delete-list-btn"><Trash2 className="h-[18px] w-[18px]" /></button>
+      </li>
+    )}
     {items.map((item) => (
       <Row key={item.id} item={item} text={labelFor(item)} emergency={emergency}
         onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)} />

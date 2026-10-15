@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
-import { displayLabel } from "@/lib/defaults";
+import { toast } from "sonner";
+import { displayLabel, restoreDeletedLists } from "@/lib/defaults";
 import { Header } from "@/components/boat/Header";
 import { BoatDetails } from "@/components/boat/BoatDetails";
 import { ActionBar } from "@/components/boat/ActionBar";
@@ -15,6 +16,7 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
+import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
@@ -53,7 +55,33 @@ export default function BoatPrep() {
 
   const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
   const remove = (id) => guard() && setItems((list) => list.filter((i) => i.id !== id));
-  const reset = (zone) => guard(zone) && setItems((list) => list.map((i) => ({ ...i, checked: false })));
+  const reset = (zone) => {
+    if (!guard(zone)) return;
+    const { names } = restoreDeletedLists(state);
+    mutate((s) => {
+      const r = restoreDeletedLists(s).state;
+      return { ...r, data: { ...r.data, [active.id]: (r.data[active.id] || []).map((i) => ({ ...i, checked: false })) } };
+    });
+    if (names.length) toast.success(`Restored: ${names.join(", ")}`);
+  };
+  const askDeleteList = () => {
+    if (!guard()) return;
+    if (registry.length <= 1) { toast.error("You need to keep at least one list"); return; }
+    setDialog({ type: "deleteList", list: active });
+  };
+  const deleteList = () => {
+    const { id, isSystem } = dialog.list;
+    const idx = registry.findIndex((l) => l.id === id);
+    const next = registry[idx + 1] || registry[idx - 1];
+    mutate((s) => {
+      const data = { ...s.data };
+      delete data[id];
+      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, deleted_lists: isSystem ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
+    });
+    setActiveId(next.id);
+    setDialog(null);
+    toast.success(`${dialog.list.name} deleted`);
+  };
   const exportLists = (current, zone) => guard(zone) && setPrintMode(current ? "current" : "all");
   const addItem = (text) => {
     if (!guard("bottom")) return null;
@@ -106,7 +134,7 @@ export default function BoatPrep() {
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} />
       <ListSelector registry={registry} activeId={active.id} onChange={setActiveId} onCreate={() => guard() && setDialog({ type: "list" })} />
-      <ListIntro listId={active.id} />
+      <ListIntro key={`intro-${active.id}`} listId={active.id} />
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
@@ -118,15 +146,16 @@ export default function BoatPrep() {
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
-        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} />
-      <AddItemForm key={active.id} onAdd={addItem}
-        placeholder={active.id === "shipsLog" ? "My own Ship's Log..." : `My own ${active.name} task name...`} />
+        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList} />
+      <AddItemForm key={`add-${active.id}`} onAdd={addItem}
+        placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} />
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
         onConfirm={createList} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+      <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>
   );
