@@ -10,6 +10,7 @@ TITLE = ParagraphStyle("t", fontName="Helvetica-Bold", fontSize=22, leading=26, 
 META = ParagraphStyle("m", fontName="Helvetica", fontSize=10, leading=14)
 ITEM = ParagraphStyle("i", fontName="Helvetica", fontSize=12, leading=16)
 DONE = ParagraphStyle("d", parent=ITEM, textColor=colors.HexColor("#555555"))
+FLAG = ParagraphStyle("f", parent=ITEM, fontName="Helvetica-Bold", textColor=colors.HexColor("#b91c1c"))
 
 
 def log_lists(log: dict) -> list:
@@ -35,7 +36,13 @@ def _label(it: dict, ctx: dict) -> str:
 
 
 def render_items(items: list, ctx: dict) -> list:
-    return [{"label": _label(it, ctx), "checked": bool(it.get("checked"))} for it in items]
+    return [{"label": _label(it, ctx), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged"))} for it in items]
+
+
+def _item_para(i: dict) -> Paragraph:
+    if i.get("flagged"):
+        return Paragraph("FLAGGED: " + escape(i["label"]), FLAG)
+    return Paragraph(escape(i["label"]), DONE if i["checked"] else ITEM)
 
 
 def build_pdf(log: dict) -> bytes:
@@ -50,7 +57,7 @@ def build_pdf(log: dict) -> bytes:
     for n, lst in enumerate(log_lists(log)):
         if n:
             story.append(PageBreak())
-        rows = [[Paragraph("[X]" if i["checked"] else "[  ]", ITEM), Paragraph(escape(i["label"]), DONE if i["checked"] else ITEM)] for i in lst["items"]]
+        rows = [[Paragraph("[X]" if i["checked"] else "[  ]", ITEM), _item_para(i)] for i in lst["items"]]
         story += [Paragraph(escape(lst["name"].upper()), TITLE), Spacer(1, 4), meta, Spacer(1, 12)]
         if rows:
             tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
@@ -74,7 +81,7 @@ def build_email_html(log: dict, pdf_url: str, from_name: str) -> str:
 def _item_rows(items: list) -> str:
     return "".join(
         f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"&#10003;" if i["checked"] else "&#9744;"}</td>'
-        f'<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:15px;color:#0f172a">{escape(i["label"])}</td></tr>'
+        f'<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}</td></tr>'
         for i in items
     )
 

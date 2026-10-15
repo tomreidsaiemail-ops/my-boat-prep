@@ -58,6 +58,13 @@ body {
 .is-checked .item-text { text-decoration: line-through; color: #64748b; }
 .icon-btn { width: 44px; height: 48px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s; }
 .icon-btn:hover { color: var(--navy); background: #f1f5f9; }
+.icon-btn:disabled { opacity: .3; pointer-events: none; }
+.checklist-row.is-flagged { background: #fef2f2; box-shadow: inset 5px 0 0 var(--red); }
+.is-flagged .item-text { color: #991b1b; font-weight: 700; }
+.prio-btn { width: 44px; height: 36px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s, transform .1s; }
+.prio-btn:hover { background: #f1f5f9; color: var(--navy); }
+.prio-btn:active { transform: scale(.92); }
+.prio-btn:disabled { opacity: .3; pointer-events: none; }
 
 .mbp-pop { animation: mbp-pop .22s ease-out; }
 @keyframes mbp-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

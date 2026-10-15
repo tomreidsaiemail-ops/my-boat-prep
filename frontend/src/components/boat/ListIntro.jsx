@@ -10,7 +10,7 @@ const INTROS = {
   },
   myTodo: {
     cls: "border-emerald-200 bg-emerald-50 text-emerald-950", Icon: ClipboardList, testId: "todo-instructions",
-    text: "My To Do List is for the little issues you notice as you go, like a sticky winch, a blown nav light bulb, a frayed sheet or a dripping tap. Add each one below as soon as you spot it, even offline at sea, so nothing gets forgotten. Tick items off when they're fixed and delete them when you no longer need them.",
+    text: "My To Do List is for the little issues you notice as you go, like a sticky winch, a blown nav light bulb, a frayed sheet or a dripping tap. Add each one below as soon as you spot it, even offline at sea, so nothing gets forgotten. Tick items off when they're fixed and delete them when you no longer need them. Tap the flag to mark an item urgent: it jumps to the top and turns red. Use the up and down arrows to put everything else in order.",
     tip: "before your next trip to the chandlery or a visit from your marine engineer, use Export Current or Email PDF to take the list with you.",
     hideKey: "mbp_todo_help_hidden", showLabel: "Show My To Do List help",
   },

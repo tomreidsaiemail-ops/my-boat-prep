@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Loader2, Mail, Printer } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Flag, Loader2, Mail, Printer } from "lucide-react";
 
 const Meta = ({ boat, verboseDate }) => (
   <div className="print-meta">
@@ -19,7 +19,9 @@ const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
     {items.map((item) => (
       <div key={item.id} className="print-row">
         <span className={`print-box ${item.checked ? "checked" : ""}`} />
-        <span className={item.checked ? "line-through text-neutral-500" : ""}>{labelFor(item)}</span>
+        <span className={item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}>
+          {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{labelFor(item)}
+        </span>
       </div>
     ))}
   </section>

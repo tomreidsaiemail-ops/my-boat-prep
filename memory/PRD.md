@@ -66,6 +66,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Fixed duplicate React key that left stale help panels when switching lists
 - Tested iteration_5: 100%
 
+## Iteration 11 (2026-06)
+- My To Do List priorities: red flag (moves item to top + red highlight; unflag removes highlight only), up/down arrows to reorder; flags shown in print view, PDF ("FLAGGED:") and email
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation

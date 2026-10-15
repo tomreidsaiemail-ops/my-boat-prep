@@ -55,6 +55,19 @@ export default function BoatPrep() {
 
   const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
   const remove = (id) => guard() && setItems((list) => list.filter((i) => i.id !== id));
+  const flag = (id) => guard() && setItems((list) => {
+    const it = list.find((i) => i.id === id);
+    if (it.flagged) return list.map((i) => (i.id === id ? { ...i, flagged: false } : i));
+    return [{ ...it, flagged: true }, ...list.filter((i) => i.id !== id)];
+  });
+  const move = (id, dir) => guard() && setItems((list) => {
+    const i = list.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return list;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
   const reset = (zone) => {
     if (!guard(zone)) return;
     const { names } = restoreDeletedLists(state);
@@ -93,7 +106,7 @@ export default function BoatPrep() {
   const saveEdit = (item) => (text) => {
     if (!text) return "Item text cannot be empty";
     if (isDup(text, item.id)) return `${text} already exists`;
-    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, label: text } : i)));
+    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, flagged: i.flagged, label: text } : i)));
     setDialog(null);
     return true;
   };
@@ -146,7 +159,8 @@ export default function BoatPrep() {
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
       <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
-        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList} />
+        onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
+        {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
       <AddItemForm key={`add-${active.id}`} onAdd={addItem}
         placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} />
