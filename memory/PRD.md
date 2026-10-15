@@ -59,6 +59,13 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Iteration 9 (2026-06)
 - "Shore Contact" tick box (same row as Sends to); Shore Contact field only shown (and only emailed) when ticked; address kept when unticked
 
+## Iteration 10 (2026-06)
+- Delete Lists: trash icon on any empty list (custom or supplied) with confirm dialog; can't delete the last list
+- Restore Lists: Reset All also brings back deleted supplied lists (original items, original position); deleted_lists synced to cloud
+- New supplied "My To Do List" (empty) with its own hideable help panel
+- Fixed duplicate React key that left stale help panels when switching lists
+- Tested iteration_5: 100%
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation

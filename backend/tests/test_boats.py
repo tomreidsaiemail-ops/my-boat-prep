@@ -81,3 +81,21 @@ def test_invalid_device_id_rejected(bad_id, sample_payload):
 def test_put_invalid_body(device_id):
     r = requests.put(f"{API}/boats/{device_id}", json={"foo": "bar"})
     assert r.status_code == 422
+
+
+# --- deleted_lists round-trips through PUT/GET ---
+def test_deleted_lists_roundtrip(device_id, sample_payload):
+    sample_payload["deleted_lists"] = ["head", "engineService"]
+    r = requests.put(f"{API}/boats/{device_id}", json=sample_payload)
+    assert r.status_code == 200
+    assert r.json().get("deleted_lists") == ["head", "engineService"]
+    g = requests.get(f"{API}/boats/{device_id}")
+    assert g.status_code == 200
+    assert g.json().get("deleted_lists") == ["head", "engineService"]
+
+    # clear deleted_lists
+    sample_payload["deleted_lists"] = []
+    sample_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    r2 = requests.put(f"{API}/boats/{device_id}", json=sample_payload)
+    assert r2.status_code == 200
+    assert r2.json().get("deleted_lists") == []
