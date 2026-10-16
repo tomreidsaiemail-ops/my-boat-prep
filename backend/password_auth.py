@@ -3,8 +3,11 @@ import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 from html import escape
+import logging
 import bcrypt
 from fastapi import APIRouter, HTTPException, Request, Response
+from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
 from auth import UserOut, create_session, to_user_out
@@ -18,6 +21,8 @@ LOCK_MINUTES = 15
 RESET_HOURS = 1
 RESETS_PER_HOUR = 3
 LOGIN_ERROR = "Incorrect email or password"
+DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt()).decode()
+logger = logging.getLogger(__name__)
 
 
 class RegisterIn(BaseModel):
@@ -52,9 +57,9 @@ def _sha(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def _ident(request: Request, email: str) -> str:
-    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
-    return f"{ip}:{email}"
+def _ident(email: str) -> str:
+    # Keyed by account, not IP: client-supplied forwarding headers can't reset the counter.
+    return f"email:{email}"
 
 
 @router.post("/register", response_model=UserOut)
@@ -68,7 +73,10 @@ async def register(payload: RegisterIn, response: Response):
     user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": payload.name.strip() or email.split("@")[0],
             "picture": "", "role": "free", "password_hash": hash_password(payload.password), "email_verified": False,
             "created_at": datetime.now(timezone.utc).isoformat()}
-    await db.users.insert_one(dict(user))
+    try:
+        await db.users.insert_one(dict(user))
+    except DuplicateKeyError:
+        raise HTTPException(status_code=400, detail="An account with this email already exists. Sign in instead.")
     await create_session(response, user["user_id"])
     return to_user_out(user)
 
@@ -76,13 +84,14 @@ async def register(payload: RegisterIn, response: Response):
 @router.post("/login", response_model=UserOut)
 async def login(payload: LoginIn, request: Request, response: Response):
     email = payload.email.strip().lower()
-    ident = _ident(request, email)
+    ident = _ident(email)
     now = datetime.now(timezone.utc)
     attempt = await db.login_attempts.find_one({"identifier": ident}, {"_id": 0})
     if attempt and attempt.get("locked_until") and attempt["locked_until"].replace(tzinfo=timezone.utc) > now:
         raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {LOCK_MINUTES} minutes or reset your password.")
     user = await db.users.find_one({"email": email}, {"_id": 0})
-    if not user or not user.get("password_hash") or not verify_password(payload.password, user["password_hash"]):
+    ok = verify_password(payload.password, (user or {}).get("password_hash") or DUMMY_HASH)
+    if not user or not user.get("password_hash") or not ok:
         count = (attempt or {}).get("count", 0) + 1
         lock = now + timedelta(minutes=LOCK_MINUTES) if count >= MAX_FAILS else None
         await db.login_attempts.update_one({"identifier": ident}, {"$set": {"count": 0 if lock else count, "locked_until": lock, "updated_at": now}}, upsert=True)
@@ -111,17 +120,24 @@ async def forgot_password(payload: ForgotIn, request: Request):
             "<p style=\"font-size:13px;color:#475569\">If you didn't ask for this, ignore this email and your password stays the same.</p>"
             f'<p style="font-size:12px;color:#64748b">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password or card details by email.</p></div>'
         )
-        await send_email(to=[email], subject="Reset your My Boat Prep password", html=html)
+        try:
+            await send_email(to=[email], subject="Reset your My Boat Prep password", html=html)
+        except HTTPException:
+            logger.error("Password reset email failed to send")
     return {"ok": True}
 
 
 @router.post("/reset-password")
 async def reset_password(payload: ResetIn):
     now = datetime.now(timezone.utc)
-    rec = await db.password_reset_tokens.find_one({"token_hash": _sha(payload.token)}, {"_id": 0})
-    if not rec or rec.get("used") or rec["expires_at"].replace(tzinfo=timezone.utc) < now:
+    rec = await db.password_reset_tokens.find_one_and_update(
+        {"token_hash": _sha(payload.token), "used": False, "expires_at": {"$gt": now}},
+        {"$set": {"used": True}}, projection={"_id": 0}, return_document=ReturnDocument.AFTER)
+    if not rec:
         raise HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
-    await db.password_reset_tokens.update_one({"token_hash": rec["token_hash"]}, {"$set": {"used": True}})
     await db.users.update_one({"user_id": rec["user_id"]}, {"$set": {"password_hash": hash_password(payload.password), "email_verified": True}})
     await db.user_sessions.delete_many({"user_id": rec["user_id"]})
+    user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0, "email": 1})
+    if user:
+        await db.login_attempts.delete_one({"identifier": _ident(user["email"])})
     return {"ok": True}

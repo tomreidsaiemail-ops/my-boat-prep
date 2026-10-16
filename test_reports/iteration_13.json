@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the new email + password auth end to end (backend pytest plus Playwright at 390x844). Working: register (email lowercased, Free tier, $2b$ bcrypt hash, httpOnly/Secure/SameSite=None cookie), the duplicate-email messages for password and Google-only accounts, case-insensitive sign-in, the wrong-password error, the 5-fail lockout (429 message shown in the UI), the password show/hide toggle, staying signed in after reload, sign out to /login (/me then returns 401), the forgot-password page always showing forgot-sent, one real reset email to delivered@resend.dev (provider returned 202), and reset-password (toast and redirect to /login, old password rejected, new one accepted, token works once, expired token rejected, all old sessions deleted). The Origin check returns 403 for evil.com, same-origin requests still work and the Stripe webhook is exempt. API responses (/me, login, register, admin/users) never include password_hash. Regression: a password Free user gets the ad-banner, the Export All lock and the plan dialog, the same as Google Free users. Admin page lists password users, seeded sessions still work, and the 70 earlier regression tests pass. Login page has no overflow at 390px. One real security issue: the lockout can be bypassed by spoofing X-Forwarded-For.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/auth/login", "issue": "The brute-force lockout can be bypassed. _ident() builds the key from the FIRST X-Forwarded-For value, and the client controls that value. After 5 fails the account is locked (429), but the same request with the header 'X-Forwarded-For: 1.2.3.4' returns 200. An attacker who rotates XFF gets unlimited password guesses. Confirmed by test_lockout_xff_spoof. Fix: use the LAST XFF hop (the one the ingress appends) or request.client.host, and/or also keep a per-email counter that does not depend on IP.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "/api/auth/register", "issue": "find_one and then insert_one is not atomic. Two registrations racing for the same email hit the unique index and raise an unhandled DuplicateKeyError (500). backend.err.log already holds a DuplicateKeyError traceback from password_auth.py line 71 (register) for test.user.free@example.com. Catch DuplicateKeyError and return 400."},
+      {"endpoint": "/api/auth/forgot-password", "issue": "Two ways to tell which emails have accounts: (a) send_email errors (502/503/500) only happen when the account exists, so a failed send reveals the account; (b) the response is slower for real accounts because an email is sent. Consider catching send errors (log them, still return ok) and/or sending in the background."},
+      {"endpoint": "/api/auth/login", "issue": "Timing leak: bcrypt only runs when the user exists and has a hash. Unknown emails return faster, so response time shows which emails have accounts. Verify against a dummy hash when there is no user."},
+      {"endpoint": "/api/auth/reset-password", "issue": "Token check (find_one) and mark-used (update_one) are separate steps, so two requests at the same moment could both use one token. Use find_one_and_update({token_hash, used: false, expires_at > now}, {$set: {used: true}})."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Register tab", "issues": ["A password under 8 characters is blocked by the browser's native minLength tooltip, so auth-error is never shown on the client. Acceptable (readable, no crash), and the backend 422 message ('at least 8 characters') maps cleanly through apiError. The Sign in tab also has minLength=8 (from the shared PasswordField), which is harmless."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_password_auth.py", "/app/test_reports/pytest/pytest_password_auth.xml"],
+  "action_items": [
+    "HIGH: Make the login lockout key spoof-proof (do not trust the first X-Forwarded-For value; add a per-email limit)",
+    "Catch DuplicateKeyError in /api/auth/register and return 400",
+    "forgot-password: do not let email send errors reveal which emails have accounts",
+    "Optional: dummy bcrypt verify for unknown users; atomic find_one_and_update for reset tokens"
+  ],
+  "critical_code_review_comments": [
+    "auth.start_session account-takeover guard (code review only): correct. If an account has password_hash and email_verified is false, Google sign-in unsets password_hash, deletes old sessions and sets email_verified=true. Google emails are lowercased in google_sign_in. A password set through the reset flow sets email_verified=true and so survives Google sign-in, which is correct because the reset proves the user owns the inbox.",
+    "same_origin_writes: compares the Origin netloc with x-forwarded-host/host. Fine, since a browser cannot forge Origin. Requests without an Origin header are allowed through, which is fine for curl/server-to-server.",
+    "After the lock expires, count resets to 0 and the attacker gets 5 more tries every 15 minutes. That limit only holds once the XFF issue is fixed.",
+    "Email is stored lowercased but the email_1 index is case-sensitive. Fine as long as every write path lowercases (it does)."
+  ],
+  "updated_files": ["/app/backend/tests/test_password_auth.py", "/app/memory/test_credentials.md (added password test user line)"],
+  "success_rate": {"backend": "94% (16/17; the failure is the XFF lockout bypass security test)", "frontend": "100%"},
+  "seed_data_creation": "test.user.password@example.com / Harbour2026! did not exist at start; the test fixture registered it (name 'Password Skipper', Free). Its password was changed during reset testing and RESTORED to Harbour2026! (verified login 200). Its boat now has vessel 'TEST Vessel', callsign 'ZM1234', skipper 'TEST Skipper'. Temporary test.user.pw<hex> users and delivered@resend.dev were deleted, and login_attempts was cleared. A leftover from an earlier run, test.user.pw1792114629@example.com, remains.",
+  "test_credentials": "Password user: test.user.password@example.com / Harbour2026!. Seeded sessions test_session_admin_1/free_1/pro_1/beta_1 (not logged out).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run test_password_auth.py with -n 0 (its module fixture is not xdist-safe). test_lockout_xff_spoof is expected to fail until the XFF fix lands. 1 real email has been sent to delivered@resend.dev this iteration; reset flows otherwise use tokens inserted directly into the DB (sha256 token_hash).",
+  "rca of the issue": "Lockout bypass: password_auth._ident uses headers['x-forwarded-for'].split(',')[0]. The k8s ingress appends the real client IP after any client-supplied XFF, so value [0] is chosen by the attacker. Repro: 5 wrong logins, then a correct login with header X-Forwarded-For: 1.2.3.4 returns 200 instead of 429. Mitigation: take the rightmost XFF entry (or the last trusted hop) and add an IP-independent per-email counter."
+}
