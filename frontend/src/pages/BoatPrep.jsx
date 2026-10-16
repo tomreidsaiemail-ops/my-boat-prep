@@ -4,6 +4,8 @@ import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
 import { TipsList } from "@/components/boat/TipsList";
+import useMedia, { MEDIA_LISTS, mediaLabel } from "@/hooks/useMedia";
+import { MediaList } from "@/components/boat/MediaList";
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
@@ -50,9 +52,11 @@ export default function BoatPrep() {
   const [tripDate, setTripDate] = useState(todayISO);
   const VERBOSE_DATE = verbose(tripDate);
   const { tips, save: saveTips } = useTips(online);
+  const media = useMedia(online);
   const { boat, registry } = state;
-  const data = { ...state.data, [TIPS_ID]: tips };
-  const allLists = [...registry, TIPS_LIST];
+  const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
+  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData };
+  const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
@@ -175,7 +179,8 @@ export default function BoatPrep() {
           onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
-      {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} /> : (
+      {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
+        : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} /> : (
         <>
           <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
             onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}

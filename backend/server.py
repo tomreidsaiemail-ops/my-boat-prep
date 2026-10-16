@@ -26,6 +26,7 @@ from tips import router as tips_router, load_tips  # noqa: E402
 
 from urls import public_base, request_host  # noqa: E402
 from password_auth import router as password_router  # noqa: E402
+from media import router as media_router, MEDIA_LISTS, media_list_for_pdf  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -164,8 +165,9 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
     log["lists"] = [
         {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
+        else await media_list_for_pdf(i) if i in MEDIA_LISTS
         else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
-        for i in payload.list_ids if i in names or i == "skippersTips"
+        for i in payload.list_ids if i in names or i == "skippersTips" or i in MEDIA_LISTS
     ]
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
@@ -201,6 +203,7 @@ app.include_router(auth_router)
 app.include_router(payments_router)
 app.include_router(tips_router)
 app.include_router(password_router)
+app.include_router(media_router)
 
 
 @app.middleware("http")
