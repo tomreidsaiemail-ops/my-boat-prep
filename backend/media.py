@@ -31,8 +31,11 @@ class MediaIn(BaseModel):
 
     @field_validator("name", "note")
     @classmethod
-    def strip(cls, v: str) -> str:
-        return v.strip()
+    def strip(cls, v: str, info) -> str:
+        v = v.strip()
+        if info.field_name == "name" and not v:
+            raise ValueError("Please enter a name")
+        return v
 
     @field_validator("url")
     @classmethod
@@ -76,9 +79,12 @@ async def find_thumbnail(url: str) -> Optional[str]:
     quick = youtube_video_thumb(url)
     if quick:
         return quick
-    if not await is_public_host(urlparse(url).hostname):
-        return None
-    async with httpx.AsyncClient(follow_redirects=True, timeout=8, cookies={"CONSENT": "YES+1", "SOCS": "CAI"}) as client:
+    async def guard(request: httpx.Request):
+        if not await is_public_host(request.url.host):
+            raise httpx.RequestError("Blocked host", request=request)
+
+    hooks = {"request": [guard]}
+    async with httpx.AsyncClient(follow_redirects=True, timeout=8, cookies={"CONSENT": "YES+1", "SOCS": "CAI"}, event_hooks=hooks) as client:
         for ua in UAS:
             try:
                 r = await client.get(url, headers={"User-Agent": ua, "Accept-Language": "en-US,en;q=0.9"})

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Clapperboard, Plus } from "lucide-react";
 import { MediaRow } from "@/components/boat/MediaRow";
 import { MediaDialog } from "@/components/boat/MediaDialog";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const COPY = {
   youtube: { noun: "channel", intro: "Sailing YouTube channels picked by the My Boat Prep team. Tap one to watch." },
@@ -15,6 +16,7 @@ export const MediaList = ({ list, store, admin, online }) => {
   const items = store.items;
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
+  const [doomed, setDoomed] = useState(null);
 
   const run = async (fn) => {
     if (!online) { toast.error(`Go online to update ${name}`); return "You're offline"; }
@@ -40,7 +42,7 @@ export const MediaList = ({ list, store, admin, online }) => {
         {items.length === 0 && <li className="p-4 text-sm font-medium text-[var(--muted)]" data-testid="media-empty">{admin ? `No ${noun}s yet. Add the first one below.` : "Nothing here yet. Check back soon."}</li>}
         {items.map((m, i) => (
           <MediaRow key={m.id} item={m} kind={kind} admin={admin} busy={busy} first={i === 0} last={i === items.length - 1}
-            onEdit={() => setDialog({ item: m })} onDelete={() => run(() => store.remove(m.id))} onMove={(d) => move(i, d)} />
+            onEdit={() => setDialog({ item: m })} onDelete={() => setDoomed(m)} onMove={(d) => move(i, d)} />
         ))}
       </ul>
       {admin && (
@@ -50,6 +52,8 @@ export const MediaList = ({ list, store, admin, online }) => {
       )}
       <MediaDialog open={!!dialog} title={dialog?.item ? `Edit ${noun}` : `Add a ${noun}`} kindLabel={noun} initial={dialog?.item}
         onConfirm={confirm} onClose={() => setDialog(null)} />
+      <ConfirmDelete item={doomed} onClose={() => setDoomed(null)}
+        onConfirm={async () => { const m = doomed; setDoomed(null); if ((await run(() => store.remove(m.id))) === true) toast.success(`${m.name} deleted`); }} />
     </>
   );
 };

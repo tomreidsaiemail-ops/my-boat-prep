@@ -108,3 +108,16 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P1: Define Beta 'early features'
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
+
+## Iteration 15 (2026-06): Sailing YouTube Channels & Sailing Movies
+- Two shared lists at the bottom of the list selector (after Skipper's Tips); every signed-in user sees them, cached for offline viewing
+- Admin only: add/edit/delete (with confirm)/reorder entries: name, link, optional one-line note (backend `media.py`, Mongo `media_lists`)
+- Thumbnails fetched automatically from the link (YouTube video thumbnail, or the page's preview image e.g. channel picture / IMDb poster); default YouTube/Film icon when none; link without https:// accepted
+- Tapping an entry opens the link in a new tab; Export Current / Email PDF include the list numbered
+- Tested iteration_15 (backend 97%, frontend 95%); fixed: names of only spaces, link without https:// blocked by the browser, delete confirmation, redirect safety check
+- Note: needs redeploy to go live
+
+## Backlog
+- P1: multi-entry Ship's Log history
+- P2: automatic Coast Guard trip reports
+- Future: AI checklist generation, crew accounts / shared boats / multiple boats

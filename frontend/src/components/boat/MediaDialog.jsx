@@ -40,7 +40,7 @@ export const MediaDialog = ({ open, title, kindLabel, initial, onConfirm, onClos
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Name" testId="media-name-input" autoFocus value={form.name} onChange={set("name")} maxLength={120} placeholder={kindLabel === "movie" ? "e.g. Master and Commander" : "e.g. Sailing La Vagabonde"} />
-          <Field label="Link" testId="media-url-input" type="url" inputMode="url" value={form.url} onChange={set("url")} maxLength={1000} placeholder="https://..." />
+          <Field label="Link" testId="media-url-input" type="text" inputMode="url" autoCapitalize="off" autoCorrect="off" value={form.url} onChange={set("url")} maxLength={1000} placeholder="https://..." />
           <Field label="Note (optional)" testId="media-note-input" value={form.note} onChange={set("note")} maxLength={160} placeholder="One line, e.g. Great heavy weather tips" />
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="media-dialog-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
