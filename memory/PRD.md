@@ -96,6 +96,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - BLOCKED until user registers redirect URIs in Google Cloud Console (preview currently shows redirect_uri_mismatch)
 - Tested iteration_12 (backend 100%; toast fix applied after)
 
+## Iteration 17 (2026-06)
+- Email + password accounts alongside Google: register/sign-in tabs on login page, bcrypt, per-email 5-fail/15-min lockout, forgot/reset password by email (1h single-use hashed token), sessions reuse session_token cookie
+- Google sign-in on an unverified password account removes that password (anti-squatting); cross-site API writes blocked by Origin check
+- Tested iteration_13/14 (fixes applied: XFF-proof lockout, race-safe register/reset, no account enumeration)
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P1: Real AdSense IDs (needs approved AdSense account on myboatprep.com)

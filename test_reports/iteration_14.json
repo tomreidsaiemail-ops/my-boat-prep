@@ -1,0 +1,25 @@
+{
+  "summary": "Retest of the iteration 13 fixes. All verified. (1) The lockout is now per email: after 5 wrong logins (each with a different X-Forwarded-For), the correct password still gets 429 with XFF '1.2.3.4', with the chain '5.6.7.8, 10.0.0.1', and with no XFF. The login_attempts key is 'email:<email>'. A successful reset-password clears the lock and the new password then logs in. (2) Register race: 8 concurrent registrations for one email give exactly 1x200 and 7x400, no 500, and only 1 user document. (3) Unknown email login returns 401 'Incorrect email or password'. Timing: known 0.352s vs unknown 0.348s, so the dummy bcrypt hides which accounts exist. (4) Reset token claim is atomic: 6 concurrent uses of one token give 1x200 and 5x400. Expired, used and bogus tokens give 400. Sessions are deleted after a reset. (5) Regression: test_password_auth.py 23/24 passed and the other suites 70/70 passed. UI at 390px: no horizontal overflow, Google button visible, wrong-password error shown, sign-in works, register with an existing email shows the duplicate message, the forgot page shows forgot-sent, and reset-password redirects to /login and the new password works. One new minor issue: forgot-password still returns 500 when the user's own name trips the email guard.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/forgot-password", "issue": "Only HTTPException is caught around send_email. _assert_safe_email raises ValueError before the try block in send_email. The user's display name (user-controlled at register, max 80 chars) goes into the email HTML, so a name containing a _CRED_ASK phrase (e.g. 'cvv', 'seed phrase', 'verify your card') makes the request return 500. Seen in backend.err.log: 'ValueError: Email asks the recipient for credentials: cvv'. This shows the account exists, since unknown emails return ok, and that user can never reset their password. Fix: catch Exception (or ValueError too) in forgot_password, and/or leave the name out of the reset email / greet generically. Test: test_forgot_unsafe_name_no_500."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_password_auth.py", "/app/test_reports/pytest/pytest_password_auth_iter14.xml", "/app/test_reports/pytest/pytest_regression_iter14.xml"],
+  "action_items": ["forgot-password: also catch ValueError/Exception from send_email (or drop the user name from the reset email html) so it always returns {ok:true}"],
+  "critical_code_review_comments": [
+    "A per-email lock lets anyone lock a victim out for 15 min by sending 5 bad passwords (an accepted trade-off; the reset flow clears it). Consider an additional per-IP limit using request.client.host or the rightmost XFF hop.",
+    "Lock check and counter increment are not atomic. A burst of concurrent wrong attempts can go somewhat past 5 before the lock is set. Low risk with bcrypt cost; could use $inc with find_one_and_update.",
+    "DuplicateKeyError in register always returns the 'Sign in instead' message, even when the account that won the race is a Google account. This is cosmetic."
+  ],
+  "updated_files": ["/app/backend/tests/test_password_auth.py (added TestIter14Fixes: 7 tests)"],
+  "success_rate": {"backend": "99% (93/94; 1 new minor edge case)", "frontend": "100%"},
+  "seed_data_creation": "test.user.password@example.com / Harbour2026! unchanged (login 200 verified). Temporary test.user.pw* users (including the iteration 13 leftover pw1792114629 and the UI user pwui14ab) were deleted, and login_attempts was cleared. No real emails were sent (the cvv probe fails before sending).",
+  "test_credentials": "Password user test.user.password@example.com / Harbour2026!; seeded sessions per /app/memory/test_credentials.md (still valid). Note: test_credentials.md line 13 still says 'per ip+email' but the lock is now per email.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run test_password_auth.py with -n 0. test_forgot_unsafe_name_no_500 is expected to fail until forgot_password catches ValueError. The timing test allows a 0.15s tolerance.",
+  "rca of the issue": "forgot_password wraps send_email in 'except HTTPException' only. send_email calls _assert_safe_email(subject, html) outside its own try/except, which raises ValueError when the html contains a _CRED_ASK phrase. The html includes escape(user.name). Repro: register with name 'cvv', then POST /api/auth/forgot-password with that email returns 500."
+}

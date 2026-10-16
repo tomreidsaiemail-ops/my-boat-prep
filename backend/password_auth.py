@@ -114,7 +114,7 @@ async def forgot_password(payload: ForgotIn, request: Request):
         link = f"{public_base(request)}/reset-password?token={token}"
         html = (
             '<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:560px">'
-            f'<h1 style="font-size:20px">Set your My Boat Prep password</h1><p>Hi {escape(user.get("name") or "skipper")},</p>'
+            f'<h1 style="font-size:20px">Set your My Boat Prep password</h1><p>Hi skipper,</p>'
             '<p>Tap the button below to choose a new password. The link works once and expires in 1 hour.</p>'
             f'<p><a href="{link}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Choose a new password</a></p>'
             "<p style=\"font-size:13px;color:#475569\">If you didn't ask for this, ignore this email and your password stays the same.</p>"
@@ -122,7 +122,7 @@ async def forgot_password(payload: ForgotIn, request: Request):
         )
         try:
             await send_email(to=[email], subject="Reset your My Boat Prep password", html=html)
-        except HTTPException:
+        except (HTTPException, ValueError):
             logger.error("Password reset email failed to send")
     return {"ok": True}
 
