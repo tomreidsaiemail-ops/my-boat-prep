@@ -121,3 +121,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - P1: multi-entry Ship's Log history
 - P2: automatic Coast Guard trip reports
 - Future: AI checklist generation, crew accounts / shared boats / multiple boats
+
+## Iteration 16 (2026-06): Google sign-in "Cross-site request blocked" fix
+- Cause: live build talks to the API on myboatprep.com; opening the app on www.myboatprep.com or gemini-prototype.emergent.host made sign-in a cross-site POST, blocked by the same-origin guard in server.py
+- Fix (frontend/src/index.js): the app redirects to the REACT_APP_BACKEND_URL host (keeps path/query) before rendering, so the page and API always share one address
+- Verified on preview (normal load + Google redirect); live check needs a redeploy
