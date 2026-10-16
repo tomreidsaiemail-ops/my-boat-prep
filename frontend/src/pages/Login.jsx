@@ -3,6 +3,7 @@ import { Anchor, WifiOff } from "lucide-react";
 import { BrandMark } from "@/components/boat/Header";
 import { useAuth } from "@/context/AuthContext";
 import { OAUTH_STATE_KEY } from "@/components/auth/GoogleCallback";
+import { PasswordForm } from "@/components/auth/PasswordForm";
 
 const signIn = () => {
   const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -30,13 +31,15 @@ export default function Login() {
   if (user) return <Navigate to="/" replace />;
   const online = navigator.onLine;
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-between px-6 pb-10 pt-16" data-testid="login-page">
-      <section className="mbp-pop flex flex-col gap-6">
+    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-between gap-8 px-6 pb-10 pt-12" data-testid="login-page">
+      <section className="mbp-pop flex flex-col gap-5">
         <div className="scale-[1.6] self-start origin-left"><BrandMark /></div>
         <h1 className="font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl">My Boat Prep</h1>
         <p className="max-w-sm text-base text-[var(--muted)]">
           Checklists, Ship&apos;s Log and Mayday scripts for skippers. Works at sea with no signal.
         </p>
+        <PasswordForm />
+        <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]"><span className="h-px flex-1 bg-[var(--line)]" />or<span className="h-px flex-1 bg-[var(--line)]" /></div>
         <button type="button" onClick={signIn} disabled={!online} data-testid="google-signin-btn"
           className="flex min-h-[56px] items-center justify-center gap-3 rounded-lg border-2 border-[var(--navy)] bg-white px-5 text-base font-bold text-[var(--navy)] [transition:background-color_.15s,transform_.1s] hover:bg-slate-50 active:scale-[.98] disabled:opacity-50">
           <GoogleG /> Sign in with Google

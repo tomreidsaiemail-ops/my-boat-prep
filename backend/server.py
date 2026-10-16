@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
 from typing import Annotated, Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import uuid
+from urllib.parse import urlparse
+from fastapi.responses import JSONResponse
 from email_validator import validate_email, EmailNotValidError
 
 ROOT_DIR = Path(__file__).parent
@@ -22,13 +24,8 @@ from auth import router as auth_router, get_current_user, require_premium  # noq
 from payments import router as payments_router  # noqa: E402
 from tips import router as tips_router, load_tips  # noqa: E402
 
-PUBLIC_APP_URL = os.environ['PUBLIC_APP_URL'].rstrip('/')
-HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
-
-
-def public_base(request: Request) -> str:
-    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip().lower()
-    return f"https://{host}" if HOST_RE.match(host) else PUBLIC_APP_URL
+from urls import public_base, request_host  # noqa: E402
+from password_auth import router as password_router  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -203,6 +200,17 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(payments_router)
 app.include_router(tips_router)
+app.include_router(password_router)
+
+
+@app.middleware("http")
+async def same_origin_writes(request: Request, call_next):
+    # Session cookies are SameSite=None, so block cross-site writes to the API.
+    origin = request.headers.get("origin")
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api/") \
+            and request.url.path != "/api/stripe/webhook" and origin and urlparse(origin).netloc.lower() != request_host(request):
+        return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked"})
+    return await call_next(request)
 
 app.add_middleware(
     CORSMiddleware,
@@ -222,6 +230,9 @@ async def create_indexes():
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)
+    await db.login_attempts.create_index("identifier")
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    await db.password_reset_tokens.create_index("token_hash", unique=True)
 
 
 @app.on_event("shutdown")

@@ -90,20 +90,29 @@ class GoogleCodeIn(BaseModel):
     redirect_uri: str = Field(max_length=300)
 
 
-async def start_session(response: Response, email: str, name: str, picture: str) -> UserOut:
+async def create_session(response: Response, user_id: str) -> None:
     now = datetime.now(timezone.utc)
-    user = await db.users.find_one({"email": email}, {"_id": 0})
-    if user:
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"name": name, "picture": picture}})
-    else:
-        user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": name, "picture": picture,
-                "role": "free", "created_at": now.isoformat()}
-        await db.users.insert_one(dict(user))
     token = secrets.token_urlsafe(32)
-    await db.user_sessions.insert_one({"user_id": user["user_id"], "session_token": token,
+    await db.user_sessions.insert_one({"user_id": user_id, "session_token": token,
                                        "expires_at": now + timedelta(days=SESSION_DAYS), "created_at": now})
     response.set_cookie("session_token", token, max_age=SESSION_DAYS * 24 * 3600, path="/",
                         httponly=True, secure=True, samesite="none")
+
+
+async def start_session(response: Response, email: str, name: str, picture: str) -> UserOut:
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if user:
+        update = {"$set": {"name": name or user.get("name", ""), "picture": picture, "email_verified": True}}
+        if user.get("password_hash") and not user.get("email_verified"):
+            # Google proves the real owner; drop a password someone set without proving this email.
+            update["$unset"] = {"password_hash": ""}
+            await db.user_sessions.delete_many({"user_id": user["user_id"]})
+        await db.users.update_one({"user_id": user["user_id"]}, update)
+    else:
+        user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": name, "picture": picture,
+                "role": "free", "email_verified": True, "created_at": datetime.now(timezone.utc).isoformat()}
+        await db.users.insert_one(dict(user))
+    await create_session(response, user["user_id"])
     return to_user_out(await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0}))
 
 
