@@ -91,6 +91,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Skipper's Tips: shared master list (db.tips) shown to all users at end of list menu; only admin can add/edit/reorder/delete (PUT /api/admin/tips); cached for offline; numbered in print/PDF; email PDF supported
 - Tested iteration_11: 100% (minor UX fixes applied after)
 
+## Iteration 16 (2026-06)
+- Sign-in switched to the user's own Google OAuth client (code flow: /auth/google frontend callback -> POST /api/auth/google; state check; id_token verified; redirect host must match request host). Emergent auth removed
+- BLOCKED until user registers redirect URIs in Google Cloud Console (preview currently shows redirect_uri_mismatch)
+- Tested iteration_12 (backend 100%; toast fix applied after)
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
 - P1: Real AdSense IDs (needs approved AdSense account on myboatprep.com)

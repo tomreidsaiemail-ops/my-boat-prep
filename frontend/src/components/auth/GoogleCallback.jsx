@@ -19,7 +19,7 @@ export const GoogleCallback = () => {
     const code = params.get("code");
     const expected = sessionStorage.getItem(OAUTH_STATE_KEY);
     sessionStorage.removeItem(OAUTH_STATE_KEY);
-    const fail = (msg) => { toast.error(msg); navigate("/login", { replace: true }); };
+    const fail = (msg) => { setTimeout(() => toast.error(msg), 0); navigate("/login", { replace: true }); };
     if (params.get("error")) return fail("Google sign-in was cancelled");
     if (!code || !expected || params.get("state") !== expected) return fail("Sign-in expired, please try again");
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH

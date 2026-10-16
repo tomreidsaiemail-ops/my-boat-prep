@@ -107,19 +107,28 @@ async def start_session(response: Response, email: str, name: str, picture: str)
     return to_user_out(await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0}))
 
 
+def _json(r: httpx.Response) -> dict:
+    try:
+        return r.json()
+    except ValueError:
+        return {}
+
+
 @router.post("/auth/google", response_model=UserOut)
-async def google_sign_in(payload: GoogleCodeIn, response: Response):
-    if not REDIRECT_RE.match(payload.redirect_uri):
+async def google_sign_in(payload: GoogleCodeIn, request: Request, response: Response):
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip().lower()
+    if not REDIRECT_RE.match(payload.redirect_uri) or payload.redirect_uri != f"https://{host}/auth/google":
         raise HTTPException(status_code=400, detail="Invalid redirect address")
     async with httpx.AsyncClient(timeout=15) as http:
         tok = await http.post(GOOGLE_TOKEN_URL, data={
             "code": payload.code, "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET,
             "redirect_uri": payload.redirect_uri, "grant_type": "authorization_code"})
-        if tok.status_code != 200 or not tok.json().get("id_token"):
+        id_token = _json(tok).get("id_token") if tok.status_code == 200 else None
+        if not id_token:
             logger.warning(f"Google token exchange failed: {tok.status_code} {tok.text[:200]}")
             raise HTTPException(status_code=401, detail="Google sign-in failed, please try again")
-        info = await http.get(GOOGLE_TOKENINFO_URL, params={"id_token": tok.json()["id_token"]})
-    claims = info.json() if info.status_code == 200 else {}
+        info = await http.get(GOOGLE_TOKENINFO_URL, params={"id_token": id_token})
+    claims = _json(info) if info.status_code == 200 else {}
     if claims.get("aud") != GOOGLE_CLIENT_ID or claims.get("iss") not in ("accounts.google.com", "https://accounts.google.com") \
             or str(claims.get("email_verified")).lower() != "true" or not claims.get("email"):
         raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
