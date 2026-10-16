@@ -32,8 +32,8 @@ export function AuthProvider({ children }) {
   }, [setUser]);
 
   useEffect(() => {
-    // Returning from Google sign-in: AuthCallback exchanges the session first.
-    if (window.location.hash?.includes("session_id=")) { setChecking(false); return; }
+    // Returning from Google sign-in: GoogleCallback exchanges the code first.
+    if (window.location.pathname === "/auth/google") { setChecking(false); return; }
     refresh();
   }, [refresh]);
 

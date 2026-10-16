@@ -2,11 +2,18 @@ import { Navigate } from "react-router-dom";
 import { Anchor, WifiOff } from "lucide-react";
 import { BrandMark } from "@/components/boat/Header";
 import { useAuth } from "@/context/AuthContext";
+import { OAUTH_STATE_KEY } from "@/components/auth/GoogleCallback";
 
 const signIn = () => {
+  const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
   // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-  const redirectUrl = window.location.origin + "/";
-  window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  const redirectUri = window.location.origin + "/auth/google";
+  const q = new URLSearchParams({
+    client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID, redirect_uri: redirectUri, response_type: "code",
+    scope: "openid email profile", state, prompt: "select_account",
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${q}`;
 };
 
 const GoogleG = () => (

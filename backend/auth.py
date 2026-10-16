@@ -1,15 +1,24 @@
 import os
+import re
 import uuid
+import secrets
+import logging
 from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from db import db
 from billing import refresh_if_lapsed
 
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].strip().lower()
-SESSION_DATA_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
+GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+REDIRECT_RE = re.compile(r"^https://([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}/auth/google$")
+SESSION_DAYS = 7
+logger = logging.getLogger(__name__)
 Role = Literal["free", "beta_tester", "pro"]
 
 router = APIRouter(prefix="/api")
@@ -76,30 +85,45 @@ async def require_premium(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
-@router.post("/auth/session", response_model=UserOut)
-async def create_session(request: Request, response: Response):
-    session_id = request.headers.get("x-session-id", "")
-    if not session_id or len(session_id) > 512:
-        raise HTTPException(status_code=400, detail="Missing session id")
-    async with httpx.AsyncClient(timeout=15) as http:
-        r = await http.get(SESSION_DATA_URL, headers={"X-Session-ID": session_id})
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="Sign-in failed, please try again")
-    data = r.json()
-    email = data["email"].strip().lower()
+class GoogleCodeIn(BaseModel):
+    code: str = Field(min_length=10, max_length=2048)
+    redirect_uri: str = Field(max_length=300)
+
+
+async def start_session(response: Response, email: str, name: str, picture: str) -> UserOut:
     now = datetime.now(timezone.utc)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if user:
-        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"name": data.get("name", ""), "picture": data.get("picture", "")}})
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"name": name, "picture": picture}})
     else:
-        user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": data.get("name", ""),
-                "picture": data.get("picture", ""), "role": "free", "created_at": now.isoformat()}
+        user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": name, "picture": picture,
+                "role": "free", "created_at": now.isoformat()}
         await db.users.insert_one(dict(user))
-    await db.user_sessions.insert_one({"user_id": user["user_id"], "session_token": data["session_token"],
-                                       "expires_at": now + timedelta(days=7), "created_at": now})
-    response.set_cookie("session_token", data["session_token"], max_age=7 * 24 * 3600, path="/",
+    token = secrets.token_urlsafe(32)
+    await db.user_sessions.insert_one({"user_id": user["user_id"], "session_token": token,
+                                       "expires_at": now + timedelta(days=SESSION_DAYS), "created_at": now})
+    response.set_cookie("session_token", token, max_age=SESSION_DAYS * 24 * 3600, path="/",
                         httponly=True, secure=True, samesite="none")
     return to_user_out(await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0}))
+
+
+@router.post("/auth/google", response_model=UserOut)
+async def google_sign_in(payload: GoogleCodeIn, response: Response):
+    if not REDIRECT_RE.match(payload.redirect_uri):
+        raise HTTPException(status_code=400, detail="Invalid redirect address")
+    async with httpx.AsyncClient(timeout=15) as http:
+        tok = await http.post(GOOGLE_TOKEN_URL, data={
+            "code": payload.code, "client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": payload.redirect_uri, "grant_type": "authorization_code"})
+        if tok.status_code != 200 or not tok.json().get("id_token"):
+            logger.warning(f"Google token exchange failed: {tok.status_code} {tok.text[:200]}")
+            raise HTTPException(status_code=401, detail="Google sign-in failed, please try again")
+        info = await http.get(GOOGLE_TOKENINFO_URL, params={"id_token": tok.json()["id_token"]})
+    claims = info.json() if info.status_code == 200 else {}
+    if claims.get("aud") != GOOGLE_CLIENT_ID or claims.get("iss") not in ("accounts.google.com", "https://accounts.google.com") \
+            or str(claims.get("email_verified")).lower() != "true" or not claims.get("email"):
+        raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
+    return await start_session(response, claims["email"].strip().lower(), claims.get("name", ""), claims.get("picture", ""))
 
 
 @router.get("/auth/me", response_model=UserOut)

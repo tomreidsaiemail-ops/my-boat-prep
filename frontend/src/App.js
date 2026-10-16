@@ -1,9 +1,9 @@
 import "@/App.css";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UpgradeProvider } from "@/context/UpgradeContext";
-import { AuthCallback } from "@/components/auth/AuthCallback";
+import { GoogleCallback } from "@/components/auth/GoogleCallback";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import BoatPrep from "@/pages/BoatPrep";
 import Login from "@/pages/Login";
@@ -17,11 +17,10 @@ function UserBoat() {
 }
 
 function AppRouter() {
-  const location = useLocation();
-  if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/google" element={<GoogleCallback />} />
       <Route path="/" element={<RequireAuth><UserBoat /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
       <Route path="/payment/success" element={<RequireAuth><PaymentResult success /></RequireAuth>} />
