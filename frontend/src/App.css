@@ -85,3 +85,6 @@ body {
   .print-page { border: none; padding: 0; margin: 0; }
   .page-break { break-before: page; page-break-before: always; }
 }
+
+/* Hide the ad strip entirely when Google has no ad to show (e.g. off the approved domain). */
+.mbp-ad:has(ins.adsbygoogle[data-ad-status="unfilled"]) { display: none; }

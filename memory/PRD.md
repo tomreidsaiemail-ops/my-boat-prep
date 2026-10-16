@@ -101,8 +101,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Google sign-in on an unverified password account removes that password (anti-squatting); cross-site API writes blocked by Origin check
 - Tested iteration_13/14 (fixes applied: XFF-proof lockout, race-safe register/reset, no account enumeration)
 
+## Iteration 18 (2026-06)
+- Real Google AdSense enabled for free tier: REACT_APP_ADSENSE_CLIENT=ca-pub-5701201472462351, REACT_APP_ADSENSE_SLOT=8671193820 (horizontal responsive banner below lists); ads.txt + google-adsense-account meta added; strip auto-hides when Google returns no ad (e.g. preview domain)
+
 ## Backlog
 - P1: Ship Log rework: user to supply the changes lost from the Gemini version
-- P1: Real AdSense IDs (needs approved AdSense account on myboatprep.com)
 - P1: Define Beta 'early features'
 - P2: Crew accounts / sharing a boat across phones; multiple boats; Coast Guard trip report automation
