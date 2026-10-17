@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only test of the Clone List feature (admin, pro, free; desktop 1920 + mobile 390). Every requested check passed: (1) Warning toasts for all 8 blocked lists (Skipper's Tips, Sailing YouTube Channels, Sailing Movies, FAQ, My To Do List, Ship's Log, May Day, Pan Pan) show the exact wording, and no dialog opens. (2) The boat-details guard works: with empty details you get 'Please enter vessel details first' and no dialog. (3) Cloning Crew Prep with 2 items ticked: the default name is 'My Crew Prep' and the description reads 'Make a separate copy of Crew Prep, with every item unticked.' After confirming, the new list is selected, the toast 'My Crew Prep created from Crew Prep' shows, all 19 labels match and none are ticked. (4) Cloning again with the default shows 'My Crew Prep already exists'. 'my crew prep' is also rejected (case-insensitive). 'My Crew Prep Tom' and 'My Crew Prep John' are both created. (5) Cloning a clone works: the default is 'My My Crew Prep Tom'. (6) Independence: tick, edit, delete and add in My Crew Prep Tom left Crew Prep, My Crew Prep and My Crew Prep John unchanged. (7) Reset All: the original Crew Prep ticks were cleared, while My Crew Prep Tom kept its tick, edit and added item. (8) After a reload the lists persist, and GET /api/me/boat contains all 4 custom_ lists with the correct items and ticks. (9) Free user: clicking clone on Head (Toilet) opens the plan dialog with the reason 'Clone lists is a Pro feature.' and 'Clone lists' in the perks list. Blocked-list warnings still show for free users. Pro user: the clone dialog opens with 'My Head (Toilet)'. (10) At 390px there is no horizontal overflow: the select is 230px wide, the two buttons are 56x56, and the row ends at 374 of 390.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Clone List dialog", "issues": ["The name input has no visible label (only the description). Minor: a 'List name' label would help screen readers."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "cloneList copies only id, label and checked:false, so 'dynamic' and 'flagged' are dropped. This is fine today because the only lists with dynamic items (shipsLog, mayDay, panPan) are blocked from cloning. If any cloneable list gains dynamic items later, its clone would show the raw [Vessel Name] placeholders.",
+    "Cloned items reuse the source item ids. Each list is a separate array, so this is harmless now, but it would collide if ids were ever used globally (React keys across lists, cross-list lookups)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None kept. The 4 cloned admin lists (My Crew Prep, My Crew Prep Tom, My Crew Prep John, My My Crew Prep Tom) were emptied and deleted, and the admin boat details were cleared. Confirmed via /api/me/boat (no custom_ lists, boat fields empty, deleted_lists []). Side effects: Reset All was run on admin, so the built-in lists are back to defaults. The admin Terms gate was accepted. While testing, a Pro clone dialog was cancelled, so no Pro list was created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The Sonner toast list is newest-first in the DOM, so read the newest toast with page.locator('[data-sonner-toast]').first. The free and pro seeded registries contain only Head (Toilet), Engine Service, My To Do List and Ship's Log, plus the shared lists. Pro/free boat details are already filled (TEST_Kia Ora). Checkbox state is aria-checked on [data-testid^=checklist-item-toggle-]. Deleting items needs no confirmation. delete-list-btn appears only when a list is empty."
+}

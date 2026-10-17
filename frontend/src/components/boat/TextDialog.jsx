@@ -22,10 +22,10 @@ export const TextDialog = ({ open, title, description, initial = "", placeholder
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-3">
           {inputType ? (
-            <input autoFocus type={inputType} inputMode={inputType} autoComplete={inputType} value={value} placeholder={placeholder}
+            <input autoFocus aria-label={title} type={inputType} inputMode={inputType} autoComplete={inputType} value={value} placeholder={placeholder}
               onChange={(e) => setValue(e.target.value)} className="field-input" data-testid={`${testId}-input`} />
           ) : (
-          <textarea autoFocus rows={value.length > 60 ? 4 : 2} value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)}
+          <textarea autoFocus aria-label={title} rows={value.length > 60 ? 4 : 2} value={value} placeholder={placeholder} onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) submit(e); }}
             className="field-input min-h-[56px] resize-none py-3" data-testid={`${testId}-input`} />
           )}

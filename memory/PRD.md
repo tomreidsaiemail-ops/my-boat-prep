@@ -142,3 +142,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Header second row: Date label stacks on mobile to fit the menu icon
 - Tested iteration_16: backend 100%, frontend 100%
 - Terms have no business/legal name or governing law yet (user skipped); contact = admin email
+
+## Iteration 19 (2026-06): Clone List
+- Clone button next to + in ListSelector; blocked with warning toasts for admin lists (Tips, YouTube, Movies, FAQ), My To Do List + Ship's Log, and May Day + Pan Pan (user choice)
+- Pro/Beta only (Free -> plan dialog; perks list now includes "Clone lists"); requires boat details like +
+- Dialog pre-fills "My <name>", case-insensitive duplicate check; copy is an independent custom list with all items unticked; unaffected by Reset All
+- Tested iteration_17: frontend 100%
