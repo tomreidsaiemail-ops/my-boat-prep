@@ -1,0 +1,30 @@
+{
+  "summary": "Retest of the iteration 9 fixes at 390x844. All fixed items pass. (1) Stale cached user: with the free cookie, I edited the vessel to TEST_FreeLocalOnly offline (outbox=1), swapped to the pro cookie without logging out, then reloaded online. The pro user sees their own vessel 'TEST_Kia Ora'; mbp_owner and mbp_user became test-user-pro; no PUT /api/me/boat was sent; the pro cloud boat is unchanged; no ad banner. (2) Switching from the beta cookie to the admin cookie and opening /admin renders the admin page. (3) Offline reload with a cached user renders the lists. (4) Bearer-only logout invalidates the session. (5) An admin PATCH to role 'free' on a user with an active subscription returns 409 with a clear message, and beta_tester still works. (6) Stripe checkout shows NZ$4.99 per year (session currency nzd, adaptive_pricing.enabled false). (7) A free user without boat details who taps '+' or Email Ship's Log sees the plan dialog with the right reason. (8) Regression: free user has the ad banner and lock icons, pro user has no ads, and account-menu Sign out goes to /login and kills the session. Backend pytest: 35/35 on clean runs, but test_me_cookie failed in 2 of 4 runs (see minor).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/auth/me (test_me_cookie)", "issue": "Flaky in 2 of 4 runs: the free cookie returned role beta_tester, while test_me_bearer passed earlier in the same run. 20 direct calls with the free cookie all returned free. After the runs the DB showed free. It is probably another process changing roles during the run (e.g. the main agent or the admin UI). No code defect found."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header", "issues": ["Trip date still uses the native <input type=date> (not shadcn calendar) - pre-existing"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_tiers_auth.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Account switch: unsynced offline edits from the previous account are dropped by claimLocal (the outbox is reset to 0). This is the safe choice for privacy, but the previous user's offline changes are lost silently. Optionally warn before switching or on sign-out if pending > 0.",
+    "RequireAuth shows a spinner on every online load until /auth/me returns. This is fine, but if the network is slow on a marina connection the app can't be used until that request finishes or times out. Consider an axios timeout on /auth/me that falls back to the cached user."
+  ],
+  "updated_files": ["/app/backend/tests/test_tiers_auth.py (added TestIter10: 409 downgrade of a paying user, adaptive pricing disabled + nzd)"],
+  "success_rate": {"backend": "100% (35/35; test_me_cookie failed in 2 of 4 runs, see flaky_tests)", "frontend": "100% of requested flows"},
+  "flaky_tests": ["test_me_cookie - failed in 2 of 4 runs (role beta_tester vs free), probably an outside role change during the run"],
+  "seed_data_creation": "No new users. Temporary session test_session_tmp_ui_logout (pro) was used for the UI sign-out and removed by logout. The free user's boat details were cleared briefly for the plan-dialog test and then restored (vessel TEST_Free_bca698). The pro user's stripe_subscription_id/status were set to fake values for the 409 test and then unset. All roles were verified as seeded (admin beta_tester, free free, pro pro, beta beta_tester). Opened 2 Stripe checkout sessions (unpaid).",
+  "test_credentials": "As in /app/memory/test_credentials.md; all seeded sessions still valid.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_tiers_auth.py. The account-switch test passes: free offline edit, then cookie swap to pro, then reload shows the pro data and no PUT is sent. Email Ship's Log button (log-email-send-btn) only appears when list-selector (a <select>) is set to 'shipsLog'. For UI sign-out tests use a throwaway session."
+}

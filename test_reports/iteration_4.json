@@ -1,0 +1,26 @@
+{
+  "summary": "Full backend + frontend testing of new Email PDF prompt flow (print view + Ship's Log panel) and list_ids/multi-list PDF support. All 7 requested features verified. 3 real emails sent to delivered@resend.dev (2 backend, 1 frontend).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_boats.py",
+    "/app/backend/tests/test_email_log.py",
+    "/app/backend/tests/test_email_log_lists.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/pytest_email.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "useEmailSender send() toast uses `${title} emailed to ${res.to}` — title now driven by caller so correctly shows list name / 'Vessel Manifest Master Logs' / 'Ship's Log'.",
+    "Sonner toast position overlaps print-back-btn briefly after send on mobile (toast dismiss ~4s). Not a bug but a potential UX nit; force-click still works. Consider toast position='bottom-center' on mobile.",
+    "sentKey in useEmailSender is scoped to BoatPrep, so re-entering print view after a send still shows 'Emailed' label until a new print selection or page reload — expected but worth documenting."
+  ],
+  "updated_files": ["/app/backend/tests/test_email_log_lists.py"],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% (A/B/C/D/E/F all pass)"},
+  "test_credentials": "delivered@resend.dev used for all real sends (3 total this iteration)",
+  "seed_data_creation": "test boats created with test- prefixed device_ids and TEST_ prefixed vessel/skipper names via PUT /api/boats/{device_id}; MongoDB cleanup not performed but data is prefixed for easy identification.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Verified: (1) PrintView button order is print-save-pdf-btn | print-email-pdf-btn | print-back-btn via data-testid DOM order. (2) Clicking print-email-pdf-btn with empty email opens email-prompt-dialog (TextDialog, inputType=email). Entering delivered@resend.dev + email-prompt-confirm-btn sends: toast 'Leaving Dock emailed to delivered@resend.dev', button becomes 'Emailed' with CheckCircle2, email is saved into top email-input after returning via print-back-btn. (3) log-email-send-btn on Ship's Log panel also opens email-prompt-dialog when email empty; email-prompt-cancel-btn closes without send. (4) With email already filled, clicking print-email-pdf-btn does NOT open the dialog (direct send). (5) Toggling network-status offline disables print-email-pdf-btn. (6) Backend POST /api/boats/{id}/email-log: default list_ids=['shipsLog']; list_ids=['shipsLog','safety'] returns title 'Vessel Manifest Master Logs - TEST_Kia Ora (ZMA123) - <date>' and does NOT persist log_sent on boat (log_sent remains None); list_ids=['bogus'] returns 400 'Nothing to email'. (7) PDF /api/ship-logs/<id>.pdf renders one page per list (PageBreak), contains no 'Checked by' or 'Time:' text. Note: Sonner toast overlaps the print control strip on 390px for ~4s after send; tests waited 5s before clicking print-back-btn.",
+  "rca of the issue": "n/a — all tests pass"
+}

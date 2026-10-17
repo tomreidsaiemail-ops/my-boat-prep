@@ -1,0 +1,40 @@
+{
+  "summary": "Tested Skipper's Tips (backend + admin/non-admin UI, offline, export/email PDF, create-list/reset interactions) and the Sign-Out unsynced-changes warning at 390x844. All requested features work. Backend: 16/16 new tips tests + 35/35 existing tiers suite pass. Only minor UX issues found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/admin/tips", "issue": "An empty-string label (\"\") fails the whole save with 422 (Field min_length=1) whereas whitespace-only labels are silently dropped. Inconsistent but harmless (UI never sends empty labels)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TipsList add/edit", "issue": "add() returns true synchronously before commit() resolves, so the typed tip is cleared from add-item-input even when the save is rejected (offline toast or server error); edit dialog likewise closes on failed save. Admin loses typed text. Return/await the commit result instead.", "selector": "[data-testid='add-item-input'], [data-testid='edit-tip-dialog']", "priority": "LOW"},
+      {"component": "SignOutDialog", "issue": "Grammar: with 1 change text reads \"You have 1 change that haven't been saved\" (should be \"hasn't\").", "selector": "[data-testid='signout-warning-text']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Skipper's Tips (admin, 390px)", "issues": ["4 action buttons (up/down/edit/delete) per row leave a narrow text column, long tips wrap to 4-5 lines"]},
+      {"screen": "Print view / PDF for Skipper's Tips", "issues": ["Tips render with empty checkboxes '[ ]' like tasks; a numbered/bulleted list would suit tips better"]},
+      {"screen": "Sign-out warning dialog (390px)", "issues": ["Dialog spans the full viewport width with no side margin/rounded corners"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_skippers_tips.py", "/app/backend/tests/test_tiers_auth.py", "/app/test_reports/pytest/pytest_results_iter11.xml"],
+  "action_items": [
+    "TipsList: only clear add input / close edit dialog when commit() succeeds",
+    "SignOutDialog: fix singular grammar ('hasn't')",
+    "Optional: render tips without checkboxes in PrintView/PDF; add side margin to AlertDialog on mobile"
+  ],
+  "critical_code_review_comments": [
+    "AccountMenu reads outbox count from localStorage key mbp_outbox_v3 directly (duplicated key string from useBoatStore) - export the constant or expose pending via context",
+    "Warning text says changes 'will be lost' but local state/outbox persist in localStorage; they are only discarded if a different account signs in (claimLocal). Wording could be more precise",
+    "While online, pending>0 for ~700ms debounce after any edit, so sign-out right after an edit shows the warning briefly - acceptable",
+    "Tips edits use last-write-wins full-list PUT; concurrent admin sessions could overwrite each other (single admin, acceptable)"
+  ],
+  "updated_files": ["/app/backend/tests/test_skippers_tips.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (functional); 2 minor UX bugs"},
+  "test_credentials": "Seeded sessions from /app/memory/test_credentials.md worked (admin/free/pro/beta). Two throwaway free users created for sign-out tests and deleted afterwards.",
+  "seed_data_creation": "Tips list restored to the main agent's two tips ('Check the forecast twice...', 'Tell someone ashore...'). Pro user's supplied lists were reset via Reset All during testing. 1 email sent to delivered@resend.dev for Skipper's Tips PDF (plus 1 from existing test_tiers_auth pro send test).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "pytest.ini runs xdist with --dist loadscope; tips tests are in ONE class so they share a worker and the preserve/restore fixture doesn't race (an earlier multi-class version wiped tips). Verified: GET /api/tips 401 unauth/200 all tiers; PUT /api/admin/tips 401/403/200, strip+drop whitespace, >500 -> 422, >300 items -> 422. UI: admin add/dup/edit/reorder/delete + reload persistence; free/pro/beta read-only identical list; admin manual-offline shows tips-offline-hint + error toast; hard offline reload shows cached tips; Export Current tips print view + pro Email PDF (list_ids ['skippersTips']) 200 and PDF contains tips; create list \"skipper's tips\" blocked; Reset All leaves tips; sign-out warning count/cancel/confirm->/login and no dialog when synced; To Do flag, Ship's Log email panel, free locks/ad/plan-dialog OK."
+}

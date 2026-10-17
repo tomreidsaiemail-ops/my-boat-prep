@@ -1,0 +1,36 @@
+{
+  "summary": "Tested admin-managed Sailing YouTube Channels / Sailing Movies lists end to end. Backend: 34 of 35 media tests passed (1 email test skipped because of 429 daily limit). Reads work for every tier, 401 without auth, 422 for an unknown kind. Admin add with thumbnails works: YouTube channel gives a yt3 image, youtu.be/watch gives i.ytimg, IMDb gives m.media-amazon, example.com gives null. A URL with no scheme gets https:// added. Invalid URL, too-long note and private host all handled. Case-insensitive duplicate gives 400, non-admin gets 403. Edit keeps the thumbnail when the URL is unchanged and refetches it when the URL changes. Reorder works, and mismatched or duplicate ids give 400. Delete works. Confirmed locally that the media list goes into the PDF as numbered entries. Frontend: admin flows all pass (selector order, add/edit/reorder/delete, persistence after reload, empty-name and duplicate errors in media-dialog-error, thumbnail img or default Film/Youtube icon). Free user sees both lists read-only, and links open in a new tab with target=_blank and rel=noopener. Export Current shows numbered entries. 390px mobile has no horizontal overflow. Skipper's Tips and Safety checklist still render normally.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST/PUT /api/admin/media/{kind}", "issue": "A name of only spaces ('   ') is accepted (200) and saved as an empty name ''. Pydantic min_length=1 is checked before the strip validator runs. Reproduced: one entry with empty name was created (I deleted it). Fix: use Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] or raise in the validator when the stripped value is empty. The note field strips fine."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MediaDialog link input", "issue": "The input is type=\"url\" and the form has no noValidate, so the browser's own validation blocks submit for 'example.org' (no scheme) and shows a native 'Please enter a URL.' tooltip. The backend's automatic https:// is never reached from the UI, and the error does not appear in media-dialog-error. Fix: use type=\"text\" with inputMode=\"url\", or add noValidate to the form.", "selector": "[data-testid=media-url-input]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Media list (admin)", "issues": ["media-delete-{id} deletes straight away with no confirmation and no undo. Easy to tap by mistake on mobile, and the list is shared with all users. Consider a confirm step or an undo toast."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_media_lists.py", "/app/backend/tests/manual_media_pdf_check.py", "/app/test_reports/pytest/pytest_media.xml"],
+  "action_items": [
+    "Reject names that are only spaces in MediaIn (strip before the min_length check)",
+    "MediaDialog: drop native type=url validation (type=text with inputMode=url, or noValidate) so links without a scheme are accepted as the spec says",
+    "Optional: confirm step or undo for deleting media entries"
+  ],
+  "critical_code_review_comments": [
+    "media.py: the strip validator runs after the length constraints, so whitespace-only names get through (see minor issue)",
+    "media.py delete_media returns 200 even for an unknown id. Fine for idempotence, but it differs from edit, which returns 404",
+    "find_thumbnail SSRF guard (is_public_host) checks DNS before httpx fetches. Redirects followed by httpx (follow_redirects=True) are not re-checked, so a public URL that redirects to an internal host is fetched. Low risk because only the admin can add entries.",
+    "useMedia: errors from the GET are swallowed silently (catch(() => {})); the cached list is shown instead. Acceptable for offline use."
+  ],
+  "updated_files": ["/app/backend/tests/test_media_lists.py", "/app/backend/tests/manual_media_pdf_check.py"],
+  "success_rate": {"backend": "97% (34/35, 1 skipped for 429 email limit; the whitespace-name bug is real)", "frontend": "95% (all flows pass except adding a URL without a scheme from the UI)"},
+  "seed_data_creation": "None kept. Removed every TEST_ entry, 'No Picture Movie' and the empty-name entry made by the whitespace bug. Remaining: youtube ['Sailing La Vagabonde'], movies ['Master and Commander'].",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run with: REACT_APP_BACKEND_URL=... pytest tests/test_media_lists.py -n 0 (it must run in order; xdist breaks the dependencies). The pro user (test_session_pro_1) reached DAILY_EMAIL_LIMIT=10, so the real email-log test returns 429 until tomorrow, or clear today's db.ship_logs for owner test-user-pro. Media-in-PDF was checked locally with manual_media_pdf_check.py. The admin boat has no vessel details, so use the free/pro user to test Export Current."
+}

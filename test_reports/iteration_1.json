@@ -1,0 +1,25 @@
+{
+  "summary": "First iteration end-to-end testing of My Boat Prep PWA. Backend: 10/10 pytest cases passed covering root, GET 404, PUT/GET round-trip, upsert, device_id regex/length validation (short, spaces, special chars, too-long, SQLi-like) returning 422, and invalid body validation. Frontend: executed on mobile viewport (390x844) and verified all 13 requested flows: validation bars block actions when boat details missing; after filling vessel/skipper/callsign ticking/reset works; all 11 built-in lists load with correct counts (Leaving Dock 16, Provisions 25); May Day dynamic items 103/104/105/107 render vessel/callsign/'Position unavailable' correctly and mayday-banner visible; Pan Pan item 113 correct and panpan-banner shown; Ship Log log-instructions and item 87 verbose NZ date 'Wednesday, 14 October 2026'; add-item empty/duplicate/valid alerts work; edit/delete work; create-list duplicate error and new empty list activation work; Export Current/All open print-view with correct title ('Vessel Manifest Master Logs' for all, 12 lists including the created one) and print-back-btn returns; localStorage persists across reload; offline toggle shows 'Offline' network-status and outbox-banner with outbox-count=1; on reconnect banner disappears and 'Changes successfully synchronized to cloud database' toast is shown; no horizontal overflow at 390px; date-display formatted dd/mm/yyyy (14/10/2026).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TextDialog (create-list / edit-item)", "issues": ["Radix DialogContent missing aria-describedby (console warning: 'Missing Description or aria-describedby for DialogContent'). Minor a11y lint only."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_boats.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["(Optional/minor) Add DialogDescription or aria-describedby to the Create List and Edit Item dialogs to silence Radix a11y warning."],
+  "critical_code_review_comments": [
+    "server.py uses @app.on_event('startup'/'shutdown') which is deprecated in FastAPI; migrate to lifespan context manager when convenient.",
+    "useBoatStore.js initial GET only runs if there is no local state or when server updated_at is newer; this is correct but means an empty fresh install sets pending=1 on 404 (triggers an immediate PUT) which is desired - no change needed.",
+    "Device-id regex ^[A-Za-z0-9-]+$ in backend matches frontend sanitisation; good consistency."
+  ],
+  "updated_files": ["/app/backend/tests/__init__.py", "/app/backend/tests/test_boats.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "N/A - no auth",
+  "seed_data_creation": "Tests create boats keyed by random test-<uuid> device IDs; no production data touched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend fully covered by /app/backend/tests/test_boats.py (parallelized by pytest-xdist). Frontend testids are stable (see Checklist, ActionBar, BoatDetails, TextDialog, SyncBanner, Header, ListSelector, PrintView). For offline tests, must dispatch window 'offline'/'online' events in addition to context.set_offline because useBoatStore listens to those events. GPS yields 'Position unavailable' in headless browsers which matches expected dynamic text for mayday/panPan items."
+}

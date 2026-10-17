@@ -1,0 +1,204 @@
+import { useMemo, useRef, useState } from "react";
+import useBoatStore from "@/hooks/useBoatStore";
+import useGps from "@/hooks/useGps";
+import useEmailSender from "@/hooks/useEmailSender";
+import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
+import { TipsList } from "@/components/boat/TipsList";
+import useMedia, { MEDIA_LISTS, mediaLabel } from "@/hooks/useMedia";
+import { MediaList } from "@/components/boat/MediaList";
+import { useAuth } from "@/context/AuthContext";
+import { useUpgrade } from "@/context/UpgradeContext";
+import { AdBanner } from "@/components/boat/AdBanner";
+import { toast } from "sonner";
+import { displayLabel, resetSuppliedLists } from "@/lib/defaults";
+import { Header } from "@/components/boat/Header";
+import { BoatDetails } from "@/components/boat/BoatDetails";
+import { ActionBar } from "@/components/boat/ActionBar";
+import { SyncBanner } from "@/components/boat/SyncBanner";
+import { ListSelector } from "@/components/boat/ListSelector";
+import { ListIntro } from "@/components/boat/ListIntro";
+import { Checklist } from "@/components/boat/Checklist";
+import { AddItemForm } from "@/components/boat/AddItemForm";
+import { TextDialog } from "@/components/boat/TextDialog";
+import { PrintView } from "@/components/boat/PrintView";
+import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
+import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
+import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
+import { ResetAllDialog } from "@/components/boat/ResetAllDialog";
+
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
+const EMERGENCY = { mayDay: "red", panPan: "amber" };
+const FREE_TODO_LIMIT = 5;
+
+const useWarn = () => {
+  const [warn, setWarn] = useState(null);
+  const t = useRef();
+  const show = (zone) => { setWarn(zone); clearTimeout(t.current); t.current = setTimeout(() => setWarn(null), 4000); };
+  return [warn, show];
+};
+
+export default function BoatPrep() {
+  const { user } = useAuth();
+  const { askUpgrade } = useUpgrade();
+  const premium = !!user.premium;
+  const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore(user.user_id);
+  const gps = useGps();
+  const [activeId, setActiveId] = useState("leavingDock");
+  const [warn, showWarn] = useWarn();
+  const [dialog, setDialog] = useState(null);
+  const [printMode, setPrintMode] = useState(null);
+  const [tripDate, setTripDate] = useState(todayISO);
+  const VERBOSE_DATE = verbose(tripDate);
+  const { tips, save: saveTips } = useTips(online);
+  const media = useMedia(online);
+  const { boat, registry } = state;
+  const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
+  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData };
+  const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS];
+  const active = allLists.find((l) => l.id === activeId) || registry[0];
+  const isTips = active.id === TIPS_ID;
+  const items = data[active.id] || [];
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text, VERBOSE_DATE]);
+  const labelFor = (item) => displayLabel(item, ctx);
+
+  const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
+  const guard = (zone = "top") => {
+    if (ready) return true;
+    showWarn(zone);
+    return false;
+  };
+  const setItems = (fn) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: fn(s.data[active.id] || []) } }));
+  const isDup = (text, exceptId) => items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
+
+  const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
+  const remove = (id) => guard() && setItems((list) => list.filter((i) => i.id !== id));
+  const flag = (id) => guard() && setItems((list) => {
+    const it = list.find((i) => i.id === id);
+    if (it.flagged) return list.map((i) => (i.id === id ? { ...i, flagged: false } : i));
+    return [{ ...it, flagged: true }, ...list.filter((i) => i.id !== id)];
+  });
+  const move = (id, dir) => guard() && setItems((list) => {
+    const i = list.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return list;
+    const next = [...list];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
+  const reset = (zone) => guard(zone) && setDialog({ type: "reset" });
+  const confirmReset = () => {
+    mutate(resetSuppliedLists);
+    setDialog(null);
+    toast.success("Supplied lists reset to their original items");
+  };
+  const askDeleteList = () => {
+    if (!guard()) return;
+    if (registry.length <= 1) { toast.error("You need to keep at least one list"); return; }
+    setDialog({ type: "deleteList", list: active });
+  };
+  const deleteList = () => {
+    const { id, isSystem } = dialog.list;
+    const idx = registry.findIndex((l) => l.id === id);
+    const next = registry[idx + 1] || registry[idx - 1];
+    mutate((s) => {
+      const data = { ...s.data };
+      delete data[id];
+      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, deleted_lists: isSystem ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
+    });
+    setActiveId(next.id);
+    setDialog(null);
+    toast.success(`${dialog.list.name} deleted`);
+  };
+  const exportLists = (current, zone) => guard(zone) && (current || needPro("Export All lists")) && setPrintMode(current ? "current" : "all");
+  const addItem = (text) => {
+    if (!guard("bottom")) return null;
+    if (!text) return "Nothing to add";
+    if (isDup(text)) return `${text} already exists`;
+    if (active.id === "myTodo" && !premium && items.length >= FREE_TODO_LIMIT) {
+      askUpgrade("More than 5 To Do items");
+      return `The Free plan holds ${FREE_TODO_LIMIT} To Do items. Go Pro for unlimited.`;
+    }
+    setItems((list) => [...list, { id: Date.now(), label: text, checked: false }]);
+    return true;
+  };
+  const saveEdit = (item) => (text) => {
+    if (!text) return "Item text cannot be empty";
+    if (isDup(text, item.id)) return `${text} already exists`;
+    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, flagged: i.flagged, label: text } : i)));
+    setDialog(null);
+    return true;
+  };
+  const createList = (name) => {
+    if (!name) return "Please enter a list name";
+    if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    const id = `custom_${Date.now()}`;
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: [] } }));
+    setActiveId(id);
+    setDialog(null);
+    return true;
+  };
+  const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });
+  const emailPrompt = (
+    <TextDialog open={!!mail.prompt} title="Where should we send it?" description="Enter the email address for your PDFs. It's saved next to Skipper for next time."
+      inputType="email" placeholder="you@email.com" confirmLabel="Send" testId="email-prompt" initial={mail.prompt?.initial || ""}
+      onConfirm={mail.confirmEmail} onClose={mail.closePrompt} />
+  );
+
+  if (printMode) {
+    const lists = printMode === "current" ? [active] : registry;
+    const title = printMode === "current" ? active.name : "Vessel Manifest Master Logs";
+    const ids = lists.map((l) => l.id);
+    return (
+      <>
+        <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
+          onEmail={() => needPro("Email PDF") && mail.requestSend(ids, title)} online={online} sending={mail.sending}
+          emailed={mail.sentKey === ids.join(",")} locked={!premium} />
+        {emailPrompt}
+      </>
+    );
+  }
+
+  return (
+    <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} />
+      <SyncBanner online={online} pending={pending} />
+      <BoatDetails boat={boat} onChange={updateBoat} />
+      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
+      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
+      <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
+      {active.id === "shipsLog" && (
+        <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
+          shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
+          onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
+      )}
+      {active.id === "engineService" && (
+        <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}
+          onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
+          onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
+      )}
+      {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
+        : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} /> : (
+        <>
+          <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
+            onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
+            {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
+          <AddItemForm key={`add-${active.id}`} onAdd={addItem}
+            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
+        </>
+      )}
+      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
+      {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
+      <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
+        onConfirm={createList} onClose={() => setDialog(null)} />
+      <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
+        initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
+        onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+      <ResetAllDialog open={dialog?.type === "reset"} onConfirm={confirmReset} onClose={() => setDialog(null)} />
+      <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
+      {emailPrompt}
+    </main>
+  );
+}

@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the switch to the app's own Google OAuth sign-in (authorization-code flow) at 390x844. Backend: all 70 tests pass (24 new in test_google_oauth.py, 46 existing). The authorize URL is built correctly and the state check works. The seeded sessions, admin page, Skipper's Tips and sign-out all still work. One UI bug: error toasts in GoogleCallback are lost on a fresh page load, which is exactly what happens when Google redirects back.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/google", "issue": "REDIRECT_RE accepts ANY https host ending in /auth/google (e.g. https://evil.com/auth/google passes, then gets 401 from Google). This is not exploitable because Google enforces registered redirect URIs and the code is tied to its redirect_uri. Optionally pin the host to the request Origin/Host or an env allowlist."},
+      {"endpoint": "POST /api/auth/google", "issue": "tok.json() / info.json() are called without guarding against a non-JSON Google response (e.g. a 5xx HTML page), which would return 500 instead of 401. Low likelihood."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "GoogleCallback", "issue": "On a fresh page load of /auth/google?error=access_denied or ?code=x&state=wrong (no or mismatched sessionStorage state), the app correctly redirects to /login, but the toast ('Google sign-in was cancelled' / 'Sign-in expired, please try again') NEVER appears. RCA: fail() calls toast.error synchronously inside GoogleCallback's useEffect. In App.js, <Toaster> is rendered AFTER <BrowserRouter>, so its subscribe effect runs after GoogleCallback's effect and the toast is dropped. Verified: the same mismatch through in-app pushState (Toaster already mounted) shows the toast, and the async fake-code path shows 'Google sign-in failed, please try again' correctly. Returning from Google is always a full page load, so users never see the cancel/expired messages. Fix: move <Toaster/> above <BrowserRouter> in App.js, or defer with setTimeout(() => toast.error(msg), 0).", "selector": "[data-sonner-toast]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_google_oauth.py", "/app/backend/tests/test_tiers_auth.py", "/app/backend/tests/test_skippers_tips.py", "/app/test_reports/pytest/pytest_results_iter12.xml"],
+  "action_items": [
+    "Make GoogleCallback error toasts show on a fresh page load: move <Toaster position='bottom-center' richColors/> before <BrowserRouter> in App.js, or wrap toast.error in setTimeout(0)",
+    "Optional: restrict the redirect_uri host (env allowlist), and guard the Google JSON parsing so non-JSON responses return 401 instead of 500",
+    "Update /app/memory/test_credentials.md line 3: it still says 'Emergent-managed Google Sign-In'",
+    "User must register https://gemini-prototype.preview.emergentagent.com/auth/google (and the production domain + /auth/google) as an Authorized redirect URI in Google Cloud Console"
+  ],
+  "critical_code_review_comments": [
+    "No remaining references to /api/auth/session or Emergent auth in the backend, frontend src or tests",
+    "The state is 128-bit crypto random, kept in sessionStorage and removed on use. There is no PKCE, which is acceptable for a confidential client with a server-side secret",
+    "AuthContext skips /auth/me on /auth/google. If a stale cached user exists and the callback fails, Login redirects to / and RequireAuth re-validates. Acceptable"
+  ],
+  "updated_files": ["/app/backend/tests/test_google_oauth.py"],
+  "success_rate": {"backend": "100% (70/70)", "frontend": "~90% (all flows work; error toasts missing on fresh load)"},
+  "test_credentials": "Seeded sessions admin/free/pro/beta from /app/memory/test_credentials.md all valid. A throwaway session TEST_tmp_signout_1 for test-user-free was inserted and then deleted by the sign-out test.",
+  "seed_data_creation": "Only the TEST_tmp_signout_1 session (removed by logout).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Real Google login is not possible until the redirect URI is registered. Verified the authorize URL by stubbing the accounts.google.com route and wrapping Storage.setItem via init script to capture the state, because sessionStorage is not readable after leaving the origin. Results: host accounts.google.com/o/oauth2/v2/auth, client_id 291246417796-55fve..., redirect_uri https://gemini-prototype.preview.emergentagent.com/auth/google, response_type=code, scope 'openid email profile', prompt=select_account, state matches mbp_oauth_state. Backend: bad redirect (evil.com/steal, http, bare host, trailing slash, query, empty) -> 400; fake code -> 401 with no cookie; short code / missing fields / long redirect -> 422; /api/auth/session -> 404/405. Sign-out deletes the session, so use a throwaway session."
+}

@@ -1,0 +1,53 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Crown, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
+import { useUpgrade } from "@/context/UpgradeContext";
+import { SignOutDialog } from "@/components/boat/SignOutDialog";
+
+const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
+
+const TIER = { free: "Free", beta_tester: "Beta", pro: "Pro" };
+
+export const TierBadge = ({ role }) => (
+  <span data-testid="tier-badge" className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+    role === "pro" ? "bg-amber-100 text-amber-900" : role === "beta_tester" ? "bg-sky-100 text-sky-900" : "bg-slate-200 text-slate-700"}`}>
+    {TIER[role] || role}
+  </span>
+);
+
+export const AccountMenu = () => {
+  const { user, logout } = useAuth();
+  const { openPlan } = useUpgrade();
+  const navigate = useNavigate();
+  const [warnCount, setWarnCount] = useState(0);
+  if (!user) return null;
+  const signOut = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
+  return (
+    <>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label="Account" data-testid="account-menu-btn"
+          className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[var(--navy)] bg-white [transition:transform_.1s] active:scale-95">
+          {user.picture ? <img src={user.picture} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+            : <UserRound className="m-auto h-5 w-5 text-[var(--navy)]" />}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64" data-testid="account-menu">
+        <DropdownMenuLabel className="flex flex-col gap-1">
+          <span className="flex items-center justify-between gap-2"><span className="truncate" data-testid="account-name">{user.name || "Skipper"}</span><TierBadge role={user.role} /></span>
+          <span className="truncate text-xs font-normal text-[var(--muted)]" data-testid="account-email">{user.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
+        {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}
+        <DropdownMenuItem onSelect={signOut} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
+    </>
+  );
+};

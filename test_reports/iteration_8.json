@@ -1,0 +1,30 @@
+{
+  "summary": "Backend-only testing of PDF link host derivation fix (public_base). Added /app/backend/tests/test_pdf_url.py with 16 tests (2 live e2e against external preview URL + 14 unit tests on public_base using mocked Request). All 16 new tests pass. Regression: all 25 pre-existing tests in test_boats.py, test_email_log.py, test_email_log_lists.py still pass (41/41 total).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "startup/shutdown", "issue": "FastAPI on_event is deprecated - prefer lifespan handlers (warning only)"}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_pdf_url.py",
+    "/app/test_reports/pytest/pytest_pdf_url.xml",
+    "/app/test_reports/pytest/pytest_regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "public_base() correctly validates host via strict HOST_RE regex (rejects ports, IPs, localhost, slashes, whitespace, empty) and falls back to PUBLIC_APP_URL - good defense against Host-header injection.",
+    "x-forwarded-host is honoured over host. In this environment the Kubernetes ingress overwrites client-supplied X-Forwarded-Host with the real external host, so spoofed values from clients do not leak into pdf_url (verified live).",
+    "Minor: comma-split and lowercase handling of host is correct and testable.",
+    "FastAPI @app.on_event deprecation warnings - consider migrating to lifespan handlers in a future cleanup."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (41/41)", "frontend": "N/A"},
+  "test_credentials": "N/A - email recipient fixed to delivered@resend.dev",
+  "seed_data_creation": "Each test creates its own boat with a unique device_id prefixed TEST_/test-pdflink-. 2 real emails sent via Resend to delivered@resend.dev (within max 3 budget).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "PDF link host-derivation fix (iteration 8) is fully verified. public_base() + HOST_RE regex well tested with 14 unit cases + 2 live e2e. Regression suite in /app/backend/tests passes. Use 'REACT_APP_BACKEND_URL=... python -m pytest tests/ -o addopts=\"\"' to bypass xdist which fails due to missing env var propagation across workers.",
+  "rca of the issue": "N/A - this iteration verifies a fix, not a bug. Fix works correctly: pdf_url is now derived from the host header (validated by HOST_RE) rather than the hard-coded PUBLIC_APP_URL, enabling it to work across preview / live / custom domains. Spoofing via client-supplied X-Forwarded-Host is mitigated by the ingress overwriting the header before it reaches the backend."
+}
