@@ -142,6 +142,25 @@ export default function BoatPrep() {
     setDialog(null);
     return true;
   };
+  const NO_CLONE = { myTodo: "My To Do List and Ship's Log cannot be cloned", shipsLog: "My To Do List and Ship's Log cannot be cloned",
+    mayDay: "May Day and Pan Pan cannot be cloned", panPan: "May Day and Pan Pan cannot be cloned" };
+  const askClone = () => {
+    if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be cloned"); return; }
+    if (NO_CLONE[active.id]) { toast.warning(NO_CLONE[active.id]); return; }
+    if (needPro("Clone lists") && guard()) setDialog({ type: "clone", list: active });
+  };
+  const cloneList = (name) => {
+    const source = dialog.list;
+    if (!name) return "Please enter a list name";
+    if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    const id = `custom_${Date.now()}`;
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }],
+      data: { ...s.data, [id]: (s.data[source.id] || []).map((i) => ({ id: i.id, label: i.label, checked: false })) } }));
+    setActiveId(id);
+    setDialog(null);
+    toast.success(`${name} created from ${source.name}`);
+    return true;
+  };
   const openFaq = () => {
     setActiveId(FAQ_ID);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -174,7 +193,7 @@ export default function BoatPrep() {
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
+      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} onClone={askClone} />
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={(v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
       {active.id === "shipsLog" && (
@@ -202,6 +221,10 @@ export default function BoatPrep() {
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
         onConfirm={createList} onClose={() => setDialog(null)} />
+      <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
+        description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
+        initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
+        onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />

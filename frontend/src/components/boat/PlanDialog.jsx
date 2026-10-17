@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 
 const PERKS = ["No ads", "Export All lists in one go", "Email PDF and Email Ship's Log (with Shore Contact)",
-  "Create your own lists", "Hide help panels", "Unlimited My To Do List items"];
+  "Create your own lists", "Clone lists", "Hide help panels", "Unlimited My To Do List items"];
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 const TIER = { free: "Free", beta_tester: "Beta tester", pro: "Pro" };
 
