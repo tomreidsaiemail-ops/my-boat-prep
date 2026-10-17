@@ -17,19 +17,21 @@ const INTROS = {
   mayDay: {
     cls: "border-[var(--red)] bg-[var(--red)] text-white", Icon: Siren, testId: "mayday-banner",
     title: "MAYDAY · VHF Channel 16", text: "Grave and imminent danger to vessel or life. Read each line aloud, tick as you go.",
+    confirm: "I, the Skipper, have checked the May Day list below and confirm it is a valid May Day call for the waters I am in.",
   },
   panPan: {
     cls: "border-[var(--amber)] bg-[var(--amber)] text-white", Icon: Radio, testId: "panpan-banner",
     title: "PAN PAN · VHF Channel 16", text: "Urgent situation, no immediate danger to life. Read each line aloud, tick as you go.",
+    confirm: "I, the Skipper, have checked the Pan Pan list below and confirm it is a valid Pan Pan call for the waters I am in.",
   },
 };
 
-export const ListIntro = ({ listId, canHide, onLockedHide }) => {
+export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSkipperCheck }) => {
   const intro = INTROS[listId];
   const [stored, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
   const hidden = stored && canHide;
   if (!intro) return null;
-  const { cls, Icon, title, text, tip, testId, hideKey, showLabel } = intro;
+  const { cls, Icon, title, text, tip, testId, hideKey, showLabel, confirm } = intro;
   const collapsible = !!hideKey;
   const prefix = listId === "shipsLog" ? "log" : "todo";
   const setHide = (v) => {
@@ -52,6 +54,13 @@ export const ListIntro = ({ listId, canHide, onLockedHide }) => {
       <div className="text-sm leading-relaxed">
         {title && <div className="mb-0.5 font-display text-base font-extrabold tracking-wide">{title}</div>}
         {text}
+        {confirm && (
+          <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border-2 border-white/70 bg-white/10 p-3 font-bold" data-testid={`${listId}-skipper-check-label`}>
+            <input type="checkbox" checked={!!skipperChecked} onChange={(e) => onSkipperCheck(e.target.checked)}
+              className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-white" data-testid={`${listId}-skipper-check`} />
+            <span>{confirm}</span>
+          </label>
+        )}
         {tip && <p className="mt-2" data-testid={`${prefix}-skipper-tip`}><b className="text-[var(--blue)]">Skipper's Tip:</b> {tip}</p>}
         {collapsible && (
           <button type="button" onClick={() => setHide(true)} data-testid={`${prefix}-help-hide-btn`}

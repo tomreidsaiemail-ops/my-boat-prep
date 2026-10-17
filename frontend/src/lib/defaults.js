@@ -96,7 +96,7 @@ export const resetSuppliedLists = (s) => {
   const data = { ...state.data };
   state.registry.filter((l) => l.isSystem && !PRESERVED_LISTS.includes(l.id) && DEFAULT_DATA[l.id])
     .forEach((l) => { data[l.id] = JSON.parse(JSON.stringify(DEFAULT_DATA[l.id])); });
-  return { ...state, data };
+  return { ...state, data, emergency_checked: {} };
 };
 
 export const restoreDeletedLists = (s) => {

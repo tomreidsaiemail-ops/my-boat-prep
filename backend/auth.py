@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     cancel_at_period_end: bool = False
     has_subscription: bool = False
     created_at: Optional[str] = None
+    tos_version: Optional[str] = None
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -46,7 +47,7 @@ def to_user_out(u: dict) -> UserOut:
         role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro"),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
-        created_at=u.get("created_at"),
+        created_at=u.get("created_at"), tos_version=u.get("tos_version"),
     )
 
 
@@ -142,6 +143,16 @@ async def google_sign_in(payload: GoogleCodeIn, request: Request, response: Resp
             or str(claims.get("email_verified")).lower() != "true" or not claims.get("email"):
         raise HTTPException(status_code=401, detail="Google sign-in could not be verified")
     return await start_session(response, claims["email"].strip().lower(), claims.get("name", ""), claims.get("picture", ""))
+
+
+class TermsIn(BaseModel):
+    version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$")
+
+
+@router.post("/auth/accept-terms", response_model=UserOut)
+async def accept_terms(payload: TermsIn, user: dict = Depends(get_current_user)):
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"tos_version": payload.version, "tos_accepted_at": datetime.now(timezone.utc).isoformat()}})
+    return to_user_out({**user, "tos_version": payload.version})
 
 
 @router.get("/auth/me", response_model=UserOut)

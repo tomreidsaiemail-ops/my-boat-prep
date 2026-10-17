@@ -59,7 +59,7 @@ export default function useBoatStore(userId) {
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) {
         const m = migrateState(data);
-        setState({ boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null, engine_log: data.engine_log || [], deleted_lists: m.deleted_lists });
+        setState({ boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null, engine_log: data.engine_log || [], deleted_lists: m.deleted_lists, emergency_checked: data.emergency_checked || {} });
       }
     }).catch((e) => {
       if (e.response?.status === 404) setPending((p) => Math.max(p, 1));

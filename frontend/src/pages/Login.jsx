@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Anchor, WifiOff } from "lucide-react";
 import { BrandMark } from "@/components/boat/Header";
 import { useAuth } from "@/context/AuthContext";
@@ -49,6 +49,7 @@ export default function Login() {
             <WifiOff className="h-4 w-4" /> You need signal to sign in the first time.
           </p>
         )}
+        <p className="text-xs text-[var(--muted)]" data-testid="login-terms-note">By signing in you agree to the <Link to="/terms" className="font-bold text-[var(--blue)] underline" data-testid="login-terms-link">Terms of Service</Link>.</p>
       </section>
       <p className="flex items-center gap-2 text-xs text-[var(--muted)]"><Anchor className="h-3.5 w-3.5" /> Free plan includes ads. Go Pro for NZD 4.99 a year.</p>
     </main>

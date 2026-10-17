@@ -10,11 +10,13 @@ import Login from "@/pages/Login";
 import Admin from "@/pages/Admin";
 import PaymentResult from "@/pages/PaymentResult";
 import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
+import Terms from "@/pages/Terms";
+import { TermsGate } from "@/components/auth/TermsGate";
 
 // Remount the boat workspace per account so one user's local data never carries into another's.
 function UserBoat() {
   const { user } = useAuth();
-  return <BoatPrep key={user.user_id} />;
+  return <TermsGate key={user.user_id}><BoatPrep /></TermsGate>;
 }
 
 function AppRouter() {
@@ -24,6 +26,7 @@ function AppRouter() {
       <Route path="/auth/google" element={<GoogleCallback />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/terms" element={<Terms />} />
       <Route path="/" element={<RequireAuth><UserBoat /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
       <Route path="/payment/success" element={<RequireAuth><PaymentResult success /></RequireAuth>} />

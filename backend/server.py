@@ -27,6 +27,8 @@ from tips import router as tips_router, load_tips  # noqa: E402
 from urls import public_base, request_host  # noqa: E402
 from password_auth import router as password_router  # noqa: E402
 from media import router as media_router, MEDIA_LISTS, media_list_for_pdf  # noqa: E402
+from faq import router as faq_router, FAQ_ID, faq_list_for_pdf  # noqa: E402
+from feedback import router as feedback_router  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -67,6 +69,7 @@ class BoatStateIn(BaseModel):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
+    emergency_checked: Dict[str, bool] = {}
 
 
 class BoatState(BaseDocument):
@@ -78,6 +81,7 @@ class BoatState(BaseDocument):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
+    emergency_checked: Dict[str, bool] = {}
     synced_at: str
 
 
@@ -90,6 +94,7 @@ class BoatStateOut(BaseModel):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
+    emergency_checked: Dict[str, bool] = {}
     synced_at: str
 
 
@@ -122,6 +127,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         log_sent=payload.log_sent,
         engine_log=payload.engine_log,
         deleted_lists=payload.deleted_lists,
+        emergency_checked=payload.emergency_checked,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
     await db.user_boats.update_one({"owner_id": owner_id}, {"$set": state.to_mongo()}, upsert=True)
@@ -166,8 +172,9 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     log["lists"] = [
         {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
         else await media_list_for_pdf(i) if i in MEDIA_LISTS
+        else await faq_list_for_pdf() if i == FAQ_ID
         else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
-        for i in payload.list_ids if i in names or i == "skippersTips" or i in MEDIA_LISTS
+        for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID) or i in MEDIA_LISTS
     ]
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
@@ -204,6 +211,8 @@ app.include_router(payments_router)
 app.include_router(tips_router)
 app.include_router(password_router)
 app.include_router(media_router)
+app.include_router(faq_router)
+app.include_router(feedback_router)
 
 
 @app.middleware("http")

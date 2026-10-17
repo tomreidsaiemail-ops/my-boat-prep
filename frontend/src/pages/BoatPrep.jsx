@@ -6,6 +6,8 @@ import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
 import { TipsList } from "@/components/boat/TipsList";
 import useMedia, { MEDIA_LISTS, mediaLabel } from "@/hooks/useMedia";
 import { MediaList } from "@/components/boat/MediaList";
+import useFaq, { FAQ_ID, FAQ_LIST, faqLabel } from "@/hooks/useFaq";
+import { FaqList } from "@/components/boat/FaqList";
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
@@ -53,10 +55,11 @@ export default function BoatPrep() {
   const VERBOSE_DATE = verbose(tripDate);
   const { tips, save: saveTips } = useTips(online);
   const media = useMedia(online);
+  const { faq, save: saveFaq } = useFaq(online);
   const { boat, registry } = state;
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
-  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData };
-  const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS];
+  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
+  const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
@@ -139,6 +142,10 @@ export default function BoatPrep() {
     setDialog(null);
     return true;
   };
+  const openFaq = () => {
+    setActiveId(FAQ_ID);
+    setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
   const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });
   const emailPrompt = (
@@ -163,12 +170,13 @@ export default function BoatPrep() {
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} />
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} />
-      <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
+      <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
+        skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={(v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
@@ -180,6 +188,7 @@ export default function BoatPrep() {
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
+        : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} /> : (
         <>
           <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
