@@ -126,3 +126,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Cause: live build talks to the API on myboatprep.com; opening the app on www.myboatprep.com or gemini-prototype.emergent.host made sign-in a cross-site POST, blocked by the same-origin guard in server.py
 - Fix (frontend/src/index.js): the app redirects to the REACT_APP_BACKEND_URL host (keeps path/query) before rendering, so the page and API always share one address
 - Verified on preview (normal load + Google redirect); live check needs a redeploy
+
+## Iteration 17 (2026-06): Search engine visibility
+- index.html: keyword title + description, canonical https://myboatprep.com/, Open Graph + Twitter tags, WebApplication JSON-LD (Free / Pro NZD 4.99), google-site-verification meta, better noscript
+- Crawlable feature summary inside #root (replaced when React mounts, so users still see sign-in first)
+- New public/og-image.jpg (1200x630 share image), robots.txt (blocks /admin, /auth/, /api/), sitemap.xml
+- Worldwide wording (user choice). Needs redeploy; user then submits sitemap in Google Search Console
