@@ -132,3 +132,13 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Crawlable feature summary inside #root (replaced when React mounts, so users still see sign-in first)
 - New public/og-image.jpg (1200x630 share image), robots.txt (blocks /admin, /auth/, /api/), sitemap.xml
 - Worldwide wording (user choice). Needs redeploy; user then submits sitemap in Google Search Console
+
+## Iteration 18 (2026-06): FAQ, app menu, feedback, Terms of Service, Skipper emergency ticks
+- FAQ list (admin-maintained, Q/A icons, bottom of list picker): backend `faq.py` (GET /api/faq, PUT /api/admin/faq with server-side dedupe), frontend FaqList/FaqRow/FaqDialog, useFaq (offline cache), included in Export/Email PDF
+- Header menu icon (AppMenu): FAQ, Submit feedback..., Terms of Service
+- Feedback: POST /api/feedback (`feedback.py`), title -> subject "Feedback: <title>", body + sender details, emailed to ADMIN_EMAIL via Resend, 5/day/user, stored in db.feedback
+- Terms of Service (lib/terms.js, version 2026-06): public /terms page, login page link, one-time TermsGate (stored locally first, synced via POST /api/auth/accept-terms; users.tos_version)
+- May Day / Pan Pan: Skipper tick box in the banner (reminder only), saved as boat emergency_checked (kept if a client omits it), cleared by Reset All
+- Header second row: Date label stacks on mobile to fit the menu icon
+- Tested iteration_16: backend 100%, frontend 100%
+- Terms have no business/legal name or governing law yet (user skipped); contact = admin email

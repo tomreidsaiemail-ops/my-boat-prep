@@ -118,6 +118,10 @@ async def get_boat(user: dict = Depends(get_current_user)):
 @api_router.put("/me/boat", response_model=BoatStateOut)
 async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)):
     owner_id = user["user_id"]
+    checked = payload.emergency_checked
+    if "emergency_checked" not in payload.model_fields_set:
+        prev = await db.user_boats.find_one({"owner_id": owner_id}, {"emergency_checked": 1})
+        checked = (prev or {}).get("emergency_checked", {})
     state = BoatState(
         owner_id=owner_id,
         boat=payload.boat,
@@ -127,7 +131,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         log_sent=payload.log_sent,
         engine_log=payload.engine_log,
         deleted_lists=payload.deleted_lists,
-        emergency_checked=payload.emergency_checked,
+        emergency_checked=checked,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
     await db.user_boats.update_one({"owner_id": owner_id}, {"$set": state.to_mongo()}, upsert=True)

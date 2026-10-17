@@ -37,8 +37,12 @@ async def get_faq(_: dict = Depends(get_current_user)):
 
 @router.put("/admin/faq")
 async def save_faq(payload: FaqIn, admin: dict = Depends(require_admin)):
-    items = [{"id": f.id, "question": f.question.strip(), "answer": f.answer.strip()}
-             for f in payload.items if f.question.strip() and f.answer.strip()]
+    items, seen = [], set()
+    for f in payload.items:
+        q, a, key = f.question.strip(), f.answer.strip(), f.question.strip().lower()
+        if q and a and key not in seen and f.id not in {i["id"] for i in items}:
+            seen.add(key)
+            items.append({"id": f.id, "question": q, "answer": a})
     now = datetime.now(timezone.utc).isoformat()
     await db.faq.update_one({"key": "master"}, {"$set": {"key": "master", "items": items, "updated_at": now, "updated_by": admin["user_id"]}}, upsert=True)
     return {"items": items, "updated_at": now}
