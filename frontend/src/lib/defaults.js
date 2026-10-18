@@ -161,3 +161,24 @@ export const displayLabel = (item, ctx) => {
     default: return item.label;
   }
 };
+
+const SECTIONS = ["boat", "registry", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent"];
+
+// Time-stamp what changed so the cloud can merge edits from several phones item by item.
+export const stamp = (prev, next, now) => {
+  const sec_ts = { ...(prev.sec_ts || {}) };
+  SECTIONS.forEach((k) => { if (prev[k] !== next[k]) sec_ts[k] = now; });
+  const list_ts = { ...(prev.list_ts || {}) };
+  const data = { ...next.data };
+  if (prev.data !== next.data) {
+    Object.keys(next.data).forEach((id) => {
+      const a = prev.data[id] || [];
+      const b = next.data[id];
+      if (a === b) return;
+      const before = new Map(a.map((i) => [i.id, i]));
+      data[id] = b.map((i) => (before.get(i.id) === i ? i : { ...i, ts: now }));
+      if (a.length !== b.length || a.some((x, k) => x.id !== b[k].id)) list_ts[id] = now;
+    });
+  }
+  return { ...next, data, sec_ts, list_ts };
+};

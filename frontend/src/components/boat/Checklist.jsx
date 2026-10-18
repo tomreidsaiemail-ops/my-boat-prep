@@ -11,7 +11,7 @@ const PriorityTools = ({ item, first, last, onFlag, onMove }) => (
   </div>
 );
 
-const Row = ({ item, text, onToggle, onEdit, onDelete, emergency, tools }) => (
+const Row = ({ item, text, onToggle, onEdit, onDelete, emergency, tools, tickOnly }) => (
   <li className={`checklist-row ${item.checked ? "is-checked" : ""} ${item.flagged && tools ? "is-flagged" : ""}`} data-testid={`checklist-item-${item.id}`}>
     <div className="flex flex-1 flex-col">
       <button type="button" role="checkbox" aria-checked={item.checked} onClick={onToggle} data-testid={`checklist-item-toggle-${item.id}`}
@@ -21,26 +21,26 @@ const Row = ({ item, text, onToggle, onEdit, onDelete, emergency, tools }) => (
       </button>
       {tools}
     </div>
-    <div className="flex shrink-0 items-center pr-1">
+    {!tickOnly && <div className="flex shrink-0 items-center pr-1">
       <button type="button" className="icon-btn" aria-label="Edit item" onClick={onEdit} data-testid={`checklist-item-edit-${item.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
       <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete item" onClick={onDelete} data-testid={`checklist-item-delete-${item.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
-    </div>
+    </div>}
   </li>
 );
 
-export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency, onFlag, onMove }) => (
+export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency, onFlag, onMove, tickOnly }) => (
   <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="checklist">
     {items.length === 0 && (
       <li className="flex items-center justify-between gap-3 p-4 text-sm font-medium text-[var(--muted)]" data-testid="checklist-empty">
-        <span>No items yet. Add your first task below.</span>
-        <button type="button" className="icon-btn shrink-0 hover:text-[var(--red)]" aria-label="Delete this list" title="Delete this list"
-          onClick={onDeleteList} data-testid="delete-list-btn"><Trash2 className="h-[18px] w-[18px]" /></button>
+        <span>{tickOnly ? "No items on this list yet." : "No items yet. Add your first task below."}</span>
+        {!tickOnly && <button type="button" className="icon-btn shrink-0 hover:text-[var(--red)]" aria-label="Delete this list" title="Delete this list"
+          onClick={onDeleteList} data-testid="delete-list-btn"><Trash2 className="h-[18px] w-[18px]" /></button>}
       </li>
     )}
     {items.map((item, i) => (
-      <Row key={item.id} item={item} text={labelFor(item)} emergency={emergency}
+      <Row key={item.id} item={item} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly}
         onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
-        tools={onFlag && <PriorityTools item={item} first={i === 0} last={i === items.length - 1} onFlag={() => onFlag(item.id)} onMove={(d) => onMove(item.id, d)} />} />
+        tools={onFlag && !tickOnly && <PriorityTools item={item} first={i === 0} last={i === items.length - 1} onFlag={() => onFlag(item.id)} onMove={(d) => onMove(item.id, d)} />} />
     ))}
   </ul>
 );

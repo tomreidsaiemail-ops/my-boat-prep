@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { displayLabel, isOutdated, keepMine, resetLists, resetOptions, TEMPLATE_IDS } from "@/lib/defaults";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
+import { CrewBanner } from "@/components/boat/CrewBanner";
 import useTemplates from "@/hooks/useTemplates";
 import { PublishTemplateBar } from "@/components/boat/PublishTemplateBar";
 import { Header } from "@/components/boat/Header";
@@ -49,7 +50,7 @@ export default function BoatPrep({ boatId, boats }) {
   const { askUpgrade } = useUpgrade();
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
-  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore(user.user_id, boatId);
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew } = useBoatStore(user.user_id, boats.current);
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -75,6 +76,7 @@ export default function BoatPrep({ boatId, boats }) {
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
+  const ownerOnly = (fn) => (...args) => (crew ? toast.info("On a shared boat, crew can tick items only") : fn(...args));
   const guard = (zone = "top") => {
     if (ready) return true;
     showWarn(zone);
@@ -98,7 +100,7 @@ export default function BoatPrep({ boatId, boats }) {
     [next[i], next[j]] = [next[j], next[i]];
     return next;
   });
-  const reset = (zone) => guard(zone) && setDialog({ type: "reset" });
+  const reset = ownerOnly((zone) => guard(zone) && setDialog({ type: "reset" }));
   const confirmReset = (ids) => {
     mutate((s) => resetLists(s, ids, templates));
     setDialog(null);
@@ -213,7 +215,7 @@ export default function BoatPrep({ boatId, boats }) {
     return (
       <>
         <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
-          onEmail={() => needPro("Email PDF") && mail.requestSend(ids, title)} online={online} sending={mail.sending}
+          onEmail={ownerOnly(() => needPro("Email PDF") && mail.requestSend(ids, title))} online={online} sending={mail.sending}
           emailed={mail.sentKey === ids.join(",")} locked={!premium} />
         {emailPrompt}
       </>
@@ -224,22 +226,22 @@ export default function BoatPrep({ boatId, boats }) {
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
-      <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} />
-      <BoatDetails boat={boat} onChange={updateBoat} />
+      <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
+      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails boat={boat} onChange={updateBoat} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} onClone={askClone} onRename={askRename} updatedIds={updatedIds} />
+      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
-        skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={(v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
-      {updatedIds.includes(active.id) && (
+        skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
+      {!crew && updatedIds.includes(active.id) && (
         <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onGetLatest={getLatest}
           onKeepMine={() => mutate((s) => keepMine(s, active.id, templates))} />
       )}
-      {active.id === "shipsLog" && (
+      {!crew && active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {active.id === "engineService" && (
+      {!crew && active.id === "engineService" && (
         <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}
           onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
@@ -248,14 +250,14 @@ export default function BoatPrep({ boatId, boats }) {
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} /> : (
         <>
-          <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]}
+          <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew}
             onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
             {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
-          <AddItemForm key={`add-${active.id}`} onAdd={addItem}
-            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
+          {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem}
+            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
         </>
       )}
-      {user.is_admin && TEMPLATE_IDS.includes(active.id) && (
+      {user.is_admin && !crew && TEMPLATE_IDS.includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />

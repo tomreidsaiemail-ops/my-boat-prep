@@ -11,6 +11,7 @@ import Admin from "@/pages/Admin";
 import PaymentResult from "@/pages/PaymentResult";
 import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 import Terms from "@/pages/Terms";
+import JoinCrew from "@/pages/JoinCrew";
 import { TermsGate } from "@/components/auth/TermsGate";
 
 // Remount the boat workspace per account so one user's local data never carries into another's.
@@ -27,6 +28,7 @@ function AppRouter() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/join/:token" element={<JoinCrew />} />
       <Route path="/" element={<RequireAuth><UserBoat /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
       <Route path="/payment/success" element={<RequireAuth><PaymentResult success /></RequireAuth>} />

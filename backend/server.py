@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Query,
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from bson import ObjectId
+import asyncio
 import os
 import re
 import logging
@@ -30,6 +31,9 @@ from media import router as media_router, MEDIA_LISTS, media_list_for_pdf  # noq
 from faq import router as faq_router, FAQ_ID, faq_list_for_pdf  # noqa: E402
 from feedback import router as feedback_router  # noqa: E402
 from templates import router as templates_router  # noqa: E402
+from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
+from crew import router as crew_router  # noqa: E402
+from photos import router as photos_router, init_storage  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -72,6 +76,8 @@ class BoatStateIn(BaseModel):
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     template_versions: Dict[str, str] = {}
+    sec_ts: Dict[str, str] = {}
+    list_ts: Dict[str, str] = {}
 
 
 class BoatState(BaseDocument):
@@ -86,6 +92,8 @@ class BoatState(BaseDocument):
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     template_versions: Dict[str, str] = {}
+    sec_ts: Dict[str, str] = {}
+    list_ts: Dict[str, str] = {}
     synced_at: str
 
 
@@ -101,15 +109,31 @@ class BoatStateOut(BaseModel):
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     template_versions: Dict[str, str] = {}
+    sec_ts: Dict[str, str] = {}
+    list_ts: Dict[str, str] = {}
     synced_at: str
+    role: str = "owner"
 
 
-BoatId = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
+ID_PATTERN = r"^[A-Za-z0-9_-]{1,40}$"
+BoatId = Annotated[str, Query(pattern=ID_PATTERN)]
+OwnerId = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
 KEEP_IF_OMITTED = ("emergency_checked", "template_versions")
+STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts")
 
 
-def to_out(state: BoatState) -> BoatStateOut:
-    return BoatStateOut(**state.model_dump(exclude={"id"}))
+def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
+    return BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
+
+
+async def boat_access(user: dict, boat_id: str, owner: Optional[str]) -> tuple[dict, str]:
+    """Return the Mongo key for a boat and the caller's role on it (owner or crew)."""
+    if not owner or owner == user["user_id"]:
+        return {"owner_id": user["user_id"], "boat_id": boat_id}, "owner"
+    key = {"owner_id": owner, "boat_id": boat_id}
+    if not await db.user_boats.find_one({**key, "crew": user["user_id"]}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Boat not found")
+    return key, "crew"
 
 
 @api_router.get("/")
@@ -118,53 +142,74 @@ async def root():
 
 
 @api_router.get("/me/boat", response_model=BoatStateOut)
-async def get_boat(user: dict = Depends(get_current_user), boat_id: BoatId = "main"):
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id})
+async def get_boat(user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
+    key, role = await boat_access(user, boat_id, owner)
+    doc = await db.user_boats.find_one(key)
     if not doc:
         raise HTTPException(status_code=404, detail="No saved boat yet")
-    return to_out(BoatState.from_mongo(doc))
+    return to_out(BoatState.from_mongo(doc), role)
 
 
 @api_router.put("/me/boat", response_model=BoatStateOut)
-async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main"):
-    owner_id = user["user_id"]
-    key = {"owner_id": owner_id, "boat_id": boat_id}
-    prev = await db.user_boats.find_one(key, {f: 1 for f in KEEP_IF_OMITTED})
-    if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": owner_id}) >= 1:
-        raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
-    kept = {f: getattr(payload, f) if f in payload.model_fields_set else (prev or {}).get(f, {}) for f in KEEP_IF_OMITTED}
-    state = BoatState(
-        owner_id=owner_id,
-        boat_id=boat_id,
-        boat=payload.boat,
-        registry=payload.registry,
-        data=payload.data,
-        updated_at=payload.updated_at,
-        log_sent=payload.log_sent,
-        engine_log=payload.engine_log,
-        deleted_lists=payload.deleted_lists,
-        **kept,
-        synced_at=datetime.now(timezone.utc).isoformat(),
-    )
-    await db.user_boats.update_one(key, {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at}}, upsert=True)
-    return to_out(state)
+async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
+    key, role = await boat_access(user, boat_id, owner)
+    prev = await db.user_boats.find_one(key, {"_id": 0})
+    if role == "crew":
+        if not prev:
+            raise HTTPException(status_code=404, detail="Boat not found")
+        merged = merge_crew_ticks(prev, payload.model_dump())
+    else:
+        if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
+            raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
+        inc = payload.model_dump()
+        for f in KEEP_IF_OMITTED:
+            if f not in payload.model_fields_set:
+                inc[f] = (prev or {}).get(f, {})
+        merged = merge_state(prev, inc) if prev else inc
+    state = BoatState(**key, **{f: merged.get(f) for f in STATE_FIELDS if merged.get(f) is not None}, synced_at=datetime.now(timezone.utc).isoformat())
+    await db.user_boats.update_one(key, {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at, "crew": []}}, upsert=True)
+    return to_out(state, role)
+
+
+class LastBoatIn(BaseModel):
+    key: str = Field(pattern=r"^[A-Za-z0-9_-]{1,140}$")
+
+
+@api_router.put("/me/last-boat")
+async def set_last_boat(payload: LastBoatIn, user: dict = Depends(get_current_user)):
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_boat": payload.key}})
+    return {"ok": True}
+
+
+def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
+    photo = d.get("photo") or {}
+    return {
+        "boat_id": d.get("boat_id", "main"), "vessel": d.get("boat", {}).get("vessel", ""), "crew": crew_role,
+        "owner_id": d["owner_id"] if crew_role else None, "owner_name": owners.get(d["owner_id"], "") if crew_role else "",
+        "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
+    }
 
 
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
-    docs = await db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "created_at": 1}).to_list(200)
-    docs.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
-    return {"boats": [{"boat_id": d.get("boat_id", "main"), "vessel": d.get("boat", {}).get("vessel", "")} for d in docs]}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1}
+    mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
+    mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
+    shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
+    owners = {u["user_id"]: u.get("name") or u.get("email", "") for u in await db.users.find(
+        {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(200)}
+    return {"boats": [boat_summary(d, False, owners) for d in mine] + [boat_summary(d, True, owners) for d in shared], "last": user.get("last_boat")}
 
 
 @api_router.delete("/me/boats/{boat_id}")
-async def delete_boat(boat_id: Annotated[str, PathParam(pattern=r"^[A-Za-z0-9_-]{1,40}$")], user: dict = Depends(get_current_user)):
+async def delete_boat(boat_id: Annotated[str, PathParam(pattern=ID_PATTERN)], user: dict = Depends(get_current_user)):
     owner_id = user["user_id"]
     if not await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found")
     if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
         raise HTTPException(status_code=400, detail="You need at least one boat")
     await db.user_boats.delete_one({"owner_id": owner_id, "boat_id": boat_id})
+    await db.crew_invites.delete_many({"owner_id": owner_id, "boat_id": boat_id})
     return {"ok": True}
 
 
@@ -249,6 +294,8 @@ app.include_router(media_router)
 app.include_router(faq_router)
 app.include_router(feedback_router)
 app.include_router(templates_router)
+app.include_router(crew_router)
+app.include_router(photos_router)
 
 
 @app.middleware("http")
@@ -277,6 +324,12 @@ async def create_indexes():
     if "owner_id_1" in await db.user_boats.index_information():
         await db.user_boats.drop_index("owner_id_1")
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
+    await db.user_boats.create_index("crew")
+    await db.crew_invites.create_index("token_hash", unique=True)
+    try:
+        await asyncio.to_thread(init_storage)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Storage init failed: {e}")
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)

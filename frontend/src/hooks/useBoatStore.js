@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { applyTemplates, freshState, migrateState } from "@/lib/defaults";
+import { applyTemplates, freshState, migrateState, stamp } from "@/lib/defaults";
 
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
@@ -30,14 +30,22 @@ const loadLocal = (boatId) => {
 export const serverToState = (data) => {
   const m = migrateState(data);
   return { boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null, engine_log: data.engine_log || [],
-    deleted_lists: m.deleted_lists, emergency_checked: data.emergency_checked || {}, template_versions: data.template_versions || {} };
+    deleted_lists: m.deleted_lists, emergency_checked: data.emergency_checked || {}, template_versions: data.template_versions || {},
+    sec_ts: data.sec_ts || {}, list_ts: data.list_ts || {} };
 };
 
-export default function useBoatStore(userId, boatId) {
+const POLL_MS = 20000;
+
+export const boatParams = (b) => (b.owner_id ? { boat_id: b.boat_id, owner: b.owner_id } : { boat_id: b.boat_id });
+
+export default function useBoatStore(userId, boatEntry) {
+  const boatId = boatEntry.key;
+  const params = boatParams(boatEntry);
   const ownerId = useRef(null);
   if (ownerId.current === null) ownerId.current = claimLocal(userId);
   const hadLocal = useRef(!!loadLocal(boatId));
   const [state, setState] = useState(() => loadLocal(boatId) || freshState());
+  const [role, setRole] = useState(boatEntry.crew ? "crew" : "owner");
   const [pending, setPending] = useState(() => Number(localStorage.getItem(outboxKey(boatId)) || 0));
   const [browserOnline, setBrowserOnline] = useState(navigator.onLine);
   const [reachable, setReachable] = useState(true);
@@ -66,7 +74,8 @@ export default function useBoatStore(userId, boatId) {
 
   useEffect(() => {
     if (!navigator.onLine || manualOffline || pendingRef.current > 0) return;
-    api.get("/me/boat", { params: { boat_id: boatId } }).then(({ data }) => {
+    api.get("/me/boat", { params }).then(({ data }) => {
+      setRole(data.role || "owner");
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) setState(serverToState(data));
     }).catch((e) => {
@@ -82,7 +91,9 @@ export default function useBoatStore(userId, boatId) {
     const timer = setTimeout(async () => {
       const sent = pendingRef.current;
       try {
-        await api.put("/me/boat", stateRef.current, { timeout: 10000, params: { boat_id: boatId } });
+        const { data } = await api.put("/me/boat", stateRef.current, { timeout: 10000, params });
+        // Take the cloud's merged copy (it may include other phones' changes) unless more edits were made meanwhile.
+        if (pendingRef.current === sent) setState(serverToState(data));
         setPending((p) => Math.max(0, p - sent));
         localStorage.removeItem(newBoatKey);
         if (queuedOffline.current) {
@@ -94,7 +105,19 @@ export default function useBoatStore(userId, boatId) {
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [pending, online, state, boatId, newBoatKey]);
+  }, [pending, online, state, boatId, newBoatKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Shared boats: pick up the crew's or skipper's ticks from other phones.
+  useEffect(() => {
+    if (!online || !boatEntry.shared) return undefined;
+    const poll = setInterval(() => {
+      if (document.visibilityState !== "visible" || pendingRef.current > 0) return;
+      api.get("/me/boat", { params, timeout: 10000 }).then(({ data }) => {
+        if (pendingRef.current === 0 && data.updated_at > stateRef.current.updated_at) setState(serverToState(data));
+      }).catch(() => {});
+    }, POLL_MS);
+    return () => clearInterval(poll);
+  }, [online, boatEntry.shared]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (reachable || !browserOnline) return undefined;
@@ -103,7 +126,7 @@ export default function useBoatStore(userId, boatId) {
   }, [reachable, browserOnline]);
 
   const mutate = useCallback((fn, { count = true } = {}) => {
-    setState((prev) => ({ ...fn(prev), updated_at: new Date().toISOString() }));
+    setState((prev) => { const now = new Date().toISOString(); return { ...stamp(prev, fn(prev), now), updated_at: now }; });
     setPending((p) => (count ? p + 1 : Math.max(p, 1)));
     if (!onlineRef.current) queuedOffline.current = true;
   }, []);
@@ -119,12 +142,12 @@ export default function useBoatStore(userId, boatId) {
   const emailLog = useCallback(async ({ localDate, listIds, position, email }) => {
     const sent = pendingRef.current;
     const cur = stateRef.current;
-    await api.put("/me/boat", { ...cur, boat: { ...cur.boat, log_email: email } }, { timeout: 10000, params: { boat_id: boatId } });
+    await api.put("/me/boat", { ...cur, boat: { ...cur.boat, log_email: email } }, { timeout: 10000, params });
     setPending((p) => Math.max(0, p - sent));
     const { data } = await api.post("/me/email-log", { local_date: localDate, list_ids: listIds, position, boat_id: boatId }, { timeout: 40000 });
     if (listIds.length === 1 && listIds[0] === "shipsLog") mutate((s) => ({ ...s, log_sent: data.log_sent }), { count: false });
     return data.log_sent;
-  }, [mutate, boatId]);
+  }, [mutate, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { state, mutate, pending, online, goOffline, goOnline, emailLog };
+  return { state, mutate, pending, online, goOffline, goOnline, emailLog, crew: role === "crew" };
 }
