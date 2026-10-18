@@ -12,7 +12,7 @@ export const ActionBar = ({ zone, warn, onReset, onExport, locked }) => (
     <ValidationBar show={warn} testId={`${zone}-validation-bar`} />
     <div className="grid grid-cols-3 gap-2">
       <button type="button" data-testid={`${zone}-reset-all-btn`} onClick={onReset} className="btn-ghost">
-        <RotateCcw className="h-4 w-4" /> Reset All
+        <RotateCcw className="h-4 w-4" /> Reset All...
       </button>
       <button type="button" data-testid={`${zone}-export-current-btn`} onClick={() => onExport(true)} className="btn-solid">
         <FileDown className="h-4 w-4" /> Export Current

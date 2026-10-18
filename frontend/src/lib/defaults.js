@@ -71,13 +71,20 @@ export const freshState = () => ({
   updated_at: new Date(0).toISOString(),
 });
 
-const insertDefaultList = (registry, data, id) => {
+export const PRESERVED_LISTS = ["shipsLog", "myTodo"];
+export const TEMPLATE_IDS = DEFAULT_REGISTRY.map((l) => l.id).filter((id) => !PRESERVED_LISTS.includes(id));
+
+// Admin-published master template items, falling back to the built-in items.
+export const templateItems = (id, templates) =>
+  JSON.parse(JSON.stringify(templates?.[id]?.items || DEFAULT_DATA[id])).map((i) => ({ ...i, checked: false }));
+
+const insertDefaultList = (registry, data, id, templates) => {
   const def = DEFAULT_REGISTRY.find((l) => l.id === id);
   if (registry.some((l) => l.id === id || l.name.toLowerCase() === def.name.toLowerCase())) return false;
   const later = DEFAULT_REGISTRY.slice(DEFAULT_REGISTRY.indexOf(def) + 1).map((l) => l.id);
   const at = registry.findIndex((l) => later.includes(l.id));
   registry.splice(at < 0 ? registry.length : at, 0, { ...def });
-  data[id] = JSON.parse(JSON.stringify(DEFAULT_DATA[id]));
+  data[id] = templateItems(id, templates);
   return true;
 };
 
@@ -89,21 +96,27 @@ const addMissingLists = (s) => {
   return { ...s, registry, data, deleted_lists: deleted };
 };
 
-export const PRESERVED_LISTS = ["shipsLog", "myTodo"];
-
-export const resetSuppliedLists = (s) => {
-  const { state } = restoreDeletedLists(s);
-  const data = { ...state.data };
-  state.registry.filter((l) => l.isSystem && !PRESERVED_LISTS.includes(l.id) && DEFAULT_DATA[l.id])
-    .forEach((l) => { data[l.id] = JSON.parse(JSON.stringify(DEFAULT_DATA[l.id])); });
-  return { ...state, data, emergency_checked: {} };
+export const applyTemplates = (s, templates) => {
+  const data = { ...s.data };
+  s.registry.filter((l) => TEMPLATE_IDS.includes(l.id)).forEach((l) => { data[l.id] = templateItems(l.id, templates); });
+  return { ...s, data };
 };
 
-export const restoreDeletedLists = (s) => {
+export const resetOptions = (s) => DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id))
+  .map((l) => ({ id: l.id, name: l.name, deleted: !s.registry.some((r) => r.id === l.id) }))
+  .filter((o) => !o.deleted || (s.deleted_lists || []).includes(o.id));
+
+export const resetLists = (s, ids, templates) => {
   const registry = [...s.registry];
   const data = { ...s.data };
-  const restored = (s.deleted_lists || []).filter((id) => insertDefaultList(registry, data, id));
-  return { state: { ...s, registry, data, deleted_lists: [] }, names: restored.map((id) => DEFAULT_REGISTRY.find((l) => l.id === id).name) };
+  const restored = [];
+  ids.forEach((id) => {
+    if (registry.some((l) => l.id === id)) data[id] = templateItems(id, templates);
+    else if (insertDefaultList(registry, data, id, templates)) restored.push(id);
+  });
+  const checked = { ...(s.emergency_checked || {}) };
+  ids.forEach((id) => { delete checked[id]; });
+  return { ...s, registry, data, deleted_lists: (s.deleted_lists || []).filter((id) => !restored.includes(id)), emergency_checked: checked };
 };
 
 export const migrateState = (s) => s && addMissingLists({

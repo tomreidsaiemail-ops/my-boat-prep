@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { freshState, migrateState } from "@/lib/defaults";
+import { applyTemplates, freshState, migrateState } from "@/lib/defaults";
 
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
@@ -62,8 +62,10 @@ export default function useBoatStore(userId) {
         setState({ boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null, engine_log: data.engine_log || [], deleted_lists: m.deleted_lists, emergency_checked: data.emergency_checked || {} });
       }
     }).catch((e) => {
-      if (e.response?.status === 404) setPending((p) => Math.max(p, 1));
-      else if (!e.response) setReachable(false);
+      if (e.response?.status !== 404) { if (!e.response) setReachable(false); return; }
+      setPending((p) => Math.max(p, 1));
+      // Brand-new skipper: start the built-in lists from the admin's master templates.
+      if (!hadLocal.current) api.get("/templates").then(({ data }) => mutate((s) => applyTemplates(s, data.templates))).catch(() => {});
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

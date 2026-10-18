@@ -12,7 +12,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
-import { displayLabel, resetSuppliedLists } from "@/lib/defaults";
+import { displayLabel, resetLists, resetOptions, TEMPLATE_IDS } from "@/lib/defaults";
+import useTemplates from "@/hooks/useTemplates";
+import { PublishTemplateBar } from "@/components/boat/PublishTemplateBar";
 import { Header } from "@/components/boat/Header";
 import { BoatDetails } from "@/components/boat/BoatDetails";
 import { ActionBar } from "@/components/boat/ActionBar";
@@ -26,7 +28,7 @@ import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
-import { ResetAllDialog } from "@/components/boat/ResetAllDialog";
+import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
@@ -56,6 +58,7 @@ export default function BoatPrep() {
   const { tips, save: saveTips } = useTips(online);
   const media = useMedia(online);
   const { faq, save: saveFaq } = useFaq(online);
+  const { templates, publish } = useTemplates(online);
   const { boat, registry } = state;
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
@@ -91,10 +94,10 @@ export default function BoatPrep() {
     return next;
   });
   const reset = (zone) => guard(zone) && setDialog({ type: "reset" });
-  const confirmReset = () => {
-    mutate(resetSuppliedLists);
+  const confirmReset = (ids) => {
+    mutate((s) => resetLists(s, ids, templates));
     setDialog(null);
-    toast.success("Supplied lists reset to their original items");
+    toast.success(ids.length === 1 ? `${resetOptions(state).find((o) => o.id === ids[0])?.name} reset` : `${ids.length} lists reset`);
   };
   const askDeleteList = () => {
     if (!guard()) return;
@@ -217,6 +220,9 @@ export default function BoatPrep() {
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />
         </>
       )}
+      {user.is_admin && TEMPLATE_IDS.includes(active.id) && (
+        <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publish} />
+      )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
@@ -228,7 +234,7 @@ export default function BoatPrep() {
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
-      <ResetAllDialog open={dialog?.type === "reset"} onConfirm={confirmReset} onClose={() => setDialog(null)} />
+      <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>

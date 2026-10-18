@@ -29,6 +29,7 @@ from password_auth import router as password_router  # noqa: E402
 from media import router as media_router, MEDIA_LISTS, media_list_for_pdf  # noqa: E402
 from faq import router as faq_router, FAQ_ID, faq_list_for_pdf  # noqa: E402
 from feedback import router as feedback_router  # noqa: E402
+from templates import router as templates_router  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -217,6 +218,7 @@ app.include_router(password_router)
 app.include_router(media_router)
 app.include_router(faq_router)
 app.include_router(feedback_router)
+app.include_router(templates_router)
 
 
 @app.middleware("http")
