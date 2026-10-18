@@ -56,12 +56,14 @@ export default function useBoats(userId) {
     const id = `b${Date.now().toString(36)}`;
     localStorage.setItem(stateKey(id), JSON.stringify(copyBoatState(fromState, vessel)));
     localStorage.setItem(outboxKey(id), "1");
+    localStorage.setItem(`mbp_boat_new_${id}`, "1");
     setBoats((list) => [...list, { boat_id: id, vessel }]);
     setActiveId(id);
   }, []);
 
   const remove = useCallback(async (id) => {
-    try { await api.delete(`/me/boats/${id}`, { timeout: 10000 }); } catch (e) { if (e.response?.status !== 404) throw e; }
+    // A boat added but not yet saved to the cloud only needs removing from this phone.
+    try { await api.delete(`/me/boats/${id}`, { timeout: 10000 }); } catch (e) { if (!(e.response?.status === 404 || (e.response?.status === 400 && unsynced(id)))) throw e; }
     localStorage.removeItem(stateKey(id));
     localStorage.removeItem(outboxKey(id));
     setBoats((list) => list.filter((b) => b.boat_id !== id));

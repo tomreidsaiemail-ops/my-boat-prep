@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the 3 new features (rename lists, template Updated badge, multiple boats) on backend and frontend. Backend: new test_multi_boats.py passes 17/17. It covers GET/PUT /api/me/boat?boat_id (main is the default), 422 for a bad boat_id (GET, PUT, DELETE, email-log), 404 for an unknown boat, GET /api/me/boats (main first, then by created_at), template_versions/emergency_checked kept when left out of the PUT and saved when sent, email-log reading the boat_id's own details (400 when that boat has no callsign, 404 for a missing boat), DELETE (200, then GET 404), 400 when deleting the last boat, a free user's second boat getting 403 with no doc created, and free PUT on main still working. test_templates.py still passes 17/17. Frontend: everything requested passed. Rename: Safety->'Safety Offshore', My To Do List->'Boat Jobs' and a custom list all worked. Empty and blank names gave 'Please enter a list name'. Duplicates (any case, including Skipper's Tips) gave '<name> already exists'. The admin-list warning toast showed. Free users got the plan dialog with 'Rename lists is a Pro feature.' plus the perks. Names stayed after reload, and Export Current showed 'Safety Offshore'. Template badge: a new user was registered before the publish (set to pro) and renamed Safety to 'My Safety Gear'. After the admin published Safety with publish-template-btn, that user saw the note, the 'Updated' badge and 'My Safety Gear • Updated'. Keep mine hid it, also after reload. A second publish brought it back. Get latest replaced the items with exactly the 11 template items, all unticked, kept the renamed name, and left the Leaving Dock tick alone. A third publish then Reset All... (Safety only) also cleared the note. The admin's current boat showed no badge after publishing, while the admin's other boat did. A new user registered after the publish started with the template and no badge. Multiple boats (admin): add-boat errors work ('Please enter the vessel name'; 'test_bacchus is already one of your boats'). The added 'TEST_Antipodean Searcher' got all lists, including the renamed and custom lists, with all ticks cleared, the Ship's Log default entry only, To Do empty, engine log empty, callsign empty and skipper kept. Ticks and callsigns stayed separate per boat across switches. Reload kept the active boat. GET /api/me/boats listed all 3. Offline ticks on boat B were in Mongo after switching to main and going back online. Deleting while offline gave the toast 'Go online to delete a boat'. Delete removed boats from the cloud and switched to another boat, and the delete button is hidden with 1 boat. Free add-boat-btn opens the plan dialog with 'More than one boat'. At 390px nothing overflows (doc scrollWidth 390; boat switcher row and list selector row each end at 374px).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/me/boats/{boat_id}", "issue": "When the user has only 1 boat, deleting an unknown boat_id returns 400 ('You need at least one boat') instead of 404, because the count check runs first. This is harmless."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "useBoatStore / add boat", "issue": "Adding a boat while online shows a 'Changes successfully synchronized to cloud database' toast next to the 'added' toast. The new boat's outbox starts at 1, so queuedOffline is true when it mounts and the 'synced after offline' toast fires.", "selector": "[data-sonner-toast]", "priority": "LOW"},
+      {"component": "ResetListsDialog / confirmReset toast", "issue": "Renamed built-in lists show their default name: the reset option and toast say 'Safety' / 'Safety reset' when the list is named 'My Safety Gear'. resetOptions uses DEFAULT_REGISTRY names instead of the user's registry names.", "selector": "[data-testid=reset-option-safety-label]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PublishTemplateBar", "issues": ["The status text still says 'existing skippers get it when they reset <list>'. Skippers now also get an Updated badge with 'Get latest items', so the copy is out of date."]},
+      {"screen": "390px list selector row", "issues": ["With 3 buttons the select is only about 186px wide, so longer names are cut off ('Arriving at De...'). There is no overflow, just a tight fit."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_multi_boats.py", "/app/test_reports/pytest/pytest_multi_boats.xml", "/app/backend/tests/test_templates.py"],
+  "action_items": [
+    "LOW: Don't show the offline-sync toast when a new boat is created online (e.g. don't seed queuedOffline from the outbox set by boats.add).",
+    "LOW: In resetOptions and the reset toast, use the user's registry name for lists that exist (renamed built-ins).",
+    "LOW: Update the PublishTemplateBar copy to mention the Updated badge / Get latest items."
+  ],
+  "critical_code_review_comments": [
+    "useBoats.add makes a boat locally and only reaches the cloud after the debounced PUT. If the user deletes it before the PUT, the backend count may still be 1 and DELETE returns 400 'You need at least one boat' (an error toast) even though the user sees 2 boats. Consider handling local-only (unsynced, not in cloud) boats in remove without calling the API.",
+    "Vessel names are only checked for uniqueness in the add-boat dialog. Changing vessel-input to another boat's name makes two identical options in boat-selector.",
+    "The active boat is stored per device (mbp_boats_active). A fresh device always opens main. This is fine, but worth knowing.",
+    "A boat deleted on device A is dropped from device B's list when B fetches /me/boats, unless B still has unsynced changes for it. In that case the flush effect PUTs it back and the deleted boat comes back. This is an edge case; a tombstone or a 410 would prevent it.",
+    "save_boat 403 check: a free user who downgraded from Pro with 2+ boats can still PUT existing boats (prev exists). This seems intended."
+  ],
+  "updated_files": ["/app/backend/tests/test_multi_boats.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (3 low-priority UX issues)"},
+  "seed_data_creation": "Registered test.mb.tmpl1@example.com (role set to pro) and test.mb.tmpl2@example.com, then deleted them along with their boats and sessions. Admin: added and then deleted TEST_Antipodean Searcher and the pre-existing TEST_Bacchus boat, so only main is left. Admin main boat cleaned up: vessel/skipper/callsign set to empty, list names restored (Safety, My To Do List), custom list removed, TEST items removed, all unticked, engine_log, template_versions and emergency_checked cleared, updated_at bumped. db.list_templates emptied (0). Pro/free/beta TEST_ boats made by pytest were removed by the fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with '-n 0' (pytest.ini uses xdist; test_multi_boats depends on test order). test_session_pro_1's main boat registry only has shipsLog plus auto-added lists (no Safety, deleted_lists empty), so badge tests need a newly registered user. Boat ids are b<base36 time>. TextDialog test ids: <id>-dialog/-input/-confirm-btn/-error/-cancel-btn (rename-list, add-boat). Offline: use page.context.set_offline. Reset options: reset-option-<id>, reset-all-confirm-btn."
+}

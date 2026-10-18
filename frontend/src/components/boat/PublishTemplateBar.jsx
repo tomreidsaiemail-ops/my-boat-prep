@@ -33,7 +33,7 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
       <p className="text-sm leading-relaxed" data-testid="publish-template-status">
         <b>Admin · Master template.</b>{" "}
         {template ? `Last published ${fmt(template.updated_at)} with ${template.items.length} items.` : "Not published yet: skippers get the built-in items."}
-        {" "}New skippers start with it; existing skippers get it when they reset {list.name}.
+        {" "}New skippers start with it; existing skippers see an Updated note with "Get latest items", or get it when they reset {list.name}.
       </p>
       <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" disabled={busy} onClick={open} data-testid="publish-template-btn">
         {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />} Publish as master template

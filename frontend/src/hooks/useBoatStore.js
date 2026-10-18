@@ -15,7 +15,7 @@ const MANUAL_OFFLINE_KEY = "mbp_manual_offline";
 const claimLocal = (userId) => {
   const owner = localStorage.getItem(OWNER_KEY);
   if (owner && owner !== userId) {
-    Object.keys(localStorage).filter((k) => k.startsWith(STATE_KEY) || k.startsWith(OUTBOX_KEY) || k.startsWith("mbp_boats")).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.startsWith(STATE_KEY) || k.startsWith(OUTBOX_KEY) || k.startsWith("mbp_boat")).forEach((k) => localStorage.removeItem(k));
   }
   localStorage.setItem(OWNER_KEY, userId);
   return userId;
@@ -42,7 +42,8 @@ export default function useBoatStore(userId, boatId) {
   const [browserOnline, setBrowserOnline] = useState(navigator.onLine);
   const [reachable, setReachable] = useState(true);
   const [manualOffline, setManualOffline] = useState(() => localStorage.getItem(MANUAL_OFFLINE_KEY) === "1");
-  const queuedOffline = useRef(pending > 0);
+  const newBoatKey = `mbp_boat_new_${boatId}`;
+  const queuedOffline = useRef(pending > 0 && !localStorage.getItem(newBoatKey));
   const stateRef = useRef(state);
   const pendingRef = useRef(pending);
   stateRef.current = state;
@@ -83,6 +84,7 @@ export default function useBoatStore(userId, boatId) {
       try {
         await api.put("/me/boat", stateRef.current, { timeout: 10000, params: { boat_id: boatId } });
         setPending((p) => Math.max(0, p - sent));
+        localStorage.removeItem(newBoatKey);
         if (queuedOffline.current) {
           queuedOffline.current = false;
           toast.success("Changes successfully synchronized to cloud database");
@@ -92,7 +94,7 @@ export default function useBoatStore(userId, boatId) {
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [pending, online, state, boatId]);
+  }, [pending, online, state, boatId, newBoatKey]);
 
   useEffect(() => {
     if (reachable || !browserOnline) return undefined;

@@ -160,11 +160,11 @@ async def list_boats(user: dict = Depends(get_current_user)):
 @api_router.delete("/me/boats/{boat_id}")
 async def delete_boat(boat_id: Annotated[str, PathParam(pattern=r"^[A-Za-z0-9_-]{1,40}$")], user: dict = Depends(get_current_user)):
     owner_id = user["user_id"]
+    if not await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Boat not found")
     if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
         raise HTTPException(status_code=400, detail="You need at least one boat")
-    res = await db.user_boats.delete_one({"owner_id": owner_id, "boat_id": boat_id})
-    if not res.deleted_count:
-        raise HTTPException(status_code=404, detail="Boat not found")
+    await db.user_boats.delete_one({"owner_id": owner_id, "boat_id": boat_id})
     return {"ok": True}
 
 
