@@ -1,0 +1,24 @@
+{
+  "summary": "Tested admin master templates (backend + UI) and the new 'Reset All...' selective reset dialog. Backend: 17/17 pytest pass (GET /api/templates for any authed user, 401 unauthenticated; PUT admin-only 403; 404 for myTodo/shipsLog/unknown; 400 for empty/blank items, May Day missing dynamic lines, Pan Pan missing panPanGps, a dynamic key on the wrong list; 422 for an unknown dynamic value; blank labels and duplicate ids stripped; upsert overwrite; updated_by not exposed). Frontend: admin publish bar shows only on the 12 built-in lists (not on myTodo/shipsLog/tips/YouTube/movies/FAQ, and not for non-admins). Publishing Safety with 'TEST master item' worked and the status read 'Last published 18/10/2026 with 10 items'. Publishing an unchanged May Day worked, and the stored template keeps placeholders ([Vessel Name]/<Callsign>) with dynamic keys. After editing the 'This is <vessel>' line, publish showed the correct error toast. A new user registered at /login started with the template Safety (contains TEST master item), and May Day lines showed their own vessel/callsign. The admin then published Safety v2 + a Leaving Dock template. The existing user's Safety did not change until reset; resetting only Safety gave exactly the v2 items, all unticked. Reset dialog: both buttons read 'Reset All...'; 12 options, all unticked; OK with none shows reset-nothing-selected and the dialog stays open; Select All ticks all; unticking one unticks Select All. Leaving Dock + Returning Dock reset only those two, and ticks stayed on Safety/Head/myTodo/clone. Resetting May Day cleared mayDay-skipper-check. A deleted Grab Bag showed '(deleted, will be restored)', was restored to its original position with built-in items. Select All reset 12 lists, while the cloned 'My Safety' and My To Do List kept their items and ticks. On 390px mobile the dialog fits (no horizontal overflow) and the list scrolls inside it.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Reset dialog", "issues": ["If a user has zero resettable lists (e.g. registry only has Ship's Log/My To Do and deleted_lists empty) the dialog shows only 'Select All' and OK warns 'Nothing is selected' - consider an empty-state message. Edge case only."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_templates.py", "/app/test_reports/pytest/pytest_templates.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "defaults.js insertDefaultList: restoring a deleted built-in list silently does nothing if the user has a custom list with the same name (e.g. created a list called 'Safety'); the reset toast still says it was reset and the option stays '(deleted, will be restored)'. Consider renaming or warning.",
+    "useBoatStore 404 branch: the first PUT of freshState (700ms debounce) can go out before GET /templates resolves, which means a second PUT. Harmless, but templates could also be applied before the first PUT.",
+    "addMissingLists (migration) calls insertDefaultList without templates, so Head/Engine Service/My To Do auto-added for old accounts use built-in items, not templates. Probably intended."
+  ],
+  "updated_files": ["/app/backend/tests/test_templates.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporarily set admin boat vessel/skipper/callsign to TEST_ values (restored to blank afterwards). Registered test.tmpl.r1@example.com and set its role to pro in Mongo so clone could be tested; deleted it afterwards (user, boat, sessions). db.list_templates emptied at the end (count 0). Admin Safety/May Day were reset back to built-in items. Pro test user's head/engineService were reset to defaults (they were already default).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Clone list is Pro-only: free users get the upgrade dialog. Boat detail inputs: vessel-input/skipper-input/callsign-input. The boat doc is in db.user_boats keyed by owner_id. List switching uses the native select list-selector. Checked rows have class 'is-checked'. Emergency skipper tick: mayDay-skipper-check."
+}

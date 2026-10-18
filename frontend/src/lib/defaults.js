@@ -104,7 +104,8 @@ export const applyTemplates = (s, templates) => {
 
 export const resetOptions = (s) => DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id))
   .map((l) => ({ id: l.id, name: l.name, deleted: !s.registry.some((r) => r.id === l.id) }))
-  .filter((o) => !o.deleted || (s.deleted_lists || []).includes(o.id));
+  .filter((o) => !o.deleted || (s.deleted_lists || []).includes(o.id))
+  .map((o) => ({ ...o, clash: o.deleted && s.registry.some((r) => r.name.toLowerCase() === o.name.toLowerCase()) }));
 
 export const resetLists = (s, ids, templates) => {
   const registry = [...s.registry];

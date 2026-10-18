@@ -148,3 +148,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Pro/Beta only (Free -> plan dialog; perks list now includes "Clone lists"); requires boat details like +
 - Dialog pre-fills "My <name>", case-insensitive duplicate check; copy is an independent custom list with all items unticked; unaffected by Reset All
 - Tested iteration_17: frontend 100%
+
+## Iteration 20 (2026-06): Master templates + selective "Reset All..."
+- Admin master templates for all 12 built-in checklists incl. May Day/Pan Pan (not My To Do / Ship's Log): backend `templates.py` (GET /api/templates, PUT /api/admin/templates/{list_id}; Mongo list_templates; May Day/Pan Pan must keep smart vessel/callsign/GPS lines)
+- Admin publishes from own list via PublishTemplateBar (confirm dialog, "Last published" status); built-in items used until published
+- New users start from templates (useBoatStore 404 branch -> applyTemplates); existing users only get templates on reset; clones/custom lists never touched
+- "Reset All..." opens ResetListsDialog: per-list tick boxes (all unticked), Select All, "Nothing is selected" warning, deleted built-in lists offered "(deleted, will be restored)" (disabled if a custom list has the same name); resetting May Day/Pan Pan clears its Skipper tick
+- Tested iteration_18: backend 100%, frontend 100%
+- Backlog note: old accounts auto-adding Head/Engine/To Do via migration use built-in items

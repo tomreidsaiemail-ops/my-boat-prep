@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const Box = ({ checked, onChange, testId, children, bold }) => (
-  <label className={`flex min-h-[44px] cursor-pointer items-center gap-3 px-3 text-base ${bold ? "font-bold" : "font-medium"}`} data-testid={`${testId}-label`}>
-    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--navy)]" data-testid={testId} />
+const Box = ({ checked, onChange, testId, children, bold, disabled }) => (
+  <label className={`flex min-h-[44px] items-center gap-3 px-3 text-base ${bold ? "font-bold" : "font-medium"} ${disabled ? "opacity-60" : "cursor-pointer"}`} data-testid={`${testId}-label`}>
+    <input type="checkbox" disabled={disabled} checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--navy)]" data-testid={testId} />
     <span>{children}</span>
   </label>
 );
@@ -15,11 +15,12 @@ export const ResetListsDialog = ({ open, options, onConfirm, onClose }) => {
 
   useEffect(() => { if (open) { setPicked([]); setError(""); } }, [open]);
 
-  const all = options.length > 0 && picked.length === options.length;
+  const usable = options.filter((o) => !o.clash);
+  const all = usable.length > 0 && picked.length === usable.length;
   const toggle = (id, on) => { setError(""); setPicked((p) => (on ? [...p, id] : p.filter((x) => x !== id))); };
-  const toggleAll = (on) => { setError(""); setPicked(on ? options.map((o) => o.id) : []); };
+  const toggleAll = (on) => { setError(""); setPicked(on ? usable.map((o) => o.id) : []); };
   const submit = () => {
-    if (!picked.length) { setError("Nothing is selected. Tick the lists you want to reset, or Select All."); return; }
+    if (!picked.length) { setError(usable.length ? "Nothing is selected. Tick the lists you want to reset, or Select All." : "There are no lists to reset."); return; }
     onConfirm(options.filter((o) => picked.includes(o.id)).map((o) => o.id));
   };
 
@@ -33,10 +34,11 @@ export const ResetListsDialog = ({ open, options, onConfirm, onClose }) => {
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 overflow-y-auto rounded-md border-[1.5px] border-[var(--line)]">
-          <div className="border-b-[1.5px] border-[var(--line)] bg-slate-50"><Box bold checked={all} onChange={toggleAll} testId="reset-select-all">Select All</Box></div>
+          {usable.length === 0 && <p className="p-3 text-sm font-medium text-[var(--muted)]" data-testid="reset-empty">There are no supplied lists to reset.</p>}
+          {usable.length > 0 && <div className="border-b-[1.5px] border-[var(--line)] bg-slate-50"><Box bold checked={all} onChange={toggleAll} testId="reset-select-all">Select All</Box></div>}
           {options.map((o) => (
-            <Box key={o.id} checked={picked.includes(o.id)} onChange={(on) => toggle(o.id, on)} testId={`reset-option-${o.id}`}>
-              {o.name}{o.deleted && <span className="ml-1 text-sm font-normal text-[var(--muted)]">(deleted, will be restored)</span>}
+            <Box key={o.id} disabled={o.clash} checked={picked.includes(o.id)} onChange={(on) => toggle(o.id, on)} testId={`reset-option-${o.id}`}>
+              {o.name}{o.deleted && <span className="ml-1 text-sm font-normal text-[var(--muted)]">{o.clash ? `(can't restore: you have your own list called ${o.name})` : "(deleted, will be restored)"}</span>}
             </Box>
           ))}
         </div>
