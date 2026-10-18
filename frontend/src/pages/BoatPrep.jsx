@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
@@ -12,7 +12,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
-import { displayLabel, resetLists, resetOptions, TEMPLATE_IDS } from "@/lib/defaults";
+import { displayLabel, isOutdated, keepMine, resetLists, resetOptions, TEMPLATE_IDS } from "@/lib/defaults";
+import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
+import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import useTemplates from "@/hooks/useTemplates";
 import { PublishTemplateBar } from "@/components/boat/PublishTemplateBar";
 import { Header } from "@/components/boat/Header";
@@ -42,12 +44,12 @@ const useWarn = () => {
   return [warn, show];
 };
 
-export default function BoatPrep() {
+export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
   const { askUpgrade } = useUpgrade();
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
-  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore(user.user_id);
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog } = useBoatStore(user.user_id, boatId);
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -60,6 +62,9 @@ export default function BoatPrep() {
   const { faq, save: saveFaq } = useFaq(online);
   const { templates, publish } = useTemplates(online);
   const { boat, registry } = state;
+  const { setVessel } = boats;
+  useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
+  const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
   const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
@@ -164,6 +169,31 @@ export default function BoatPrep() {
     toast.success(`${name} created from ${source.name}`);
     return true;
   };
+  const askRename = () => {
+    if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be renamed"); return; }
+    if (needPro("Rename lists") && guard()) setDialog({ type: "rename", list: active });
+  };
+  const renameList = (name) => {
+    const { id, name: old } = dialog.list;
+    if (!name) return "Please enter a list name";
+    if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    if (name !== old) {
+      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name } : l)) }));
+      toast.success(`${old} renamed to ${name}`);
+    }
+    setDialog(null);
+    return true;
+  };
+  const getLatest = () => {
+    if (!guard()) return;
+    mutate((s) => resetLists(s, [active.id], templates));
+    toast.success(`${active.name} now has the latest master items`);
+  };
+  const publishTemplate = async (id, list) => {
+    const res = await publish(id, list);
+    mutate((s) => ({ ...s, template_versions: { ...(s.template_versions || {}), [id]: res.updated_at } }));
+    return res;
+  };
   const openFaq = () => {
     setActiveId(FAQ_ID);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -194,11 +224,16 @@ export default function BoatPrep() {
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
+      <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} />
       <BoatDetails boat={boat} onChange={updateBoat} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} onClone={askClone} />
+      <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={() => needPro("Create your own lists") && guard() && setDialog({ type: "list" })} onClone={askClone} onRename={askRename} updatedIds={updatedIds} />
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={(v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
+      {updatedIds.includes(active.id) && (
+        <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onGetLatest={getLatest}
+          onKeepMine={() => mutate((s) => keepMine(s, active.id, templates))} />
+      )}
       {active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
@@ -221,7 +256,7 @@ export default function BoatPrep() {
         </>
       )}
       {user.is_admin && TEMPLATE_IDS.includes(active.id) && (
-        <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publish} />
+        <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
@@ -231,6 +266,9 @@ export default function BoatPrep() {
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
+      <TextDialog open={dialog?.type === "rename"} title="Rename List" confirmLabel="Save" testId="rename-list"
+        initial={dialog?.type === "rename" ? dialog.list.name : ""}
+        onConfirm={dialog?.type === "rename" ? renameList : () => true} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />

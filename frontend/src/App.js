@@ -5,7 +5,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UpgradeProvider } from "@/context/UpgradeContext";
 import { GoogleCallback } from "@/components/auth/GoogleCallback";
 import { RequireAuth } from "@/components/auth/RequireAuth";
-import BoatPrep from "@/pages/BoatPrep";
+import BoatShell from "@/pages/BoatShell";
 import Login from "@/pages/Login";
 import Admin from "@/pages/Admin";
 import PaymentResult from "@/pages/PaymentResult";
@@ -16,7 +16,7 @@ import { TermsGate } from "@/components/auth/TermsGate";
 // Remount the boat workspace per account so one user's local data never carries into another's.
 function UserBoat() {
   const { user } = useAuth();
-  return <TermsGate key={user.user_id}><BoatPrep /></TermsGate>;
+  return <TermsGate key={user.user_id}><BoatShell /></TermsGate>;
 }
 
 function AppRouter() {

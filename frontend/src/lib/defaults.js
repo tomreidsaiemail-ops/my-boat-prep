@@ -96,10 +96,33 @@ const addMissingLists = (s) => {
   return { ...s, registry, data, deleted_lists: deleted };
 };
 
+const markVersions = (s, ids, templates) => {
+  const v = { ...(s.template_versions || {}) };
+  ids.forEach((id) => { if (templates?.[id]) v[id] = templates[id].updated_at; });
+  return v;
+};
+
+export const isOutdated = (s, id, templates) => !!templates?.[id] && TEMPLATE_IDS.includes(id)
+  && s.registry.some((l) => l.id === id) && templates[id].updated_at > (s.template_versions?.[id] || "");
+
+export const keepMine = (s, id, templates) => ({ ...s, template_versions: markVersions(s, [id], templates) });
+
 export const applyTemplates = (s, templates) => {
   const data = { ...s.data };
-  s.registry.filter((l) => TEMPLATE_IDS.includes(l.id)).forEach((l) => { data[l.id] = templateItems(l.id, templates); });
-  return { ...s, data };
+  const ids = s.registry.filter((l) => TEMPLATE_IDS.includes(l.id)).map((l) => l.id);
+  ids.forEach((id) => { data[id] = templateItems(id, templates); });
+  return { ...s, data, template_versions: markVersions(s, ids, templates) };
+};
+
+// A new boat starts as a copy of the current one: lists unticked, voyage records and To Do cleared.
+export const copyBoatState = (s, vessel) => {
+  const data = Object.fromEntries(Object.entries(s.data).map(([id, items]) => [id, items.map((i) => ({ ...i, checked: false, flagged: false }))]));
+  if (data.shipsLog) data.shipsLog = JSON.parse(JSON.stringify(DEFAULT_DATA.shipsLog));
+  if (data.myTodo) data.myTodo = [];
+  return {
+    ...JSON.parse(JSON.stringify(s)), data, boat: { ...s.boat, vessel, callsign: "" },
+    log_sent: null, engine_log: [], emergency_checked: {}, updated_at: new Date().toISOString(),
+  };
 };
 
 export const resetOptions = (s) => DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id))
@@ -117,7 +140,7 @@ export const resetLists = (s, ids, templates) => {
   });
   const checked = { ...(s.emergency_checked || {}) };
   ids.forEach((id) => { delete checked[id]; });
-  return { ...s, registry, data, deleted_lists: (s.deleted_lists || []).filter((id) => !restored.includes(id)), emergency_checked: checked };
+  return { ...s, registry, data, deleted_lists: (s.deleted_lists || []).filter((id) => !restored.includes(id)), emergency_checked: checked, template_versions: markVersions(s, ids, templates) };
 };
 
 export const migrateState = (s) => s && addMissingLists({

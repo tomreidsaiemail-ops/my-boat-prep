@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Response, Request, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Path as PathParam, Query, Response, Request, Depends
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from bson import ObjectId
@@ -20,7 +20,7 @@ load_dotenv(ROOT_DIR / '.env')
 from email_service import send_email, EMAIL_FROM_NAME  # noqa: E402
 from ship_log import build_pdf, build_email_html, render_items, log_title  # noqa: E402
 from db import db, client  # noqa: E402
-from auth import router as auth_router, get_current_user, require_premium  # noqa: E402
+from auth import router as auth_router, get_current_user, require_premium, to_user_out  # noqa: E402
 from payments import router as payments_router  # noqa: E402
 from tips import router as tips_router, load_tips  # noqa: E402
 
@@ -71,10 +71,12 @@ class BoatStateIn(BaseModel):
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
+    template_versions: Dict[str, str] = {}
 
 
 class BoatState(BaseDocument):
     owner_id: str
+    boat_id: str = "main"
     boat: BoatDetails
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
@@ -83,11 +85,13 @@ class BoatState(BaseDocument):
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
+    template_versions: Dict[str, str] = {}
     synced_at: str
 
 
 class BoatStateOut(BaseModel):
     owner_id: str
+    boat_id: str = "main"
     boat: BoatDetails
     registry: List[Dict[str, Any]]
     data: Dict[str, List[Dict[str, Any]]]
@@ -96,7 +100,12 @@ class BoatStateOut(BaseModel):
     engine_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
+    template_versions: Dict[str, str] = {}
     synced_at: str
+
+
+BoatId = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
+KEEP_IF_OMITTED = ("emergency_checked", "template_versions")
 
 
 def to_out(state: BoatState) -> BoatStateOut:
@@ -109,22 +118,24 @@ async def root():
 
 
 @api_router.get("/me/boat", response_model=BoatStateOut)
-async def get_boat(user: dict = Depends(get_current_user)):
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"]})
+async def get_boat(user: dict = Depends(get_current_user), boat_id: BoatId = "main"):
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id})
     if not doc:
         raise HTTPException(status_code=404, detail="No saved boat yet")
     return to_out(BoatState.from_mongo(doc))
 
 
 @api_router.put("/me/boat", response_model=BoatStateOut)
-async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)):
+async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main"):
     owner_id = user["user_id"]
-    checked = payload.emergency_checked
-    if "emergency_checked" not in payload.model_fields_set:
-        prev = await db.user_boats.find_one({"owner_id": owner_id}, {"emergency_checked": 1})
-        checked = (prev or {}).get("emergency_checked", {})
+    key = {"owner_id": owner_id, "boat_id": boat_id}
+    prev = await db.user_boats.find_one(key, {f: 1 for f in KEEP_IF_OMITTED})
+    if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": owner_id}) >= 1:
+        raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
+    kept = {f: getattr(payload, f) if f in payload.model_fields_set else (prev or {}).get(f, {}) for f in KEEP_IF_OMITTED}
     state = BoatState(
         owner_id=owner_id,
+        boat_id=boat_id,
         boat=payload.boat,
         registry=payload.registry,
         data=payload.data,
@@ -132,17 +143,36 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         log_sent=payload.log_sent,
         engine_log=payload.engine_log,
         deleted_lists=payload.deleted_lists,
-        emergency_checked=checked,
+        **kept,
         synced_at=datetime.now(timezone.utc).isoformat(),
     )
-    await db.user_boats.update_one({"owner_id": owner_id}, {"$set": state.to_mongo()}, upsert=True)
+    await db.user_boats.update_one(key, {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at}}, upsert=True)
     return to_out(state)
+
+
+@api_router.get("/me/boats")
+async def list_boats(user: dict = Depends(get_current_user)):
+    docs = await db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "created_at": 1}).to_list(200)
+    docs.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
+    return {"boats": [{"boat_id": d.get("boat_id", "main"), "vessel": d.get("boat", {}).get("vessel", "")} for d in docs]}
+
+
+@api_router.delete("/me/boats/{boat_id}")
+async def delete_boat(boat_id: Annotated[str, PathParam(pattern=r"^[A-Za-z0-9_-]{1,40}$")], user: dict = Depends(get_current_user)):
+    owner_id = user["user_id"]
+    if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
+        raise HTTPException(status_code=400, detail="You need at least one boat")
+    res = await db.user_boats.delete_one({"owner_id": owner_id, "boat_id": boat_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="Boat not found")
+    return {"ok": True}
 
 
 class EmailLogIn(BaseModel):
     local_date: str = Field(min_length=4, max_length=60)
     list_ids: List[str] = Field(default=["shipsLog"], min_length=1, max_length=60)
     position: str = Field(default="Position unavailable", max_length=80)
+    boat_id: str = Field(default="main", pattern=r"^[A-Za-z0-9_-]{1,40}$")
 
 
 LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
@@ -151,7 +181,7 @@ LogId = Annotated[str, PathParam(pattern=r"^[a-f0-9\-]{36}$")]
 @api_router.post("/me/email-log")
 async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Depends(require_premium)):
     owner_id = user["user_id"]
-    doc = await db.user_boats.find_one({"owner_id": owner_id})
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": payload.boat_id})
     if not doc:
         raise HTTPException(status_code=404, detail="No saved boat yet")
     state = BoatState.from_mongo(doc)
@@ -197,7 +227,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     await db.ship_logs.insert_one({**log, "email_id": email_id})
     log_sent = {"to": to, "shore": recipients[1] if len(recipients) > 1 else None, "at": now, "log_id": log["log_id"], "pdf_url": pdf_url, "title": log_title(log)}
     if payload.list_ids == ["shipsLog"]:
-        await db.user_boats.update_one({"owner_id": owner_id}, {"$set": {"log_sent": log_sent}})
+        await db.user_boats.update_one({"owner_id": owner_id, "boat_id": payload.boat_id}, {"$set": {"log_sent": log_sent}})
     return {"log_sent": log_sent}
 
 
@@ -243,7 +273,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 @app.on_event("startup")
 async def create_indexes():
-    await db.user_boats.create_index("owner_id", unique=True)
+    await db.user_boats.update_many({"boat_id": {"$exists": False}}, {"$set": {"boat_id": "main"}})
+    if "owner_id_1" in await db.user_boats.index_information():
+        await db.user_boats.drop_index("owner_id_1")
+    await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
