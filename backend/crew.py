@@ -111,7 +111,9 @@ async def join_crew(payload: JoinIn, user: dict = Depends(get_current_user)):
     await db.crew_invites.delete_one({"token_hash": inv["token_hash"]})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="That boat no longer exists")
-    return {"key": f"c_{inv['owner_id']}_{inv['boat_id']}"}
+    key = f"c_{inv['owner_id']}_{inv['boat_id']}"
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_boat": key}})
+    return {"key": key}
 
 
 class LeaveIn(BaseModel):

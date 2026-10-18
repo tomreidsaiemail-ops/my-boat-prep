@@ -1,0 +1,41 @@
+{
+  "summary": "Tested remember-last-boat, crew sharing and boat photos on backend and frontend. Backend: new tests/test_crew_photos.py passes 31/31. It covers the invite rules (403 for a free owner; 400 for own email (any case), an invalid email or someone already crew; 404 for an unknown boat), 1 real invite to delivered@resend.dev (200, only token_hash stored, listed, then cancelled), join (unknown or expired token 400, wrong email 403, success returns the c_ key and uses up the invite so a reuse gets 400), /me/boats for crew (crew:true, owner_id, owner_name, crew_count, photo_v, last), GET/PUT ?owner (role crew; 404 for non-crew), crew PUT only changing 'checked' (vessel, registry, labels, new items and emergency_checked are all ignored), concurrent per-item merge both ways, last-boat validation (422) and round trip, photos (text 400, >3MB 400, unknown boat 404, PNG upload, owner and crew GET get the same bytes, non-crew 404, photo_v in the list, remove gives 404 and photo_v null), remove crew, leave, and delete boat removing its invites. Regression: test_multi_boats 17/17 (after fixing a test assertion) and test_templates 17/17. Frontend: owner crew-dialog works (empty, own and invalid email errors; photo upload resized to 800px shows in the dialog and the selector trigger; remove photo; member listed; remove member). Crew joining through /join works: Crew tag, crew-banner, the owner's photo in the trigger, no edit/delete/flag/add-item/details, the toast 'On a shared boat, crew can tick items only' on create/clone/rename/reset, the May Day skipper tick blocked, no email/engine panels. Crew ticks reach the owner (API), and the owner's open page picked up a crew API tick within 20s while keeping the owner's own tick. Leave works. Signed-out /join goes to /login with the token stored, then joins after sign-in. Remember last boat works for the admin (second boat opens in a fresh context) and for crew. Regression for own boat add/switch/tick-per-boat/delete/reset passed. At 390px nothing overflows (scrollWidth 390, last button ends at 374). One real bug: after joining, the shared boat is not selected if the user already has a server last_boat.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/me/boat?owner=... (crew)", "issue": "Crew get the owner's full boat details, including log_email and shore_email (a privacy leak). Consider removing them for role=crew."},
+      {"endpoint": "POST /api/crew/leave", "issue": "Returns ok even when the caller isn't crew or the boat doesn't exist. This is harmless."},
+      {"endpoint": "DELETE /api/boats/{id}/photo", "issue": "This is only a soft delete (is_deleted flag). The stored object stays, and the old object is also kept when a new photo is uploaded."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "JoinCrew / useBoats", "issue": "After a successful join the shared boat is NOT selected when the user already has users.last_boat on the server (e.g. 'main'). Reproduced twice (direct /join and signed-out -> login -> join): the user lands on their own boat with no crew-banner. It works only when last_boat is unset.", "selector": "[data-testid=boat-selector]", "priority": "MEDIUM"},
+      {"component": "AdBanner (free users)", "issue": "adsbygoogle.push() error 'All ins elements ... already have ads' (the Emergent runtime-error overlay blocks clicks in preview). It happens when BoatPrep remounts quickly (key=activeId changes from fallback 'main' to the shared/last boat). Two pushes get queued before adsbygoogle.js loads, but only one <ins> is left.", "selector": "[data-testid=ad-slot]", "priority": "LOW"},
+      {"component": "JoinCrew signed-out", "issue": "The toast 'Sign in to accept your crew invite' shows twice. localStorage.setItem and toast run in the render body instead of an effect.", "selector": "[data-sonner-toast]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_photos.py", "/app/test_reports/pytest/pytest_crew_photos.xml", "/app/backend/tests/test_multi_boats.py", "/app/backend/tests/manual_crew_seed.py", "/app/backend/tests/manual_crew_tick.py"],
+  "action_items": [
+    "MEDIUM: Make a join select the shared boat on every device. In JoinCrew, after POST /crew/join, call PUT /me/last-boat {key: data.key} before navigate (or have join_crew set users.last_boat = key on the server). Today useBoats.refresh's first fetch does setActiveId(data.last), which overrides the mbp_boats_active set by JoinCrew.",
+    "LOW: AdBanner: only push when its own <ins> has no data-adsbygoogle-status (use a ref) and wrap the push in try/catch. Or avoid the double BoatPrep mount (fallback 'main', then the real key) on first load.",
+    "LOW: JoinCrew: move the signed-out localStorage.setItem and toast into a useEffect so they run once.",
+    "LOW: Remove log_email and shore_email from the GET/PUT /me/boat response for role=crew."
+  ],
+  "critical_code_review_comments": [
+    "JoinCrew.jsx runs side effects (localStorage + toast) during render; with StrictMode/double render the toast fires twice.",
+    "useBoats: on first load the active key may not be in the cached boat list yet (a new shared boat), so currentBoat falls back to boats[0], BoatPrep mounts for that boat, and the ACTIVE_KEY effect writes the fallback key to localStorage. This causes the extra mount and the adsense double push.",
+    "merge_crew_ticks: if the crew item has no ts, the merged item gets ts None (it falls back to list_ts for the comparison). Use t.get('ts') or il.get(lid).",
+    "remove_photo/upload_photo never delete old objects in storage, so orphans build up.",
+    "set_last_boat accepts any key, even one that doesn't match a boat. The client checks it, so this is fine."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_photos.py", "/app/backend/tests/test_multi_boats.py", "/app/backend/tests/manual_crew_seed.py", "/app/backend/tests/manual_crew_tick.py"],
+  "success_rate": {"backend": "100% (31/31 new, 34/34 regression)", "frontend": "~92% (1 medium join-selection bug, 2 low)"},
+  "seed_data_creation": "Admin main boat details set to TEST_Admin Main/ZMTEST and a TESTsecond boat created for the UI tests. Afterwards: TESTsecond and the UI-added TEST_Third were deleted; admin main details cleared and all ticks cleared; crew [] and photo unset on admin boats; crew_invites emptied; last_boat unset for admin/free/pro/beta. Pytest boats TEST_crew1/2 on the pro user are removed by the fixture. 1 real invite email was sent to delivered@resend.dev.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0. Create invites directly in Mongo with python tests/manual_crew_seed.py invite <boat_id> (prints the token for the free user). manual_crew_tick.py makes the free user tick an item on the admin main boat through the API. The Emergent runtime overlay (adsense error) can block clicks for free users: remove it with document.querySelectorAll('[data-emergent-overlay-host]').forEach(e=>e.remove()). To reproduce the join bug, set users.last_boat='main' for test-user-free, then open /join/<token>.",
+  "rca of the issue": "Join not selecting the shared boat: JoinCrew sets localStorage mbp_boats_active=c_<owner>_<boat> and navigates to '/'. BoatShell -> useBoats starts with that activeId, but refresh() (firstFetch) runs `if (data.last && boats.some(...)) setActiveId(data.last)`. join_crew doesn't update users.last_boat, so the user's old value (e.g. 'main') wins. Repro: set free last_boat='main', create an invite, open /join/<token> as free -> boat-selector shows 'TEST_Kia Ora', no crew-banner. Fix: persist the joined key as last_boat (server side in join_crew, or the client PUT /me/last-boat before navigating)."
+}

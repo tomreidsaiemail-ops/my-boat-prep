@@ -70,7 +70,7 @@ class TestProBoats:
         assert main["boat"]["vessel"] != "TEST_Bacchus"
         boats = c.get(f"{BASE_URL}/api/me/boats").json()["boats"]
         assert boats[0]["boat_id"] == "main"
-        assert {"boat_id": "TEST_b2", "vessel": "TEST_Bacchus"} in boats
+        assert {"boat_id": "TEST_b2", "vessel": "TEST_Bacchus"} in [{"boat_id": b["boat_id"], "vessel": b["vessel"]} for b in boats]
 
     def test_list_order_by_created(self):
         c = s(PRO)

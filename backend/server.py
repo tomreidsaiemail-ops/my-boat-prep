@@ -123,7 +123,10 @@ STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_lo
 
 
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
-    return BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
+    out = BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
+    if role == "crew":
+        out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_enabled": False})
+    return out
 
 
 async def boat_access(user: dict, boat_id: str, owner: Optional[str]) -> tuple[dict, str]:

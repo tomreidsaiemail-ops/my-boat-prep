@@ -49,6 +49,6 @@ def merge_crew_ticks(prev: dict, inc: dict) -> dict:
         for n, it in enumerate(items):
             t = theirs.get(it.get("id"))
             if t and bool(t.get("checked")) != bool(it.get("checked")) and _ts(t, il.get(lid, "")) > _ts(it, pl.get(lid, "")):
-                items[n] = {**it, "checked": bool(t.get("checked")), "ts": t.get("ts")}
+                items[n] = {**it, "checked": bool(t.get("checked")), "ts": t.get("ts") or il.get(lid, "")}
     out["updated_at"] = max(prev.get("updated_at", ""), inc.get("updated_at", ""))
     return out

@@ -23,7 +23,7 @@ export default function useBoats(userId) {
   const current = currentBoat.key;
 
   useEffect(() => { localStorage.setItem(LIST_KEY, JSON.stringify(boats)); }, [boats]);
-  useEffect(() => { localStorage.setItem(ACTIVE_KEY, current); }, [current]);
+  useEffect(() => { localStorage.setItem(ACTIVE_KEY, activeId); }, [activeId]);
   useEffect(() => {
     const up = () => setOnline(isOnline());
     window.addEventListener("online", up);

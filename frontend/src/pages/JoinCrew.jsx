@@ -15,6 +15,12 @@ export default function JoinCrew() {
   const tried = useRef(false);
 
   useEffect(() => {
+    if (checking || user) return;
+    localStorage.setItem(JOIN_KEY, token);
+    toast.message("Sign in to accept your crew invite", { id: "join-signin" });
+  }, [checking, user, token]);
+
+  useEffect(() => {
     if (checking || !user || tried.current) return;
     tried.current = true;
     localStorage.removeItem(JOIN_KEY);
@@ -25,11 +31,7 @@ export default function JoinCrew() {
     }).catch((e) => setError(apiError(e, "Couldn't accept the invite")));
   }, [checking, user, token, navigate]);
 
-  if (!checking && !user) {
-    localStorage.setItem(JOIN_KEY, token);
-    toast.message("Sign in to accept your crew invite");
-    return <Navigate to="/login" replace />;
-  }
+  if (!checking && !user) return <Navigate to="/login" replace />;
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center" data-testid="join-crew-page">
       {error ? (
