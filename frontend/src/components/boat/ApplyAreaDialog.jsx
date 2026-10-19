@@ -15,7 +15,7 @@ export const ApplyAreaDialog = ({ open, area, items, labelFor, onApply, onClose 
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="apply-area-dialog">
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="apply-area-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold text-[var(--navy)]">Apply all items to {area?.name}</DialogTitle>
           <DialogDescription className="text-sm">{items.length ? "These items have no area yet. Untick any that live somewhere else." : "Every item on this list already has an area."}</DialogDescription>

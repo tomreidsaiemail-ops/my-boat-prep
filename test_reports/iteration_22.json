@@ -1,0 +1,38 @@
+{
+  "summary": "Tested AI Auto-Scan and Apply All Items To Area on backend and frontend, using 4 real Gemini calls in total. BACKEND (new tests/test_ai_scan.py, 9 passed and 2 real-AI tests skipped by default): 401 when signed out, 403 for free (no ai_scans doc written), 404 for an unknown boat, 400 for a text file and for a file over 3MB, and 429 after 20 inserted ai_scans docs (the inserted docs were deleted). The real scan of scan_sample.jpg as admin returned 200 with 11 food items (Rice, Flour x3, Raisins, Lentils x2, Cocoa powder, Oats, Black beans, Pasta x2, Empty jar, Salt, Sugar) and scans_left. Sending non-image bytes labelled image/jpeg gets a backend 502 with the friendly detail, but Cloudflare replaces the 502 body with its HTML page (see issue). FRONTEND admin: created cupboards TEST_Pantry and TEST_Locker. In Pantry I added 1 item by hand, then ran AI Auto-Scan with set_input_files. The label showed 'Scanning...', then the review dialog said 'AI spotted 11 items'. scan-replace-warning said 'Saving replaces the 1 item'. The duplicate-name error and the empty-qty error both showed, and the qty field strips non-digits. I renamed a row, changed a qty, unticked a row, removed a row and added a line, then saved. The cupboard then listed exactly the kept 10 rows, all on board (10/10), the hand-added item was replaced, the toast showed, and it all survived a reload and was saved to the DB. With a mocked scan route at 390px: no replace warning when a cupboard has only linked items (correct), the save kept all 3 linked checklist rows (2/5 on board), the 'N AI scans left today' toast showed, a non-image file gave 'That file doesn't look like a photo', and the scan button is hidden while searching. Apply area: the area panel shows on My To Do with ALL cupboards plus All areas and No area. Apply is disabled for All areas and No area and enabled for a cupboard. The dialog listed the 3 untagged items, all ticked, with Select All ticked. Unticking everything and pressing OK showed apply-area-error. Unticking one and pressing OK tagged 2 (toast '2 items added to TEST_Locker'), the chips showed, and the filter, No area and All areas views were right. Reopening the dialog listed only the remaining untagged item. When everything was tagged it said 'Every item on this list already has an area' and OK closed it. Tagged items show as linked rows in TEST_Locker in Boat Inventory. The Edit Item area picker comes pre-filled and untagging works. Inventory search works. Free user: no area panel. Crew (beta on the admin boat): filter shows only used areas, no Apply button and no scan button. At 390px nothing scrolls sideways in the area panel, the inventory or the scan dialog.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{boat_id}/scan (AI failure)", "issue": "The backend returns 502 with a JSON detail, but the Cloudflare ingress replaces any 502 body with its own text/html page. The client never sees 'The AI couldn't read that photo...' and falls back to the generic toast 'The AI scan didn't work, please try again'. Reproduce: curl -F file=@garbage.jpg;type=image/jpeg on the public URL returns HTTP/2 502 content-type text/html (server: cloudflare). Fix: use a status that is not intercepted, e.g. 503 or 422."},
+      {"endpoint": "POST /api/boats/{boat_id}/scan (quota)", "issue": "The ai_scans doc is inserted before the AI call, so failed (502) scans still use up the user's 20 per day. Consider deleting the doc in the except branch. Also, count-then-insert is not atomic, so parallel requests can go slightly over 20."},
+      {"endpoint": "POST /api/boats/{boat_id}/scan (validation)", "issue": "Only the client-sent content_type is checked; there's no magic-byte or PIL check. Non-image bytes labelled image/jpeg still cost an AI call. The frontend always re-encodes, so this is low risk."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "AI scan failure", "issue": "Because of the Cloudflare 502 issue above, the user sees the generic fallback toast and not the backend's friendly text. It's acceptable, but the backend message is lost.", "affected_selectors": ["[data-sonner-toast]"]}
+    ],
+    "design_issues": [
+      {"screen": "Scan review dialog at 390px", "issues": ["The dialog is 390px wide at x=0 with no side gutter (it touches both screen edges). Long AI names are cut off inside the 1-line name input (fine, but users can't read the full name without scrolling the input)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ai_scan.py", "/app/test_reports/pytest/pytest_ai_scan.xml"],
+  "action_items": [
+    "Change the AI-failure status in ai_scan.py from 502 to one Cloudflare passes through (e.g. 503 or 422) so the friendly detail reaches the client.",
+    "Optional: don't count failed AI scans against the daily 20 (delete the ai_scans doc on failure).",
+    "Optional: add a small horizontal margin to the scan/apply dialogs on phones."
+  ],
+  "critical_code_review_comments": [
+    "ai_scan.py: count_documents + insert_one is a non-atomic quota check. That's acceptable for 20/day, but parallel taps can go over the limit.",
+    "ApplyAreaDialog onApply calls guard(). If boat details are missing, it returns and leaves the dialog open while the warning shows at the top of the page, behind the modal. Consider closing the dialog, or showing the reason inside it. Not exercised end-to-end.",
+    "ScanReviewDialog silently drops kept rows with blank names. If every row is unticked, Save empties the cupboard with no extra confirm (the replace warning covers this partly).",
+    "InventoryList.saveScan creates ids as `${Date.now()}-${n}`, a different format from newId(). It works, but it isn't consistent."
+  ],
+  "updated_files": ["/app/backend/tests/test_ai_scan.py"],
+  "success_rate": {"backend": "100% of the functional checks (9/9 guard and limit tests, the real scan passed). The 502 friendly-detail check fails because of the proxy.", "frontend": "100% of the requested flows passed"},
+  "seed_data_creation": "Cleaned up: admin main boat areas set to [], TEST_ myTodo items removed, vessel/skipper/callsign cleared, test-user-beta removed from admin crew, and all ai_scans docs for test-admin-1 and test-user-beta deleted (4 real-call docs plus 20 inserted ones). The pro user's 2 earlier docs were left alone. The edits went straight to the DB without bumping sec_ts, so a browser with cached admin state could re-push the old areas.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Real AI tests in test_ai_scan.py only run with SCAN_REAL_AI=1, to save Gemini calls. For frontend scan tests, mock the scan with page.route('**/api/boats/*/scan') so no AI call is made. For crew: add test-user-beta to the admin main boat's crew and set localStorage mbp_boats_active='c_test-admin-1_main'. Boat details must be filled before tagging."
+}

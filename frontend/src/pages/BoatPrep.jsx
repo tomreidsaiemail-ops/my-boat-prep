@@ -312,7 +312,7 @@ export default function BoatPrep({ boatId, boats }) {
       <ApplyAreaDialog open={dialog?.type === "applyArea"} area={areas.find((a) => a.id === areaFilter)} items={items.filter((i) => !areaName(i))} labelFor={labelFor}
         onClose={() => setDialog(null)}
         onApply={(ids) => {
-          if (!guard()) return;
+          if (!guard()) { setDialog(null); return; }
           const name = areas.find((a) => a.id === areaFilter)?.name;
           setItems((list) => list.map((i) => (ids.includes(i.id) ? { ...i, area: areaFilter } : i)));
           setDialog(null);

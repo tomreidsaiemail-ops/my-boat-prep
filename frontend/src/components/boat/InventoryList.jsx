@@ -59,7 +59,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   };
   const saveScan = (list) => {
     const { area } = scan;
-    setArea(area.id, (x) => ({ ...x, items: list.map((i, n) => ({ id: `${Date.now()}-${n}`, name: i.name, qty: i.qty, onboard: true })) }));
+    setArea(area.id, (x) => ({ ...x, items: list.map((i) => ({ id: newId(), name: i.name, qty: i.qty, onboard: true })) }));
     setScan(null);
     toast.success(`${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };

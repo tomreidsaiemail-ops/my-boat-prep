@@ -21,7 +21,7 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
   const existing = scan?.area.items?.length || 0;
   return (
     <Dialog open={!!scan} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="scan-review-dialog">
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="scan-review-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Sparkles className="h-5 w-5" /> Check what AI found</DialogTitle>
           <DialogDescription className="text-sm">

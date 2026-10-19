@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile
+from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
 from auth import require_premium
@@ -57,10 +59,15 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), user: d
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise HTTPException(status_code=400, detail="That photo is too big (max 3 MB)")
+    try:
+        Image.open(io.BytesIO(data)).verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="That file doesn't look like a photo")
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     if await db.ai_scans.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_SCANS:
         raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_SCANS} AI scans. Try again tomorrow, or add items by hand.")
-    await db.ai_scans.insert_one({"user_id": user["user_id"], "boat_id": boat_id, "created_at": datetime.now(timezone.utc).isoformat()})
+    scan_id = str(uuid.uuid4())
+    await db.ai_scans.insert_one({"scan_id": scan_id, "user_id": user["user_id"], "boat_id": boat_id, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"scan-{uuid.uuid4()}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
     text = ""
     try:
@@ -73,5 +80,6 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), user: d
         items = parse_items(text)
     except Exception as e:
         log.error(f"AI scan failed: {e}; reply={text[:300]!r}")
-        raise HTTPException(status_code=502, detail="The AI couldn't read that photo. Please try again or add items by hand.")
+        await db.ai_scans.delete_one({"scan_id": scan_id})
+        raise HTTPException(status_code=503, detail="The AI couldn't read that photo. Please try again or add items by hand.")
     return {"items": items, "scans_left": max(0, DAILY_SCANS - await db.ai_scans.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))}
