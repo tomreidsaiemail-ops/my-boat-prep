@@ -20,6 +20,7 @@ import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
+import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
 
 const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
@@ -286,7 +287,9 @@ export default function BoatPrep({ boatId, boats }) {
               boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
-          {premium && filterAreas.length > 0 && <AreaFilter areas={filterAreas} value={areaFilter} onChange={setAreaFilter} />}
+          {premium && (tagging || filterAreas.length > 0) && (
+            <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} onApply={tagging ? () => setDialog({ type: "applyArea" }) : undefined} />
+          )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
@@ -306,6 +309,15 @@ export default function BoatPrep({ boatId, boats }) {
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
+      <ApplyAreaDialog open={dialog?.type === "applyArea"} area={areas.find((a) => a.id === areaFilter)} items={items.filter((i) => !areaName(i))} labelFor={labelFor}
+        onClose={() => setDialog(null)}
+        onApply={(ids) => {
+          if (!guard()) return;
+          const name = areas.find((a) => a.id === areaFilter)?.name;
+          setItems((list) => list.map((i) => (ids.includes(i.id) ? { ...i, area: areaFilter } : i)));
+          setDialog(null);
+          toast.success(`${ids.length} ${ids.length === 1 ? "item" : "items"} added to ${name}`);
+        }} />
       <TextDialog open={dialog?.type === "rename"} title="Rename List" confirmLabel="Save" testId="rename-list"
         initial={dialog?.type === "rename" ? dialog.list.name : ""}
         onConfirm={dialog?.type === "rename" ? renameList : () => true} onClose={() => setDialog(null)} />

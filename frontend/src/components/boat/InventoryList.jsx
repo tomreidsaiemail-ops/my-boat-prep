@@ -5,6 +5,8 @@ import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
 import { matches } from "@/components/boat/Highlight";
+import { ScanReviewDialog } from "@/components/boat/ScanReviewDialog";
+import { shrink } from "@/components/boat/PhotoPicker";
 import { InventoryItemDialog } from "@/components/boat/InventoryItemDialog";
 import { SuggestAreasDialog } from "@/components/boat/SuggestAreasDialog";
 import { TextDialog } from "@/components/boat/TextDialog";
@@ -37,6 +39,30 @@ const AddArea = ({ onAdd }) => {
 export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
+  const [scanning, setScanning] = useState(null);
+  const [scan, setScan] = useState(null);
+  const startScan = (a) => async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!online) { toast.error("AI Auto-Scan needs a signal"); return; }
+    let blob;
+    try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a photo"); return; }
+    const form = new FormData();
+    form.append("file", blob, "cupboard.jpg");
+    setScanning(a.id);
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
+      setScan({ area: a, items: data.items });
+      if (data.scans_left <= 3) toast.message(`${data.scans_left} AI scans left today`);
+    } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
+  };
+  const saveScan = (list) => {
+    const { area } = scan;
+    setArea(area.id, (x) => ({ ...x, items: list.map((i, n) => ({ id: `${Date.now()}-${n}`, name: i.name, qty: i.qty, onboard: true })) }));
+    setScan(null);
+    toast.success(`${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
+  };
   const q = query.trim().toLowerCase();
   const results = !q ? areas.map((a) => ({ area: a })) : areas.flatMap((a) => {
     const links = linked[a.id] || [];
@@ -114,6 +140,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         {results.map(({ area: a, visible, visibleLinked }) => (
           <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
             linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
+            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}
@@ -132,6 +159,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} onConfirm={saveItem} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note="Everything listed inside it is removed too, and checklist items tagged with it lose their tag."
         onClose={() => setDialog(null)} onConfirm={() => { const { id } = dialog.area; onChange((list) => list.filter((a) => a.id !== id)); setDialog(null); }} />
+      <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
     </section>
   );
 };

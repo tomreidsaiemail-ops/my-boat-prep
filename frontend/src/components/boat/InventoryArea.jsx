@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { Check, ChevronDown, Link2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Link2, Loader2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "is-checked bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible, linked = [], visibleLinked, onToggleLinked }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning }) => {
   const [openState, setOpen] = useState(false);
   const open = openState || !!query;
   const items = area.items || [];
@@ -95,6 +95,12 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             {shownLinks.map((l) => <LinkedRow key={l.key} link={l} query={query} onToggle={onToggleLinked && (() => onToggleLinked(l))} />)}
           </ul>
           {!readOnly && !query && <AddContent areaId={area.id} onAdd={onAdd} />}
+          {!readOnly && !query && onScan && (
+            <label className={`btn-ghost mx-3 mb-3 h-11 cursor-pointer self-start px-3 text-sm ${scanning ? "pointer-events-none opacity-60" : ""}`} data-testid={`inventory-scan-btn-${area.id}`}>
+              {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "AI Auto-Scan"}
+              <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
+            </label>
+          )}
         </>
       )}
     </li>

@@ -34,6 +34,7 @@ from templates import router as templates_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
+from ai_scan import router as ai_scan_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
 
@@ -306,6 +307,7 @@ app.include_router(templates_router)
 app.include_router(crew_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
+app.include_router(ai_scan_router)
 
 
 @app.middleware("http")
@@ -336,6 +338,7 @@ async def create_indexes():
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
     await db.crew_invites.create_index("token_hash", unique=True)
+    await db.ai_scans.create_index([("user_id", 1), ("created_at", 1)])
     try:
         await asyncio.to_thread(init_storage)
     except Exception as e:

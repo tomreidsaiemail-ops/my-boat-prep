@@ -2,8 +2,8 @@ import { MapPin } from "lucide-react";
 
 export const NO_AREA = "__none";
 
-export const AreaFilter = ({ areas, value, onChange }) => (
-  <label className="flex items-center gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white px-3 py-2" data-testid="area-filter">
+export const AreaFilter = ({ areas, value, onChange, onApply }) => (
+  <div className="flex items-center gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white px-3 py-2" data-testid="area-filter">
     <MapPin className="h-4 w-4 shrink-0 text-[var(--navy)]" />
     <span className="field-label shrink-0">Area</span>
     <select value={value} onChange={(e) => onChange(e.target.value)} className="h-10 min-w-0 flex-1 rounded-md border-[1.5px] border-[var(--line)] bg-white px-2 text-base font-semibold"
@@ -12,7 +12,11 @@ export const AreaFilter = ({ areas, value, onChange }) => (
       {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       <option value={NO_AREA}>No area</option>
     </select>
-  </label>
+    {onApply && (
+      <button type="button" className="btn-ghost h-10 shrink-0 px-3 text-sm" disabled={!value || value === NO_AREA} onClick={onApply}
+        title="Apply all items to this area" data-testid="area-apply-btn">Apply...</button>
+    )}
+  </div>
 );
 
 export const AreaPicker = ({ areas, value, onChange }) => (
