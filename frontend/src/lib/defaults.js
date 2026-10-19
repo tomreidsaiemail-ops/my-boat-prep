@@ -7,6 +7,7 @@ export const DEFAULT_REGISTRY = [
   { id: "returningDock", name: "Returning to Dock", isSystem: true },
   { id: "arrivingDest", name: "Arriving at Destination", isSystem: true },
   { id: "safety", name: "Safety", isSystem: true },
+  { id: "riggingChecks", name: "Rigging Checks", isSystem: true },
   { id: "routeHazards", name: "Route Hazards", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
@@ -24,6 +25,7 @@ export const DEFAULT_DATA = {
   returningDock: mk(17, ["Fenders out", "Mooring lines ready", "Engine revs checked", "Crew briefed on docking", "Ready boat hooks", "Prepare crew with arrival plan", "Clear arrival timer"]),
   arrivingDest: mk(24, ["Ready boat hooks", "Anchor ready", "Mooring lines ready", "Brief crew", "Close trip report"]),
   safety: mk(29, ["Lifejackets and PFDs", "Flares and distress signals", "VHF Radio check", "Bilge pumps", "First aid kit", "Fire extinguishers", "Emergency tiller steering check", "Throwing line and life ring ready", "Emergency Grab Bag Ditch Bag"]),
+  riggingChecks: mk(200, ["Shrouds and stays: no broken strands or kinks", "Bottlescrews pinned and taped", "Chainplates: no cracks or rust stains", "Forestay and furler: foil, drum and swivel turning freely", "Backstay and adjuster", "Spreaders and spreader ends taped", "Mast step and mast collar", "Masthead: wind instruments, lights and VHF aerial (check with binoculars)", "Halyards: no chafe, sheaves turning freely", "Sheets and running rigging: no chafe", "Shackles moused or seized", "Boom gooseneck and vang", "Mainsheet blocks and traveller", "Reefing lines run freely", "Lifelines, stanchions and pulpits secure"]),
   routeHazards: mk(38, ["Tide times check", "Shallow areas identified", "Weather alerts", "Local notices to mariners", "Dangerous rocks"]),
   crewPrep: mk(43, ["Hat with lanyard", "Glasses", "Sun glasses", "Sunscreen", "Insect repellent", "Scarf", "Gloves", "Jacket", "Sleeping bag", "Towel", "Toothbrush", "Brush", "Phone", "Credit cards", "Cash", "Phone cables", "Power banks", "Sea sickness tablets", "White soled trainers"]),
   provisions: mk(62, ["Water", "Beer", "Wine", "Nuts", "Crisps", "Dips", "Milk", "Powdered milk", "Tea", "Coffee", "Juice", "Bacon", "Sausage", "Eggs", "Bread", "Pasta", "Pasta sauce", "Mince", "Chicken", "Burgers", "Rice", "Potatoes", "Carrot", "Onion", "Tins various"]),
@@ -92,7 +94,7 @@ const addMissingLists = (s) => {
   const registry = [...s.registry];
   const data = { ...s.data };
   const deleted = s.deleted_lists || [];
-  ["head", "engineService", "myTodo"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
+  ["head", "engineService", "myTodo", "riggingChecks"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
   return { ...s, registry, data, deleted_lists: deleted };
 };
 

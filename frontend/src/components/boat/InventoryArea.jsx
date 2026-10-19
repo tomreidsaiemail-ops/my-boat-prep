@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { Highlight } from "@/components/boat/Highlight";
 import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 
-const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete }) => (
+const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "is-checked bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
     <button type="button" role="checkbox" aria-checked={!!item.onboard} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
       className="flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left" data-testid={`inventory-item-toggle-${item.id}`}>
       <span className="tick-box">{item.onboard && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
-      <span className="item-text flex-1" data-testid={`inventory-item-name-${item.id}`}>{item.name}</span>
+      <span className="item-text flex-1" data-testid={`inventory-item-name-${item.id}`}><Highlight text={item.name} query={query} /></span>
       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-sm font-bold text-[var(--navy)]" data-testid={`inventory-item-qty-${item.id}`}>&times;{item.qty}</span>
     </button>
     {!readOnly && (
@@ -45,9 +46,11 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete }) => {
-  const [open, setOpen] = useState(false);
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible }) => {
+  const [openState, setOpen] = useState(false);
+  const open = openState || !!query;
   const items = area.items || [];
+  const listed = visible || items;
   const onboard = items.filter((i) => i.onboard).length;
   return (
     <li className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid={`inventory-area-${area.id}`}>
@@ -55,7 +58,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] flex-1 items-center gap-3 px-3 text-left" data-testid={`inventory-area-toggle-${area.id}`}>
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
           <span className="flex flex-1 flex-col py-2">
-            <span className="font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>{area.name}</span>
+            <span className="font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}><Highlight text={area.name} query={query} /></span>
             <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{onboard}/{items.length} on board</span>
           </span>
         </button>
@@ -70,11 +73,11 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
         <>
           {items.length === 0 && <p className="border-t border-[var(--line)] px-3 py-3 text-sm text-[var(--muted)]" data-testid={`inventory-area-empty-${area.id}`}>Nothing listed in here yet.</p>}
           <ul>
-            {items.map((i) => (
-              <ContentRow key={i.id} item={i} readOnly={readOnly} onToggle={() => onToggle(i)} onEdit={() => onEditItem(i)} onDelete={() => onDeleteItem(i)} />
+            {listed.map((i) => (
+              <ContentRow key={i.id} item={i} readOnly={readOnly} query={query} onToggle={() => onToggle(i)} onEdit={() => onEditItem(i)} onDelete={() => onDeleteItem(i)} />
             ))}
           </ul>
-          {!readOnly && <AddContent areaId={area.id} onAdd={onAdd} />}
+          {!readOnly && !query && <AddContent areaId={area.id} onAdd={onAdd} />}
         </>
       )}
     </li>

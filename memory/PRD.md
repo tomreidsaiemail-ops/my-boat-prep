@@ -182,3 +182,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - New boat copies cupboard names (empty contents)
 - Tested iteration_21: backend 100%, frontend ~95% -> testing agent fixed tick visual + qty validation; I added plan perk, count under cupboard name, edit keeps item fields
 - Known: inventory merges as one section (two offline phones editing inventory -> last wins); storage orphans on replace
+
+## Iteration 24 (2026-06): Inventory search + Rigging Checks list
+- Boat Inventory search box: filters cupboards as you type (cupboard name match shows all its items, otherwise only matching items), auto-opens matches, highlights text, "Found in N cupboards" / "Nothing matches"; add forms hidden while searching
+- New built-in "Rigging Checks" list (after Safety, 15 default items, ids 200+), added to existing users via addMissingLists, master-template enabled (templates.py)
+- Verified via screenshot automation

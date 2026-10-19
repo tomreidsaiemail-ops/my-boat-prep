@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Lightbulb, Plus, UploadCloud } from "lucide-react";
+import { Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -35,6 +35,13 @@ const AddArea = ({ onAdd }) => {
 
 export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange }) => {
   const [dialog, setDialog] = useState(null);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const results = !q ? areas.map((a) => ({ area: a })) : areas.flatMap((a) => {
+    if (a.name.toLowerCase().includes(q)) return [{ area: a, visible: a.items || [] }];
+    const hits = (a.items || []).filter((i) => i.name.toLowerCase().includes(q));
+    return hits.length ? [{ area: a, visible: hits }] : [];
+  });
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
 
@@ -82,18 +89,30 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})
         </button>
       )}
+      {areas.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-2 rounded-lg border-[1.5px] border-[var(--navy)] bg-white px-3" data-testid="inventory-search">
+            <Search className="h-5 w-5 shrink-0 text-[var(--navy)]" />
+            <input type="text" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find an item, e.g. impeller" aria-label="Search inventory"
+              className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none" data-testid="inventory-search-input" />
+            {query && <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => setQuery("")} data-testid="inventory-search-clear"><X className="h-5 w-5" /></button>}
+          </label>
+          {q && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="inventory-search-summary">
+            {results.length ? `Found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"}` : `Nothing matches "${query.trim()}"`}</p>}
+        </div>
+      )}
       {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">
         {readOnly ? "The skipper hasn't added any cupboards yet." : "List each cupboard, locker or lazarette, then add what's stowed inside and tick it when it's on board."}</p>}
       <ul className="flex flex-col gap-2">
-        {areas.map((a) => (
-          <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)}
+        {results.map(({ area: a, visible }) => (
+          <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}
             onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} />
         ))}
       </ul>
-      {!readOnly && <AddArea onAdd={addArea} />}
+      {!readOnly && !q && <AddArea onAdd={addArea} />}
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper
