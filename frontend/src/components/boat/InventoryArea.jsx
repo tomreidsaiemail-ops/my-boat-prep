@@ -60,8 +60,8 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning }) => {
-  const [openState, setOpen] = useState(false);
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false }) => {
+  const [openState, setOpen] = useState(defaultOpen);
   const open = openState || !!query;
   const items = area.items || [];
   const listed = visible || items;
@@ -96,10 +96,13 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
           </ul>
           {!readOnly && !query && <AddContent areaId={area.id} onAdd={onAdd} />}
           {!readOnly && !query && onScan && (
-            <label className={`btn-ghost mx-3 mb-3 h-11 cursor-pointer self-start px-3 text-sm ${scanning ? "pointer-events-none opacity-60" : ""}`} data-testid={`inventory-scan-btn-${area.id}`}>
-              {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "AI Auto-Scan"}
-              <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
-            </label>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-3" data-testid={`inventory-scan-panel-${area.id}`}>
+              <span className="text-sm font-bold text-[var(--navy)]" data-testid={`inventory-scan-help-${area.id}`}>Save time adding items:</span>
+              <label className={`btn-ghost h-11 cursor-pointer px-3 text-sm ${scanning ? "pointer-events-none opacity-60" : ""}`} data-testid={`inventory-scan-btn-${area.id}`}>
+                {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "Upload image for magic scan..."}
+                <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
+              </label>
+            </div>
           )}
         </>
       )}

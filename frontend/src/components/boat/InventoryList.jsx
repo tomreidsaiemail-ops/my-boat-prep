@@ -41,6 +41,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
   const [scan, setScan] = useState(null);
+  const [fresh, setFresh] = useState(null);
   const startScan = (a) => async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -80,7 +81,9 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   const addArea = (name) => {
     if (!name) return "Please enter a cupboard or locker name";
     if (areas.some((a) => same(a.name, name))) return `${name} is already on your list`;
-    onChange((list) => [...list, { id: newId(), name, items: [] }]);
+    const id = newId();
+    setFresh(id);
+    onChange((list) => [...list, { id, name, items: [] }]);
     return true;
   };
   const addSuggested = (names) => onChange((list) => [...list, ...names.map((name) => ({ id: newId(), name, items: [] }))]);
@@ -140,7 +143,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         {results.map(({ area: a, visible, visibleLinked }) => (
           <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
             linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
-            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id}
+            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}

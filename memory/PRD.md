@@ -203,3 +203,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - AI Auto-Scan per cupboard (ai_scan.py, POST /api/boats/{boat_id}/scan, Gemini 3 Flash via EMERGENT_LLM_KEY, emergentintegrations streaming): photo resized 1600px, image verified with PIL, 20 scans/user/24h (db.ai_scans; failed scans not counted), AI failure -> 503 friendly message; ScanReviewDialog to edit/untick/add before saving; saving REPLACES the cupboard's own items (on board); photo not stored
 - Tested iteration_22: backend + frontend 100%; follow-ups fixed (503 instead of proxy-replaced 502, failed scans refunded, PIL check, dialog gutters, guard closes apply dialog)
 - /app/image_testing.md holds image test rules; sample photo backend/tests/scan_sample.jpg
+
+## 2026-06 Magic scan wording
+- Scan button renamed "Upload image for magic scan..." (AI icon kept), with "Save time adding items:" help label before it
+- Newly added cupboard/locker opens automatically so the add-item box and magic scan are visible
