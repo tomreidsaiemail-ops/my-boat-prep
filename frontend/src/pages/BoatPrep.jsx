@@ -274,7 +274,8 @@ export default function BoatPrep({ boatId, boats }) {
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
         : active.isInventory ? (premium
           ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
-              onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} />
+              onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
+              boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
           {premium && filterAreas.length > 0 && <AreaFilter areas={filterAreas} value={areaFilter} onChange={setAreaFilter} />}

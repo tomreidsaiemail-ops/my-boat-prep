@@ -34,7 +34,7 @@ from templates import router as templates_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
-from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf  # noqa: E402
+from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -194,12 +194,13 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
         "boat_id": d.get("boat_id", "main"), "vessel": d.get("boat", {}).get("vessel", ""), "crew": crew_role,
         "owner_id": d["owner_id"] if crew_role else None, "owner_name": owners.get(d["owner_id"], "") if crew_role else "",
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
+        "zone_maps": boat_maps(d),
     }
 
 
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
