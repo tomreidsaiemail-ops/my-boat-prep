@@ -78,7 +78,14 @@ export default function BoatPrep({ boatId, boats }) {
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const areas = state.areas || [];
-  const inventoryLines = areas.flatMap((a) => (a.items || []).map((i) => ({ id: i.id, label: `${a.name}: ${i.name} x${i.qty}`, checked: !!i.onboard })));
+  const linked = {};
+  registry.forEach((l) => (state.data[l.id] || []).forEach((i) => {
+    if (i.area && areas.some((a) => a.id === i.area)) (linked[i.area] ||= []).push({ key: `${l.id}-${i.id}`, listId: l.id, listName: l.name, item: i, text: i.label });
+  }));
+  const inventoryLines = areas.flatMap((a) => [
+    ...(a.items || []).map((i) => ({ id: i.id, label: `${a.name}: ${i.name} x${i.qty}`, checked: !!i.onboard })),
+    ...(linked[a.id] || []).map((l) => ({ id: l.key, label: `${a.name}: ${l.listName} - ${l.text}`, checked: !!l.item.checked })),
+  ]);
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
@@ -275,6 +282,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.isInventory ? (premium
           ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
+              linked={linked} onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>

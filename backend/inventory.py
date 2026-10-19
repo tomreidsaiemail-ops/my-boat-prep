@@ -141,9 +141,13 @@ async def save_area_defaults(payload: AreaDefaultsIn, admin: dict = Depends(requ
     return {"area_defaults": payload.names, "updated_at": now}
 
 
-def inventory_list_for_pdf(areas: list) -> dict:
+def inventory_list_for_pdf(areas: list, registry: list = (), data: dict = None) -> dict:
     items = []
     for a in areas or []:
         for i in a.get("items", []):
             items.append({"label": f"{a.get('name', '')}: {i.get('name', '')} x{i.get('qty', 1)}", "checked": bool(i.get("onboard")), "flagged": False})
+        for lst in registry:
+            for i in (data or {}).get(lst.get("id"), []):
+                if i.get("area") == a.get("id"):
+                    items.append({"label": f"{a.get('name', '')}: {lst.get('name', '')} - {i.get('label', '')}", "checked": bool(i.get("checked")), "flagged": False})
     return {"name": "Boat Inventory", "items": items}

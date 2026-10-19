@@ -261,7 +261,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
         {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
         else await media_list_for_pdf(i) if i in MEDIA_LISTS
         else await faq_list_for_pdf() if i == FAQ_ID
-        else inventory_list_for_pdf(state.areas) if i == INVENTORY_ID
+        else inventory_list_for_pdf(state.areas, state.registry, state.data) if i == INVENTORY_ID
         else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
         for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID, INVENTORY_ID) or i in MEDIA_LISTS
     ]

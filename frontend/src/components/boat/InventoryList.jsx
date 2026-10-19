@@ -4,6 +4,7 @@ import { Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
+import { matches } from "@/components/boat/Highlight";
 import { InventoryItemDialog } from "@/components/boat/InventoryItemDialog";
 import { SuggestAreasDialog } from "@/components/boat/SuggestAreasDialog";
 import { TextDialog } from "@/components/boat/TextDialog";
@@ -33,15 +34,20 @@ const AddArea = ({ onAdd }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps }) => {
+export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const results = !q ? areas.map((a) => ({ area: a })) : areas.flatMap((a) => {
-    if (a.name.toLowerCase().includes(q)) return [{ area: a, visible: a.items || [] }];
-    const hits = (a.items || []).filter((i) => i.name.toLowerCase().includes(q));
-    return hits.length ? [{ area: a, visible: hits }] : [];
+    const links = linked[a.id] || [];
+    if (matches(a.name, q)) return [{ area: a, visible: a.items || [], visibleLinked: links }];
+    const hits = (a.items || []).filter((i) => matches(i.name, q));
+    const linkHits = links.filter((l) => matches(`${l.listName} ${l.text}`, q));
+    return hits.length || linkHits.length ? [{ area: a, visible: hits, visibleLinked: linkHits }] : [];
   });
+  const found = results.reduce((n, r) => n + (r.visible || []).reduce((m, i) => m + (i.qty || 1), 0) + (r.visibleLinked || []).length, 0);
+  const aboard = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.onboard).reduce((m, i) => m + (i.qty || 1), 0)
+    + (r.visibleLinked || []).filter((l) => l.item.checked).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
 
@@ -99,14 +105,15 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             {query && <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => setQuery("")} data-testid="inventory-search-clear"><X className="h-5 w-5" /></button>}
           </label>
           {q && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="inventory-search-summary">
-            {results.length ? `Found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"}` : `Nothing matches "${query.trim()}"`}</p>}
+            {results.length ? `${found} found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"} · ${aboard} on board` : `Nothing matches "${query.trim()}"`}</p>}
         </div>
       )}
       {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">
         {readOnly ? "The skipper hasn't added any cupboards yet." : "List each cupboard, locker or lazarette, then add what's stowed inside and tick it when it's on board."}</p>}
       <ul className="flex flex-col gap-2">
-        {results.map(({ area: a, visible }) => (
+        {results.map(({ area: a, visible, visibleLinked }) => (
           <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
+            linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}
