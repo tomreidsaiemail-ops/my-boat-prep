@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-SECTIONS = ("boat", "registry", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent")
+SECTIONS = ("boat", "registry", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas")
 
 
 def _ts(item: dict, fallback: str) -> str:

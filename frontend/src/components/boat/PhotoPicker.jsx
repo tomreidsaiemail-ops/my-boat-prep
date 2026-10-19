@@ -5,10 +5,10 @@ import { api, apiError } from "@/lib/api";
 import { BoatPhoto } from "@/components/boat/BoatPhoto";
 
 // Shrink phone photos to a small JPEG before uploading, so it's quick even on a weak signal.
-const shrink = (file) => new Promise((resolve, reject) => {
+export const shrink = (file, max = 800) => new Promise((resolve, reject) => {
   const img = new Image();
   img.onload = () => {
-    const scale = Math.min(1, 800 / Math.max(img.width, img.height));
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
     const c = document.createElement("canvas");
     c.width = Math.round(img.width * scale);
     c.height = Math.round(img.height * scale);

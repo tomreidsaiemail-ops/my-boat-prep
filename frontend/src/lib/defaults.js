@@ -122,6 +122,7 @@ export const copyBoatState = (s, vessel) => {
   return {
     ...JSON.parse(JSON.stringify(s)), data, boat: { ...s.boat, vessel, callsign: "" },
     log_sent: null, engine_log: [], emergency_checked: {}, updated_at: new Date().toISOString(),
+    areas: (s.areas || []).map((a) => ({ ...a, items: [] })),
   };
 };
 
@@ -162,7 +163,7 @@ export const displayLabel = (item, ctx) => {
   }
 };
 
-const SECTIONS = ["boat", "registry", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent"];
+const SECTIONS = ["boat", "registry", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas"];
 
 // Time-stamp what changed so the cloud can merge edits from several phones item by item.
 export const stamp = (prev, next, now) => {

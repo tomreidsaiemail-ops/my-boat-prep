@@ -16,6 +16,13 @@ import { displayLabel, isOutdated, keepMine, resetLists, resetOptions, TEMPLATE_
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
+import { InventoryList } from "@/components/boat/InventoryList";
+import { InventoryLocked } from "@/components/boat/InventoryLocked";
+import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
+import { BoatWatermark } from "@/components/boat/BoatWatermark";
+import useInventoryShared from "@/hooks/useInventoryShared";
+
+const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
 import useTemplates from "@/hooks/useTemplates";
 import { PublishTemplateBar } from "@/components/boat/PublishTemplateBar";
 import { Header } from "@/components/boat/Header";
@@ -62,16 +69,26 @@ export default function BoatPrep({ boatId, boats }) {
   const media = useMedia(online);
   const { faq, save: saveFaq } = useFaq(online);
   const { templates, publish } = useTemplates(online);
+  const inventoryShared = useInventoryShared(online);
+  const [areaFilter, setAreaFilter] = useState("");
+  const [editArea, setEditArea] = useState("");
   const { boat, registry } = state;
   const { setVessel } = boats;
   useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
-  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
-  const allLists = [...registry, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
+  const areas = state.areas || [];
+  const inventoryLines = areas.flatMap((a) => (a.items || []).map((i) => ({ id: i.id, label: `${a.name}: ${i.name} x${i.qty}`, checked: !!i.onboard })));
+  const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
+  const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
+  const tagging = premium && !crew && areas.length > 0;
+  const areaName = (item) => areas.find((a) => a.id === item.area)?.name || null;
+  const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
+  const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
+  useEffect(() => { setAreaFilter(""); }, [active.id]);
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
@@ -139,7 +156,7 @@ export default function BoatPrep({ boatId, boats }) {
   const saveEdit = (item) => (text) => {
     if (!text) return "Item text cannot be empty";
     if (isDup(text, item.id)) return `${text} already exists`;
-    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, flagged: i.flagged, label: text } : i)));
+    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, flagged: i.flagged, label: text, ...(editArea ? { area: editArea } : {}) } : i)));
     setDialog(null);
     return true;
   };
@@ -153,7 +170,7 @@ export default function BoatPrep({ boatId, boats }) {
     return true;
   };
   const NO_CLONE = { myTodo: "My To Do List and Ship's Log cannot be cloned", shipsLog: "My To Do List and Ship's Log cannot be cloned",
-    mayDay: "May Day and Pan Pan cannot be cloned", panPan: "May Day and Pan Pan cannot be cloned" };
+    mayDay: "May Day and Pan Pan cannot be cloned", panPan: "May Day and Pan Pan cannot be cloned", boatInventory: "Boat Inventory cannot be cloned" };
   const askClone = () => {
     if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be cloned"); return; }
     if (NO_CLONE[active.id]) { toast.warning(NO_CLONE[active.id]); return; }
@@ -173,6 +190,7 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const askRename = () => {
     if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be renamed"); return; }
+    if (active.isInventory) { toast.warning("Boat Inventory cannot be renamed"); return; }
     if (needPro("Rename lists") && guard()) setDialog({ type: "rename", list: active });
   };
   const renameList = (name) => {
@@ -223,7 +241,8 @@ export default function BoatPrep({ boatId, boats }) {
   }
 
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
+    <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
+      <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
@@ -248,11 +267,17 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
-        : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} /> : (
+        : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
+        : active.isInventory ? (premium
+          ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
+              onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} />
+          : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
-          <Checklist items={items} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew}
-            onToggle={toggle} onDelete={remove} onEdit={(item) => guard() && setDialog({ type: "edit", item })} onDeleteList={askDeleteList}
-            {...(active.id === "myTodo" ? { onFlag: flag, onMove: move } : {})} />
+          {premium && filterAreas.length > 0 && <AreaFilter areas={filterAreas} value={areaFilter} onChange={setAreaFilter} />}
+          {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
+          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
+            onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            {...(active.id === "myTodo" && !areaFilter ? { onFlag: flag, onMove: move } : {})} />)}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
         </>
@@ -273,7 +298,9 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={dialog?.type === "rename" ? renameList : () => true} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
-        onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)} />
+        onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
+        {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
+      </TextDialog>
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       {emailPrompt}

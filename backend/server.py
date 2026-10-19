@@ -34,6 +34,7 @@ from templates import router as templates_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
+from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf  # noqa: E402
 
 
 DAILY_EMAIL_LIMIT = 10
@@ -78,6 +79,7 @@ class BoatStateIn(BaseModel):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    areas: List[Dict[str, Any]] = []
 
 
 class BoatState(BaseDocument):
@@ -94,6 +96,7 @@ class BoatState(BaseDocument):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    areas: List[Dict[str, Any]] = []
     synced_at: str
 
 
@@ -111,6 +114,7 @@ class BoatStateOut(BaseModel):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    areas: List[Dict[str, Any]] = []
     synced_at: str
     role: str = "owner"
 
@@ -118,8 +122,8 @@ class BoatStateOut(BaseModel):
 ID_PATTERN = r"^[A-Za-z0-9_-]{1,40}$"
 BoatId = Annotated[str, Query(pattern=ID_PATTERN)]
 OwnerId = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
-KEEP_IF_OMITTED = ("emergency_checked", "template_versions")
-STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts")
+KEEP_IF_OMITTED = ("emergency_checked", "template_versions", "areas")
+STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts", "areas")
 
 
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
@@ -167,7 +171,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         inc = payload.model_dump()
         for f in KEEP_IF_OMITTED:
             if f not in payload.model_fields_set:
-                inc[f] = (prev or {}).get(f, {})
+                inc[f] = (prev or {}).get(f, inc[f])
         merged = merge_state(prev, inc) if prev else inc
     state = BoatState(**key, **{f: merged.get(f) for f in STATE_FIELDS if merged.get(f) is not None}, synced_at=datetime.now(timezone.utc).isoformat())
     await db.user_boats.update_one(key, {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at, "crew": []}}, upsert=True)
@@ -256,8 +260,9 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
         {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
         else await media_list_for_pdf(i) if i in MEDIA_LISTS
         else await faq_list_for_pdf() if i == FAQ_ID
+        else inventory_list_for_pdf(state.areas) if i == INVENTORY_ID
         else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
-        for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID) or i in MEDIA_LISTS
+        for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID, INVENTORY_ID) or i in MEDIA_LISTS
     ]
     if not log["lists"]:
         raise HTTPException(status_code=400, detail="Nothing to email")
@@ -299,6 +304,7 @@ app.include_router(feedback_router)
 app.include_router(templates_router)
 app.include_router(crew_router)
 app.include_router(photos_router)
+app.include_router(inventory_router)
 
 
 @app.middleware("http")

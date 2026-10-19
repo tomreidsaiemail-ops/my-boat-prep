@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
-export const TextDialog = ({ open, title, description, initial = "", placeholder, confirmLabel = "Confirm", onConfirm, onClose, testId, inputType }) => {
+export const TextDialog = ({ open, title, description, initial = "", placeholder, confirmLabel = "Confirm", onConfirm, onClose, testId, inputType, children }) => {
   const [value, setValue] = useState(initial);
   const [error, setError] = useState("");
 
@@ -29,6 +29,7 @@ export const TextDialog = ({ open, title, description, initial = "", placeholder
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) submit(e); }}
             className="field-input min-h-[56px] resize-none py-3" data-testid={`${testId}-input`} />
           )}
+          {children}
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid={`${testId}-error`}>{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
             <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid={`${testId}-cancel-btn`}>Cancel</button>

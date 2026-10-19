@@ -3,12 +3,12 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const ConfirmDelete = ({ item, onConfirm, onClose }) => (
+export const ConfirmDelete = ({ item, onConfirm, onClose, note = "It will be removed for every skipper." }) => (
   <AlertDialog open={!!item} onOpenChange={(o) => !o && onClose()}>
     <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="media-delete-dialog">
       <AlertDialogHeader>
         <AlertDialogTitle className="font-display text-xl font-extrabold">Delete &quot;{item?.name}&quot;?</AlertDialogTitle>
-        <AlertDialogDescription>It will be removed for every skipper.</AlertDialogDescription>
+        <AlertDialogDescription>{note}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter className="flex-row justify-end gap-2">
         <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid="media-delete-cancel-btn">Keep</AlertDialogCancel>
