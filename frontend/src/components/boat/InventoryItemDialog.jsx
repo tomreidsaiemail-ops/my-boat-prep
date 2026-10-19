@@ -25,7 +25,7 @@ export const InventoryItemDialog = ({ open, item, onConfirm, onClose }) => {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" data-testid="inventory-item-dialog" aria-describedby={undefined}>
         <DialogHeader><DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">Edit Item</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="flex flex-col gap-3">
+        <form noValidate onSubmit={submit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1"><span className="field-label">Item</span>
             <input autoFocus value={name} maxLength={200} onChange={(e) => setName(e.target.value)} className="field-input" data-testid="inventory-item-name-input" /></label>
           <label className="flex flex-col gap-1"><span className="field-label">Quantity</span>

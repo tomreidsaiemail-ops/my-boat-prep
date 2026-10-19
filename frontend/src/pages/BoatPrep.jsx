@@ -156,7 +156,11 @@ export default function BoatPrep({ boatId, boats }) {
   const saveEdit = (item) => (text) => {
     if (!text) return "Item text cannot be empty";
     if (isDup(text, item.id)) return `${text} already exists`;
-    setItems((list) => list.map((i) => (i.id === item.id ? { id: i.id, checked: i.checked, flagged: i.flagged, label: text, ...(editArea ? { area: editArea } : {}) } : i)));
+    setItems((list) => list.map((i) => {
+      if (i.id !== item.id) return i;
+      const { dynamic, area, ...rest } = i;
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}) };
+    }));
     setDialog(null);
     return true;
   };

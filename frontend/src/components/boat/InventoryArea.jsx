@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete }) => (
-  <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
+  <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "is-checked bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
     <button type="button" role="checkbox" aria-checked={!!item.onboard} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
       className="flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left" data-testid={`inventory-item-toggle-${item.id}`}>
       <span className="tick-box">{item.onboard && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
@@ -32,7 +32,7 @@ const AddContent = ({ areaId, onAdd }) => {
     setName(""); setQty("1"); setError("");
   };
   return (
-    <form onSubmit={submit} className="flex flex-col gap-1 border-t border-[var(--line)] bg-slate-50 p-2" data-testid={`inventory-add-form-${areaId}`}>
+    <form noValidate onSubmit={submit} className="flex flex-col gap-1 border-t border-[var(--line)] bg-slate-50 p-2" data-testid={`inventory-add-form-${areaId}`}>
       <div className="flex gap-2">
         <input value={name} maxLength={200} onChange={(e) => setName(e.target.value)} placeholder="Add item, e.g. Spare impeller" aria-label="Item name"
           className="field-input h-11 !w-0 min-w-0 flex-1" data-testid={`inventory-add-name-${areaId}`} />
@@ -54,8 +54,10 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
       <div className="flex items-center">
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] flex-1 items-center gap-3 px-3 text-left" data-testid={`inventory-area-toggle-${area.id}`}>
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
-          <span className="flex-1 font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>{area.name}</span>
-          <span className="shrink-0 text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{onboard}/{items.length} on board</span>
+          <span className="flex flex-1 flex-col py-2">
+            <span className="font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>{area.name}</span>
+            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{onboard}/{items.length} on board</span>
+          </span>
         </button>
         {!readOnly && (
           <div className="flex shrink-0 items-center pr-1">

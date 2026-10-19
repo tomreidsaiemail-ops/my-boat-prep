@@ -1,0 +1,40 @@
+{
+  "summary": "Tested Boat Inventory, suggested cupboards from the admin, the zone map, area tags/filter and the watermark on backend and frontend. Backend: new tests/test_inventory.py passes 16/16. It covers /inventory/shared (401 when signed out, shape), zone-map GET (401 when signed out, 404 when there is none), admin POST/DELETE (403 for pro/free, 400 for text or files over 3MB, a PNG round trip the free user can read, remove makes zone_map_v null and the GET 404), area-defaults (403 for non-admin, 400 for an empty or blank list, case-insensitive dedupe and trim, persisted), PUT /me/boat keeping areas when omitted and saving when sent, and email-log with ['boatInventory'] storing 'Area: Item xN' lines with the on-board state, plus the PDF. Regression: test_multi_boats + test_crew_photos 48/48. Frontend: Admin passes every inventory flow (add cupboard incl. empty/duplicate errors, expand, add item with empty/qty/duplicate errors, tick on board and the x/y count, edit dialog incl. duplicate error, delete item, rename incl. duplicate error, delete cupboard via the confirm dialog, persistence after reload), the clone/rename warning toasts, zone map open/replace (resized to 1600px)/remove/upload, and publish ('4 cupboard names published'). Pro: sees the zone map and can open it full size, with no upload/remove/publish buttons; the suggestions dialog (none-selected error, Select All, added names are no longer suggested); the area picker shows only once cupboards exist; tag -> chip; the filter (All / used area / No area) filters correctly; area-filter-empty appears; flag/move tools are hidden on My To Do while filtering; untag works; tags survive a reload. A second boat gets the same cupboard names with empty contents; Reset All with Select All leaves the inventory unchanged; deleting a cupboard removes the chip and the filter. Free: inventory-locked and the upgrade button opens the plan dialog; no area picker; no filter. Crew (beta on the admin boat): inventory is read-only (no add/rename/delete/suggest/zone tools, toggles disabled). Watermark: shown on the admin main boat (opacity 0.08, full viewport) and hidden on a boat without a photo (admin's 2nd boat, pro and free). At 390px there is no horizontal overflow (scrollWidth 390); the add-item name input is 200px wide. I found and FIXED 2 frontend bugs (see updated_files).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/admin/inventory/zone-map, POST (replace)", "issue": "Only $unset path / overwrite. The old object stays in storage, so orphans build up (the same pattern as boat photos)."},
+      {"endpoint": "PUT /api/me/boat (areas)", "issue": "areas is merged as a single section (last sec_ts wins) and has no per-item ts. Inventory edits made on two phones offline lose one side completely, unlike the per-item merge for checklists."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InventoryArea ContentRow", "issue": "FIXED: an on-board item showed an empty white tick box with an invisible white check, because the row lacked the 'is-checked' class the .tick-box CSS relies on. I added is-checked to the li.", "selector": "[data-testid^=inventory-item-toggle-]", "priority": "HIGH (fixed)"},
+      {"component": "InventoryArea AddContent / InventoryItemDialog", "issue": "FIXED: the native min=1/max=9999 validation on type=number blocked form submit, so the custom 'Quantity must be a whole number...' error never appeared (a stale earlier error stayed visible). I added noValidate to both forms. Verified the qty error now shows.", "selector": "[data-testid^=inventory-add-error-]", "priority": "MEDIUM (fixed)"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Boat Inventory 390px", "issues": ["Cupboard names wrap onto 3-6 lines because the count and 2 icon buttons sit on the same row. Consider moving the 'x/y on board' count under the name."]},
+      {"screen": "Plan dialog (free)", "issues": ["The reason line says 'Boat inventory is a Pro feature', but the Pro feature bullet list doesn't include Boat inventory or area tags."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_inventory.py", "/app/test_reports/pytest/pytest_inventory.xml"],
+  "action_items": [
+    "Optional: add 'Boat inventory and area tags' to the Pro features list in the plan dialog.",
+    "Optional: at 390px put the inventory-area-count under the cupboard name to reduce wrapping.",
+    "Optional: give inventory items a ts and merge areas per cupboard/item like checklists, so 2 devices don't overwrite each other.",
+    "Optional: delete old zone-map objects from storage on replace/remove."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.saveEdit rebuilds the item as {id, checked, flagged, label, area?}, dropping any other fields (e.g. ts). Spread ...i first and then delete area when editArea is empty.",
+    "Deleting a cupboard leaves orphan item.area ids in checklist data. The display handles it (areaName null), but the ids linger. You could strip them in the delete handler.",
+    "useInventoryShared caches mbp_inventory_shared in localStorage for every account on the device. This is harmless (zone map GET needs auth), but it isn't per user.",
+    "SuggestAreasDialog keys rows by name. That's fine because the server dedupes (case-insensitively)."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/InventoryArea.jsx", "/app/frontend/src/components/boat/InventoryItemDialog.jsx", "/app/backend/tests/test_inventory.py"],
+  "success_rate": {"backend": "100% (16/16 new, 48/48 regression)", "frontend": "~95% after 2 small fixes (before the fixes: the tick visual and the qty error were broken)"},
+  "seed_data_creation": "As E1 asked, everything was cleaned at the end: DELETE /api/boats/main/photo (admin), DELETE zone map, db.app_settings area_defaults deleted, areas [] on admin/pro/free/beta boats, extra boats (pro TEST_Second, pytest TEST_inv1, admin TEST_NoPhoto) deleted, admin boat vessel/skipper/callsign cleared, beta removed from admin crew, pro TEST_todo items and area tags removed, last_boat unset. Note: the admin's first cupboard did NOT contain 'Spare impeller x2' when testing started (items were empty).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest tests/test_inventory.py (it snapshots and restores the app_settings zone_map/area_defaults). The pro user's registry lacks leavingDock (old test data); use 'head' (item id 123) for tagging. To test crew, add test-user-beta to the admin main boat's crew in Mongo and set localStorage mbp_boats_active='c_test-admin-1_main'. The sync debounce is 700ms, so wait 2-3s after edits before closing the page or checking the DB."
+}

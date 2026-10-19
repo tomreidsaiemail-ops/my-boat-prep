@@ -173,3 +173,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Boat keys: own = boat_id, crew = c_<owner_id>_<boat_id> (local storage per key)
 - Tested iteration_20: backend 100% (31 new + regression), frontend fixed (join selection, AdSense double push, JoinCrew double toast)
 - Known: storage has no delete API, so replaced/removed photos remain as orphans
+
+## Iteration 23 (2026-06): Boat Inventory, zone map, area tags, watermark
+- Boat Inventory (Pro/Beta; id boatInventory; per boat state.areas = cupboards with items {name, qty, onboard}); never reset; can't clone/rename; crew read-only; in Export/Email PDF
+- Admin: one zone map picture (inventory.py, object storage) shown at top of Boat Inventory; publishes own cupboard names as suggestions (app_settings.area_defaults); skippers "Add from suggested cupboards"
+- Area tags: Edit Item dialog area picker (Pro, not crew) -> chip on items; Area filter above lists (All / used areas / No area)
+- Watermark: faded current boat photo behind the page (BoatWatermark)
+- New boat copies cupboard names (empty contents)
+- Tested iteration_21: backend 100%, frontend ~95% -> testing agent fixed tick visual + qty validation; I added plan perk, count under cupboard name, edit keeps item fields
+- Known: inventory merges as one section (two offline phones editing inventory -> last wins); storage orphans on replace
