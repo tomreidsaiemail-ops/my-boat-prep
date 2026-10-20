@@ -11,7 +11,7 @@ CATALOG = [
         "emergent_product_id": "mbp_pro",
         "name": "My Boat Prep Pro",
         "tax_code": "txcd_10103001",
-        "prices": [{"lookup_key": "pro_yearly", "amount": 499, "currency": "nzd", "interval": "year"}],
+        "prices": [{"lookup_key": "pro_yearly", "amount": 999, "currency": "nzd", "interval": "year"}],
     },
 ]
 
@@ -37,12 +37,27 @@ def ensure_price(product, p):
     return stripe.Price.create(**kwargs)
 
 
+def migrate_subscribers(product, price):
+    """Move live subscriptions on an old price to the current one from their next renewal (no proration)."""
+    moved = 0
+    for sub in stripe.Subscription.list(status="all", limit=100).auto_paging_iter():
+        if sub.status not in ("active", "trialing", "past_due"):
+            continue
+        for item in sub["items"]["data"]:
+            old = item["price"]
+            if old["product"] == product.id and old["id"] != price.id and old.get("recurring"):
+                stripe.Subscription.modify(sub.id, items=[{"id": item["id"], "price": price.id}], proration_behavior="none")
+                moved += 1
+    return moved
+
+
 def setup():
     for entry in CATALOG:
         product = get_or_create_product(entry)
         for p in entry["prices"]:
             price = ensure_price(product, p)
-            print(f"{entry['name']}: {price.lookup_key} {price.unit_amount} {price.currency} ({price.id})")
+            moved = migrate_subscribers(product, price)
+            print(f"{entry['name']}: {price.lookup_key} {price.unit_amount} {price.currency} ({price.id}), moved {moved} subscriptions")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
+import setup_stripe  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
 
@@ -330,6 +331,13 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
+async def _sync_stripe_catalog():
+    try:
+        await asyncio.to_thread(setup_stripe.setup)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Stripe catalog sync failed: {e}")
+
+
 @app.on_event("startup")
 async def create_indexes():
     await db.user_boats.update_many({"boat_id": {"$exists": False}}, {"$set": {"boat_id": "main"}})
@@ -343,6 +351,7 @@ async def create_indexes():
         await asyncio.to_thread(init_storage)
     except Exception as e:
         logging.getLogger(__name__).error(f"Storage init failed: {e}")
+    asyncio.create_task(_sync_stripe_catalog())
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)

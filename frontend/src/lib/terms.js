@@ -54,7 +54,7 @@ export const TERMS_SECTIONS = [
     id: "accounts", title: "7. Accounts, plans and payments",
     body: [
       "You are responsible for keeping your sign-in details secure and for everything done through your account.",
-      "The Free plan is supported by ads and has some limits. The Pro plan is a yearly subscription (currently NZD 4.99 per year) paid securely through Stripe. Pro renews each year until you cancel; if you cancel, Pro stays active until the end of the period you have paid for. We may change plans and prices for future renewal periods with notice in the App.",
+      "The Free plan is supported by ads and has some limits. The Pro plan is a yearly subscription (currently NZD 9.99 per year) paid securely through Stripe. Pro renews each year until you cancel; if you cancel, Pro stays active until the end of the period you have paid for. We may change plans and prices for future renewal periods with notice in the App.",
       "We may suspend or close accounts that misuse the App or break these Terms.",
     ],
   },

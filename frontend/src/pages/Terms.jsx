@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { BrandMark } from "@/components/boat/Header";
 import { TermsContent } from "@/components/legal/TermsContent";
+import { CompanyFooter } from "@/components/legal/CompanyFooter";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Terms() {
@@ -16,6 +17,7 @@ export default function Terms() {
         <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Terms of Service</h1>
       </div>
       <TermsContent />
+      <CompanyFooter />
     </main>
   );
 }

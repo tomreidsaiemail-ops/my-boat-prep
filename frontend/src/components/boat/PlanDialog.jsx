@@ -22,8 +22,12 @@ const ProStatus = ({ user, onRenewal, busy }) => (
       You&apos;re on <b data-testid="plan-tier">{user.is_admin && user.role === "free" ? "Admin" : TIER[user.role]}</b>: every feature, no ads.
       {user.has_subscription && (user.cancel_at_period_end
         ? <> Pro ends on <b>{fmt(user.pro_until)}</b>.</>
-        : <> Renews on <b>{fmt(user.pro_until)}</b> for NZD 4.99.</>)}
+        : <> Renews on <b data-testid="plan-renew-date">{fmt(user.pro_until)}</b> for NZD 9.99.</>)}
     </p>
+    {user.has_subscription && !user.cancel_at_period_end && (
+      <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid="plan-price-notice">
+        Pro is now NZD 9.99 a year. If you joined at NZD 4.99, the new price applies from your next renewal.</p>
+    )}
     {user.has_subscription && (
       <button type="button" className="btn-ghost" disabled={busy} onClick={() => onRenewal(user.cancel_at_period_end)} data-testid="plan-renewal-btn">
         {busy && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -74,7 +78,7 @@ export const PlanDialog = ({ open, reason, onClose }) => {
         {user.premium ? <ProStatus user={user} onRenewal={renewal} busy={busy} /> : (
           <button type="button" className="btn-solid mt-1 w-full" onClick={upgrade} disabled={busy || !navigator.onLine} data-testid="plan-upgrade-btn">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-            {navigator.onLine ? "Upgrade to Pro: NZD 4.99 / year" : "Go online to upgrade"}
+            {navigator.onLine ? "Upgrade to Pro: NZD 9.99 / year" : "Go online to upgrade"}
           </button>
         )}
       </DialogContent>

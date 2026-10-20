@@ -81,7 +81,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Emergent Google Sign-In required (login page, AuthCallback, cached user for offline use, waits for /auth/me when online)
 - users collection with role free | beta_tester | pro; admin = ADMIN_EMAIL (tomreidsaiemail@gmail.com); /admin page to set tiers
 - Boat data now per user (/api/me/boat, user_boats collection); local data claimed per account (mbp_owner)
-- Pro = Stripe yearly subscription NZD 4.99 (claimable sandbox, tax mode: Stripe calculates only), checkout, status polling, webhook, cancel/resume renewal
+- Pro = Stripe yearly subscription NZD 9.99 (claimable sandbox, tax mode: Stripe calculates only), checkout, status polling, webhook, cancel/resume renewal
 - Pro/Beta only: Export All, Email PDF, Email Ship's Log, create own lists, hide help, unlimited To Do (free max 5); server enforces email gating
 - Free tier: AdSense banner at bottom (placeholder until REACT_APP_ADSENSE_CLIENT / REACT_APP_ADSENSE_SLOT set)
 - Tested iteration_9/10: 100% after fixes
@@ -128,7 +128,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Verified on preview (normal load + Google redirect); live check needs a redeploy
 
 ## Iteration 17 (2026-06): Search engine visibility
-- index.html: keyword title + description, canonical https://myboatprep.com/, Open Graph + Twitter tags, WebApplication JSON-LD (Free / Pro NZD 4.99), google-site-verification meta, better noscript
+- index.html: keyword title + description, canonical https://myboatprep.com/, Open Graph + Twitter tags, WebApplication JSON-LD (Free / Pro NZD 9.99), google-site-verification meta, better noscript
 - Crawlable feature summary inside #root (replaced when React mounts, so users still see sign-in first)
 - New public/og-image.jpg (1200x630 share image), robots.txt (blocks /admin, /auth/, /api/), sitemap.xml
 - Worldwide wording (user choice). Needs redeploy; user then submits sitemap in Google Search Console
@@ -207,3 +207,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Magic scan wording
 - Scan button renamed "Upload image for magic scan..." (AI icon kept), with "Save time adding items:" help label before it
 - Newly added cupboard/locker opens automatically so the add-item box and magic scan are visible
+
+## 2026-10 Price change + company footer
+- Pro price NZD 9.99/year (setup_stripe.py amount 999; old 4.99 price archived, lookup_key pro_yearly transferred)
+- setup_stripe.setup() now runs on backend startup (background) and moves active subscribers on old prices to the new price with no proration (applies from next renewal)
+- PlanDialog shows price notice to subscribers; all copy (Login, PaymentResult, Terms, index.html JSON-LD/noscript) updated
+- CompanyFooter (Lisbon Lions Limited, NZBN 9429038086274) on Login and Terms pages only
