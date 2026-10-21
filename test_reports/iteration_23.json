@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend testing of the 'Show List Ordering Icons' checkbox (per-list ordering tools and numbers). All 11 requested behaviours passed on Free (390px), Pro (390px and 1920px) and crew (Free added as crew on Pro's boat for a short time). Default is off: no numbers or tools on Rigging, Head, Engine Service, Ship's Log or My To Do List. The checkbox sits inside add-item-form above the Add input on standard lists and custom lists, including empty ones. Ticking it shows numbers 1..n and the flag/up/down tools. Up is disabled on the first item and down on the last. Up/down swap items. Number entry works: 5->1 moves to top, 999 moves to bottom, Escape cancels, 0 and empty do nothing, blur commits. Flag moves the item to the top with is-flagged, and the red highlight stays after unticking. Flag and order survive a reload (backend sync). The setting is per list and survives a reload. No upgrade prompt for Free. With an area filter on, the tools hide and ordering-filter-note shows. Crew see no add form or checkbox. No horizontal overflow at 390px, and long text wraps.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "My To Do List help text", "issues": ["Help copy still says 'Tap the flag to mark an item urgent... Use the up and down arrows' but these are now hidden by default. Mention ticking 'Show List Ordering Icons' first."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: update the My To Do List help text to point users to the 'Show List Ordering Icons' checkbox"
+  ],
+  "critical_code_review_comments": [
+    "useListOrdering key is mbp_order_<listId> and does not include the boat. The same list id (e.g. riggingChecks) on a second owned boat shares the setting. This matches the spec 'per list, this device', but consider adding the boat key if users expect a separate setting per boat.",
+    "useListOrdering: when listId changes, the first render uses the previous list's value until the effect runs (one frame). Harmless, but a keyed state or useMemo read would avoid it.",
+    "mbp_order_<id> keys are not removed from localStorage when a custom list is deleted (trivial)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Temporary changes, all reverted: Pro boat got area TEST_area1 with Rigging items 200/201 tagged, and test-user-free was added to its crew. Both were removed through mongo afterwards. Temporary TEST_ items in Pro's My To Do List and a TEST_Order List custom list were deleted in the UI. Free Rigging Checks order and flag were restored to the original state, and the checkbox was left unticked.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Beta test account has empty boat details (vessel/skipper/callsign), so edits are blocked by the guard; use Pro or Free. No test accounts have inventory areas or crew by default; inject through mongo user_boats (areas, data.<list>[].area, crew) and bump sec_ts.areas / list_ts.<list> / updated_at, then revert."
+}

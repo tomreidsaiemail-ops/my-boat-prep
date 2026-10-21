@@ -213,3 +213,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - setup_stripe.setup() now runs on backend startup (background) and moves active subscribers on old prices to the new price with no proration (applies from next renewal)
 - PlanDialog shows price notice to subscribers; all copy (Login, PaymentResult, Terms, index.html JSON-LD/noscript) updated
 - CompanyFooter (Lisbon Lions Limited, NZBN 9429038086274) on Login and Terms pages only
+
+## 2026-10 List ordering toggle
+- "Show List Ordering Icons" checkbox in AddItemForm on every checklist (not admin lists or inventory); per list, saved on device (localStorage mbp_order_<listId>); free for all
+- When on: numbered rows (tap number to type a new position), flag (jumps to top, red), up/down arrows; hidden under an area filter with a note
+- Flagged red highlight always visible; My To Do List help text updated
+- Tested: iteration_23 (100%)
