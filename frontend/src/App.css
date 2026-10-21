@@ -65,6 +65,10 @@ body {
 .prio-btn:hover { background: #f1f5f9; color: var(--navy); }
 .prio-btn:active { transform: scale(.92); }
 .prio-btn:disabled { opacity: .3; pointer-events: none; }
+.order-num { width: 36px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1.5px solid var(--line); background: #fff; font-family: var(--font-mono, ui-monospace, monospace); font-size: 14px; font-weight: 800; color: var(--navy); transition: border-color .15s, background-color .15s; }
+.order-num:hover { border-color: var(--navy); background: #f1f5f9; }
+.order-num-input { width: 52px; padding: 0 4px; text-align: center; border-color: var(--navy); outline: none; -moz-appearance: textfield; }
+.order-num-input::-webkit-inner-spin-button, .order-num-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 .mbp-pop { animation: mbp-pop .22s ease-out; }
 @keyframes mbp-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

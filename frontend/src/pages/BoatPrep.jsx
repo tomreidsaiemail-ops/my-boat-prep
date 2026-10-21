@@ -22,6 +22,7 @@ import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
+import useListOrdering from "@/hooks/useListOrdering";
 
 const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
 import useTemplates from "@/hooks/useTemplates";
@@ -90,6 +91,7 @@ export default function BoatPrep({ boatId, boats }) {
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
+  const [ordering, setOrdering] = useListOrdering(active.id);
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const tagging = premium && !crew && areas.length > 0;
@@ -123,6 +125,12 @@ export default function BoatPrep({ boatId, boats }) {
     if (j < 0 || j >= list.length) return list;
     const next = [...list];
     [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
+  const place = (id, pos) => guard() && setItems((list) => {
+    const it = list.find((x) => x.id === id);
+    const next = list.filter((x) => x.id !== id);
+    next.splice(Math.min(Math.max(pos - 1, 0), next.length), 0, it);
     return next;
   });
   const reset = ownerOnly((zone) => guard(zone) && setDialog({ type: "reset" }));
@@ -293,8 +301,9 @@ export default function BoatPrep({ boatId, boats }) {
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            {...(active.id === "myTodo" && !areaFilter ? { onFlag: flag, onMove: move } : {})} />)}
-          {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem}
+            ordering={ordering && !areaFilter} onFlag={flag} onMove={move} onPlace={place} />)}
+          {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
+          {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
         </>
       )}
