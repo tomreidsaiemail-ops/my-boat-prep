@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
-import { displayLabel, isOutdated, keepMine, resetLists, resetOptions, TEMPLATE_IDS } from "@/lib/defaults";
+import { addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds } from "@/lib/defaults";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
@@ -59,7 +59,7 @@ export default function BoatPrep({ boatId, boats }) {
   const { askUpgrade } = useUpgrade();
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
-  const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew } = useBoatStore(user.user_id, boats.current);
+  const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew, loaded } = useBoatStore(user.user_id, boats.current);
   const gps = useGps();
   const [activeId, setActiveId] = useState("leavingDock");
   const [warn, showWarn] = useWarn();
@@ -75,6 +75,8 @@ export default function BoatPrep({ boatId, boats }) {
   const [areaFilter, setAreaFilter] = useState("");
   const [editArea, setEditArea] = useState("");
   const { boat, registry } = state;
+  const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
+  useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
   const { setVessel } = boats;
   useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
@@ -137,7 +139,7 @@ export default function BoatPrep({ boatId, boats }) {
   const confirmReset = (ids) => {
     mutate((s) => resetLists(s, ids, templates));
     setDialog(null);
-    toast.success(ids.length === 1 ? `${resetOptions(state).find((o) => o.id === ids[0])?.name} reset` : `${ids.length} lists reset`);
+    toast.success(ids.length === 1 ? `${resetOptions(state, templates).find((o) => o.id === ids[0])?.name} reset` : `${ids.length} lists reset`);
   };
   const askDeleteList = () => {
     if (!guard()) return;
@@ -307,7 +309,7 @@ export default function BoatPrep({ boatId, boats }) {
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
         </>
       )}
-      {user.is_admin && !crew && TEMPLATE_IDS.includes(active.id) && (
+      {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
@@ -335,7 +337,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
       </TextDialog>
-      <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
+      <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>

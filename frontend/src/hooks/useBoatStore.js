@@ -46,6 +46,8 @@ export default function useBoatStore(userId, boatEntry) {
   const hadLocal = useRef(!!loadLocal(boatId));
   const [state, setState] = useState(() => loadLocal(boatId) || freshState());
   const [role, setRole] = useState(boatEntry.crew ? "crew" : "owner");
+  // Auto-added template lists wait for the cloud copy so they never overwrite another phone's changes.
+  const [loaded, setLoaded] = useState(() => hadLocal.current && (!navigator.onLine || localStorage.getItem(MANUAL_OFFLINE_KEY) === "1" || Number(localStorage.getItem(outboxKey(boatId)) || 0) > 0));
   const [pending, setPending] = useState(() => Number(localStorage.getItem(outboxKey(boatId)) || 0));
   const [browserOnline, setBrowserOnline] = useState(navigator.onLine);
   const [reachable, setReachable] = useState(true);
@@ -76,11 +78,13 @@ export default function useBoatStore(userId, boatEntry) {
     if (!navigator.onLine || manualOffline || pendingRef.current > 0) return;
     api.get("/me/boat", { params }).then(({ data }) => {
       setRole(data.role || "owner");
+      setLoaded(true);
       if (pendingRef.current > 0) return;
       if (!hadLocal.current || data.updated_at > stateRef.current.updated_at) setState(serverToState(data));
     }).catch((e) => {
-      if (e.response?.status !== 404) { if (!e.response) setReachable(false); return; }
+      if (e.response?.status !== 404) { setLoaded(hadLocal.current); if (!e.response) setReachable(false); return; }
       setPending((p) => Math.max(p, 1));
+      setLoaded(true);
       // Brand-new skipper: start the built-in lists from the admin's master templates.
       if (!hadLocal.current && boatId === "main") api.get("/templates").then(({ data }) => mutate((s) => applyTemplates(s, data.templates))).catch(() => {});
     });
@@ -149,5 +153,5 @@ export default function useBoatStore(userId, boatEntry) {
     return data.log_sent;
   }, [mutate, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { state, mutate, pending, online, goOffline, goOnline, emailLog, crew: role === "crew" };
+  return { state, mutate, pending, online, goOffline, goOnline, emailLog, crew: role === "crew", loaded };
 }

@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { TierBadge } from "@/components/boat/AccountMenu";
+import { TemplateListsAdmin } from "@/components/admin/TemplateListsAdmin";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 
@@ -76,6 +77,7 @@ export default function Admin() {
           {shown.map((u) => <UserRow key={u.user_id} u={u} onRole={setRole} saving={saving === u.user_id} />)}
         </ul>
       )}
+      <TemplateListsAdmin />
     </main>
   );
 }

@@ -76,14 +76,19 @@ export const freshState = () => ({
 export const PRESERVED_LISTS = ["shipsLog", "myTodo"];
 export const TEMPLATE_IDS = DEFAULT_REGISTRY.map((l) => l.id).filter((id) => !PRESERVED_LISTS.includes(id));
 
+// Lists the admin created in the Admin panel; they appear on every boat like built-in lists.
+export const customTemplateLists = (templates) => Object.entries(templates || {}).filter(([, t]) => t.custom)
+  .sort(([, a], [, b]) => (a.created_at < b.created_at ? -1 : 1)).map(([id, t]) => ({ id, name: t.name, isSystem: true }));
+export const templateIds = (templates) => [...TEMPLATE_IDS, ...customTemplateLists(templates).map((l) => l.id)];
+
 // Admin-published master template items, falling back to the built-in items.
 export const templateItems = (id, templates) =>
   JSON.parse(JSON.stringify(templates?.[id]?.items || DEFAULT_DATA[id])).map((i) => ({ ...i, checked: false }));
 
 const insertDefaultList = (registry, data, id, templates) => {
-  const def = DEFAULT_REGISTRY.find((l) => l.id === id);
-  if (registry.some((l) => l.id === id || l.name.toLowerCase() === def.name.toLowerCase())) return false;
-  const later = DEFAULT_REGISTRY.slice(DEFAULT_REGISTRY.indexOf(def) + 1).map((l) => l.id);
+  const def = DEFAULT_REGISTRY.find((l) => l.id === id) || customTemplateLists(templates).find((l) => l.id === id);
+  if (!def || registry.some((l) => l.id === id || l.name.toLowerCase() === def.name.toLowerCase())) return false;
+  const later = DEFAULT_REGISTRY.includes(def) ? DEFAULT_REGISTRY.slice(DEFAULT_REGISTRY.indexOf(def) + 1).map((l) => l.id) : PRESERVED_LISTS;
   const at = registry.findIndex((l) => later.includes(l.id));
   registry.splice(at < 0 ? registry.length : at, 0, { ...def });
   data[id] = templateItems(id, templates);
@@ -104,7 +109,7 @@ const markVersions = (s, ids, templates) => {
   return v;
 };
 
-export const isOutdated = (s, id, templates) => !!templates?.[id] && TEMPLATE_IDS.includes(id)
+export const isOutdated = (s, id, templates) => !!templates?.[id] && templateIds(templates).includes(id)
   && s.registry.some((l) => l.id === id) && templates[id].updated_at > (s.template_versions?.[id] || "");
 
 export const keepMine = (s, id, templates) => ({ ...s, template_versions: markVersions(s, [id], templates) });
@@ -128,7 +133,15 @@ export const copyBoatState = (s, vessel) => {
   };
 };
 
-export const resetOptions = (s) => DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id))
+// Adds admin-created template lists the boat doesn't have yet (skipping ones the skipper deleted); null when nothing to add.
+export const addTemplateLists = (s, templates) => {
+  const registry = [...s.registry];
+  const data = { ...s.data };
+  const added = customTemplateLists(templates).filter((l) => !(s.deleted_lists || []).includes(l.id) && insertDefaultList(registry, data, l.id, templates));
+  return added.length ? { ...s, registry, data, template_versions: markVersions(s, added.map((l) => l.id), templates) } : null;
+};
+
+export const resetOptions = (s, templates) => [...DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id)), ...customTemplateLists(templates)]
   .map((l) => { const mine = s.registry.find((r) => r.id === l.id); return { id: l.id, name: mine?.name || l.name, deleted: !mine }; })
   .filter((o) => !o.deleted || (s.deleted_lists || []).includes(o.id))
   .map((o) => ({ ...o, clash: o.deleted && s.registry.some((r) => r.name.toLowerCase() === o.name.toLowerCase()) }));
