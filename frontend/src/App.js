@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import BoatShell from "@/pages/BoatShell";
 import Login from "@/pages/Login";
 import Admin from "@/pages/Admin";
+import AdminTemplates from "@/pages/AdminTemplates";
 import PaymentResult from "@/pages/PaymentResult";
 import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 import Terms from "@/pages/Terms";
@@ -31,6 +32,7 @@ function AppRouter() {
       <Route path="/join/:token" element={<JoinCrew />} />
       <Route path="/" element={<RequireAuth><UserBoat /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
+      <Route path="/admin/templates" element={<RequireAuth admin><AdminTemplates /></RequireAuth>} />
       <Route path="/payment/success" element={<RequireAuth><PaymentResult success /></RequireAuth>} />
       <Route path="/payment/cancel" element={<RequireAuth><PaymentResult /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />

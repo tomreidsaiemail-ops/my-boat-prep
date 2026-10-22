@@ -226,3 +226,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Auto-added to every owner boat (Free included) before My To Do List once the cloud copy has loaded (useBoatStore `loaded`), skipping deleted lists and name clashes; Updated note, Reset All restore and in-app publish bar work for them
 - Admin rename affects new boats only; deleting a template leaves existing copies as normal lists
 - Tested: iteration_24 (backend 31/31, frontend all flows)
+
+## 2026-10 Manage template lists page
+- Account menu (admin only): "Manage template lists" under "Manage user tiers" -> /admin/templates (AdminTemplates.jsx); template list controls removed from the User tiers page

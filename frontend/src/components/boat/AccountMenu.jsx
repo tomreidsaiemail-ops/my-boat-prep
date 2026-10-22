@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { Crown, ListChecks, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -44,6 +44,7 @@ export const AccountMenu = () => {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}
+        {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin/templates")} data-testid="account-templates-item"><ListChecks className="mr-2 h-4 w-4" />Manage template lists</DropdownMenuItem>}
         <DropdownMenuItem onSelect={signOut} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

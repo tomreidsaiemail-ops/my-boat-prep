@@ -56,7 +56,6 @@ export const TemplateListsAdmin = () => {
 
   return (
     <section className="flex flex-col gap-3" data-testid="template-lists-admin">
-      <h2 className="font-display text-2xl font-extrabold tracking-tight">Template lists</h2>
       <p className="text-sm leading-relaxed text-[var(--muted)]">
         Create a new list, like "Prep your trip", and it appears on every skipper's boats, Free plan included. Skippers who already have it keep their copy when you edit it, and see an Updated note with "Get latest items".
       </p>
