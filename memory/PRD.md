@@ -219,3 +219,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - When on: numbered rows (tap number to type a new position), flag (jumps to top, red), up/down arrows; hidden under an area filter with a note
 - Flagged red highlight always visible; My To Do List help text updated
 - Tested: iteration_23 (100%)
+
+## 2026-10 Admin template lists
+- Admin panel "Template lists" section: create/edit/delete new lists (e.g. Prep your trip), items one per line (TemplateListsAdmin/TemplateListEditor)
+- Backend /api/admin/template-lists CRUD in templates.py (list_templates docs with custom:true, id tpl_<hex>); GET /api/templates exposes them
+- Auto-added to every owner boat (Free included) before My To Do List once the cloud copy has loaded (useBoatStore `loaded`), skipping deleted lists and name clashes; Updated note, Reset All restore and in-app publish bar work for them
+- Admin rename affects new boats only; deleting a template leaves existing copies as normal lists
+- Tested: iteration_24 (backend 31/31, frontend all flows)

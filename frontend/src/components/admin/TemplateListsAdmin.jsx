@@ -14,7 +14,7 @@ const Row = ({ t, onEdit, onDelete }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`template-list-row-${t.id}`}>
     <div className="min-w-0">
       <div className="truncate font-bold" data-testid={`template-list-name-${t.id}`}>{t.name}</div>
-      <div className="text-xs text-[var(--muted)]">{t.items.length} items · updated {fmt(t.updated_at)}</div>
+      <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · updated {fmt(t.updated_at)}</div>
     </div>
     <div className="flex shrink-0 gap-1">
       <button type="button" className="icon-btn" onClick={onEdit} aria-label={`Edit ${t.name}`} data-testid={`template-list-edit-${t.id}`}><Pencil className="h-4 w-4" /></button>

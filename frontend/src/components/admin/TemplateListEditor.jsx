@@ -8,7 +8,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = [...new Map(text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => [l.toLowerCase(), l])).values()];
 
   const save = async (e) => {
     e.preventDefault();

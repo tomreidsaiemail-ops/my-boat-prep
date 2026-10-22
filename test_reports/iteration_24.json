@@ -1,0 +1,33 @@
+{
+  "summary": "Tested the admin template-list creator end to end. Backend: 31/31 pytest pass (13 new extra tests plus the existing test_template_lists.py and test_templates.py). Frontend (390x844, real cookie sessions): I used the Admin UI to create a list, check validation (empty name, no items, duplicate name case-insensitive, reserved name 'Boat Inventory'), use Cancel, open edit with prefilled fields ('Save changes'), and delete through the dialog. The list appeared automatically for Free, Pro, Admin and Beta, placed after the built-in prep lists and before My To Do List, with items unticked and no upgrade prompt for Free. It persisted after reload and showed up in a second browser context with the same tick state. The Updated badge and note worked: 'Keep mine' dismissed it and stayed dismissed after reload; 'Get latest items' replaced the items with 5 unticked. A skipper delete stayed deleted after reload. Reset All listed it as '(deleted, will be restored)' and restored it, and that held after reload. A name clash with a Pro user's own 'TEST_Clash' list produced no duplicate. After the admin deleted a template, Beta (who didn't have it yet) did not get it, while Free, Admin and Pro kept their copy with all items. Regression checks passed: rename and clone of the template list, Show List Ordering Icons, Boat Inventory, the publish bar for the admin on the template list, and no duplicate lists across repeated reloads. Crew auto-add exclusion was checked by code review only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TemplateListEditor", "issue": "The live item count does not drop case-insensitive duplicates, but the server does. Typing 'Fuel topped up' and 'fuel topped up' shows '4 items', the server saves 3, and the row then reads '3 items'.", "selector": "[data-testid=template-list-item-count]", "priority": "LOW"},
+      {"component": "TemplateListsAdmin Row", "issue": "Plural is wrong when a list has one item: shows '1 items · updated ...'.", "selector": "[data-testid^=template-list-row-]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Admin deletes a template list, then a skipper deletes their kept copy", "issue": "The kept copy still has isSystem:true, so delete-list-dialog says 'This supplied list will be removed. Reset All brings it back later with its original items.' That is wrong: resetOptions only covers lists in customTemplateLists(templates), so the orphaned list can never be restored, and its id stays in deleted_lists for good.", "affected_selectors": ["[data-testid=delete-list-dialog]", "[data-testid=reset-all-dialog]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_template_lists_extra.py", "/app/backend/tests/test_template_lists.py", "/app/backend/tests/test_templates.py", "/app/test_reports/pytest/iter24_template_lists.xml"],
+  "action_items": [
+    "LOW: In TemplateListEditor, count lines after a case-insensitive dedupe so the count matches what the server saves.",
+    "LOW: Use the singular '1 item' in the TemplateListsAdmin row.",
+    "LOW: When a boat's tpl_* list no longer exists in templates, treat it as the skipper's own list (isSystem false, or change the DeleteListDialog text) so the dialog doesn't promise a Reset All restore that can't happen."
+  ],
+  "critical_code_review_comments": [
+    "Renaming a template list in the admin does not rename skippers' existing copies. Only item changes bump updated_at and show the Updated note. This looks intentional but should be confirmed with the user.",
+    "When a template is deleted and then recreated with the same name, it gets a new tpl id. Boats that kept the old copy are protected by the name-clash check, so no duplicate appears. Good.",
+    "_check_name with exclude=None uses {list_id: {$ne: None}}. This works because every doc has a list_id.",
+    "Crew exclusion (`loaded && !crew`) in BoatPrep.jsx looks correct. It was not tested end to end because no crew relationship is seeded."
+  ],
+  "updated_files": ["/app/backend/tests/test_template_lists_extra.py"],
+  "success_rate": {"backend": "100% (31/31)", "frontend": "100% of tested flows (3 low-priority issues)"},
+  "seed_data_creation": "Created templates TEST_Prep your trip (tpl_9b0f04ade4) and TEST_Clash (tpl_0a4c0d1a79); both deleted. Before testing I backed up the user_boats collection to /tmp/bk/user_boats.json and restored it afterwards (mongoimport --drop), so all test accounts are as found. I then recreated the user_boats indexes {owner_id:1, boat_id:1} unique and {crew:1}. list_templates has 0 custom docs.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The delete-list button only appears when a list is empty (delete items first). The clone dialog uses clone-list-input and clone-list-confirm-btn (a textarea). Rename is Pro-only, so Free sees an upgrade dialog. The Free test boat's registry only has Rigging Checks, Head, Engine Service and My To Do List onward (existing state). The Reset All button is top-reset-all-btn, and options are reset-option-<id>.",
+  "test_credentials": "Cookie session_token: test_session_admin_1 / test_session_pro_1 / test_session_free_1 / test_session_beta_1 (see /app/memory/test_credentials.md)"
+}

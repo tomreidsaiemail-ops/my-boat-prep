@@ -144,7 +144,9 @@ export default function BoatPrep({ boatId, boats }) {
   const askDeleteList = () => {
     if (!guard()) return;
     if (registry.length <= 1) { toast.error("You need to keep at least one list"); return; }
-    setDialog({ type: "deleteList", list: active });
+    // A template list the admin has since retired is the skipper's own list now: Reset All can't bring it back.
+    const retired = active.id.startsWith("tpl_") && !templateIds(templates).includes(active.id);
+    setDialog({ type: "deleteList", list: { ...active, isSystem: active.isSystem && !retired } });
   };
   const deleteList = () => {
     const { id, isSystem } = dialog.list;
