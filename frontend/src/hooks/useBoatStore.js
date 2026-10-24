@@ -56,6 +56,8 @@ export default function useBoatStore(userId, boatEntry) {
   const queuedOffline = useRef(pending > 0 && !localStorage.getItem(newBoatKey));
   const stateRef = useRef(state);
   const pendingRef = useRef(pending);
+  // Bumped on every edit (even uncounted typing) so a slow sync reply never overwrites newer keystrokes.
+  const editsRef = useRef(0);
   stateRef.current = state;
   pendingRef.current = pending;
   const online = browserOnline && reachable && !manualOffline;
@@ -94,11 +96,12 @@ export default function useBoatStore(userId, boatEntry) {
     if (pending === 0 || !online) return undefined;
     const timer = setTimeout(async () => {
       const sent = pendingRef.current;
+      const edits = editsRef.current;
       try {
         const { data } = await api.put("/me/boat", stateRef.current, { timeout: 10000, params });
         // Take the cloud's merged copy (it may include other phones' changes) unless more edits were made meanwhile.
-        if (pendingRef.current === sent) setState(serverToState(data));
-        setPending((p) => Math.max(0, p - sent));
+        if (editsRef.current === edits) setState(serverToState(data));
+        setPending((p) => (editsRef.current === edits ? Math.max(0, p - sent) : Math.max(1, p - sent)));
         localStorage.removeItem(newBoatKey);
         if (queuedOffline.current) {
           queuedOffline.current = false;
@@ -130,6 +133,7 @@ export default function useBoatStore(userId, boatEntry) {
   }, [reachable, browserOnline]);
 
   const mutate = useCallback((fn, { count = true } = {}) => {
+    editsRef.current += 1;
     setState((prev) => { const now = new Date().toISOString(); return { ...stamp(prev, fn(prev), now), updated_at: now }; });
     setPending((p) => (count ? p + 1 : Math.max(p, 1)));
     if (!onlineRef.current) queuedOffline.current = true;

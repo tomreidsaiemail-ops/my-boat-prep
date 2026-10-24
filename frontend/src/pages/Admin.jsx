@@ -8,6 +8,18 @@ import { TierBadge } from "@/components/boat/AccountMenu";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 
+const STAMP = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZoneName: "short" };
+const stamp = (iso, timeZone) => (iso ? new Date(iso).toLocaleString("en-NZ", { ...STAMP, timeZone }) : "");
+
+const Joined = ({ u }) => (
+  <span className="flex flex-col text-xs text-[var(--muted)]" data-testid={`admin-user-joined-${u.user_id}`}>
+    {u.has_subscription && <span>Paid Pro until {fmt(u.pro_until)}</span>}
+    <span>Joined {fmt(u.created_at)}</span>
+    {u.created_at && <span className="font-mono" data-testid={`admin-user-joined-utc-${u.user_id}`}>{stamp(u.created_at, "UTC")}</span>}
+    {u.created_at && <span className="font-mono" data-testid={`admin-user-joined-local-${u.user_id}`}>{stamp(u.created_at)} (local)</span>}
+  </span>
+);
+
 const UserRow = ({ u, onRole, saving }) => (
   <li className="flex flex-col gap-2 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`admin-user-${u.user_id}`}>
     <div className="flex items-start justify-between gap-3">
@@ -18,7 +30,7 @@ const UserRow = ({ u, onRole, saving }) => (
       <TierBadge role={u.role} />
     </div>
     <div className="flex items-center justify-between gap-3">
-      <span className="text-xs text-[var(--muted)]">{u.has_subscription ? `Paid Pro until ${fmt(u.pro_until)}` : `Joined ${fmt(u.created_at)}`}</span>
+      <Joined u={u} />
       <div className="flex items-center gap-2">
         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
         <select value={u.role} onChange={(e) => onRole(u, e.target.value)} disabled={saving} aria-label={`Tier for ${u.email}`}

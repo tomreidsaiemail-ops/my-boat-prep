@@ -31,6 +31,7 @@ from media import router as media_router, MEDIA_LISTS, media_list_for_pdf  # noq
 from faq import router as faq_router, FAQ_ID, faq_list_for_pdf  # noqa: E402
 from feedback import router as feedback_router  # noqa: E402
 from templates import router as templates_router  # noqa: E402
+from promo_codes import router as promo_codes_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
@@ -305,6 +306,7 @@ app.include_router(media_router)
 app.include_router(faq_router)
 app.include_router(feedback_router)
 app.include_router(templates_router)
+app.include_router(promo_codes_router)
 app.include_router(crew_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)

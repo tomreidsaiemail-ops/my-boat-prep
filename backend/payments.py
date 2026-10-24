@@ -43,7 +43,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         line_items=[{"price": price.id, "quantity": 1}], mode="subscription",
         success_url=f"{origin}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin}/payment/cancel", metadata=meta, subscription_data={"metadata": meta},
-        client_reference_id=user["user_id"], adaptive_pricing={"enabled": False},
+        client_reference_id=user["user_id"], adaptive_pricing={"enabled": False}, allow_promotion_codes=True,
     )
     if user.get("stripe_customer_id"):
         kwargs["customer"] = user["stripe_customer_id"]

@@ -36,6 +36,8 @@ export const TermsGate = ({ children }) => {
       </div>
       <p className="text-base text-[var(--muted)]">Please read and accept the My Boat Prep Terms of Service to keep using the app.</p>
       <TermsContent />
+      {/* Blank space so the last terms scroll clear of the fixed accept panel. */}
+      <div aria-hidden="true" className="h-48 shrink-0" data-testid="terms-gate-spacer" />
       <div className="fixed inset-x-0 bottom-0 border-t-2 border-[var(--navy)] bg-white/95 px-5 py-4 backdrop-blur-md">
         <div className="mx-auto flex max-w-xl flex-col gap-3">
           <label className="flex cursor-pointer items-start gap-3 text-sm font-semibold" data-testid="terms-agree-label">

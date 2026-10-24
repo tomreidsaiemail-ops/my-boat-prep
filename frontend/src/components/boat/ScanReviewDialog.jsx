@@ -23,9 +23,9 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
     <Dialog open={!!scan} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="scan-review-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Sparkles className="h-5 w-5" /> Check what AI found</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Sparkles className="h-5 w-5" /> Magic Scan Discoveries</DialogTitle>
           <DialogDescription className="text-sm">
-            {scan?.items.length ? `AI spotted ${scan.items.length} ${scan.items.length === 1 ? "item" : "items"} in ${scan?.area.name}. Fix names or quantities, untick anything wrong, or add what it missed.` : `AI couldn't spot any items in ${scan?.area.name}. You can add them below.`}
+            {scan?.items.length ? `Magic Scan discovered ${scan.items.length} ${scan.items.length === 1 ? "item" : "items"} in ${scan?.area.name}. Fix names or quantities, untick anything wrong, or add what it missed.` : `AI couldn't spot any items in ${scan?.area.name}. You can add them below.`}
             {existing > 0 && <b className="mt-1 block text-[var(--red)]" data-testid="scan-replace-warning">Saving replaces the {existing} {existing === 1 ? "item" : "items"} listed in this cupboard now.</b>}
           </DialogDescription>
         </DialogHeader>
