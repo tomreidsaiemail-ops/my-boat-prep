@@ -355,6 +355,7 @@ async def create_indexes():
         logging.getLogger(__name__).error(f"Storage init failed: {e}")
     asyncio.create_task(_sync_stripe_catalog())
     await db.users.create_index("email", unique=True)
+    await db.promo_codes.create_index("code", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)

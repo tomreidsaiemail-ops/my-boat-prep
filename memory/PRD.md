@@ -229,3 +229,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-10 Manage template lists page
 - Account menu (admin only): "Manage template lists" under "Manage user tiers" -> /admin/templates (AdminTemplates.jsx); template list controls removed from the User tiers page
+
+## 2026-10 Promo codes, typing fix, small UI
+- Admin "Manage promo codes and coupons" page (/admin/promos): create code + % + expiry with live price preview; "Generate & Publish Code" creates Stripe coupon (first year only, Pro product) + promotion code (expires 23:59 NZ); list with times used/active. Backend promo_codes.py; checkout allow_promotion_codes=True
+- Fixed vessel/boat detail typing race (useBoatStore editsRef)
+- Magic Scan Discoveries wording; Terms gate bottom spacer; /admin Joined shows UTC + local time
+- Tested: iteration_25 (all pass)

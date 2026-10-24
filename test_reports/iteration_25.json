@@ -1,0 +1,30 @@
+{
+  "summary": "Tested promo codes (backend API plus real Stripe checkout), admin menu and promo page UI, vessel typing race fix, Terms gate spacer, Joined UTC/local times on /admin, and the scan dialog wording (by code review). Everything in scope passes. Backend pytest 17/17. Stripe hosted checkout shows 'Add promotion code'. NOTACODE99 gives 'This code is invalid.' TESTMBP25 brings the total to NZ$7.49 with '25% off for a year, then NZ$9.99 per year starting next year'. No payment was completed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PromoCodeForm percent input", "issue": "The input is type=number with max=100, so a value over 100 (e.g. 150) triggers the browser's own validation and blocks onSubmit. The browser tooltip shows instead of promo-error, and any earlier promo-error text (e.g. 'Pick an expiry date') stays on screen, which is misleading. Fix: add noValidate to the form, or clear the error on change.", "selector": "[data-testid=promo-percent-input]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ScanReviewDialog", "issues": ["The 0-items text still says \"AI couldn't spot any items in X\". Consider \"Magic Scan couldn't spot any items...\" to match the new wording."]},
+      {"screen": "PromoCodeForm", "issues": ["Expiry uses the browser's native date picker (type=date), which matches the spec but not the shadcn Calendar used elsewhere. The client error says 'between 1 and 100%' but 0.5 is accepted (step=any), which is a small mismatch."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_promo_codes.py", "/app/test_reports/pytest/pytest_promo.xml"],
+  "action_items": [
+    "Optional: add noValidate to promo-code-form, or clear promo-error on input change, so >100% shows the app's own error",
+    "Optional: change the empty-scan wording to Magic Scan"
+  ],
+  "critical_code_review_comments": [
+    "promo_codes.py: the GET list makes 2 Stripe calls (price plus all promotion codes, paged) on every page load. Fine for now, but it will slow down as codes grow.",
+    "The duplicate check is DB-only, with no unique index on promo_codes.code. A double-submit race could create 2 Stripe coupons; Stripe would reject the duplicate promotion code and the coupon gets rolled back, so the risk is low. Consider a unique index.",
+    "useBoatStore editsRef fix looks right: the PUT reply is ignored and pending stays at 1 or more when edits happen mid-flight."
+  ],
+  "updated_files": ["/app/backend/tests/test_promo_codes.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (1 low-priority validation UX issue)"},
+  "seed_data_creation": "Promo codes created by testing (no delete endpoint, please clean up in Mongo and Stripe): TEST5465X (15%, exp 2026-12-23) and TESTUI5590 (20%, exp 2026-12-31). TESTMBP25 was created by the main agent. Also 2-3 abandoned Stripe checkout sessions (payment_transactions status initiated) for test-user-free. test-user-free tos_version was unset temporarily and then restored to 2026-06 with its original tos_accepted_at. The Pro vessel name was restored to 'TEST_Kia Ora'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Promo admin: /admin/promos, API /api/admin/promo-codes. Stripe checkout promo field: click 'Add promotion code' (span, at roughly 462,304 on 1920 width), input #promotionCode, then press Enter. Vessel race was verified under normal network and with PUT delayed 1.5s via page.route at 400/750/1200 ms key pauses; all gave the exact typed value. Terms gate checked at 390x844, 320x568 and 768x1024: last section bottom sits above the fixed panel top. Joined times checked in UTC and Pacific/Auckland browser contexts (local shows NZDT)."
+}

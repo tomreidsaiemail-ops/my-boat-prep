@@ -4,7 +4,7 @@ import { Loader2, Sparkles } from "lucide-react";
 const errText = (e) => {
   const d = e.response?.data?.detail;
   if (typeof d === "string") return d;
-  if (Array.isArray(d)) return "Enter a discount between 1 and 100%";
+  if (Array.isArray(d)) return "Enter a discount above 0 and up to 100%";
   return "Couldn't reach Stripe, please check your signal";
 };
 const today = () => new Date().toLocaleDateString("en-CA");
@@ -39,7 +39,7 @@ export const PromoCodeForm = ({ base, onSave, onCancel }) => {
   const save = async (e) => {
     e.preventDefault();
     if (!/^[A-Z0-9_-]{3,30}$/.test(code)) { setError("Use 3 to 30 letters, numbers, - or _ for the code"); return; }
-    if (!(pctNum > 0 && pctNum <= 100)) { setError("Enter a discount between 1 and 100%"); return; }
+    if (!(pctNum > 0 && pctNum <= 100)) { setError("Enter a discount above 0 and up to 100%"); return; }
     if (!expires) { setError("Pick an expiry date"); return; }
     setBusy(true);
     setError("");
@@ -47,14 +47,14 @@ export const PromoCodeForm = ({ base, onSave, onCancel }) => {
   };
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-4" data-testid="promo-code-form">
+    <form onSubmit={save} noValidate className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-4" data-testid="promo-code-form">
       <label className="flex flex-col gap-1 text-sm font-bold">Coupon name / code
         <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))} maxLength={30} placeholder="e.g. SKIPPER20"
           className="field-input font-mono uppercase" autoCapitalize="characters" data-testid="promo-code-input" />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-bold">Discount (%)
-          <input type="number" inputMode="decimal" min="1" max="100" step="any" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="20"
+          <input type="number" inputMode="decimal" min="0.01" max="100" step="any" value={pct} onChange={(e) => setPct(e.target.value)} placeholder="20"
             className="field-input" data-testid="promo-percent-input" />
         </label>
         <label className="flex flex-col gap-1 text-sm font-bold">Expiry date
