@@ -27,6 +27,15 @@ export const MoveAreaDialog = ({ source, areas, links = [], onMove, onClose }) =
     if (!picked.length) { setError("Tick at least one item to move"); return; }
     if (picked.some((r) => r.kind === "item" && (!/^\d+$/.test(r.qty) || +r.qty < 1 || +r.qty > r.max))) { setError("Each amount must be a whole number from 1 up to how many there are"); return; }
     const withTarget = rows.map((r, i) => ({ ...r, target: effective[i] }));
+    const totals = {};
+    const over = withTarget.find((r) => {
+      if (!r.pick || r.kind !== "item") return false;
+      const key = `${r.target}|${r.name.trim().toLowerCase()}`;
+      const have = totals[key] ?? (areas.find((a) => a.id === r.target)?.items || []).find((i) => i.name.trim().toLowerCase() === r.name.trim().toLowerCase())?.qty ?? 0;
+      totals[key] = have + +r.qty;
+      return totals[key] > 9999;
+    });
+    if (over) { setError(`That would put more than 9999 ${over.name} in ${areas.find((a) => a.id === over.target).name}`); return; }
     onMove({
       sourceId: source.id,
       order: rows.filter((r) => r.kind === "item").map((r) => r.id),

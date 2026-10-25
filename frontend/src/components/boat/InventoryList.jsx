@@ -86,7 +86,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   };
   const finishMove = (plan, count) => {
     const { area } = dialog;
-    onMoveItems(plan);
+    if (onMoveItems(plan) === false) return;
     setDialog(null);
     toast.success(`Moved ${count} ${count === 1 ? "item" : "items"} from ${area.name}`);
   };

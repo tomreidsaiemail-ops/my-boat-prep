@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend E2E test of the new 'Move Boat Inventory' feature at 390x844 on the Pro account, plus crew (admin temporarily added as crew on the Pro boat) and Beta (guard-blocked) checks. Passing: icon order is move, rename, delete. The single-area warning toast and the 'has nothing to move yet' toast both work. Dialog title, description, rows (8 own items, then 2 linked Rigging Checks items with link icon), default ticks, xQty, qty input (disabled at qty 1, 'of N'), and target options all work, and options exclude the source. Default target is the first area that is not the source (Freezer when the source is the top area, Table of Groceries for other sources). Inheritance works: a changed row carries down, rows above stay the same, and an explicitly set row below keeps its choice and its following rows inherit from it. Ordering: the checkbox is ticked by default, first up and last down are disabled, number input + Enter reorders, unticking hides the icons, inheritance follows row position, and the new remaining order was saved (Tomato sauce before HP sauce). Validation works for no rows ticked and for qty 0, 13 or empty. Cancel changes nothing and reopening resets the dialog. Full grocery scenario: Freezer = patties; Fridge = milk x3 (merged with x2, case-insensitive), Butter, Beer x6 with onboard tick kept; Galley = Bread, Eggs x12, linked Chainplates (checklist tag changed to Galley). Source kept Beer x6 (onboard), Tomato sauce, HP sauce and the unticked linked Forestay item. Area counts updated, and everything persisted after reload and in Mongo. Moving all items from Galley kept the empty area (0/0). No horizontal overflow in the dialog (scrollWidth equals clientWidth, doc 390). Crew sees no move, rename or delete icons. Regression checks passed: rename, delete, add item, Magic Scan button present, search, and checklist ordering numbers. One bug: on Beta (boat details empty) the guard blocks the move, but the 'Moved 1 item' success toast still shows next to the 'Please enter vessel details first' warning.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InventoryList.finishMove", "issue": "When guard() blocks the move (boat details empty, e.g. Beta account), nothing moves but the success toast 'Moved N items from <area>' still shows and the dialog closes. RCA: finishMove calls onMoveItems(plan) and ignores its result; BoatPrep passes (plan) => guard() && mutate(...), which returns false when blocked. Fix: `if (onMoveItems(plan) === false) return;` before setDialog(null)/toast (or return a boolean from mutate).", "selector": "[data-testid=move-area-confirm-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Move Boat Area Items dialog", "issues": ["The qty input for qty-1 items is disabled but still looks like a normal input box showing '1 of 1'. Consider showing plain text or muted styling."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Do not show the 'Moved N items' success toast (and maybe keep the dialog open) when guard() blocks onMoveItems in InventoryList.finishMove",
+    "Optional: applyMove merge caps the target at 9999 with Math.min, so the extra quantity is silently lost if the merged total is over 9999. Warn or block instead"
+  ],
+  "critical_code_review_comments": [
+    "InventoryList.finishMove ignores the onMoveItems return value (see the ui_bugs entry above)",
+    "Inconsistent guard use: adding, renaming and deleting areas or items go through onChange without guard(), but Move is guarded. This is why the user can set up areas and then gets a blocked move",
+    "inventoryMove.applyMove: Math.min(9999, ...) on merge silently drops quantity",
+    "The MoveAreaDialog explicit-target map is keyed by row key, so explicit choices move with the row when it is reordered. This works, and the tests confirm it"
+  ],
+  "updated_files": ["/app/test_reports/iteration_26.json"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "96% (1 medium bug out of about 25 checks)"},
+  "seed_data_creation": "Created TEST Table of Groceries, TEST Freezer, TEST Fridge and TEST Galley cupboard (renamed to TEST Galley locker, then deleted) on Pro, and tagged Rigging Checks items 202 and 203. Temporarily added test-admin-1 as crew on the Pro boat. Created TEST BetaA and TEST BetaB on Beta. All cleaned up in Mongo: Pro areas=[], no rigging tags, crew=[]; Beta areas=[]; sec_ts, list_ts and updated_at bumped.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: add cookie session_token on the preview domain. ListSelector is a native select (list-selector, value boatInventory). Rename cupboard uses a textarea in role=dialog with a Save button. Delete uses an alertdialog with a 'Delete' button (get_by_role). Checklist ordering toggle: ordering-toggle-checkbox. Crew test: $addToSet crew:'test-admin-1' on the Pro user_boats doc, then pick boat-option-c_test-user-pro_main as admin. Remember to $pull it afterwards."
+}

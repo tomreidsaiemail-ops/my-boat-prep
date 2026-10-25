@@ -23,7 +23,7 @@ export const MoveRow = ({ row, n, total, target, targets, ordering, onChange, on
         {row.kind === "item" && (
           <label className="flex shrink-0 items-center gap-1 text-sm font-semibold">
             <input value={row.qty} inputMode="numeric" onChange={(e) => onChange({ qty: e.target.value.replace(/\D/g, "") })} disabled={row.max === 1}
-              className="field-input h-10 !w-14 px-2 text-center" aria-label={`How many of ${row.name} to move`} data-testid={`move-row-qty-${n}`} />
+              className="field-input h-10 !w-14 px-2 text-center disabled:bg-slate-100 disabled:text-[var(--muted)]" aria-label={`How many of ${row.name} to move`} data-testid={`move-row-qty-${n}`} />
             <span className="text-[var(--muted)]">of {row.max}</span>
           </label>
         )}
