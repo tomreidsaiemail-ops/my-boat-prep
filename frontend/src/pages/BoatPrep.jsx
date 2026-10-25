@@ -23,6 +23,7 @@ import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
 import useListOrdering from "@/hooks/useListOrdering";
+import { applyMove } from "@/lib/inventoryMove";
 
 const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
 import useTemplates from "@/hooks/useTemplates";
@@ -295,7 +296,8 @@ export default function BoatPrep({ boatId, boats }) {
         : active.isInventory ? (premium
           ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
-              linked={linked} onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
+              linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
+              onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>

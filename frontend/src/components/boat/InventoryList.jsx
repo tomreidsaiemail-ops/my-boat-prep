@@ -11,8 +11,10 @@ import { InventoryItemDialog } from "@/components/boat/InventoryItemDialog";
 import { SuggestAreasDialog } from "@/components/boat/SuggestAreasDialog";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
+import { newAreaItemId } from "@/lib/inventoryMove";
 
-const newId = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 const AddArea = ({ onAdd }) => {
@@ -36,7 +38,7 @@ const AddArea = ({ onAdd }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked }) => {
+export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -77,6 +79,17 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     + (r.visibleLinked || []).filter((l) => l.item.checked).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
+  const startMove = (a) => {
+    if (areas.length < 2) { toast.warning("You can only move items to new boat areas when there is more than one boat area."); return; }
+    if (!(a.items || []).length && !(linked[a.id] || []).length) { toast.message(`${a.name} has nothing to move yet`); return; }
+    setDialog({ type: "move", area: a });
+  };
+  const finishMove = (plan, count) => {
+    const { area } = dialog;
+    onMoveItems(plan);
+    setDialog(null);
+    toast.success(`Moved ${count} ${count === 1 ? "item" : "items"} from ${area.name}`);
+  };
 
   const addArea = (name) => {
     if (!name) return "Please enter a cupboard or locker name";
@@ -147,7 +160,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}
-            onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} />
+            onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)} />
         ))}
       </ul>
       {!readOnly && !q && <AddArea onAdd={addArea} />}
@@ -163,6 +176,8 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note="Everything listed inside it is removed too, and checklist items tagged with it lose their tag."
         onClose={() => setDialog(null)} onConfirm={() => { const { id } = dialog.area; onChange((list) => list.filter((a) => a.id !== id)); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
+      <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={areas} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
+        onMove={finishMove} onClose={() => setDialog(null)} />
     </section>
   );
 };

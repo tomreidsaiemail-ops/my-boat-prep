@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { Check, ChevronDown, Link2, Loader2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Link2, Loader2, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "is-checked bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false }) => {
   const [openState, setOpen] = useState(defaultOpen);
   const open = openState || !!query;
   const items = area.items || [];
@@ -80,6 +80,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
         </button>
         {!readOnly && (
           <div className="flex shrink-0 items-center pr-1">
+            <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn" aria-label="Rename cupboard" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete cupboard" onClick={onDelete} data-testid={`inventory-area-delete-${area.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
           </div>
