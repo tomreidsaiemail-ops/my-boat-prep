@@ -1,0 +1,39 @@
+{
+  "summary": "Tested Engine Service Log Service with ticked items plus its help panel, the new Electrical Service list (log, help, admin publish), the indent/unindent outline on checklists (numbering, move limits, shading, flag, delete promotion, persistence), the PDF/print export and the help panel regressions. Backend: 3 new tests plus 31 template regression tests, 34/34 pass. Frontend: almost everything works. One functional bug: the in-app Export Current print view (and its Save PDF) does not indent sub-items. Only the emailed/server PDF does.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PrintView.jsx (Export Current / Export All -> Save PDF)", "issue": "Sub-items (indent:true) are NOT shown indented in the in-app print/lamination view, so window.print Save PDF loses the outline. Verified: Alpha, Bravo, >Charlie, >Delta, Echo all render at the same left offset. ListPage ignores item.indent. The emailed PDF (backend _pdf_row) is correct.", "selector": "[data-testid=print-view] .print-row", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Engine/Electrical service panel", "issues": [
+        "The ticked-summary hint says 'Tick the jobs you did above' but the checklist sits BELOW the panel",
+        "The Electrical notes placeholder says 'e.g. 250hr service', which is engine wording. Use something electrical",
+        "The 'Please enter vessel details first' guard warning appears in the top zone, off screen when the user taps Log Service in the panel (Beta account). Consider showing it near the panel or as a toast",
+        "The service date uses the browser's native date picker (existing pattern)"
+      ]},
+      {"screen": "Checklist shading (spec ambiguity)", "issues": ["The review note says 'plain runs = white block', but after an even run of adjacent groups the following plain run gets shaded blue. Example: group 5 blue, group 6 white, plain items 7..15 all blue. It is consistent with 'alternate blocks', but please confirm this is what the user wants"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_service_logs_indent.py", "/app/test_reports/pytest/pytest_iter27.xml"],
+  "action_items": [
+    "PrintView.jsx ListPage: indent rows where item.indent && n>0 (e.g. pl-7 on .print-row) so Export Current/All Save PDF shows sub-items one column in",
+    "Fix copy: 'Tick the jobs you did above' -> 'below' (or 'in the list below'). Give the Electrical notes placeholder its own text",
+    "Optional: show the guard warning near the service panel when Log Service is blocked"
+  ],
+  "critical_code_review_comments": [
+    "OrderNumber.commit takes the part after the last '.', so typing '3.2' on a TOP-level item moves the group to position 2. Consider only stripping a prefix that matches the item's own parent number",
+    "Unindenting 5.1 while 5.2 and 5.3 exist makes 5.2/5.3 children of the new item 6 (6, 6.1, 6.2). Unindenting all three still gives 6, 7, 8 in order, as the spec asks. This is Word-like behaviour, just flagging it",
+    "Indenting a top-level item that has its own sub-items merges all of them into the group above (2.1..2.4). Fine under the one-level rule",
+    "cloneList drops the indent field (copies only id/label), so clones lose their grouping. Decide if that's intended",
+    "Unflagging a parent leaves the group at the top (same as before for single items)"
+  ],
+  "updated_files": ["/app/backend/tests/test_service_logs_indent.py"],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "~95% (all requested flows pass except print-view indentation)"},
+  "seed_data_creation": "None left behind. A temporary TEST_Indent List on Pro was created and deleted. The ship_logs record from the Email PDF test was deleted. The electricalService list_templates doc published by admin was deleted. Pro engine_log/electrical_log are empty, there are no indents, and Rigging order 200..214 is restored. The admin's template_versions.electricalService stamp was left (harmless).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Set cookie session_token (test_session_pro_1, etc.). list-selector is a native select. Indent tests used riggingChecks item ids 200-214 (indent 205,206,207 under 204). Create-list dialog: create-list-input / create-list-confirm-btn; add items via add-item-input / add-item-submit-btn. In PUT /api/me/boat tests, set a fresh item 'ts' (current time) or the per-item merge keeps the server copy. Do NOT use future timestamps. No test accounts have Boat Inventory areas, so the Move Boat Area Items dialog was only code-reviewed (MoveRow still uses OrderNumber prefix move-row and default label), not run. The area filter + outline-off case was also only code-reviewed (outline={!areaFilter}). Email PDF to delivered@resend.dev works and the stored log lists carry indent:true.",
+  "rca of the issue": "PrintView.jsx ListPage maps items to .print-row without checking item.indent. The indent feature only updated backend ship_log.render_items/_pdf_row/email rows, not the client-side print layout used by Export Current -> Save PDF."
+}

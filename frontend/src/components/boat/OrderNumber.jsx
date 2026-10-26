@@ -4,8 +4,10 @@ import { useState } from "react";
 export const OrderNumber = ({ id, pos, total, onPlace, label = pos, prefix = "checklist-item" }) => {
   const [value, setValue] = useState(null);
   const commit = () => {
-    const raw = String(value ?? "");
-    const n = Number(raw.includes(".") ? raw.split(".").pop() : raw);
+    const raw = String(value ?? "").trim();
+    const [parent, sub] = String(label).split(".");
+    // "5.2" is only accepted on a sub-item of 5; top-level items take a plain number.
+    const n = raw.includes(".") ? (sub !== undefined && raw.split(".")[0] === parent ? Number(raw.split(".")[1]) : NaN) : Number(raw);
     setValue(null);
     if (Number.isInteger(n) && n >= 1 && n !== pos) onPlace(Math.min(n, total));
   };

@@ -17,7 +17,7 @@ const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
     </div>
     <Meta boat={boat} verboseDate={verboseDate} />
     {items.map((item, n) => (
-      <div key={item.id} className="print-row">
+      <div key={item.id} className="print-row" style={item.indent && n > 0 ? { marginLeft: "2rem" } : undefined} data-indented={item.indent && n > 0 ? "true" : "false"}>
         {list.isShared ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
         <span className={item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}>
           {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{labelFor(item)}

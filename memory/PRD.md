@@ -245,3 +245,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-10 Move single item
 - Edit Item dialog has a "Boat area" select (when 2+ areas); choosing another area moves the whole item there (same-name merge, 9999 cap, toast). InventoryList.moveItem
 - Self-tested via screenshot (move + merge milk x2+x1=x3)
+
+## 2026-10 Service history items, Electrical Service, indented lists
+- Log Service saves ticked items into the entry and unticks them (engine_log / new electrical_log section synced; backend models, sync_merge SECTIONS)
+- New built-in Electrical Service list (id electricalService, items 300+, master template enabled) with Electrical Service History (electrician name, date, notes)
+- Help drop-downs for Engine and Electrical Service (ListIntro prefix field)
+- Indent/Unindent in Show List Ordering Icons (lib/outline.js): one level, N.n numbering, group-locked moves, parent moves group, alternating light-blue blocks when a list has sub-items; indent kept in PDFs (server + print view), templates and clones
+- Tested: iteration_27 (backend 34/34; frontend all flows); follow-ups fixed: print-view indent, copy, guard warning near the service panel, top-level number input ignores N.n

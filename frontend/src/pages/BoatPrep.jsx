@@ -122,7 +122,7 @@ export default function BoatPrep({ boatId, boats }) {
   const flag = (id) => guard() && setItems((list) => flagOutline(list, id));
   const move = (id, dir) => guard() && setItems((list) => moveOutline(list, id, dir));
   const indent = (id, v) => guard() && setItems((list) => setIndent(list, id, v));
-  const logService = (key, listId) => (entry) => guard() && mutate((s) => ({
+  const logService = (key, listId) => (entry) => guard("service") && mutate((s) => ({
     ...s, [key]: [...(s[key] || []), { ...entry, items: (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label) }],
     data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)) },
   }));
@@ -198,7 +198,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const id = `custom_${Date.now()}`;
     mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }],
-      data: { ...s.data, [id]: (s.data[source.id] || []).map((i) => ({ id: i.id, label: i.label, checked: false })) } }));
+      data: { ...s.data, [id]: (s.data[source.id] || []).map((i) => ({ id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}) })) } }));
     setActiveId(id);
     setDialog(null);
     toast.success(`${name} created from ${source.name}`);
@@ -278,7 +278,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && SERVICE_LOGS[active.id] && (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
-          ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)}
+          ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}

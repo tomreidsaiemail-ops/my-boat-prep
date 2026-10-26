@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Gauge, Trash2, Zap } from "lucide-react";
+import { ValidationBar } from "@/components/boat/ActionBar";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
 const KINDS = {
   engine_log: {
     title: "Engine Service History", Icon: Gauge, prefix: "engine", panelId: "engine-hours-panel", fieldId: "engine-hours-input", errorId: "engine-hours-error",
-    field: "hours", fieldLabel: "Engine hours", placeholder: "e.g. 1250", numeric: true, missing: "Enter the engine hours",
+    field: "hours", fieldLabel: "Engine hours", placeholder: "e.g. 1250", numeric: true, missing: "Enter the engine hours", notesHint: "e.g. 250hr service",
     summary: (e) => <><b className="font-mono">{e.hours} hrs</b> · {fmtDate(e.date)}</>,
   },
   electrical_log: {
     title: "Electrical Service History", Icon: Zap, prefix: "electrical", panelId: "electrical-service-panel", fieldId: "electrical-name-input", errorId: "electrical-name-error",
-    field: "electrician", fieldLabel: "Electrician's name", placeholder: "e.g. Sam Watts", numeric: false, missing: "Enter the electrician's name",
+    field: "electrician", fieldLabel: "Electrician's name", placeholder: "e.g. Sam Watts", numeric: false, missing: "Enter the electrician's name", notesHint: "e.g. house battery 12.4V, replaced fuse",
     summary: (e) => <><b>{e.electrician}</b> · {fmtDate(e.date)}</>,
   },
 };
@@ -27,7 +28,7 @@ const Entry = ({ e, k, onDelete }) => (
   </li>
 );
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, onAdd, onDelete }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete }) => {
   const k = KINDS[kind];
   const [value, setValue] = useState("");
   const [date, setDate] = useState(today);
@@ -58,11 +59,12 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, onAdd, onDelete 
             onChange={(e) => setValue(e.target.value)} placeholder={k.placeholder} className="field-input" data-testid={k.fieldId} /></label>
         <label className="flex flex-col gap-1"><span className="field-label">Service date</span>
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="field-input" data-testid={`${k.prefix}-date-input`} /></label>
-        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} placeholder="Notes (optional) e.g. 250hr service" className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
         <p className="col-span-2 text-sm" data-testid={`${k.prefix}-ticked-summary`}>
-          {ticked.length ? <><span className="field-label">Will log </span><b>{ticked.join(" · ")}</b></> : <span className="text-[var(--muted)]">No items ticked. Tick the jobs you did above to add them to the history.</span>}
+          {ticked.length ? <><span className="field-label">Will log </span><b>{ticked.join(" · ")}</b></> : <span className="text-[var(--muted)]">No items ticked. Tick the jobs you did in the list below to add them to the history.</span>}
         </p>
         {error && <div role="alert" className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid={k.errorId}>{error}</div>}
+        <div className="col-span-2"><ValidationBar show={warn} testId={`${k.prefix}-validation-bar`} /></div>
         <button type="submit" className="btn-solid col-span-2" data-testid={`${k.prefix}-log-add-btn`}>Log Service</button>
       </form>
       {sorted.length > 0 && (
