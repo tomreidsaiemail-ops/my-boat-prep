@@ -46,7 +46,7 @@ import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { flagOutline, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
+import { flagOutline, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
@@ -243,12 +243,12 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     return true;
   };
-  const createList = (name, lines = []) => {
+  const createList = (name, lines = [], autoIndent = false) => {
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const now = Date.now();
     const id = `custom_${now}`;
-    const newItems = lines.map((label, i) => ({ id: now + i, label, checked: false }));
+    const newItems = linesToItems(lines, autoIndent, now);
     mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: newItems } }));
     if (newItems.length) toast.success(`${name} created with ${newItems.length} ${newItems.length === 1 ? "item" : "items"}`);
     setActiveId(id);
@@ -384,7 +384,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
-      <CreateListDialog open={dialog?.type === "list"} onConfirm={createList} onClose={() => setDialog(null)} />
+      <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
