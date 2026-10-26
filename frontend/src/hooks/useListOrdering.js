@@ -1,10 +1,15 @@
 import { useState } from "react";
 
-const keyFor = (listId) => `mbp_order_${listId}`;
+// A per-list on/off setting kept on this device only.
+export const useListSetting = (prefix, listId, fallback = false) => {
+  const [, bump] = useState(0);
+  const key = `${prefix}_${listId}`;
+  const saved = localStorage.getItem(key);
+  const on = saved === null ? fallback : saved === "1";
+  const set = (v) => { localStorage.setItem(key, v ? "1" : "0"); bump((n) => n + 1); };
+  return [on, set];
+};
 
 export default function useListOrdering(listId) {
-  const [, bump] = useState(0);
-  const on = localStorage.getItem(keyFor(listId)) === "1";
-  const set = (v) => { localStorage.setItem(keyFor(listId), v ? "1" : "0"); bump((n) => n + 1); };
-  return [on, set];
+  return useListSetting("mbp_order", listId);
 }

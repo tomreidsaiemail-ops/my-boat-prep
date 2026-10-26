@@ -23,7 +23,7 @@ import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
-import useListOrdering from "@/hooks/useListOrdering";
+import useListOrdering, { useListSetting } from "@/hooks/useListOrdering";
 import useFolds from "@/hooks/useFolds";
 import { applyMove } from "@/lib/inventoryMove";
 
@@ -42,7 +42,8 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
-import { flagOutline, moveOutline, placeOutline, removeOutline, setIndent } from "@/lib/outline";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { flagOutline, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
@@ -100,6 +101,7 @@ export default function BoatPrep({ boatId, boats }) {
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold] = useFolds(active.id);
+  const [promptDelete, setPromptDelete] = useListSetting("mbp_prompt_delete", active.id, true);
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const tagging = premium && !crew && areas.length > 0;
@@ -125,6 +127,20 @@ export default function BoatPrep({ boatId, boats }) {
   const flag = (id) => guard() && setItems((list) => flagOutline(list, id));
   const move = (id, dir) => guard() && setItems((list) => moveOutline(list, id, dir));
   const indent = (id, v) => guard() && setItems((list) => setIndent(list, id, v));
+  const askRemove = (id) => {
+    if (!guard()) return;
+    if (!promptDelete) { remove(id); return; }
+    setDialog({ type: "deleteItem", item: items.find((i) => i.id === id) });
+  };
+  // Indenting a group's main item merges the whole group into the one above, so check first.
+  const askIndent = (id, v) => {
+    const info = outlineInfo(items);
+    if (!v || !info[id]?.subs) { indent(id, v); return; }
+    if (!guard()) return;
+    const i = items.findIndex((x) => x.id === id);
+    const parent = items.find((x) => x.id === info[items[i - 1].id].parent);
+    setDialog({ type: "mergeGroup", id, name: labelFor(items[i]), subs: info[id].subs, parent: labelFor(parent) });
+  };
   const logService = (key, listId) => (entry) => guard("service") && mutate((s) => ({
     ...s, [key]: [...(s[key] || []), { ...entry, items: (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label) }],
     data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)) },
@@ -330,10 +346,10 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
-            onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold} />)}
+            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
-          {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering}
+          {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
         </>
       )}
@@ -367,6 +383,13 @@ export default function BoatPrep({ boatId, boats }) {
       </TextDialog>
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
+      <ConfirmDelete item={dialog?.type === "deleteItem" ? { name: labelFor(dialog.item) } : null} testId="item-delete"
+        note={dialog?.type === "deleteItem" && outlineInfo(items)[dialog.item.id]?.subs ? "Its sub-items stay in the list, and the first one becomes the group's main item." : `It will be removed from ${active.name}.`}
+        onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
+      <ConfirmDelete item={dialog?.type === "mergeGroup" ? dialog : null} testId="merge-group" danger={false} confirmLabel="Move into group" cancelLabel="Cancel"
+        title={dialog?.type === "mergeGroup" ? `Move "${dialog.name}" into the group above?` : ""}
+        note={dialog?.type === "mergeGroup" ? `"${dialog.name}" and its ${dialog.subs} sub-item${dialog.subs === 1 ? "" : "s"} will become sub-items of "${dialog.parent}". Its group will no longer show on its own. To get it back, unindent "${dialog.name}".` : ""}
+        onConfirm={() => { indent(dialog.id, true); setDialog(null); }} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>
   );

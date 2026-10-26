@@ -262,3 +262,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-10 Group shading simplified
 - Every group with sub-items is light green (#eaf7ee) with a green top edge on its parent; no alternating colours; plain items stay white
+
+## 2026-10 Prompt on delete + group merge warning
+- "Prompt on delete" checkbox beside Show List Ordering Icons (per list, per device, default on; useListSetting mbp_prompt_delete_<listId>); on = confirm dialog item-delete-*, off = instant delete
+- Indenting a group main item (merges its group into the one above) asks first (merge-group-* dialog)
+- Self-tested via screenshot
