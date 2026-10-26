@@ -288,3 +288,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-10 FIRST5000 launch banner
 - Public GET /api/payments/offer/public; First5000Banner on Login (always while running) and in-app for Free owners (closable 7 days, localStorage mbp_first5000_hidden_until) with "Get 50% off Pro" opening the Plan dialog
 - Self-tested via screenshot
+
+## 2026-06 — Create New List with pasted items
+- CREATE NEW LIST dialog (`components/boat/CreateListDialog.jsx`) now has an "Items, one per line" box (all users), a collapsible help panel with Skipper's tip (open the first time, closed after), duplicate/blank lines removed, live item count.
+- Confirm with empty items asks "Create an empty list?" (Create anyway / Go back).
+- Redeployed to myboatprep.com with NZD 49.99 pricing, FIRST5000 and launch banner.

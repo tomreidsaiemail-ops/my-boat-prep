@@ -39,6 +39,7 @@ import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
+import { CreateListDialog } from "@/components/boat/CreateListDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
@@ -242,11 +243,14 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     return true;
   };
-  const createList = (name) => {
+  const createList = (name, lines = []) => {
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
-    const id = `custom_${Date.now()}`;
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: [] } }));
+    const now = Date.now();
+    const id = `custom_${now}`;
+    const newItems = lines.map((label, i) => ({ id: now + i, label, checked: false }));
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: newItems } }));
+    if (newItems.length) toast.success(`${name} created with ${newItems.length} ${newItems.length === 1 ? "item" : "items"}`);
     setActiveId(id);
     setDialog(null);
     return true;
@@ -380,8 +384,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
-      <TextDialog open={dialog?.type === "list"} title="Create New List" placeholder="Enter new list name (e.g., Engine)" testId="create-list"
-        onConfirm={createList} onClose={() => setDialog(null)} />
+      <CreateListDialog open={dialog?.type === "list"} onConfirm={createList} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
