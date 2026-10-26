@@ -27,8 +27,10 @@ const ProStatus = ({ user, onRenewal, busy }) => (
     {user.has_subscription && !user.cancel_at_period_end && (
       <p className={`rounded-md px-3 py-2 text-xs ${user.first5000 ? "bg-emerald-50 text-emerald-900" : "bg-slate-100 text-slate-700"}`} data-testid="plan-price-notice">
         {user.first5000
-          ? "FIRST5000 member: 50% off your first year and your first renewal (NZD 24.99), then NZD 49.99 a year."
-          : "Your renewal is NZD 49.99 a year."}</p>
+          ? (user.renew_price && user.renew_price < 49.99
+            ? `FIRST5000 member: your first renewal is half price (NZD ${user.renew_price.toFixed(2)}), then NZD 49.99 a year.`
+            : "FIRST5000 member: your launch discount has been used. Renewals are NZD 49.99 a year.")
+          : `Your renewal is NZD ${(user.renew_price || 49.99).toFixed(2)} a year.`}</p>
     )}
     {user.has_subscription && (
       <button type="button" className="btn-ghost" disabled={busy} onClick={() => onRenewal(user.cancel_at_period_end)} data-testid="plan-renewal-btn">

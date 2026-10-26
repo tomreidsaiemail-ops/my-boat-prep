@@ -1,0 +1,42 @@
+{
+  "summary": "Tested FIRST5000 and the new Pro price (NZD 49.99) end to end on the real Stripe test sandbox. Backend: new test_first5000.py (11 tests) and the updated test_promo_codes.py, 28/28 pass. These cover the Stripe prices (4999, and 2499 with plan=first5000 on the same product), the admin-only PUT toggle (403/401/422), the list and offer fields, and the checkout session line item, metadata and custom submit message in both states. E2E with FIRST5000 ON: the Free user's Plan dialog shows the offer box, the 'Upgrade to Pro: NZD 24.99 (50% off)' button and the promo hint. The Stripe page shows the submit message. TESTF20 (20%) gave a total due of NZ$19.99 ('Then NZ$24.99 per year starting next year'). Paying with 4242 led to /payment/success 'Welcome to Pro!'. db.users then had role pro and first5000 true. The schedule has phases 2499 (26/10/2026 to 2027), 2499 (2027 to 2028) and 4999 (2028 to 2029), end_behavior release; the invoice was 1999 of 2499 and the preview of the next invoice is 2499. The /admin FIRST5000 badge and the plan-price-notice FIRST5000 wording show. Re-running setup_stripe.setup() moved 0 subscriptions, so the FIRST5000 sub stayed on 2499. With FIRST5000 OFF: the button reads 'NZD 49.99 / year' and the Stripe page shows 49.99, or 39.99 with TESTF20. Admin promos: the toggle text, toast and persistence after reload all work. The preview shows 49.99 to 39.99 and the FIRST5000 line '24.99 becomes 19.99'. The Login note and the Terms show 49.99; no 'NZD 9.99' text is left in the UI. CRITICAL BUG FOUND: FIRST5000 users cannot cancel renewal (500).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/payments/renewal", "issue": "500 for every FIRST5000 subscriber. A Subscription Schedule manages the sub, and Stripe rejects Subscription.modify(cancel_at_period_end=...) with: 'The subscription is managed by the subscription schedule ..., and updating any cancelation behavior directly is not allowed. Please update the schedule instead.' In the UI, 'Cancel renewal' shows the toast \"Couldn't update your plan\" and the user cannot stop auto-renewal. Reproduced both in the UI and with curl.", "priority": "CRITICAL"},
+      {"endpoint": "POST /api/stripe/webhook (customer.subscription.updated)", "issue": "apply_subscription calls ensure_first5000_schedule whenever metadata first5000=='1' and the event object has no schedule. (1) If the schedule is released (naturally at the end of phase 3, or by admin or support), the next update webhook creates a NEW 3-phase schedule. The new schedule reuses the current price as phases 1 and 2, so after an early release the 2499 price would come back. It also keeps blocking cancel forever. (2) The webhook uses the event payload, which can be stale, and does not catch StripeError, so it returns 500 to Stripe and Stripe retries. Seen after release and cancel: 'You cannot migrate a subscription that is currently in the canceled status' and webhook 500s.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "_mark_paid / webhook", "issue": "Possible race: the /payments/status poll and the checkout.session.completed or subscription.updated webhook can both call ensure_first5000_schedule at the same time. The second SubscriptionSchedule.create fails. The status endpoint catches StripeError but the webhook does not, so Stripe gets a 500. Not seen in this run."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PlanDialog ProStatus", "issue": "The Cancel renewal button fails for FIRST5000 users (backend 500). The toast is the generic \"Couldn't update your plan\".", "selector": "[data-testid='plan-renewal-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PlanDialog ProStatus", "issues": ["plan-price-notice hardcodes NZD 24.99 and 49.99 instead of using the offer prices. It also keeps saying '50% off your first year and your first renewal' in year 3, when the user already pays 49.99."]},
+      {"screen": "/admin/promos form", "issues": ["The expiry field is a native browser date input (mm/dd/yyyy shown in en-US), not a shadcn calendar. This was already there before this change."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_first5000.py", "/app/backend/tests/test_promo_codes.py", "/app/backend/tests/manual_cleanup_test_promos.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix POST /payments/renewal for subs with a schedule. To cancel: modify the schedule (keep only the current phase and set end_behavior='cancel'), or release the schedule and then set cancel_at_period_end. To turn renewal back on: restore the FIRST5000 phases, taking into account which phase the user is in. Also catch stripe.error.StripeError and return 400 with a clear message instead of 500.",
+    "Make ensure_first5000_schedule run only once per subscription. For example, record first5000_schedule_id or 'first5000_scheduled' in the sub metadata or db, and only create the schedule from checkout completion. Re-retrieve the subscription instead of trusting the webhook payload, and wrap the call in try/except StripeError so the webhook never returns 500.",
+    "Optional: show the FIRST5000 notice according to the phase (or use pro_until and the phase), and use the offer prices instead of hardcoded 24.99/49.99."
+  ],
+  "critical_code_review_comments": [
+    "payments.py set_renewal: Subscription.modify(cancel_at_period_end) is not allowed on schedule-managed subs. This breaks the main 'cancel renewal' promise for every FIRST5000 user.",
+    "billing.apply_subscription: has a side effect (creates a schedule) on every sync, including webhooks and refresh_if_lapsed, with no idempotency marker except sub.schedule, which is gone after release.",
+    "stripe_webhook has no try/except around apply_subscription, so Stripe errors become 500s and Stripe retries.",
+    "ensure_first5000_schedule silently skips if the pro_yearly price is missing. The user then stays on 2499 forever, with no log or alert.",
+    "test_promo_codes.py had stale assumptions (base 9.99, seeded TESTMBP25). Updated to 49.99, and the seeded-code dependency was removed."
+  ],
+  "updated_files": ["/app/backend/tests/test_first5000.py (new)", "/app/backend/tests/test_promo_codes.py (base price 49.99, removed TESTMBP25 dependency)", "/app/backend/tests/manual_cleanup_test_promos.py (new cleanup helper)"],
+  "success_rate": {"backend": "28/28 pytest pass; renewal endpoint fails for FIRST5000 subs (found in E2E)", "frontend": "95% (all requested flows pass; cancel renewal for FIRST5000 fails)"},
+  "seed_data_creation": "None left behind. Schedule sub_sched_1UUfHa8ZEkybgkKQeXy9NU45 released and sub_1UUfHY8ZEkybgkKQImGLzz2g cancelled. test-user-free reset to role free, keeping stripe_customer_id cus_VVge3CVLg6bNSC; no first5000 or sub fields. TESTF20, TEST87717X, TEST88154X and an old TESTMBP25 were deactivated, their coupons deleted and the db docs removed. FIRST5000 left OFF (verified with GET). A few open Stripe checkout sessions for the free user will expire on their own.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest with REACT_APP_BACKEND_URL exported and -n 0. On the Stripe checkout page, the 'Add promotion code' button is covered by the #promotionCode input. Use page.click('#promotionCode', force=True) and fill with force=True, then press Enter. Other fields: #cardNumber, #cardExpiry, #cardCvc, #billingName, #billingCountry (NZ), #billingAddressLine1, #billingLocality, #billingPostalCode; submit with .SubmitButton. After the E2E purchase, the release, cancel and Mongo reset steps above are needed. Retest the renewal cancel and re-enable flow on a FIRST5000 sub after the fix, and check the webhook does not re-create a schedule after release.",
+  "rca of the issue": "Cancel renewal 500: ensure_first5000_schedule attaches a SubscriptionSchedule to the sub. Stripe then forbids cancelation changes directly on the subscription (backend.err.log: InvalidRequestError 'managed by the subscription schedule ... updating any cancelation behavior directly is not allowed'). Repro: buy Pro with FIRST5000 running, then click plan-renewal-btn (or POST /api/payments/renewal {renew:false}) and get 500. Mitigation: update the schedule (end_behavior='cancel' and trim phases) or release it first."
+}

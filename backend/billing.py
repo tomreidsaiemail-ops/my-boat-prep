@@ -1,8 +1,11 @@
 import os
 import asyncio
 from datetime import datetime, timezone
+import logging
 import stripe
 from db import db
+
+logger = logging.getLogger(__name__)
 
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY") or "sk_test_emergent"
 ACTIVE = ("active", "trialing")
@@ -23,23 +26,20 @@ async def retrieve_subscription(sub_id: str):
 FIRST5000_LOOKUP = "pro_yearly_first5000"
 
 
-def ensure_first5000_schedule(sub) -> None:
-    """FIRST5000: launch price for the first year and first renewal, then full price from the 2nd renewal."""
-    if sub.get("schedule") or sub.get("status") not in ACTIVE:
+def end_first5000_after_first_renewal(sub) -> None:
+    """FIRST5000 pays the launch price twice (first year + first renewal); once the first renewal has happened, the next one is full price."""
+    item = sub["items"]["data"][0]
+    if (item["price"].get("metadata") or {}).get("plan") != "first5000" or sub.get("status") not in ACTIVE:
+        return
+    start, period_start = sub.get("start_date"), item.get("current_period_start") or sub.get("current_period_start")
+    if not (start and period_start and period_start - start > 300 * 86400):
         return
     full = stripe.Price.list(lookup_keys=["pro_yearly"], active=True, limit=1).data
     if not full:
+        logger.error("FIRST5000: pro_yearly price missing, %s stays on the launch price", sub["id"])
         return
-    first = sub["items"]["data"][0]["price"]["id"]
-    sched = stripe.SubscriptionSchedule.create(from_subscription=sub["id"])
-    p0 = sched["phases"][0]
-    tax = {"automatic_tax": {"enabled": bool((p0.get("automatic_tax") or {}).get("enabled"))}}
-    year = {"interval": "year", "interval_count": 1}
-    stripe.SubscriptionSchedule.modify(sched["id"], end_behavior="release", phases=[
-        {"items": [{"price": first, "quantity": 1}], "start_date": p0["start_date"], "end_date": p0["end_date"], **tax},
-        {"items": [{"price": first, "quantity": 1}], "duration": year, **tax},
-        {"items": [{"price": full[0].id, "quantity": 1}], "duration": year, **tax},
-    ])
+    stripe.Subscription.modify(sub["id"], items=[{"id": item["id"], "price": full[0].id}], proration_behavior="none")
+    item["price"] = full[0]
 
 
 async def apply_subscription(user_id: str, sub) -> None:
@@ -56,7 +56,13 @@ async def apply_subscription(user_id: str, sub) -> None:
     }
     if (sub.get("metadata") or {}).get("first5000") == "1":
         fields["first5000"] = True
-        await asyncio.to_thread(ensure_first5000_schedule, sub)
+        try:
+            await asyncio.to_thread(end_first5000_after_first_renewal, sub)
+        except stripe.error.StripeError as e:
+            logger.error("FIRST5000 price switch failed for %s: %s", sub["id"], e)
+    items = (sub.get("items") or {}).get("data") or []
+    if items and items[0]["price"].get("unit_amount") is not None:
+        fields["renew_price"] = items[0]["price"]["unit_amount"] / 100
     if sub.get("status") in ACTIVE:
         fields["role"] = "pro" if user.get("role") != "beta_tester" else user["role"]
     elif user.get("role") == "pro" and user.get("stripe_subscription_id") in (None, sub["id"]):

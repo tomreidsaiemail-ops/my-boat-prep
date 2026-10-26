@@ -13,7 +13,7 @@ CATALOG = [
         "tax_code": "txcd_10103001",
         "prices": [
             {"lookup_key": "pro_yearly", "amount": 4999, "currency": "nzd", "interval": "year", "migrate": True},
-            # FIRST5000 launch price: first year and first renewal, then the schedule moves them to pro_yearly.
+            # FIRST5000 launch price: first year and first renewal, billing.end_first5000_after_first_renewal then moves them to pro_yearly.
             {"lookup_key": "pro_yearly_first5000", "amount": 2499, "currency": "nzd", "interval": "year", "metadata": {"plan": "first5000"}},
         ],
     },
@@ -47,7 +47,6 @@ def migrate_subscribers(product, price):
     """Move live subscriptions on an old price to the current one from their next renewal (no proration)."""
     moved = 0
     for sub in stripe.Subscription.list(status="all", limit=100).auto_paging_iter():
-        # FIRST5000 subscriptions run on their own schedule, so leave them alone.
         if sub.status not in ("active", "trialing", "past_due") or sub.get("schedule"):
             continue
         for item in sub["items"]["data"]:

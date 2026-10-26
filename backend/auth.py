@@ -36,6 +36,7 @@ class UserOut(BaseModel):
     cancel_at_period_end: bool = False
     has_subscription: bool = False
     first5000: bool = False
+    renew_price: Optional[float] = None
     created_at: Optional[str] = None
     tos_version: Optional[str] = None
 
@@ -48,7 +49,7 @@ def to_user_out(u: dict) -> UserOut:
         role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro"),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
-        first5000=bool(u.get("first5000")),
+        first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
         created_at=u.get("created_at"), tos_version=u.get("tos_version"),
     )
 
