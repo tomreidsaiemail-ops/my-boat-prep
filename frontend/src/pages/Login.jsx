@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { OAUTH_STATE_KEY } from "@/components/auth/GoogleCallback";
 import { PasswordForm } from "@/components/auth/PasswordForm";
 import { CompanyFooter } from "@/components/legal/CompanyFooter";
+import { First5000Banner } from "@/components/boat/First5000Banner";
 
 const signIn = () => {
   const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
@@ -39,6 +40,7 @@ export default function Login() {
         <p className="max-w-sm text-base text-[var(--muted)]">
           Checklists, Ship&apos;s Log and Mayday scripts for skippers. Works at sea with no signal.
         </p>
+        <First5000Banner variant="login" />
         <PasswordForm />
         <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]"><span className="h-px flex-1 bg-[var(--line)]" />or<span className="h-px flex-1 bg-[var(--line)]" /></div>
         <button type="button" onClick={signIn} disabled={!online} data-testid="google-signin-btn"

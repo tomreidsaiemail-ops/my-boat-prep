@@ -284,3 +284,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - billing.end_first5000_after_first_renewal switches the sub to 4999 (no proration) on any sync after the first renewal (subscription.updated, invoice.paid, status poll); no subscription schedules (they broke cancel renewal)
 - users.first5000 (set from current sub metadata each sync) + renew_price; FIRST5000 badge on /admin; Plan dialog notice
 - Tested: iteration_29/30 (E2E purchases with promo stacking, cancel/re-enable renewal, test-clock lifecycle 2499->2499->4999)
+
+## 2026-10 FIRST5000 launch banner
+- Public GET /api/payments/offer/public; First5000Banner on Login (always while running) and in-app for Free owners (closable 7 days, localStorage mbp_first5000_hidden_until) with "Get 50% off Pro" opening the Plan dialog
+- Self-tested via screenshot

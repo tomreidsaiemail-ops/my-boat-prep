@@ -28,11 +28,21 @@ def _price(lookup: str):
     return data[0] if data else None
 
 
-@router.get("/payments/offer")
-async def offer(_: dict = Depends(get_current_user)):
+async def _offer() -> dict:
     full, first = await asyncio.gather(asyncio.to_thread(_price, PRO_LOOKUP_KEY), asyncio.to_thread(_price, FIRST5000_LOOKUP))
     return {"first5000": await first5000_running(), "price": (full.unit_amount / 100) if full else None,
             "first5000_price": (first.unit_amount / 100) if first else None}
+
+
+@router.get("/payments/offer")
+async def offer(_: dict = Depends(get_current_user)):
+    return await _offer()
+
+
+# Public so the login page can show the FIRST5000 banner before sign-in.
+@router.get("/payments/offer/public")
+async def public_offer():
+    return await _offer()
 
 
 class CheckoutIn(BaseModel):

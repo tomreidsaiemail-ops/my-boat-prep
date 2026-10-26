@@ -44,6 +44,7 @@ import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
+import { First5000Banner } from "@/components/boat/First5000Banner";
 import { flagOutline, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
@@ -330,6 +331,7 @@ export default function BoatPrep({ boatId, boats }) {
       {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails boat={boat} onChange={updateBoat} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
+      {!premium && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
       {!crew && updatedIds.includes(active.id) && (
