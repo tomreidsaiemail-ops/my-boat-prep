@@ -241,3 +241,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - All items ticked by default; partial quantities; target defaults to first non-source area; changed target carries down to rows below until the next explicitly set row; Show List Ordering Icons on by default (order saved to source)
 - Same-name items merge quantities (blocked above 9999); linked checklist items retagged; empty source kept; warning when only one area; guard keeps dialog open when boat details missing
 - Tested: iteration_26 (all pass, guard toast bug fixed after)
+
+## 2026-10 Move single item
+- Edit Item dialog has a "Boat area" select (when 2+ areas); choosing another area moves the whole item there (same-name merge, 9999 cap, toast). InventoryList.moveItem
+- Self-tested via screenshot (move + merge milk x2+x1=x3)

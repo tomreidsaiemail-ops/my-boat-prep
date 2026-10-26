@@ -79,6 +79,20 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     + (r.visibleLinked || []).filter((l) => l.item.checked).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
+  const moveItem = (area, item, edits, targetId) => {
+    const dest = areas.find((a) => a.id === targetId);
+    const match = (dest.items || []).find((i) => same(i.name, edits.name));
+    if (match && match.qty + edits.qty > 9999) return `That would put more than 9999 ${edits.name} in ${dest.name}`;
+    const moved = { ...item, ...edits };
+    onChange((list) => list.map((a) => {
+      if (a.id === area.id) return { ...a, items: a.items.filter((i) => i.id !== item.id) };
+      if (a.id !== targetId) return a;
+      if (!match) return { ...a, items: [...(a.items || []), moved] };
+      return { ...a, items: a.items.map((i) => (i.id === match.id ? { ...i, qty: i.qty + edits.qty, onboard: i.onboard || item.onboard } : i)) };
+    }));
+    setDialog(null);
+    toast.success(`Moved ${edits.name} to ${dest.name}`);
+  };
   const startMove = (a) => {
     if (areas.length < 2) { toast.warning("You can only move items to new boat areas when there is more than one boat area."); return; }
     if (!(a.items || []).length && !(linked[a.id] || []).length) { toast.message(`${a.name} has nothing to move yet`); return; }
@@ -113,8 +127,9 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     setArea(area.id, (a) => ({ ...a, items: [...(a.items || []), { id: newId(), name, qty, onboard: false }] }));
     return true;
   };
-  const saveItem = ({ name, qty }) => {
+  const saveItem = ({ name, qty, target }) => {
     const { area, item } = dialog;
+    if (target && target !== area.id) return moveItem(area, item, { name, qty }, target);
     if (area.items.some((i) => i.id !== item.id && same(i.name, name))) return `${name} is already in ${area.name}`;
     setArea(area.id, (a) => ({ ...a, items: a.items.map((i) => (i.id === item.id ? { ...i, name, qty } : i)) }));
     setDialog(null);
@@ -172,7 +187,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       <SuggestAreasDialog open={dialog?.type === "suggest"} names={suggestions} onClose={() => setDialog(null)} onConfirm={(names) => { addSuggested(names); setDialog(null); }} />
       <TextDialog open={dialog?.type === "rename"} title="Rename Cupboard" confirmLabel="Save" testId="inventory-rename"
         initial={dialog?.type === "rename" ? dialog.area.name : ""} onConfirm={dialog?.type === "rename" ? renameArea : () => true} onClose={() => setDialog(null)} />
-      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} onConfirm={saveItem} onClose={() => setDialog(null)} />
+      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={areas} onConfirm={saveItem} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note="Everything listed inside it is removed too, and checklist items tagged with it lose their tag."
         onClose={() => setDialog(null)} onConfirm={() => { const { id } = dialog.area; onChange((list) => list.filter((a) => a.id !== id)); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
