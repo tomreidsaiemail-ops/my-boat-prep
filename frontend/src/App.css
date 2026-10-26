@@ -59,9 +59,12 @@ body {
 .icon-btn { width: 44px; height: 48px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s; }
 .icon-btn:hover { color: var(--navy); background: #f1f5f9; }
 .icon-btn:disabled { opacity: .3; pointer-events: none; }
+.checklist-row.is-shaded { background: #e8f3fc; }
+.checklist-row.is-shaded:hover { background: #dcecfa; }
+.checklist-row.is-child { border-bottom-style: dashed; }
 .checklist-row.is-flagged { background: #fef2f2; box-shadow: inset 5px 0 0 var(--red); }
 .is-flagged .item-text { color: #991b1b; font-weight: 700; }
-.prio-btn { width: 44px; height: 36px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s, transform .1s; }
+.prio-btn { width: 40px; height: 36px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s, transform .1s; }
 .prio-btn:hover { background: #f1f5f9; color: var(--navy); }
 .prio-btn:active { transform: scale(.92); }
 .prio-btn:disabled { opacity: .3; pointer-events: none; }

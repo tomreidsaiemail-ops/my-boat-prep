@@ -1,18 +1,30 @@
 import { useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, ClipboardList, Siren, Radio } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, ClipboardList, Siren, Radio, Wrench, Zap } from "lucide-react";
 
 const INTROS = {
   shipsLog: {
     cls: "border-sky-200 bg-sky-50 text-sky-950", Icon: BookOpen, testId: "log-instructions",
     text: "A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board. However, you can add other note worthy logs as you decide. The offline mode lets you do that at sea. The idea here is that once you have reached your destination you can print off this log and add it to the Ship's Log binder on board.",
     tip: "complete Ship's Log below for this voyage then click Email Ship's Log below when back at the dock, accumulate the Ship's Logs in your Ship's Logs email folder and then bulk print them at your local print shop, and then add them to the binder onboard.",
-    hideKey: "mbp_log_help_hidden", showLabel: "Show Ship's Log help",
+    hideKey: "mbp_log_help_hidden", showLabel: "Show Ship's Log help", prefix: "log",
   },
   myTodo: {
     cls: "border-emerald-200 bg-emerald-50 text-emerald-950", Icon: ClipboardList, testId: "todo-instructions",
     text: "My To Do List is for the little issues you notice as you go, like a sticky winch, a blown nav light bulb, a frayed sheet or a dripping tap. Add each one below as soon as you spot it, even offline at sea, so nothing gets forgotten. Tick items off when they're fixed and delete them when you no longer need them. Tick \"Show List Ordering Icons\" below the list to number your items, then tap the flag to mark one urgent (it jumps to the top and turns red), use the up and down arrows, or tap a number to move an item straight to that spot.",
     tip: "before your next trip to the chandlery or a visit from your marine engineer, use Export Current or Email PDF to take the list with you.",
-    hideKey: "mbp_todo_help_hidden", showLabel: "Show My To Do List help",
+    hideKey: "mbp_todo_help_hidden", showLabel: "Show My To Do List help", prefix: "todo",
+  },
+  engineService: {
+    cls: "border-amber-200 bg-amber-50 text-amber-950", Icon: Wrench, testId: "engine-instructions",
+    text: "Tick each job as you finish it during the service, for example Oil change and Oil filter. When you're done, enter the engine hours and service date below and tap Log Service. Only the ticked items are saved to the Engine Service History with that entry, then the list is unticked ready for next time. If nothing is ticked, Log Service still records the hours, date and notes.",
+    tip: "log every service, even a quick oil change, so you, a buyer or a surveyor can see exactly when each job was last done.",
+    hideKey: "mbp_engine_help_hidden", showLabel: "Show Engine Service help", prefix: "engine",
+  },
+  electricalService: {
+    cls: "border-yellow-200 bg-yellow-50 text-yellow-950", Icon: Zap, testId: "electrical-instructions",
+    text: "Tick each check as it's done, for example Battery terminals and Fuses and breakers. When you're finished, enter the electrician's name and the service date below and tap Log Service. Only the ticked items are saved to the Electrical Service History with that entry, then the list is unticked ready for next time. If nothing is ticked, Log Service still records the name, date and notes.",
+    tip: "note any odd readings, like a low battery voltage, in the notes so you can spot a failing battery before it lets you down.",
+    hideKey: "mbp_electrical_help_hidden", showLabel: "Show Electrical Service help", prefix: "electrical",
   },
   mayDay: {
     cls: "border-[var(--red)] bg-[var(--red)] text-white", Icon: Siren, testId: "mayday-banner",
@@ -31,9 +43,8 @@ export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSki
   const [stored, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
   const hidden = stored && canHide;
   if (!intro) return null;
-  const { cls, Icon, title, text, tip, testId, hideKey, showLabel, confirm } = intro;
+  const { cls, Icon, title, text, tip, testId, hideKey, showLabel, confirm, prefix } = intro;
   const collapsible = !!hideKey;
-  const prefix = listId === "shipsLog" ? "log" : "todo";
   const setHide = (v) => {
     if (v && !canHide) { onLockedHide(); return; }
     setHidden(v);

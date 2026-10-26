@@ -36,13 +36,22 @@ def _label(it: dict, ctx: dict) -> str:
 
 
 def render_items(items: list, ctx: dict) -> list:
-    return [{"label": _label(it, ctx), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged"))} for it in items]
+    return [{"label": _label(it, ctx), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0}
+            for n, it in enumerate(items)]
 
 
 def _item_para(i: dict) -> Paragraph:
     if i.get("flagged"):
         return Paragraph("FLAGGED: " + escape(i["label"]), FLAG)
     return Paragraph(escape(i["label"]), DONE if i["checked"] else ITEM)
+
+
+def _pdf_row(mark: str, i: dict) -> list:
+    # Sub-items sit one column in, under their parent item.
+    if i.get("indent"):
+        return [Paragraph("", ITEM), Table([[Paragraph(mark, ITEM), _item_para(i)]], colWidths=[12 * mm, 150 * mm],
+                                           style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)])]
+    return [Paragraph(mark, ITEM), _item_para(i)]
 
 
 def build_pdf(log: dict) -> bytes:
@@ -58,7 +67,7 @@ def build_pdf(log: dict) -> bytes:
         if n:
             story.append(PageBreak())
         mark = (lambda n, i: f"{n}.") if lst.get("numbered") else (lambda n, i: "[X]" if i["checked"] else "[  ]")
-        rows = [[Paragraph(mark(n, i), ITEM), _item_para(i)] for n, i in enumerate(lst["items"], 1)]
+        rows = [_pdf_row(mark(n, i), i) for n, i in enumerate(lst["items"], 1)]
         story += [Paragraph(escape(lst["name"].upper()), TITLE), Spacer(1, 4), meta, Spacer(1, 12)]
         if rows:
             tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
@@ -82,7 +91,7 @@ def build_email_html(log: dict, pdf_url: str, from_name: str) -> str:
 def _item_rows(items: list) -> str:
     return "".join(
         f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"&#10003;" if i["checked"] else "&#9744;"}</td>'
-        f'<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}</td></tr>'
+        f'<td style="padding:8px 0 8px {"24px" if i.get("indent") else "0"};border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}</td></tr>'
         for i in items
     )
 

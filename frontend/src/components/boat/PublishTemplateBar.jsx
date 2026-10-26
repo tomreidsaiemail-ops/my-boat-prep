@@ -16,7 +16,7 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
     setConfirm(false);
     setBusy(true);
     try {
-      await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}) })));
+      await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })));
       toast.success(`${list.name} published as the master template`);
     } catch (e) {
       toast.error(typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't publish, please try again");

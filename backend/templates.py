@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api")
 TEMPLATE_LISTS = {
     "leavingDock": "Leaving Dock", "returningDock": "Returning to Dock", "arrivingDest": "Arriving at Destination",
     "safety": "Safety", "riggingChecks": "Rigging Checks", "routeHazards": "Route Hazards", "crewPrep": "Crew Prep", "provisions": "Provisions",
-    "head": "Head (Toilet)", "engineService": "Engine Service", "grabBag": "Grab Bag", "mayDay": "May Day", "panPan": "Pan Pan",
+    "head": "Head (Toilet)", "engineService": "Engine Service", "electricalService": "Electrical Service", "grabBag": "Grab Bag", "mayDay": "May Day", "panPan": "Pan Pan",
 }
 REQUIRED_DYNAMIC = {
     "mayDay": {"maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps"},
@@ -25,6 +25,7 @@ class TemplateItem(BaseModel):
     id: Union[int, str]
     label: str = Field(max_length=1000)
     dynamic: Optional[Dynamic] = None
+    indent: Optional[bool] = None
 
 
 class TemplateIn(BaseModel):
@@ -129,7 +130,7 @@ async def publish_template(list_id: str, payload: TemplateIn, admin: dict = Depe
         if i.dynamic and i.dynamic not in REQUIRED_DYNAMIC.get(list_id, set()):
             raise HTTPException(status_code=400, detail="That line doesn't belong in this list")
         ids.add(i.id)
-        items.append({"id": i.id, "label": label, **({"dynamic": i.dynamic} if i.dynamic else {})})
+        items.append({"id": i.id, "label": label, **({"dynamic": i.dynamic} if i.dynamic else {}), **({"indent": True} if i.indent and items else {})})
     if not items:
         raise HTTPException(status_code=400, detail="Add at least one item before publishing")
     missing = REQUIRED_DYNAMIC.get(list_id, set()) - {i.get("dynamic") for i in items}

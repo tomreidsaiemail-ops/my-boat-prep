@@ -39,10 +39,12 @@ import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
-import { EngineHoursPanel } from "@/components/boat/EngineHoursPanel";
+import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
+import { flagOutline, moveOutline, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
+const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log" };
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
@@ -116,26 +118,15 @@ export default function BoatPrep({ boatId, boats }) {
   const isDup = (text, exceptId) => items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
 
   const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
-  const remove = (id) => guard() && setItems((list) => list.filter((i) => i.id !== id));
-  const flag = (id) => guard() && setItems((list) => {
-    const it = list.find((i) => i.id === id);
-    if (it.flagged) return list.map((i) => (i.id === id ? { ...i, flagged: false } : i));
-    return [{ ...it, flagged: true }, ...list.filter((i) => i.id !== id)];
-  });
-  const move = (id, dir) => guard() && setItems((list) => {
-    const i = list.findIndex((x) => x.id === id);
-    const j = i + dir;
-    if (j < 0 || j >= list.length) return list;
-    const next = [...list];
-    [next[i], next[j]] = [next[j], next[i]];
-    return next;
-  });
-  const place = (id, pos) => guard() && setItems((list) => {
-    const it = list.find((x) => x.id === id);
-    const next = list.filter((x) => x.id !== id);
-    next.splice(Math.min(Math.max(pos - 1, 0), next.length), 0, it);
-    return next;
-  });
+  const remove = (id) => guard() && setItems((list) => removeOutline(list, id));
+  const flag = (id) => guard() && setItems((list) => flagOutline(list, id));
+  const move = (id, dir) => guard() && setItems((list) => moveOutline(list, id, dir));
+  const indent = (id, v) => guard() && setItems((list) => setIndent(list, id, v));
+  const logService = (key, listId) => (entry) => guard() && mutate((s) => ({
+    ...s, [key]: [...(s[key] || []), { ...entry, items: (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label) }],
+    data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)) },
+  }));
+  const place = (id, pos) => guard() && setItems((list) => placeOutline(list, id, pos));
   const reset = ownerOnly((zone) => guard(zone) && setDialog({ type: "reset" }));
   const confirmReset = (ids) => {
     mutate((s) => resetLists(s, ids, templates));
@@ -285,10 +276,11 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {!crew && active.id === "engineService" && (
-        <EngineHoursPanel entries={state.engine_log || []} today={todayISO()}
-          onAdd={(entry) => (guard() ? mutate((s) => ({ ...s, engine_log: [...(s.engine_log || []), entry] })) : false)}
-          onDelete={(id) => guard() && mutate((s) => ({ ...s, engine_log: (s.engine_log || []).filter((e) => e.id !== id) }))} />
+      {!crew && SERVICE_LOGS[active.id] && (
+        <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
+          ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)}
+          onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
+          onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
@@ -307,7 +299,7 @@ export default function BoatPrep({ boatId, boats }) {
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} onFlag={flag} onMove={move} onPlace={place} />)}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
