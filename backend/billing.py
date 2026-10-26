@@ -54,8 +54,8 @@ async def apply_subscription(user_id: str, sub) -> None:
         "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
         "pro_until": _period_end(sub),
     }
-    if (sub.get("metadata") or {}).get("first5000") == "1":
-        fields["first5000"] = True
+    fields["first5000"] = (sub.get("metadata") or {}).get("first5000") == "1"
+    if fields["first5000"]:
         try:
             await asyncio.to_thread(end_first5000_after_first_renewal, sub)
         except stripe.error.StripeError as e:

@@ -1,0 +1,38 @@
+{
+  "summary": "Retest of FIRST5000 after Subscription Schedules were removed. The CRITICAL cancel-renewal bug is FIXED. E2E on the real Stripe sandbox: admin ticked first5000-checkbox (on). The Free user's button read 'Upgrade to Pro: NZD 24.99 (50% off)'. With TESTF20B (20%) the Stripe total was NZ$19.99 ('Then NZ$24.99 per year'). Paying with 4242 led to 'Welcome to Pro!'. The sub has schedule=None and price pro_yearly_first5000 2499; the latest invoice was 2499 subtotal / 1999 total and the next invoice preview is 2499. The customer has no new schedules (only the old released one from iteration_29). db.users: role pro, first5000 true, renew_price 24.99. plan-price-notice shows the exact FIRST5000 text, and /admin shows the FIRST5000 badge. plan-renewal-btn works both ways (POST /payments/renewal {renew:false} 200, then 'Turn renewal back on' {renew:true} 200), with the correct toasts; Stripe cancel_at_period_end goes true then false, the price stays 2499 and no schedule appears. Signed customer.subscription.updated webhooks (sent twice) returned 200 and created no schedule; a bad signature returns 400. Restarting the backend (setup_stripe migration) moved 0 subs, and the FIRST5000 sub stayed on 2499. An independent Stripe test-clock run of billing.end_first5000_after_first_renewal confirmed the lifecycle: year-1 invoice 2499, renewal-1 invoice 2499, switch to 4999 with no schedule, next preview 4999, renewal-2 invoice 4999; a second call after the switch does nothing. Regression with FIRST5000 OFF: the button reads 'NZD 49.99 / year', Stripe shows NZ$49.99 and the price is pro_yearly 4999; for a clean normal subscriber the notice reads 'Your renewal is NZD 49.99 a year.' and cancel renewal works. One new minor bug: the first5000 flag sticks on returning users.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "billing.apply_subscription", "issue": "first5000 is only ever set to True and never cleared. A user who had a FIRST5000 sub, cancelled it and later re-subscribed at full price (sub metadata first5000='0', price 4999) keeps db first5000=true. Result: the Plan dialog says 'FIRST5000 member: your launch discount has been used. Renewals are NZD 49.99 a year.' and /admin shows the FIRST5000 badge for a non-FIRST5000 subscription. Reproduced E2E. Fix: set fields['first5000'] = (meta.first5000 == '1') on every sync for the current sub."},
+      {"endpoint": "billing.end_first5000_after_first_renewal", "issue": "The switch to 4999 only happens on a sync (subscription.updated webhook, status poll, or refresh_if_lapsed when the user visits after pro_until). If the renewal-1 webhook is lost and the user does not open the app for a year, renewal 2 is billed at 2499. This is low risk because Stripe retries webhooks. A daily job, or handling invoice.paid with billing_reason=subscription_cycle, would make it watertight."},
+      {"endpoint": "POST /api/stripe/webhook (invoice.payment_failed)", "issue": "retrieve_subscription is not wrapped in try/except StripeError, so a Stripe error there returns 500 to Stripe (which then retries). Not seen in this run."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Returning FIRST5000 user re-subscribes at full price", "issue": "plan-price-notice shows the FIRST5000 wording, and the admin badge shows, because of the sticky db flag (backend root cause above).", "affected_selectors": ["[data-testid='plan-price-notice']", "[data-testid='admin-user-first5000-test-user-free']"]}
+    ],
+    "design_issues": [
+      {"screen": "PlanDialog ProStatus", "issues": ["The notice still hardcodes 49.99 (it does not use the offer price). Minor."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_first5000_renewal.py", "/app/backend/tests/test_first5000.py", "/app/backend/tests/test_promo_codes.py", "/app/backend/tests/manual_first5000_test_clock.py", "/app/backend/tests/manual_first5000_inspect.py", "/app/backend/tests/manual_reset_free_user.py", "/app/backend/tests/manual_cleanup_test_promos.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "In billing.apply_subscription, set first5000 from the current sub's metadata on every sync (True or False) so returning full-price subscribers lose the FIRST5000 badge and notice.",
+    "Optional: wrap the webhook's retrieve_subscription/apply_subscription in try/except StripeError so the webhook never returns 500.",
+    "Optional: also trigger end_first5000_after_first_renewal from invoice.paid (billing_reason=subscription_cycle) or a periodic job, so the switch does not depend on a single webhook."
+  ],
+  "critical_code_review_comments": [
+    "The removal of schedules is correct. set_renewal now works because no schedule is ever attached; the migration skips plan=first5000 prices.",
+    "end_first5000_after_first_renewal mutates item['price'] with a Price object after modify, so renew_price in the same sync becomes 49.99. Good. Idempotent because the new price has no plan=first5000 metadata.",
+    "Note for tests: Stripe's customer.subscription.deleted webhook re-applies the canceled sub to the user, which re-populates stripe_subscription_id, first5000 and renew_price after a manual Mongo reset. Reset Mongo after the webhook arrives (manual_reset_free_user.py run twice with a sleep)."
+  ],
+  "updated_files": ["/app/backend/tests/test_first5000_renewal.py (new: unit tests for the price switch + live renewal/webhook/migration tests)", "/app/backend/tests/manual_first5000_test_clock.py (new)", "/app/backend/tests/manual_first5000_inspect.py (new)", "/app/backend/tests/manual_reset_free_user.py (new)"],
+  "success_rate": {"backend": "100% (live tests: 4/4 with a FIRST5000 sub; final run on clean state 34 passed, 3 skipped (the live tests need a sub)). Existing suites had no schedule assertions, so no change was needed.", "frontend": "100% of requested flows; 1 minor integration issue (sticky FIRST5000 flag for returning users)"},
+  "seed_data_creation": "None left. Stripe subs sub_1UUfPd8ZEkybgkKQmnQmheny (FIRST5000) and sub_1UUfVW8ZEkybgkKQdUtRgPlw (full price) cancelled. The test clock was deleted. test-user-free reset to role free (keeps stripe_customer_id cus_VVge3CVLg6bNSC; billing fields unset). TESTF20B and the pytest TEST codes were deactivated and their coupons and db docs removed (0 left). FIRST5000 left OFF (offer first5000=false). Stripe Link was saved for test.user.free@example.com during checkout, so future runs see a Link OTP screen: click 'Pay without Link'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with REACT_APP_BACKEND_URL exported and -n 0. The live tests in test_first5000_renewal.py need test-user-free to hold an active FIRST5000 sub (buy one via the UI first); otherwise they skip. Stripe page: click 'Pay without Link' if the Link OTP appears; use #promotionCode with force=True and Enter; press Escape after #billingAddressLine1 to close the Google suggestions; use press_sequentially for the card fields if the submit does nothing. Cleanup: run manual_reset_free_user.py, sleep 10, run it again, then run manual_cleanup_test_promos.py.",
+  "rca of the issue": "Sticky first5000: apply_subscription only does `if meta.first5000=='1': fields['first5000']=True` and never sets False. Repro: buy with FIRST5000 on, cancel the sub, turn FIRST5000 off, buy again at 49.99: db first5000 stays true and the notice says 'launch discount has been used'. Mitigation: fields['first5000'] = meta.get('first5000') == '1'."
+}

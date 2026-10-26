@@ -276,3 +276,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-10 Undo inventory deletes
 - Boat Inventory item and area deletes show a 6s Undo toast; area undo restores position, contents and checklist tags (InventoryList deleteItem/deleteArea)
 - Self-tested via screenshot
+
+## 2026-10 Pro NZD 49.99 + FIRST5000 launch promotion
+- Prices: pro_yearly 4999; pro_yearly_first5000 2499 (metadata plan=first5000, same product, skipped by startup migration)
+- Admin toggle "Promotion FIRST5000 is running" on /admin/promos (PUT /api/admin/promo-codes/first5000, db.app_settings); GET /api/payments/offer for the Plan dialog
+- Checkout uses the FIRST5000 price when running (metadata first5000=1) with a Stripe submit message explaining first year + first renewal at 24.99 then 49.99; promo codes stack (allow_promotion_codes)
+- billing.end_first5000_after_first_renewal switches the sub to 4999 (no proration) on any sync after the first renewal (subscription.updated, invoice.paid, status poll); no subscription schedules (they broke cancel renewal)
+- users.first5000 (set from current sub metadata each sync) + renew_price; FIRST5000 badge on /admin; Plan dialog notice
+- Tested: iteration_29/30 (E2E purchases with promo stacking, cancel/re-enable renewal, test-clock lifecycle 2499->2499->4999)

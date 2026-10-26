@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 import asyncio
 from datetime import datetime, timezone
 import stripe
@@ -133,12 +134,21 @@ async def stripe_webhook(request: Request):
         uid = await _user_for_subscription(obj)
         if uid:
             await apply_subscription(uid, obj)
-    elif t == "invoice.payment_failed" and obj.get("subscription"):
-        sub = await retrieve_subscription(obj["subscription"])
-        uid = await _user_for_subscription(sub)
-        if uid:
-            await apply_subscription(uid, sub)
+    elif t in ("invoice.payment_failed", "invoice.paid") and _invoice_sub(obj):
+        # invoice.paid on a renewal is a second chance to move FIRST5000 to full price after the first renewal.
+        try:
+            sub = await retrieve_subscription(_invoice_sub(obj))
+            uid = await _user_for_subscription(sub)
+            if uid:
+                await apply_subscription(uid, sub)
+        except stripe.error.StripeError as e:
+            logging.getLogger(__name__).error("Webhook %s sync failed: %s", t, e)
     return {"status": "ok"}
+
+
+def _invoice_sub(inv) -> str | None:
+    sub = inv.get("subscription") or ((inv.get("parent") or {}).get("subscription_details") or {}).get("subscription")
+    return sub if isinstance(sub, str) else (sub or {}).get("id")
 
 
 class RenewIn(BaseModel):
