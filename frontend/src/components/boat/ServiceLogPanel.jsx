@@ -1,18 +1,19 @@
 import { useState } from "react";
-import { Gauge, Trash2, Zap } from "lucide-react";
+import { FileDown, Gauge, Loader2, Lock, Trash2, Zap } from "lucide-react";
 import { ValidationBar } from "@/components/boat/ActionBar";
+import { ServiceDue } from "@/components/boat/ServiceDue";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
 const KINDS = {
   engine_log: {
     title: "Engine Service History", Icon: Gauge, prefix: "engine", panelId: "engine-hours-panel", fieldId: "engine-hours-input", errorId: "engine-hours-error",
-    field: "hours", fieldLabel: "Engine hours", placeholder: "e.g. 1250", numeric: true, missing: "Enter the engine hours", notesHint: "e.g. 250hr service",
+    field: "hours", fieldLabel: "Engine hours", placeholder: "e.g. 1250", numeric: true, missing: "Enter the engine hours", notesHint: "e.g. 250hr service", dueLabel: "Engine service",
     summary: (e) => <><b className="font-mono">{e.hours} hrs</b> · {fmtDate(e.date)}</>,
   },
   electrical_log: {
     title: "Electrical Service History", Icon: Zap, prefix: "electrical", panelId: "electrical-service-panel", fieldId: "electrical-name-input", errorId: "electrical-name-error",
-    field: "electrician", fieldLabel: "Electrician's name", placeholder: "e.g. Sam Watts", numeric: false, missing: "Enter the electrician's name", notesHint: "e.g. house battery 12.4V, replaced fuse",
+    field: "electrician", fieldLabel: "Electrician's name", placeholder: "e.g. Sam Watts", numeric: false, missing: "Enter the electrician's name", notesHint: "e.g. house battery 12.4V, replaced fuse", dueLabel: "Electrical service",
     summary: (e) => <><b>{e.electrician}</b> · {fmtDate(e.date)}</>,
   },
 };
@@ -28,7 +29,7 @@ const Entry = ({ e, k, onDelete }) => (
   </li>
 );
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, onExport, locked, exporting }) => {
   const k = KINDS[kind];
   const [value, setValue] = useState("");
   const [date, setDate] = useState(today);
@@ -47,12 +48,18 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
 
   return (
     <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={k.panelId}>
-      <div className="flex items-center gap-2 font-display text-base font-extrabold"><k.Icon className="h-5 w-5" /> {k.title}</div>
+      <div className="flex items-center gap-2">
+        <span className="flex flex-1 items-center gap-2 font-display text-base font-extrabold"><k.Icon className="h-5 w-5" /> {k.title}</span>
+        <button type="button" className="btn-ghost h-10 shrink-0 px-3 text-sm" onClick={onExport} disabled={exporting} data-testid={`${k.prefix}-export-btn`}>
+          {locked ? <Lock className="h-4 w-4" data-testid={`${k.prefix}-export-lock`} /> : exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} Export PDF
+        </button>
+      </div>
       <div className="text-sm" data-testid={`${k.prefix}-last-service`}>
         <span className="field-label">Last service </span>
         {last ? <b>{k.numeric ? `${last.hours} hrs on ${fmtDate(last.date)}` : `by ${last.electrician} on ${fmtDate(last.date)}`}</b>
           : <span className="font-semibold text-[var(--muted)]">none logged yet</span>}
       </div>
+      <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} />
       <form onSubmit={submit} className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}

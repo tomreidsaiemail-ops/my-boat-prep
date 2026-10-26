@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 import { addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds } from "@/lib/defaults";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
@@ -23,6 +24,7 @@ import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
 import useListOrdering from "@/hooks/useListOrdering";
+import useFolds from "@/hooks/useFolds";
 import { applyMove } from "@/lib/inventoryMove";
 
 const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
@@ -97,6 +99,7 @@ export default function BoatPrep({ boatId, boats }) {
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const [ordering, setOrdering] = useListOrdering(active.id);
+  const [folded, setFold] = useFolds(active.id);
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const tagging = premium && !crew && areas.length > 0;
@@ -127,6 +130,33 @@ export default function BoatPrep({ boatId, boats }) {
     data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)) },
   }));
   const place = (id, pos) => guard() && setItems((list) => placeOutline(list, id, pos));
+  const setServiceDue = (listId, date) => {
+    if (!registry.some((l) => l.id === "myTodo")) { toast.error("Bring back My To Do List with Reset All... to get service reminders"); return; }
+    const id = `due_${listId}`;
+    const label = `${listId === "engineService" ? "Engine" : "Electrical"} service due ${date ? date.split("-").reverse().join("/") : ""}`;
+    if (!guard("service")) return;
+    mutate((s) => {
+      const rest = (s.data.myTodo || []).filter((i) => i.id !== id);
+      return { ...s, data: { ...s.data, myTodo: date ? [...rest, { id, label, due: date, checked: false }] : rest } };
+    });
+    toast.success(date ? `Reminder added to My To Do List: ${label}` : "Reminder removed from My To Do List");
+  };
+  const [exporting, setExporting] = useState(false);
+  const exportService = async (key) => {
+    if (!needPro("Service History PDF")) return;
+    if (!online) { toast.error("Connect to the internet to export the service history"); return; }
+    const kind = key === "engine_log" ? "engine" : "electrical";
+    setExporting(true);
+    try {
+      const { data } = await api.post("/service-history/pdf", { kind, vessel: boat.vessel, skipper: boat.skipper, callsign: boat.callsign,
+        local_date: new Date().toLocaleDateString("en-NZ"), entries: (state[key] || []).map(({ id, ...e }) => e) }, { responseType: "blob" });
+      const url = URL.createObjectURL(data);
+      const a = Object.assign(document.createElement("a"), { href: url, download: `${kind === "engine" ? "Engine" : "Electrical"} Service History - ${boat.vessel || "My Boat"}.pdf` });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch { toast.error("Couldn't create the PDF. Please try again."); }
+    setExporting(false);
+  };
   const reset = ownerOnly((zone) => guard(zone) && setDialog({ type: "reset" }));
   const confirmReset = (ids) => {
     mutate((s) => resetLists(s, ids, templates));
@@ -280,6 +310,8 @@ export default function BoatPrep({ boatId, boats }) {
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
+          due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)}
+          onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
@@ -299,7 +331,7 @@ export default function BoatPrep({ boatId, boats }) {
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={remove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} />)}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}

@@ -35,6 +35,7 @@ export const outlineInfo = (items) => {
         num: k ? `${gi + 1}.${k}` : `${gi + 1}`, pos: k || gi + 1, total: k ? g.length - 1 : gs.length, child: k > 0,
         upOk: k ? k > 1 : gi > 0, downOk: k ? k < g.length - 1 : gi < gs.length - 1,
         canIndent: !k && gi > 0, shade: nested && (block + offset) % 2 === 1,
+        parent: g[0].id, subs: k ? 0 : g.length - 1, subsTicked: k ? 0 : g.slice(1).filter((x) => x.checked).length,
       };
     });
   });
