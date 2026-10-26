@@ -12,5 +12,6 @@ export default function useFolds(listId) {
     localStorage.setItem(keyFor(listId), JSON.stringify(next));
     return next;
   });
-  return [folded, setFold];
+  const setFoldAll = (ids) => { localStorage.setItem(keyFor(listId), JSON.stringify(ids)); setFolded(ids); };
+  return [folded, setFold, setFoldAll];
 }

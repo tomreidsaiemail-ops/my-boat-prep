@@ -267,3 +267,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - "Prompt on delete" checkbox beside Show List Ordering Icons (per list, per device, default on; useListSetting mbp_prompt_delete_<listId>); on = confirm dialog item-delete-*, off = instant delete
 - Indenting a group main item (merges its group into the one above) asks first (merge-group-* dialog)
 - Self-tested via screenshot
+
+## 2026-10 Undo delete + Fold all
+- Every checklist item delete shows a 6s toast with Undo (restores item at its position and re-indents a promoted sub-item)
+- "Fold all groups (N)" / "Unfold all groups" button above lists that have groups (FoldAllButton, useFolds setFoldAll)
+- Self-tested via screenshot

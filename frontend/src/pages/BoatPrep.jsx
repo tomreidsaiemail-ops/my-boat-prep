@@ -43,6 +43,7 @@ import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { flagOutline, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
@@ -100,7 +101,7 @@ export default function BoatPrep({ boatId, boats }) {
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const [ordering, setOrdering] = useListOrdering(active.id);
-  const [folded, setFold] = useFolds(active.id);
+  const [folded, setFold, setFoldAll] = useFolds(active.id);
   const [promptDelete, setPromptDelete] = useListSetting("mbp_prompt_delete", active.id, true);
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
@@ -123,7 +124,25 @@ export default function BoatPrep({ boatId, boats }) {
   const isDup = (text, exceptId) => items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
 
   const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
-  const remove = (id) => guard() && setItems((list) => removeOutline(list, id));
+  const remove = (id) => {
+    if (!guard()) return;
+    const listId = active.id;
+    const index = items.findIndex((i) => i.id === id);
+    const item = items[index];
+    if (!item) return;
+    // removeOutline promotes the next sub-item when a group's main item goes; undo puts that back too.
+    const promoted = !(index > 0 && item.indent) && items[index + 1]?.indent ? items[index + 1].id : null;
+    setItems((list) => removeOutline(list, id));
+    const undo = () => mutate((s) => {
+      const cur = s.data[listId];
+      if (!cur || cur.some((i) => i.id === id)) return s;
+      const restored = cur.map((i) => (i.id === promoted ? { ...i, indent: true } : i));
+      restored.splice(Math.min(index, restored.length), 0, item);
+      return { ...s, data: { ...s.data, [listId]: restored } };
+    });
+    const name = labelFor(item);
+    toast(`Deleted "${name.length > 40 ? `${name.slice(0, 40)}…` : name}"`, { duration: 6000, action: { label: "Undo", onClick: undo } });
+  };
   const flag = (id) => guard() && setItems((list) => flagOutline(list, id));
   const move = (id, dir) => guard() && setItems((list) => moveOutline(list, id, dir));
   const indent = (id, v) => guard() && setItems((list) => setIndent(list, id, v));
@@ -344,6 +363,7 @@ export default function BoatPrep({ boatId, boats }) {
           {premium && (tagging || filterAreas.length > 0) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} onApply={tagging ? () => setDialog({ type: "applyArea" }) : undefined} />
           )}
+          {!areaFilter && <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
