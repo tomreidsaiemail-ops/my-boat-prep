@@ -272,3 +272,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Every checklist item delete shows a 6s toast with Undo (restores item at its position and re-indents a promoted sub-item)
 - "Fold all groups (N)" / "Unfold all groups" button above lists that have groups (FoldAllButton, useFolds setFoldAll)
 - Self-tested via screenshot
+
+## 2026-10 Undo inventory deletes
+- Boat Inventory item and area deletes show a 6s Undo toast; area undo restores position, contents and checklist tags (InventoryList deleteItem/deleteArea)
+- Self-tested via screenshot

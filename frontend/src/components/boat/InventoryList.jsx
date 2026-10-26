@@ -93,6 +93,29 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     setDialog(null);
     toast.success(`Moved ${edits.name} to ${dest.name}`);
   };
+  const undoToast = (name, undo) => toast(`Deleted "${name.length > 40 ? `${name.slice(0, 40)}…` : name}"`, { duration: 6000, action: { label: "Undo", onClick: undo } });
+  const deleteItem = (area, item) => {
+    const index = area.items.findIndex((y) => y.id === item.id);
+    setArea(area.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== item.id) }));
+    undoToast(item.name, () => setArea(area.id, (x) => {
+      if (x.items.some((y) => y.id === item.id)) return x;
+      const items = [...x.items];
+      items.splice(Math.min(index, items.length), 0, item);
+      return { ...x, items };
+    }));
+  };
+  // Checklist tags point at the area id, so restoring the same area brings its tagged items back too.
+  const deleteArea = (area) => {
+    const index = areas.findIndex((a) => a.id === area.id);
+    const saved = areas[index];
+    onChange((list) => list.filter((a) => a.id !== area.id));
+    undoToast(area.name, () => onChange((list) => {
+      if (list.some((a) => a.id === area.id)) return list;
+      const next = [...list];
+      next.splice(Math.min(index, next.length), 0, saved);
+      return next;
+    }));
+  };
   const startMove = (a) => {
     if (areas.length < 2) { toast.warning("You can only move items to new boat areas when there is more than one boat area."); return; }
     if (!(a.items || []).length && !(linked[a.id] || []).length) { toast.message(`${a.name} has nothing to move yet`); return; }
@@ -174,7 +197,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
-            onDeleteItem={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.filter((y) => y.id !== i.id) }))}
+            onDeleteItem={(i) => deleteItem(a, i)}
             onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)} />
         ))}
       </ul>
@@ -189,7 +212,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         initial={dialog?.type === "rename" ? dialog.area.name : ""} onConfirm={dialog?.type === "rename" ? renameArea : () => true} onClose={() => setDialog(null)} />
       <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={areas} onConfirm={saveItem} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note="Everything listed inside it is removed too, and checklist items tagged with it lose their tag."
-        onClose={() => setDialog(null)} onConfirm={() => { const { id } = dialog.area; onChange((list) => list.filter((a) => a.id !== id)); setDialog(null); }} />
+        onClose={() => setDialog(null)} onConfirm={() => { deleteArea(dialog.area); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
       <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={areas} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
         onMove={finishMove} onClose={() => setDialog(null)} />
