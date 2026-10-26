@@ -134,7 +134,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (!registry.some((l) => l.id === "myTodo")) { toast.error("Bring back My To Do List with Reset All... to get service reminders"); return; }
     const id = `due_${listId}`;
     const label = `${listId === "engineService" ? "Engine" : "Electrical"} service due ${date ? date.split("-").reverse().join("/") : ""}`;
-    if (!guard("service")) return;
+    if (!guard("due")) return;
     mutate((s) => {
       const rest = (s.data.myTodo || []).filter((i) => i.id !== id);
       return { ...s, data: { ...s.data, myTodo: date ? [...rest, { id, label, due: date, checked: false }] : rest } };
@@ -188,7 +188,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (!guard("bottom")) return null;
     if (!text) return "Nothing to add";
     if (isDup(text)) return `${text} already exists`;
-    if (active.id === "myTodo" && !premium && items.length >= FREE_TODO_LIMIT) {
+    if (active.id === "myTodo" && !premium && items.filter((i) => !String(i.id).startsWith("due_")).length >= FREE_TODO_LIMIT) {
       askUpgrade("More than 5 To Do items");
       return `The Free plan holds ${FREE_TODO_LIMIT} To Do items. Go Pro for unlimited.`;
     }
@@ -310,7 +310,7 @@ export default function BoatPrep({ boatId, boats }) {
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
-          due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)}
+          due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}
           onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}

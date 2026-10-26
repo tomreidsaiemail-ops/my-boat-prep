@@ -29,7 +29,7 @@ const Entry = ({ e, k, onDelete }) => (
   </li>
 );
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, onExport, locked, exporting }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting }) => {
   const k = KINDS[kind];
   const [value, setValue] = useState("");
   const [date, setDate] = useState(today);
@@ -59,7 +59,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         {last ? <b>{k.numeric ? `${last.hours} hrs on ${fmtDate(last.date)}` : `by ${last.electrician} on ${fmtDate(last.date)}`}</b>
           : <span className="font-semibold text-[var(--muted)]">none logged yet</span>}
       </div>
-      <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} />
+      <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} warn={dueWarn} />
       <form onSubmit={submit} className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}

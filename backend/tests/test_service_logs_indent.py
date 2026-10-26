@@ -68,7 +68,7 @@ def test_electrical_log_sync():
         rig2[2]["ts"] = now()
         body = {k: v for k, v in st.items() if k not in ("boat_id", "owner_id", "synced_at", "role", "sec_ts", "list_ts")}
         body.update(electrical_log=[entry], engine_log=[eng], data={**orig_data, "riggingChecks": rig2},
-                    updated_at=now())
+                    updated_at=now(), sec_ts={"electrical_log": now(), "engine_log": now()})
         r = p.put(f"{BASE_URL}/api/me/boat", json=body)
         assert r.status_code == 200, r.text
         g = p.get(f"{BASE_URL}/api/me/boat").json()
@@ -84,7 +84,7 @@ def test_electrical_log_sync():
         g = p.get(f"{BASE_URL}/api/me/boat").json()
         body = {k: v for k, v in g.items() if k not in ("boat_id", "owner_id", "synced_at", "role", "sec_ts", "list_ts")}
         restore = {**orig_data, "riggingChecks": [{**{k: v for k, v in i.items() if k != "indent"}, "ts": now()} for i in orig_data.get("riggingChecks", [])]}
-        body.update(electrical_log=orig_el, engine_log=orig_en, data=restore, updated_at=now())
+        body.update(electrical_log=orig_el, engine_log=orig_en, data=restore, updated_at=now(), sec_ts={"electrical_log": now(), "engine_log": now()})
         p.put(f"{BASE_URL}/api/me/boat", json=body)
     g = p.get(f"{BASE_URL}/api/me/boat").json()
     assert g["electrical_log"] == orig_el and g["engine_log"] == orig_en

@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the three new features: Collapse Groups (fold), Service History PDF and Service Due Reminders, plus regressions. Backend: new test_service_history_pdf.py (12 tests) plus test_service_logs_indent.py, 13/15 pass. Bugs found: (1) HIGH: a vessel name with non-Latin-1 characters (e.g. 'Kia Ōra') makes POST /api/service-history/pdf return 500. (2) Minor: the electrical PDF summary reads '(Sam Watts)' where the spec says '(by Sam Watts)'. Frontend (Playwright, 390x844): fold, service-due tones, the My To Do List item sync, export for Pro/Beta, the Free lock, offline handling, the Beta guard and the Log Service regression all work. One minor logic gap: the Free 5-item limit and the reminder items affect each other.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/service-history/pdf", "issue": "500 UnicodeEncodeError ('latin-1' codec) when the vessel contains non-Latin-1 chars such as Māori macrons ('Kia Ōra') or emoji. The Content-Disposition header is built from the raw vessel name at service_history.py:84-85, and Starlette encodes headers as latin-1. Fix: use an ASCII fallback filename plus filename*=UTF-8''<urllib.parse.quote(name)>. The frontend sets its own download name, so the header only needs to be safe.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/service-history/pdf", "issue": "Electrical summary line is 'last service 01/08/2026 (Sam Watts)' while the spec says '(by Sam Watts)'. _who() returns only the name; the 'by' is missing in the summary (the table cell is fine without it)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Free My To Do limit vs service reminders", "issue": "addItem counts items.length, which includes the due_engineService and due_electricalService reminder items. A Free user with one reminder can add only 4 of their own items (seen: blocked at user item 5). setServiceDue also skips the limit, so a Free user at 5 items can set a reminder and reach 6. Decide on a rule: probably exclude ids starting with 'due_' from the count.", "affected_selectors": ["add-item-submit-btn", "engine-due-set-btn", "electrical-due-set-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Service panels (Beta with empty boat details)", "issues": ["Clicking 'Set reminder' shows the 'Please enter vessel details first' bar below the Log Service form, a little away from the reminder block. It works, but the user may not notice it."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_service_history_pdf.py", "/app/backend/tests/test_service_logs_indent.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix Content-Disposition in service_history.py for non-Latin-1 vessel names (RFC 5987 filename*), then re-run test_unicode_vessel_name",
+    "Add 'by ' before the electrician name in the PDF summary line (or update the spec)",
+    "Decide on the Free To Do limit with reminder items: exclude 'due_*' items from FREE_TODO_LIMIT, and/or decide whether reminders may go over it"
+  ],
+  "critical_code_review_comments": [
+    "service_history.py:84 builds the header filename from raw user input. Only '\"' and '/' are removed; CR/LF and non-latin1 characters are not handled (500).",
+    "BoatPrep.addItem: FREE_TODO_LIMIT counts the system reminder items; setServiceDue skips the limit.",
+    "useFolds: when listId changes, one render still uses the previous list's folded ids before the effect runs. This is harmless unless item ids overlap between lists. Folded ids for deleted or promoted parents stay in localStorage forever (harmless).",
+    "The PDF bullet '•' is encoded as WinAnsi 0x7F (ReportLab). Viewers show it as a bullet; pypdf extracts it as \\x7f. Not a bug."
+  ],
+  "updated_files": ["/app/backend/tests/test_service_history_pdf.py (new)", "/app/backend/tests/test_service_logs_indent.py (stale test: now sends sec_ts for engine_log/electrical_log, otherwise the newer server sec_ts wins in merge_state)"],
+  "success_rate": {"backend": "87% (13/15)", "frontend": "95%"},
+  "seed_data_creation": "None left behind. Pro rigging indents removed and ticks cleared, reminders cleared, the engine log entry deleted, Free TEST_todo items and reminders deleted. Verified via GET /api/me/boat: engine_log=[], electrical_log=[], myTodo=[] for Pro, Free and Beta.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified working: the fold button appears only on group parents, with or without ordering ticked. aria-expanded toggles; children are hidden; the summary reads '3 sub-items · 2 ticked'. Fold is saved in localStorage mbp_fold_riggingChecks ([204]), survives reload, is not synced (a new context shows it unfolded) and does not affect other lists. Moving a folded parent up/down moves the whole group and it stays folded. Indenting 208 under folded 204 unfolds it. Service due tones checked with today 2026-10-26: 30/12 'ok' green 'in 65 days'; 10/11 'soon' amber 'in 15 days'; 26/10 'soon' 'due today'; 20/10 'overdue' red 'overdue by 6 days'. Ticking in My To Do gives tone done 'ticked off in My To Do List' (persists after reload). Re-setting the date replaces the item with no duplicates. Delete and clear remove the status. Pro and Beta export download '<Kind> Service History - <vessel|My Boat>.pdf'. Free shows export-lock and plan-dialog with no request. Offline shows the toast 'Connect to the internet...' with no request. Beta guard shows electrical-validation-bar. Log Service saves ticked items and unticks them. Area filter + fold was only code-reviewed (no test account has areas). Note: a playwright force=True click on a My To Do toggle near the bottom toast missed once (test artefact; it passes without force). pypdf was pip-installed for PDF text checks (not in requirements). pytest.ini uses xdist (-n), so do not pass '-p no:xdist'.",
+  "rca of the issue": "Unicode 500: Starlette Response encodes header values as latin-1. The f'attachment; filename=\"{name}.pdf\"' header contains 'Ō' (U+014C), so it raises UnicodeEncodeError (seen in /var/log/supervisor/backend.err.log). Repro: POST /api/service-history/pdf as Pro with vessel 'Kia Ōra' gives 500. Fix: filename=\"<ascii-safe>\"; filename*=UTF-8''<percent-encoded>."
+}

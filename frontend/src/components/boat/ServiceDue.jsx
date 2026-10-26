@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BellRing, X } from "lucide-react";
+import { ValidationBar } from "@/components/boat/ActionBar";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
@@ -12,7 +13,7 @@ const statusOf = (due, today) => {
 };
 
 // Next-service reminder: the date lives on a My To Do List item so it shows up there too.
-export const ServiceDue = ({ prefix, label, due, today, onSet }) => {
+export const ServiceDue = ({ prefix, label, due, today, onSet, warn }) => {
   const [date, setDate] = useState(due?.due || "");
   useEffect(() => { setDate(due?.due || ""); }, [due?.due]);
   const status = due && statusOf(due, today);
@@ -25,6 +26,7 @@ export const ServiceDue = ({ prefix, label, due, today, onSet }) => {
         <button type="button" className="btn-ghost shrink-0 px-3" disabled={!date || date === due?.due} onClick={() => onSet(date)} data-testid={`${prefix}-due-set-btn`}>Set reminder</button>
         {due && <button type="button" className="icon-btn shrink-0 hover:text-[var(--red)]" aria-label="Remove reminder" title="Remove reminder" onClick={() => onSet(null)} data-testid={`${prefix}-due-clear-btn`}><X className="h-[18px] w-[18px]" /></button>}
       </div>
+      <ValidationBar show={warn} testId={`${prefix}-due-validation-bar`} />
       <p className="text-xs text-[var(--muted)]">Adds &ldquo;{label} due &hellip;&rdquo; to your My To Do List.</p>
     </div>
   );

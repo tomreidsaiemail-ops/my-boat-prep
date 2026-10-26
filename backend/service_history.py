@@ -1,6 +1,8 @@
+import re
 from html import escape
 from io import BytesIO
 from typing import List, Literal, Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
@@ -43,10 +45,10 @@ def _d(iso: str) -> str:
     return f"{d}/{m}/{y}"
 
 
-def _who(kind: str, e: ServiceEntry) -> str:
+def _who(kind: str, e: ServiceEntry, by: bool = False) -> str:
     if kind == "engine":
         return "" if e.hours is None else f"{e.hours:g} hrs"
-    return e.electrician or ""
+    return f"{'by ' if by and e.electrician else ''}{e.electrician or ''}"
 
 
 def build_service_pdf(p: ServicePdfIn) -> bytes:
@@ -59,7 +61,7 @@ def build_service_pdf(p: ServicePdfIn) -> bytes:
                   [Paragraph(f"<b>CALLSIGN:</b> {escape(p.callsign)}", META), Paragraph(f"<b>PRINTED:</b> {escape(p.local_date)}", META)]],
                  colWidths=[87 * mm, 87 * mm])
     meta.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1.2, colors.black), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
-    last = f" · last service {_d(entries[0].date)}" + (f" ({_who(p.kind, entries[0])})" if _who(p.kind, entries[0]) else "") if entries else ""
+    last = f" · last service {_d(entries[0].date)}" + (f" ({_who(p.kind, entries[0], True)})" if _who(p.kind, entries[0]) else "") if entries else ""
     story = [Paragraph(escape(title.upper()), TITLE), Spacer(1, 4), meta, Spacer(1, 8),
              Paragraph(f"<b>{len(entries)} service{'s' if len(entries) != 1 else ''} logged</b>{escape(last)}", META), Spacer(1, 8)]
     if entries:
@@ -81,5 +83,7 @@ def build_service_pdf(p: ServicePdfIn) -> bytes:
 
 @router.post("/service-history/pdf")
 async def service_history_pdf(payload: ServicePdfIn, _: dict = Depends(require_premium)):
-    name = f"{KINDS[payload.kind][0]} - {payload.vessel or 'My Boat'}".replace('"', "").replace("/", "-")
-    return Response(build_service_pdf(payload), media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}.pdf"'})
+    name = f"{KINDS[payload.kind][0]} - {payload.vessel or 'My Boat'}"
+    ascii_name = re.sub(r"[^A-Za-z0-9 ._-]", "", name).strip() or "Service History"
+    disposition = f"attachment; filename=\"{ascii_name}.pdf\"; filename*=UTF-8''{quote(name + '.pdf')}"
+    return Response(build_service_pdf(payload), media_type="application/pdf", headers={"Content-Disposition": disposition})
