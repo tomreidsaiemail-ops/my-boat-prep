@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, TicketPercent } from "lucide-react";
 import { api } from "@/lib/api";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PromoCodeForm } from "@/components/admin/PromoCodeForm";
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Pacific/Auckland" });
@@ -28,6 +29,16 @@ export const PromoCodesAdmin = () => {
     api.get("/admin/promo-codes").then(({ data: d }) => setData(d)).catch(() => { toast.error("Couldn't load promo codes"); setData({ base_price: null, codes: [] }); });
   }, []);
 
+  const setFirst5000 = async (running) => {
+    setData((d) => ({ ...d, first5000: running }));
+    try {
+      await api.put("/admin/promo-codes/first5000", { running });
+      toast.success(running ? "FIRST5000 is running: new Pro sign-ups get 50% off their first year and first renewal" : "FIRST5000 stopped: new sign-ups pay the full price");
+    } catch {
+      setData((d) => ({ ...d, first5000: !running }));
+      toast.error("Couldn't update FIRST5000");
+    }
+  };
   const save = async (body) => {
     const { data: c } = await api.post("/admin/promo-codes", body);
     setData((d) => ({ ...d, codes: [c, ...d.codes] }));
@@ -40,7 +51,16 @@ export const PromoCodesAdmin = () => {
       <p className="text-sm leading-relaxed text-[var(--muted)]">
         Create a discount code for Pro. Skippers enter it on the Stripe payment page, and any code that isn't on this list is rejected there.
       </p>
-      {adding ? <PromoCodeForm base={data?.base_price} onSave={save} onCancel={() => setAdding(false)} />
+      {data && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 p-3" data-testid="first5000-toggle">
+          <Checkbox checked={!!data.first5000} onCheckedChange={(v) => setFirst5000(!!v)} className="mt-0.5 h-5 w-5" data-testid="first5000-checkbox" />
+          <span className="flex flex-col gap-0.5">
+            <b className="text-sm text-emerald-950">Promotion FIRST5000 is running</b>
+            <span className="text-xs text-emerald-900">New Pro sign-ups get 50% off automatically (NZD {data.first5000_price?.toFixed(2) ?? "24.99"} instead of {data.base_price ? data.base_price.amount.toFixed(2) : "49.99"}) for their first year and first renewal, then full price. Promo codes still come off on top.</span>
+          </span>
+        </label>
+      )}
+      {adding ? <PromoCodeForm base={data?.base_price} first={data?.first5000 ? data.first5000_price : null} onSave={save} onCancel={() => setAdding(false)} />
         : <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" onClick={() => setAdding(true)} disabled={!data} data-testid="promo-new-btn"><TicketPercent className="h-5 w-5" /> New promo code or coupon</button>}
       {!data ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="promo-codes-list">

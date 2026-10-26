@@ -28,7 +28,7 @@ const usePaymentStatus = (sessionId) => {
 
 const MESSAGES = {
   checking: { Icon: Loader2, title: "Confirming your payment...", text: "This only takes a few seconds." },
-  paid: { Icon: CheckCircle2, title: "Welcome to Pro!", text: "Ads are gone and every feature is unlocked. Your plan renews yearly for NZD 9.99." },
+  paid: { Icon: CheckCircle2, title: "Welcome to Pro!", text: "Ads are gone and every feature is unlocked. Your plan renews automatically each year. Your receipt from Stripe shows the price and any FIRST5000 launch discount." },
   timeout: { Icon: Loader2, title: "Still confirming", text: "Your payment is taking longer than usual. Pro switches on by itself once Stripe confirms it." },
   error: { Icon: XCircle, title: "Payment not completed", text: "No money was taken. You can try again from the account menu." },
   cancel: { Icon: XCircle, title: "Checkout cancelled", text: "No problem, nothing was charged. You're still on the Free plan." },

@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from auth import require_admin
 from db import db
-from payments import PRO_LOOKUP_KEY
+from billing import FIRST5000_LOOKUP
+from payments import PRO_LOOKUP_KEY, _price, first5000_running
 
 router = APIRouter(prefix="/api/admin/promo-codes")
 CODE_RE = re.compile(r"^[A-Z0-9_-]{3,30}$")
@@ -42,6 +43,17 @@ def _out(d: dict, usage: dict | None) -> dict:
             "active": u.get("active", False) and d["expires_at"] > datetime.now(timezone.utc).isoformat()}
 
 
+class First5000In(BaseModel):
+    running: bool
+
+
+@router.put("/first5000")
+async def set_first5000(payload: First5000In, admin: dict = Depends(require_admin)):
+    await db.app_settings.update_one({"key": "first5000"}, {"$set": {"key": "first5000", "running": payload.running, "updated_by": admin["user_id"],
+                                                                     "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return {"running": payload.running}
+
+
 @router.get("")
 async def list_promo_codes(_: dict = Depends(require_admin)):
     docs = await db.promo_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
@@ -51,7 +63,9 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
         base = {"amount": price.unit_amount / 100, "currency": price.currency.upper()}
     except stripe.error.StripeError:
         usage, base = None, None
-    return {"base_price": base, "codes": [_out(d, usage) for d in docs]}
+    first = await asyncio.to_thread(_price, FIRST5000_LOOKUP)
+    return {"base_price": base, "first5000": await first5000_running(), "first5000_price": first.unit_amount / 100 if first else None,
+            "codes": [_out(d, usage) for d in docs]}
 
 
 def _create_in_stripe(code: str, percent_off: float, expires_ts: int):

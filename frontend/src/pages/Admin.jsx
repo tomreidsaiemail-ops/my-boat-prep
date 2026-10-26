@@ -28,6 +28,7 @@ const UserRow = ({ u, onRole, saving }) => (
         <div className="truncate text-sm text-[var(--muted)]">{u.email}</div>
       </div>
       <TierBadge role={u.role} />
+      {u.first5000 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold tracking-wide text-emerald-900" title="Joined during the FIRST5000 launch: 50% off the first year and first renewal" data-testid={`admin-user-first5000-${u.user_id}`}>FIRST5000</span>}
     </div>
     <div className="flex items-center justify-between gap-3">
       <Joined u={u} />

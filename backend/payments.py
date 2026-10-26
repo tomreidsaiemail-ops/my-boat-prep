@@ -6,7 +6,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from db import db
-from billing import apply_subscription, retrieve_subscription
+from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
 from auth import get_current_user, to_user_out, UserOut
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -15,6 +15,23 @@ TAX_MODE = "calc_only"  # NZ sandbox: Stripe calculates tax, owner files returns
 ORIGIN_RE = re.compile(r"^https?://[a-z0-9.-]+(:\d{2,5})?$")
 
 router = APIRouter(prefix="/api")
+
+
+async def first5000_running() -> bool:
+    doc = await db.app_settings.find_one({"key": "first5000"}, {"_id": 0})
+    return bool(doc and doc.get("running"))
+
+
+def _price(lookup: str):
+    data = stripe.Price.list(lookup_keys=[lookup], active=True, limit=1).data
+    return data[0] if data else None
+
+
+@router.get("/payments/offer")
+async def offer(_: dict = Depends(get_current_user)):
+    full, first = await asyncio.gather(asyncio.to_thread(_price, PRO_LOOKUP_KEY), asyncio.to_thread(_price, FIRST5000_LOOKUP))
+    return {"first5000": await first5000_running(), "price": (full.unit_amount / 100) if full else None,
+            "first5000_price": (first.unit_amount / 100) if first else None}
 
 
 class CheckoutIn(BaseModel):
@@ -34,16 +51,22 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid origin")
     if to_user_out(user).has_subscription:
         raise HTTPException(status_code=400, detail="You already have Pro")
-    prices = await asyncio.to_thread(lambda: stripe.Price.list(lookup_keys=[PRO_LOOKUP_KEY], active=True, limit=1).data)
-    if not prices:
+    launch = await first5000_running()
+    lookup = FIRST5000_LOOKUP if launch else PRO_LOOKUP_KEY
+    price, full = await asyncio.gather(asyncio.to_thread(_price, lookup), asyncio.to_thread(_price, PRO_LOOKUP_KEY))
+    if not price or not full:
         raise HTTPException(status_code=500, detail="Pro plan not configured")
-    price = prices[0]
-    meta = {"user_id": user["user_id"], "lookup_key": PRO_LOOKUP_KEY}
+    meta = {"user_id": user["user_id"], "lookup_key": lookup, "first5000": "1" if launch else "0"}
+    f, p = full.unit_amount / 100, price.unit_amount / 100
+    note = (f"FIRST5000 launch offer: 50% off. You pay NZD {p:.2f} for your first year and NZD {p:.2f} again at your first renewal, "
+            f"then NZD {f:.2f} a year. A promo code comes off this year's NZD {p:.2f}." if launch
+            else f"Pro renews automatically at NZD {f:.2f} a year. A promo code comes off this first year only.")
     kwargs = dict(
         line_items=[{"price": price.id, "quantity": 1}], mode="subscription",
         success_url=f"{origin}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin}/payment/cancel", metadata=meta, subscription_data={"metadata": meta},
         client_reference_id=user["user_id"], adaptive_pricing={"enabled": False}, allow_promotion_codes=True,
+        custom_text={"submit": {"message": note}},
     )
     if user.get("stripe_customer_id"):
         kwargs["customer"] = user["stripe_customer_id"]
@@ -52,7 +75,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     session = await asyncio.to_thread(_create_session, **kwargs)
     now = datetime.now(timezone.utc)
     await db.payment_transactions.insert_one({
-        "session_id": session.id, "user_id": user["user_id"], "lookup_key": PRO_LOOKUP_KEY,
+        "session_id": session.id, "user_id": user["user_id"], "lookup_key": lookup,
         "amount": float(price.unit_amount or 0) / 100, "currency": price.currency,
         "status": "initiated", "payment_status": "pending", "created_at": now, "updated_at": now,
     })

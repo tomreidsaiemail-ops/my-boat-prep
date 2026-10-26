@@ -53,7 +53,7 @@ export default function Login() {
         <p className="text-xs text-[var(--muted)]" data-testid="login-terms-note">By signing in you agree to the <Link to="/terms" className="font-bold text-[var(--blue)] underline" data-testid="login-terms-link">Terms of Service</Link>.</p>
       </section>
       <div className="flex flex-col gap-4">
-        <p className="flex items-center gap-2 text-xs text-[var(--muted)]" data-testid="login-pricing-note"><Anchor className="h-3.5 w-3.5" /> Free plan includes ads. Go Pro for NZD 9.99 a year.</p>
+        <p className="flex items-center gap-2 text-xs text-[var(--muted)]" data-testid="login-pricing-note"><Anchor className="h-3.5 w-3.5" /> Free plan includes ads. Go Pro for NZD 49.99 a year.</p>
         <CompanyFooter />
       </div>
     </main>

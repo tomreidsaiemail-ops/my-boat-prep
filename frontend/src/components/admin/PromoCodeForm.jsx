@@ -10,7 +10,7 @@ const errText = (e) => {
 const today = () => new Date().toLocaleDateString("en-CA");
 const money = (n, cur) => `${cur} ${n.toFixed(2)}`;
 
-const PricePreview = ({ base, pct }) => {
+const PricePreview = ({ base, pct, first }) => {
   if (!base) return <p className="text-xs text-[var(--muted)]" data-testid="promo-price-preview">Pro price unavailable right now</p>;
   const valid = pct > 0 && pct <= 100;
   const price = valid ? Math.round(base.amount * (100 - pct)) / 100 : base.amount;
@@ -23,12 +23,13 @@ const PricePreview = ({ base, pct }) => {
       </span>
       <span className="text-xs text-[var(--muted)]" data-testid="promo-preview-note">
         {valid ? `Saves ${money(base.amount - price, base.currency)}. Renews at ${money(base.amount, base.currency)} a year.` : "Enter a discount to see the new price."}
+        {valid && first ? <span className="block font-bold text-emerald-800" data-testid="promo-preview-first5000">FIRST5000 skippers: {money(first, base.currency)} becomes {money(Math.round(first * (100 - pct)) / 100, base.currency)} this year.</span> : null}
       </span>
     </div>
   );
 };
 
-export const PromoCodeForm = ({ base, onSave, onCancel }) => {
+export const PromoCodeForm = ({ base, first, onSave, onCancel }) => {
   const [code, setCode] = useState("");
   const [pct, setPct] = useState("");
   const [expires, setExpires] = useState("");
@@ -61,7 +62,7 @@ export const PromoCodeForm = ({ base, onSave, onCancel }) => {
           <input type="date" min={today()} value={expires} onChange={(e) => setExpires(e.target.value)} className="field-input" data-testid="promo-expiry-input" />
         </label>
       </div>
-      <PricePreview base={base} pct={pctNum} />
+      <PricePreview base={base} pct={pctNum} first={first} />
       <p className="text-xs text-[var(--muted)]">Skippers type the code on the Stripe payment page. The discount applies to their first year only, and the code stops working at the end of the expiry date (NZ time).</p>
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="promo-error">{error}</p>}
       <div className="flex justify-end gap-2">
