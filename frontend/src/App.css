@@ -59,8 +59,10 @@ body {
 .icon-btn { width: 44px; height: 48px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s; }
 .icon-btn:hover { color: var(--navy); background: #f1f5f9; }
 .icon-btn:disabled { opacity: .3; pointer-events: none; }
-.checklist-row.is-shaded { background: #e8f3fc; }
-.checklist-row.is-shaded:hover { background: #dcecfa; }
+.checklist-row.is-shaded { background: #eaf7ee; }
+.checklist-row.is-shaded:hover { background: #ddf1e3; }
+/* Parent line of a group: a green edge keeps two neighbouring groups apart. */
+.checklist-row.is-shaded:not(.is-child) { border-top: 2px solid #9fd3ae; }
 .checklist-row.is-child { border-bottom-style: dashed; }
 .checklist-row.is-flagged { background: #fef2f2; box-shadow: inset 5px 0 0 var(--red); }
 .is-flagged .item-text { color: #991b1b; font-weight: 700; }

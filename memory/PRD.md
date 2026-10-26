@@ -259,3 +259,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Export PDF (Pro/Beta) via POST /api/service-history/pdf (service_history.py, require_premium), RFC 5987 filename for non-ASCII vessel names
 - Tested: iteration_28; fixes after: unicode filename 500, "by <name>" summary, Free limit, guard bar near reminder
 - Known: standard PDF fonts cannot draw characters like O-macron in names (affects all PDFs)
+
+## 2026-10 Group shading simplified
+- Every group with sub-items is light green (#eaf7ee) with a green top edge on its parent; no alternating colours; plain items stay white
