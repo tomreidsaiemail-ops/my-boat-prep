@@ -25,6 +25,7 @@ const ItemsHelp = ({ open, onToggle }) => (
 const AiDraftButton = ({ name, online, hasText, onDraft }) => {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  useEffect(() => setNote(""), [name]);
   const draft = async () => {
     if (!name.trim()) { setNote("Enter a list name first, then the AI can write it"); return; }
     setBusy(true);

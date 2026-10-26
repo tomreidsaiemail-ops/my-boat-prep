@@ -95,7 +95,7 @@ export const removeOutline = (items, id) => {
   return next.filter((i) => i.id !== id);
 };
 
-export const isHeadingLine = (label) => /^\d+[.)]?\s+\S/.test(label);
+export const isHeadingLine = (label) => /^\d+[.)]\s+\S/.test(label);
 
 // Pasted lines → items; with autoIndent, lines after a numbered heading become its sub-items.
 export const linesToItems = (lines, autoIndent, base) => {

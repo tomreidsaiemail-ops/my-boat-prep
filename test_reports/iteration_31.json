@@ -1,0 +1,45 @@
+{
+  "summary": "Tested Create New List Auto Indent Categories + AI List Builder (backend + mobile 390x844 UI). All requested flows pass. Used 2 AI calls (1 pytest, 1 UI); drafts_left reported 17 afterwards.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/list-draft", "issue": "Whitespace-only name ('   ') passes min_length=1 and is sent to the LLM as an empty name (and uses up a daily draft). Add a strip validator so it returns 422. Not called live, to save AI calls."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AiDraftButton note", "issue": "The 'Enter a list name first, then the AI can write it' note stays on screen after the user types a name and pastes items. Clear the note when the name changes.", "selector": "[data-testid='create-list-ai-note']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Create New List dialog (mobile)", "issues": ["On first open the help panel is expanded and fills most of the 844px viewport, so the items textarea, the checkbox and Confirm start below the fold (the user has to scroll). Acceptable because it only happens the first time."]}
+    ]
+  },
+  "passed_tests": [
+    "API: unauth 401, free 403 'Upgrade to Pro', empty/missing/61-char name 422, Pro draft 200 with sequential '1. ' headings + items, drafts_left int (~11s)",
+    "UI: checkbox checked by default and resets to checked when the dialog reopens",
+    "UI: paste shows '5 items, 2 headings'; created list has headings keeping their numbers, Check lines/Fenders out indented under 1. Deck (outside), Hatches closed under 2. Cabin, green shaded group background",
+    "UI: unchecked auto-indent gives 5 flat, unshaded items",
+    "UI: lines before the first numbered heading are not indented",
+    "UI: AI button with empty name shows the note; with a name, label shows 'Writing your list...' (disabled), fills the textarea (32 items, 5 headings), note 'Draft ready... 17 AI drafts left today', label becomes 'Replace with AI draft'; user edit kept; Confirm creates a grouped 33-item list",
+    "Regression: duplicate name (case-insensitive) shows create-list-error; empty-items warning, Go back and Create anyway work; help toggle open/close works; help panel open on first visit",
+    "Free user tapping create-list-btn gets the Pro upgrade modal"
+  ],
+  "test_report_links": ["/app/backend/tests/test_ai_list_draft.py", "/app/test_reports/pytest/pytest_ai_list_draft.xml"],
+  "action_items": [
+    "Optional: strip/validate whitespace-only name in DraftIn (422)",
+    "Optional: clear the AI note when the list name changes"
+  ],
+  "critical_code_review_comments": [
+    "outline.js isHeadingLine /^\\d+[.)]?\\s+\\S/ also matches ordinary items that start with a quantity, e.g. '2 litres of water' or '10 spare fuses', so with auto-indent on they become headings. Consider requiring '.' or ')' after the number (the default user expectation is '1. Deck').",
+    "CreateListDialog toLines silently removes duplicate lines (case-insensitive) across the whole paste, so a repeated item like 'Check bilge' under two categories is kept only once. The item count reflects this, but there is no notice.",
+    "Backend to_lines removes duplicate items across groups too, and keeps a heading even if all of its items were removed as duplicates (empty heading).",
+    "The UI upgrade modal shows NZD 49.99/year but test_credentials.md says NZD 9.99. Check which price is correct."
+  ],
+  "updated_files": ["/app/backend/tests/test_ai_list_draft.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Pro user (test-user-pro) now has lists 'TEST_Indent NNNNN', 'TEST_Flat NNNNN', 'TEST_Pre NNNNN', 'Anchoring NNNNN' (they have items, so the UI can't delete them easily). The empty TEST_Empty list was deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro user AI drafts: 3 used today (17 left). test_ai_list_draft.py makes 1 real AI call per run. Lists can only be deleted via delete-list-btn when they are empty."
+}

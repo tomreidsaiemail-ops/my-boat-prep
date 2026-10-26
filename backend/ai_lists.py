@@ -5,7 +5,7 @@ import re
 import uuid
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
@@ -25,6 +25,13 @@ PROMPT = (
 class DraftIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
 
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Please enter a list name")
+        return v.strip()
+
 
 def to_lines(text: str) -> list:
     match = re.search(r"\{.*\}", text, re.S)
@@ -34,15 +41,14 @@ def to_lines(text: str) -> list:
     lines, seen, n = [], set(), 0
     for g in groups if isinstance(groups, list) else []:
         heading = str((g or {}).get("heading", "")).strip()[:80]
-        items = [str(i).strip()[:120] for i in g.get("items", []) if str(i).strip()] if heading else []
+        items = [i for i in dict.fromkeys(str(x).strip()[:120] for x in g.get("items", [])) if i and i.lower() not in seen] if heading else []
         if not items:
             continue
         n += 1
         lines.append(f"{n}. {heading}")
         for i in items:
-            if i.lower() not in seen:
-                seen.add(i.lower())
-                lines.append(i)
+            seen.add(i.lower())
+            lines.append(i)
     if not lines:
         raise ValueError("empty draft")
     return lines
