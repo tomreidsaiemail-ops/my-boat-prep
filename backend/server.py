@@ -397,11 +397,18 @@ UPGRADES = {
     "state vessel name call sign and mmsi number": {"dynamic": "panPanVessel", "label": "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>"},
 }
 MMSI_ITEM = {"id": 400, "label": "or MMSI Number (Optional, skipper to delete or add one)", "checked": False}
+ALL_STATIONS = {"id": 401, "label": "ALL STATIONS, ALL STATIONS, ALL STATIONS", "checked": False}
+PANPAN_TX = "transmit: pan pan pan pan pan pan"
 
 
 def upgrade_items(items: list) -> Optional[list]:
     out, changed = [], False
+    has_all = any(x.get("id") == ALL_STATIONS["id"] or (x.get("label") or "").lower().startswith("all stations") for x in items)
     for i in items:
+        if (i.get("label") or "").strip().lower() == PANPAN_TX and not has_all:
+            out += [i, dict(ALL_STATIONS)]
+            changed = True
+            continue
         up = None if i.get("dynamic") else UPGRADES.get((i.get("label") or "").strip().lower())
         if not up:
             out.append(i)
@@ -416,12 +423,15 @@ def upgrade_items(items: list) -> Optional[list]:
 async def _upgrade_pob_lines():
     # Idempotent: old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
     labels = [re.compile(f"^{re.escape(k)}$", re.I) for k in UPGRADES]
+    tx = re.compile(f"^{re.escape(PANPAN_TX)}$", re.I)
+    def needs(path: str) -> dict:
+        return {"$or": [{f"{path}.label": {"$in": labels}}, {f"{path}.label": tx, f"{path}.id": {"$ne": ALL_STATIONS["id"]}}]}
     for k in ("mayDay", "panPan"):
-        async for d in db.user_boats.find({f"data.{k}.label": {"$in": labels}}, {"_id": 1, f"data.{k}": 1}):
+        async for d in db.user_boats.find(needs(f"data.{k}"), {"_id": 1, f"data.{k}": 1}):
             new = upgrade_items(d["data"][k])
             if new is not None:
                 await db.user_boats.update_one({"_id": d["_id"]}, {"$set": {f"data.{k}": new}})
-    async for d in db.list_templates.find({"list_id": {"$in": ["mayDay", "panPan"]}, "items.label": {"$in": labels}}, {"_id": 1, "items": 1}):
+    async for d in db.list_templates.find({"list_id": {"$in": ["mayDay", "panPan"]}, **needs("items")}, {"_id": 1, "items": 1}):
         new = upgrade_items(d["items"])
         if new is not None:
             await db.list_templates.update_one({"_id": d["_id"]}, {"$set": {"items": new}})

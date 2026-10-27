@@ -2,6 +2,8 @@ const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof 
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
 const MMSI_ITEM = { id: 400, label: "or MMSI Number (Optional, skipper to delete or add one)", checked: false };
+const ALL_STATIONS = { id: 401, label: "ALL STATIONS, ALL STATIONS, ALL STATIONS", checked: false };
+const PANPAN_TX = "transmit: pan pan pan pan pan pan";
 // Old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
 const UPGRADES = {
   "number of persons on board pob and vital information": { dynamic: "pobDescription", label: POB_LABEL },
@@ -11,6 +13,7 @@ const UPGRADES = {
 };
 const upgradePob = (data) => {
   const fix = (items) => items?.flatMap((i) => {
+    if ((i.label || "").trim().toLowerCase() === PANPAN_TX && !items.some((x) => x.id === ALL_STATIONS.id || /^all stations/i.test(x.label || ""))) return [i, { ...ALL_STATIONS }];
     const up = !i.dynamic && UPGRADES[(i.label || "").trim().toLowerCase()];
     if (!up) return [i];
     const next = { ...i, ...up };
@@ -75,6 +78,7 @@ export const DEFAULT_DATA = {
     { dynamic: "panPanGps", label: "Check GPS position [Position]" },
     "Tune VHF Radio to Channel 16",
     "Transmit: PAN PAN PAN PAN PAN PAN",
+    ALL_STATIONS,
     { dynamic: "panPanVessel", label: PANPAN_VESSEL },
     MMSI_ITEM,
     { dynamic: "panPanPosition", label: "Report position [Position]" },
