@@ -1,4 +1,12 @@
 const mk = (start, labels) => labels.map((l, i) => (typeof l === "string" ? { id: start + i, label: l, checked: false } : { id: start + i, checked: false, ...l }));
+const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
+const OLD_POB = ["number of persons on board pob and vital information", "state number of persons on board pob and vessel description"];
+// The old May Day / Pan Pan POB line becomes the line filled in from Boat Details.
+const upgradePob = (data) => {
+  const fix = (items) => items?.map((i) => (!i.dynamic && OLD_POB.includes((i.label || "").trim().toLowerCase()) ? { ...i, dynamic: "pobDescription", label: POB_LABEL } : i));
+  return data && (data.mayDay || data.panPan) ? { ...data, ...(data.mayDay ? { mayDay: fix(data.mayDay) } : {}), ...(data.panPan ? { panPan: fix(data.panPan) } : {}) } : data;
+};
+
 
 const RADIO_WAIT = "Wait for a response from either Coastguard Radio or Maritime Radio or nearby vessel. They will then ask for more information and confirm assistance is being sent to you as soon as possible. In addition, relay calls will be issued to alert any nearby vessels to your position - this is the benefit of making your Mayday call on the VHF.";
 
@@ -47,7 +55,7 @@ export const DEFAULT_DATA = {
     { dynamic: "maydayGps", label: "Report position [Position]" },
     "Nature of distress sinking fire medical emergency",
     "Immediate assistance required",
-    "Number of persons on board POB and vital information",
+    { dynamic: "pobDescription", label: POB_LABEL },
     "OVER",
     RADIO_WAIT,
   ]),
@@ -59,7 +67,7 @@ export const DEFAULT_DATA = {
     "State Current position Lat Long",
     "State Nature of urgency loss of steering steering breakdown",
     "State Intended action assistance required non emergency tow",
-    "State Number of persons on board POB and vessel description",
+    { dynamic: "pobDescription", label: POB_LABEL },
     "OVER",
     RADIO_WAIT,
   ]),
@@ -164,6 +172,7 @@ export const resetLists = (s, ids, templates) => {
 
 export const migrateState = (s) => s && addMissingLists({
   ...s,
+  data: upgradePob(s.data),
   registry: s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l)),
 });
 
@@ -177,6 +186,7 @@ export const displayLabel = (item, ctx) => {
     case "maydayVesselCallsign": return `MAYDAY ${v} ${c}`;
     case "maydayGps": return `Report position ${ctx.position}`;
     case "panPanGps": return `Check GPS position ${ctx.position}`;
+    case "pobDescription": return `There are ${ctx.pob || 1} persons on board POB. The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
     default: return item.label;
   }
 };

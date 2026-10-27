@@ -277,7 +277,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
         "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
         "local_date": payload.local_date.strip(), "boat_type": b.boat_type.strip(), "pob": b.pob,
     }
-    ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"]}
+    ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"], "pob": log["pob"], "boat_type": log["boat_type"]}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
     numbered = {r.get("id") for r in state.registry if r.get("kind") in ("youtube", "movies", "tips")}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
@@ -386,6 +386,21 @@ async def create_indexes():
     await db.login_attempts.create_index("identifier")
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.password_reset_tokens.create_index("token_hash", unique=True)
+    await _upgrade_pob_lines()
+
+
+OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]
+POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat."
+
+
+async def _upgrade_pob_lines():
+    # One-off, idempotent: the old May Day / Pan Pan POB line becomes the Boat Details driven line.
+    match = {"i.label": {"$in": OLD_POB}, "i.dynamic": {"$exists": False}}
+    for k in ("mayDay", "panPan"):
+        await db.user_boats.update_many({f"data.{k}.label": {"$in": OLD_POB}},
+                                        {"$set": {f"data.{k}.$[i].label": POB_LABEL, f"data.{k}.$[i].dynamic": "pobDescription"}}, array_filters=[match])
+    await db.list_templates.update_many({"list_id": {"$in": ["mayDay", "panPan"]}, "items.label": {"$in": OLD_POB}},
+                                        {"$set": {"items.$[i].label": POB_LABEL, "items.$[i].dynamic": "pobDescription"}}, array_filters=[match])
 
 
 @app.on_event("shutdown")
