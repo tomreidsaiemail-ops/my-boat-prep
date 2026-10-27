@@ -1,0 +1,38 @@
+{
+  "summary": "Tested FIRST200 launch toggle (backend + admin UI), everyone-Pro behaviour, banners, PlanDialog, checkout block, restore to FIRST5000; Pro default list boatInventory; collapsible Zone Map + first-time help; inventory instructions + skipper tip; 'removed for now' tick (red row, count, persistence, new items unticked); Boat Details batch scan button -> boatInventory + batch dialog/form with help panel, photo hint, new texts; mobile 390px overflow. All requested features work. Few minor copy/consistency issues found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "inventory.py inventory_list_for_pdf (Export/PDF of Boat Inventory)", "issue": "Still uses old i.get('onboard') for 'checked' (line ~148). New 'removed' flag is ignored in PDF export and legacy onboard ticks still appear ticked in exports, contradicting 'existing ticks cleared / tick = removed for now'. Should use i.get('removed')."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login page (logged out) during FIRST200", "issues": ["Footer still says 'Free plan includes ads. Go Pro for NZD 49.99 a year.' while the FIRST200 banner says everything is free - contradictory; hide/change while first200 is on."]},
+      {"screen": "Account menu during FIRST200", "issues": ["tier-badge shows 'Free' for free-role user while PlanDialog shows 'Pro, free during the FIRST200 launch' - consider showing Pro/Launch badge."]},
+      {"screen": "Inventory search summary", "issues": ["Search summary 'K removed for now' sums item qty (InventoryList.jsx line 81) while area count counts items - inconsistent numbers."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_first200.py", "/app/test_reports/pytest/pytest_first200.xml"],
+  "action_items": [
+    "inventory.py inventory_list_for_pdf: use 'removed' instead of legacy 'onboard'",
+    "Hide/adjust the login footer 'Free plan includes ads. Go Pro for NZD 49.99' when FIRST200 is running",
+    "Optional: tier-badge in account menu reflect launch_free",
+    "Optional: align removed-for-now counting (items vs qty) between search summary and area count",
+    "Note: /app/backend/tests/test_first5000.py teardown leaves FIRST5000 OFF - conflicts with desired production state (FIRST5000 ON); update teardown"
+  ],
+  "critical_code_review_comments": [
+    "launch.py cache is per-process; fine with single uvicorn worker but with multiple workers toggles propagate per worker within 10s TTL (acceptable).",
+    "HelpPanel writes localStorage inside useState initializer (side effect in render); worked in testing under StrictMode, but a useEffect would be cleaner.",
+    "No default admin zone map exists in this environment (zone_map_v null), so 'default image' and zone-map-default-note could not be visually verified; zone-map-empty + upload button shown instead."
+  ],
+  "updated_files": ["/app/backend/tests/test_first200.py"],
+  "success_rate": {"backend": "100% (22/22 incl. test_inventory.py)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Pro user's TEST_Kia Ora boat had no inventory areas; created area 'TEST_Port Locker' with items TEST_Winch handle, TEST_Knife (both unticked at end).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Promo codes admin is at /admin/promos (not /admin). Final state: FIRST5000 ON, FIRST200 OFF (verified via /api/payments/offer/public). test_first200.py restores that state in teardown. Free user list default became riggingChecks after FIRST200 off.",
+  "test_credentials": "From /app/memory/test_credentials.md: session cookies test_session_admin_1 / test_session_pro_1 / test_session_free_1"
+}

@@ -145,7 +145,7 @@ def inventory_list_for_pdf(areas: list, registry: list = (), data: dict = None) 
     items = []
     for a in areas or []:
         for i in a.get("items", []):
-            items.append({"label": f"{a.get('name', '')}: {i.get('name', '')} x{i.get('qty', 1)}", "checked": bool(i.get("onboard")), "flagged": False})
+            items.append({"label": f"{a.get('name', '')}: {i.get('name', '')} x{i.get('qty', 1)}{' (removed for now)' if i.get('removed') else ''}", "checked": bool(i.get("removed")), "flagged": False})
         for lst in registry:
             for i in (data or {}).get(lst.get("id"), []):
                 if i.get("area") == a.get("id"):

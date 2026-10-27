@@ -23,7 +23,7 @@ def s(token):
 def admin():
     c = s("test_session_admin_1")
     yield c
-    c.put(TOGGLE, json={"running": False})  # always leave FIRST5000 OFF
+    c.put(TOGGLE, json={"running": True})  # always leave FIRST5000 ON (live launch state)
 
 
 # Stripe catalog

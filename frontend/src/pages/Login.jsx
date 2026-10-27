@@ -1,4 +1,6 @@
 import { Link, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { Anchor, WifiOff } from "lucide-react";
 import { BrandMark } from "@/components/boat/Header";
 import { useAuth } from "@/context/AuthContext";
@@ -30,6 +32,8 @@ const GoogleG = () => (
 
 export default function Login() {
   const { user } = useAuth();
+  const [launchFree, setLaunchFree] = useState(false);
+  useEffect(() => { api.get("/payments/offer/public").then(({ data }) => setLaunchFree(!!data.first200)).catch(() => {}); }, []);
   if (user) return <Navigate to="/" replace />;
   const online = navigator.onLine;
   return (
@@ -55,7 +59,7 @@ export default function Login() {
         <p className="text-xs text-[var(--muted)]" data-testid="login-terms-note">By signing in you agree to the <Link to="/terms" className="font-bold text-[var(--blue)] underline" data-testid="login-terms-link">Terms of Service</Link>.</p>
       </section>
       <div className="flex flex-col gap-4">
-        <p className="flex items-center gap-2 text-xs text-[var(--muted)]" data-testid="login-pricing-note"><Anchor className="h-3.5 w-3.5" /> Free plan includes ads. Go Pro for NZD 49.99 a year.</p>
+        <p className="flex items-center gap-2 text-xs text-[var(--muted)]" data-testid="login-pricing-note"><Anchor className="h-3.5 w-3.5" /> {launchFree ? "Every Pro feature is free during the FIRST200 launch." : "Free plan includes ads. Go Pro for NZD 49.99 a year."}</p>
         <CompanyFooter />
       </div>
     </main>

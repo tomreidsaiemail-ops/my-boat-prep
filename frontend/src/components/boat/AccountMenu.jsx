@@ -12,10 +12,10 @@ const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
 
 const TIER = { free: "Free", beta_tester: "Beta", pro: "Pro" };
 
-export const TierBadge = ({ role }) => (
-  <span data-testid="tier-badge" className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
-    role === "pro" ? "bg-amber-100 text-amber-900" : role === "beta_tester" ? "bg-sky-100 text-sky-900" : "bg-slate-200 text-slate-700"}`}>
-    {TIER[role] || role}
+export const TierBadge = ({ role, launchFree }) => (
+  <span data-testid="tier-badge" title={launchFree && role === "free" ? "Pro is free for everyone during the FIRST200 launch" : undefined} className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+    role === "pro" || (launchFree && role === "free") ? "bg-amber-100 text-amber-900" : role === "beta_tester" ? "bg-sky-100 text-sky-900" : "bg-slate-200 text-slate-700"}`}>
+    {launchFree && role === "free" ? "Pro (launch)" : TIER[role] || role}
   </span>
 );
 
@@ -38,7 +38,7 @@ export const AccountMenu = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64" data-testid="account-menu">
         <DropdownMenuLabel className="flex flex-col gap-1">
-          <span className="flex items-center justify-between gap-2"><span className="truncate" data-testid="account-name">{user.name || "Skipper"}</span><TierBadge role={user.role} /></span>
+          <span className="flex items-center justify-between gap-2"><span className="truncate" data-testid="account-name">{user.name || "Skipper"}</span><TierBadge role={user.role} launchFree={user.launch_free && !user.is_admin} /></span>
           <span className="truncate text-xs font-normal text-[var(--muted)]" data-testid="account-email">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

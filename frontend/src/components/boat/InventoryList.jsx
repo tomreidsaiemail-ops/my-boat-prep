@@ -78,7 +78,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     return hits.length || linkHits.length ? [{ area: a, visible: hits, visibleLinked: linkHits }] : [];
   });
   const found = results.reduce((n, r) => n + (r.visible || []).reduce((m, i) => m + (i.qty || 1), 0) + (r.visibleLinked || []).length, 0);
-  const out = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).reduce((m, i) => m + (i.qty || 1), 0), 0);
+  const out = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
   const moveItem = (area, item, edits, targetId) => {

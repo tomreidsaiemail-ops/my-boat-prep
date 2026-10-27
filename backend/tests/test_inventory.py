@@ -40,7 +40,7 @@ def state(areas=None, ts=T0, **extra):
     return st
 
 
-AREAS = [{"id": "aTEST1", "name": "TEST_Lazarette", "items": [{"id": "i1", "name": "Spare impeller", "qty": 2, "onboard": True}]}]
+AREAS = [{"id": "aTEST1", "name": "TEST_Lazarette", "items": [{"id": "i1", "name": "Spare impeller", "qty": 2, "removed": True}]}]
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -150,7 +150,7 @@ class TestBoatAreas:
         log_id = r.json()["log_sent"]["log_id"]
         log = DB.ship_logs.find_one({"log_id": log_id}, {"_id": 0})
         assert log["lists"][0]["name"] == "Boat Inventory"
-        assert log["lists"][0]["items"][0]["label"] == "TEST_Lazarette: Spare impeller x2"
+        assert log["lists"][0]["items"][0]["label"] == "TEST_Lazarette: Spare impeller x2 (removed for now)"
         assert log["lists"][0]["items"][0]["checked"] is True
         pdf = requests.get(f"{BASE_URL}/api/ship-logs/{log_id}.pdf")
         assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
