@@ -139,6 +139,17 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     return true;
   };
   const addSuggested = (names) => onChange((list) => [...list, ...names.map((name) => ({ id: newId(), name, items: [] }))]);
+  const addAreasNamed = (names) => {
+    const ids = Object.fromEntries(names.map((n) => [n, newId()]));
+    onChange((list) => [...list, ...names.filter((n) => !list.some((a) => same(a.name, n))).map((name) => ({ id: ids[name], name, items: [] }))]);
+    return ids;
+  };
+  const [focus, setFocus] = useState(null);
+  const openArea = (id) => {
+    setQuery("");
+    setFocus({ id, at: Date.now() });
+    setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
   const [batchOpen, setBatchOpen] = useState(false);
   useEffect(() => {
     if (!batchRequest) return;
@@ -197,7 +208,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} />
+        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})
@@ -225,7 +236,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         {results.map(({ area: a, visible, visibleLinked }) => (
           <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
             linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
-            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id}
+            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id} focusAt={focus?.id === a.id ? focus.at : 0}
             onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => deleteItem(a, i)}

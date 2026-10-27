@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ImagePlus, Loader2, Map, Trash2 } from "lucide-react";
+import { ChevronDown, ImagePlus, Loader2, Map, MapPin, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { HelpPanel } from "@/components/boat/HelpPanel";
+import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
+import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 20;
@@ -70,9 +72,14 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas }) => {
   const [open, setOpen] = useState(null);
+  const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const tapPin = (pin) => {
+    if (pin.area_id && areas.some((a) => a.id === pin.area_id)) onOpenArea?.(pin.area_id);
+    else toast.message(`${pin.label} isn't listed in Boat Inventory yet`);
+  };
   const [failed, setFailed] = useState({});
   const [removing, setRemoving] = useState(null);
   const own = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
@@ -99,14 +106,17 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       )}
       {pics.map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1" data-testid={`zone-map-item-${p.key}`}>
-          <button type="button" onClick={() => setOpen(p.src)} aria-label={`Open zone map ${n + 1} full size`} data-testid={p.key === "admin" ? "zone-map-open-btn" : `boat-zone-map-open-${p.key}`}>
-            <img src={p.src} alt={`Boat zone map ${n + 1}`} className="max-h-64 w-full rounded-md object-contain" onError={() => setFailed((f) => ({ ...f, [p.key]: true }))}
-              data-testid={p.key === "admin" ? "zone-map-img" : `boat-zone-map-img-${p.key}`} />
-          </button>
+          <PinnedPhoto src={p.src} alt={`Boat zone map ${n + 1}`} pins={p.map?.pins} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
+            onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
           {p.map && canEdit && (
-            <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing === p.key} onClick={() => removeMap(p.map)} data-testid={`boat-zone-map-remove-${p.key}`}>
-              {removing === p.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this map
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" className="btn-ghost h-9 px-3 text-xs" onClick={() => (online ? setLabelling(p) : toast.error("You need a signal to label a zone map"))} data-testid={`boat-zone-map-label-${p.key}`}>
+                <MapPin className="h-3.5 w-3.5" /> {p.map.pins?.length ? `Edit labels (${p.map.pins.length})` : "Label this map"}
+              </button>
+              <button type="button" className="btn-ghost h-9 px-3 text-xs hover:text-[var(--red)]" disabled={removing === p.key} onClick={() => removeMap(p.map)} data-testid={`boat-zone-map-remove-${p.key}`}>
+                {removing === p.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this map
+              </button>
+            </div>
           )}
         </div>
       ))}
@@ -123,9 +133,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>
-          {open && <img src={open} alt="Boat zone map" className="max-h-[80vh] w-full object-contain" />}
+          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={open.map?.pins} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }}
+            imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
         </DialogContent>
       </Dialog>
+      {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>
   );
 };

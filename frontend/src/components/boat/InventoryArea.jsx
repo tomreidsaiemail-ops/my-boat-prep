@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
 import { Check, ChevronDown, Link2, Loader2, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
@@ -60,8 +60,9 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0 }) => {
   const [openState, setOpen] = useState(defaultOpen);
+  useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
   const items = area.items || [];
   const listed = visible || items;

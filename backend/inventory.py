@@ -26,7 +26,29 @@ async def _read_picture(file: UploadFile) -> bytes:
 
 
 def boat_maps(doc: dict) -> list:
-    return [{"id": m["id"], "v": m["updated_at"]} for m in (doc.get("zone_maps") or [])]
+    return [{"id": m["id"], "v": m["updated_at"], "pins": m.get("pins") or []} for m in (doc.get("zone_maps") or [])]
+
+
+class ZonePin(BaseModel):
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    label: str = Field(min_length=1, max_length=60)
+    area_id: Optional[str] = Field(default=None, max_length=60)
+
+
+class ZonePinsIn(BaseModel):
+    pins: List[ZonePin] = Field(max_length=60)
+
+
+@router.put("/boats/{boat_id}/zone-maps/{map_id}/pins")
+async def save_map_pins(boat_id: BoatPath, map_id: MapPath, payload: ZonePinsIn, user: dict = Depends(get_current_user)):
+    key = {"owner_id": user["user_id"], "boat_id": boat_id}
+    pins = [{**p.model_dump(), "label": p.label.strip()} for p in payload.pins]
+    res = await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {"$set": {"zone_maps.$.pins": pins}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Zone map not found")
+    return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
 
 
 @router.post("/boats/{boat_id}/zone-maps")
