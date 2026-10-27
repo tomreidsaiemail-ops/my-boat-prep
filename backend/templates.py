@@ -18,7 +18,7 @@ REQUIRED_DYNAMIC = {
     "mayDay": {"maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps"},
     "panPan": {"panPanGps"},
 }
-Dynamic = Literal["maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps", "panPanGps", "pobDescription"]
+Dynamic = Literal["maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps", "panPanGps", "pobDescription", "panPanPosition", "panPanVessel"]
 
 
 class TemplateItem(BaseModel):

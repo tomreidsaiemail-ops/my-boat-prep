@@ -1,9 +1,21 @@
-const mk = (start, labels) => labels.map((l, i) => (typeof l === "string" ? { id: start + i, label: l, checked: false } : { id: start + i, checked: false, ...l }));
+const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
-const OLD_POB = ["number of persons on board pob and vital information", "state number of persons on board pob and vessel description"];
-// The old May Day / Pan Pan POB line becomes the line filled in from Boat Details.
+const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
+const MMSI_ITEM = { id: 400, label: "or MMSI Number (Optional, skipper to delete or add one)", checked: false };
+// Old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
+const UPGRADES = {
+  "number of persons on board pob and vital information": { dynamic: "pobDescription", label: POB_LABEL },
+  "state number of persons on board pob and vessel description": { dynamic: "pobDescription", label: POB_LABEL },
+  "state current position lat long": { dynamic: "panPanPosition", label: "Report position [Position]" },
+  "state vessel name call sign and mmsi number": { dynamic: "panPanVessel", label: PANPAN_VESSEL },
+};
 const upgradePob = (data) => {
-  const fix = (items) => items?.map((i) => (!i.dynamic && OLD_POB.includes((i.label || "").trim().toLowerCase()) ? { ...i, dynamic: "pobDescription", label: POB_LABEL } : i));
+  const fix = (items) => items?.flatMap((i) => {
+    const up = !i.dynamic && UPGRADES[(i.label || "").trim().toLowerCase()];
+    if (!up) return [i];
+    const next = { ...i, ...up };
+    return up.dynamic === "panPanVessel" && !items.some((x) => x.id === MMSI_ITEM.id) ? [next, { ...MMSI_ITEM, ...(i.indent ? { indent: true } : {}) }] : [next];
+  });
   return data && (data.mayDay || data.panPan) ? { ...data, ...(data.mayDay ? { mayDay: fix(data.mayDay) } : {}), ...(data.panPan ? { panPan: fix(data.panPan) } : {}) } : data;
 };
 
@@ -63,8 +75,9 @@ export const DEFAULT_DATA = {
     { dynamic: "panPanGps", label: "Check GPS position [Position]" },
     "Tune VHF Radio to Channel 16",
     "Transmit: PAN PAN PAN PAN PAN PAN",
-    "State Vessel Name Call Sign and MMSI number",
-    "State Current position Lat Long",
+    { dynamic: "panPanVessel", label: PANPAN_VESSEL },
+    MMSI_ITEM,
+    { dynamic: "panPanPosition", label: "Report position [Position]" },
     "State Nature of urgency loss of steering steering breakdown",
     "State Intended action assistance required non emergency tow",
     { dynamic: "pobDescription", label: POB_LABEL },
@@ -186,6 +199,8 @@ export const displayLabel = (item, ctx) => {
     case "maydayVesselCallsign": return `MAYDAY ${v} ${c}`;
     case "maydayGps": return `Report position ${ctx.position}`;
     case "panPanGps": return `Check GPS position ${ctx.position}`;
+    case "panPanPosition": return `Report position ${ctx.position}`;
+    case "panPanVessel": return `This is ${v}, ${v}, ${v}. Callsign ${c}`;
     case "pobDescription": return `There are ${ctx.pob || 1} persons on board POB. The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
     default: return item.label;
   }

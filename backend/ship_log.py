@@ -32,6 +32,8 @@ def _label(it: dict, ctx: dict) -> str:
         "maydayVesselCallsign": f"MAYDAY {v} {c}",
         "maydayGps": f"Report position {pos}",
         "panPanGps": f"Check GPS position {pos}",
+        "panPanPosition": f"Report position {pos}",
+        "panPanVessel": f"This is {v}, {v}, {v}. Callsign {c}",
         "pobDescription": f"There are {ctx.get('pob') or 1} persons on board POB. The boat is a white {ctx.get('boat_type') or '[BOAT TYPE]'}. NOTE: If not white state correct colour of boat.",
     }.get(it.get("dynamic"), it.get("label", ""))
 

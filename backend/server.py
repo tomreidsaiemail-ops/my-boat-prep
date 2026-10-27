@@ -391,16 +391,40 @@ async def create_indexes():
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]
 POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat."
+UPGRADES = {
+    **{o.lower(): {"dynamic": "pobDescription", "label": POB_LABEL} for o in OLD_POB},
+    "state current position lat long": {"dynamic": "panPanPosition", "label": "Report position [Position]"},
+    "state vessel name call sign and mmsi number": {"dynamic": "panPanVessel", "label": "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>"},
+}
+MMSI_ITEM = {"id": 400, "label": "or MMSI Number (Optional, skipper to delete or add one)", "checked": False}
+
+
+def upgrade_items(items: list) -> Optional[list]:
+    out, changed = [], False
+    for i in items:
+        up = None if i.get("dynamic") else UPGRADES.get((i.get("label") or "").strip().lower())
+        if not up:
+            out.append(i)
+            continue
+        changed = True
+        out.append({**i, **up})
+        if up["dynamic"] == "panPanVessel" and not any(x.get("id") == MMSI_ITEM["id"] for x in items):
+            out.append({**MMSI_ITEM, **({"indent": True} if i.get("indent") else {})})
+    return out if changed else None
 
 
 async def _upgrade_pob_lines():
-    # One-off, idempotent: the old May Day / Pan Pan POB line becomes the Boat Details driven line.
-    match = {"i.label": {"$in": OLD_POB}, "i.dynamic": {"$exists": False}}
+    # Idempotent: old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
+    labels = [re.compile(f"^{re.escape(k)}$", re.I) for k in UPGRADES]
     for k in ("mayDay", "panPan"):
-        await db.user_boats.update_many({f"data.{k}.label": {"$in": OLD_POB}},
-                                        {"$set": {f"data.{k}.$[i].label": POB_LABEL, f"data.{k}.$[i].dynamic": "pobDescription"}}, array_filters=[match])
-    await db.list_templates.update_many({"list_id": {"$in": ["mayDay", "panPan"]}, "items.label": {"$in": OLD_POB}},
-                                        {"$set": {"items.$[i].label": POB_LABEL, "items.$[i].dynamic": "pobDescription"}}, array_filters=[match])
+        async for d in db.user_boats.find({f"data.{k}.label": {"$in": labels}}, {"_id": 1, f"data.{k}": 1}):
+            new = upgrade_items(d["data"][k])
+            if new is not None:
+                await db.user_boats.update_one({"_id": d["_id"]}, {"$set": {f"data.{k}": new}})
+    async for d in db.list_templates.find({"list_id": {"$in": ["mayDay", "panPan"]}, "items.label": {"$in": labels}}, {"_id": 1, "items": 1}):
+        new = upgrade_items(d["items"])
+        if new is not None:
+            await db.list_templates.update_one({"_id": d["_id"]}, {"$set": {"items": new}})
 
 
 @app.on_event("shutdown")
