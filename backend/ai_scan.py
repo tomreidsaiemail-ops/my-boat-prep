@@ -16,7 +16,7 @@ from photos import MAX_BYTES, TYPES
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
-DAILY_SCANS = 20
+DAILY_SCANS = 50
 MAX_ITEMS = 60
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 SYSTEM = (

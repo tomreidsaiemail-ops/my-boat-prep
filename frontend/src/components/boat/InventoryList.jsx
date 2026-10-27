@@ -6,6 +6,7 @@ import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
 import { matches } from "@/components/boat/Highlight";
 import { ScanReviewDialog } from "@/components/boat/ScanReviewDialog";
+import { BatchScanDialog } from "@/components/boat/BatchScanDialog";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { InventoryItemDialog } from "@/components/boat/InventoryItemDialog";
 import { SuggestAreasDialog } from "@/components/boat/SuggestAreasDialog";
@@ -17,7 +18,7 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-const AddArea = ({ onAdd }) => {
+const AddArea = ({ onAdd, onBatch }) => {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const submit = (e) => {
@@ -32,6 +33,8 @@ const AddArea = ({ onAdd }) => {
         <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="Add a cupboard or locker, e.g. Aft starboard lazarette"
           aria-label="Cupboard or locker name" className="field-input h-12 min-w-0 flex-1" data-testid="inventory-add-area-input" />
         <button type="submit" className="btn-solid h-12 w-12 shrink-0 justify-center p-0" aria-label="Add cupboard" data-testid="inventory-add-area-btn"><Plus className="h-5 w-5" /></button>
+        {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-14 shrink-0 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several boat areas with photos" title="Batch Magic Scan"
+          data-testid="inventory-batch-scan-btn"><Plus className="-mr-1.5 h-5 w-5" /><Plus className="h-5 w-5" /></button>}
       </div>
       {error && <p className="text-sm font-semibold text-[var(--red)]" data-testid="inventory-add-area-error">{error}</p>}
     </form>
@@ -137,6 +140,23 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     return true;
   };
   const addSuggested = (names) => onChange((list) => [...list, ...names.map((name) => ({ id: newId(), name, items: [] }))]);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const openBatch = () => (online ? setBatchOpen(true) : toast.error("Batch Magic Scan needs a signal"));
+  const applyBatch = (list) => {
+    const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty, onboard: true }));
+    onChange((cur) => {
+      const next = [...cur];
+      list.forEach(({ name, items }) => {
+        const at = next.findIndex((a) => same(a.name, name));
+        if (at >= 0) next[at] = { ...next[at], items: toItems(items) };
+        else next.push({ id: newId(), name, items: toItems(items) });
+      });
+      return next;
+    });
+    setBatchOpen(false);
+    const count = list.reduce((n, a) => n + a.items.length, 0);
+    toast.success(`${list.length} boat ${list.length === 1 ? "area" : "areas"} added with ${count} ${count === 1 ? "item" : "items"}`);
+  };
   const renameArea = (name) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
@@ -201,7 +221,8 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)} />
         ))}
       </ul>
-      {!readOnly && !q && <AddArea onAdd={addArea} />}
+      {!readOnly && !q && <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />}
+      {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} onClose={() => setBatchOpen(false)} onConfirm={applyBatch} />}
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper
