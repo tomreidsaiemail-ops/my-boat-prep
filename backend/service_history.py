@@ -21,6 +21,7 @@ CELL = ParagraphStyle("c", fontName="Helvetica", fontSize=10, leading=13)
 HEAD = ParagraphStyle("h", parent=CELL, fontName="Helvetica-Bold", textColor=colors.white)
 FOOT = ParagraphStyle("f", parent=CELL, fontSize=8, textColor=colors.HexColor("#64748b"))
 KINDS = {"engine": ("Engine Service History", "Engine hours"), "electrical": ("Electrical Service History", "Electrician")}
+LONG_NOTES = 300
 
 
 class ServiceEntry(BaseModel):
@@ -66,13 +67,19 @@ def build_service_pdf(p: ServicePdfIn) -> bytes:
              Paragraph(f"<b>{len(entries)} service{'s' if len(entries) != 1 else ''} logged</b>{escape(last)}", META), Spacer(1, 8)]
     if entries:
         rows = [[Paragraph(h, HEAD) for h in ("Date", col, "Work done", "Notes")]]
-        rows += [[Paragraph(_d(e.date), CELL), Paragraph(escape(_who(p.kind, e)), CELL),
-                  Paragraph("<br/>".join(f"• {escape(i)}" for i in e.items) or "-", CELL), Paragraph(escape(e.notes) or "-", CELL)] for e in entries]
+        spans = []
+        for e in entries:
+            long_notes = len(e.notes) > LONG_NOTES
+            rows.append([Paragraph(_d(e.date), CELL), Paragraph(escape(_who(p.kind, e)), CELL),
+                         Paragraph("<br/>".join(f"• {escape(i)}" for i in e.items) or "-", CELL), Paragraph("See below" if long_notes else escape(e.notes) or "-", CELL)])
+            if long_notes:
+                rows.append([Paragraph(f"<b>Notes:</b> {escape(e.notes)}", CELL), "", "", ""])
+                spans.append(("SPAN", (0, len(rows) - 1), (-1, len(rows) - 1)))
         tbl = Table(rows, colWidths=[24 * mm, 30 * mm, 70 * mm, 50 * mm], repeatRows=1)
         tbl.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f2a44")), ("VALIGN", (0, 0), (-1, -1), "TOP"),
                                  ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
                                  ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-                                 ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
+                                 ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5), *spans]))
         story.append(tbl)
     else:
         story.append(Paragraph("No services logged yet.", CELL))

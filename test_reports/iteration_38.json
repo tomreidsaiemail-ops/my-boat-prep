@@ -1,0 +1,47 @@
+{
+  "summary": "Tested iteration-38 features: Magic Marine Engineer (engine-ask API and UI), separate engine quota, renamed top-up button, Walkthrough sign-off (owner and crew), and service-history notes up to 2000. Backend: 18/19 pytest pass. The one failure is real: the PDF export returns 500 for notes of 1500 chars or more. Frontend: every requested flow works end to end with real Gemini answers (about 1300 chars). One UI bug: the question textarea never grows to 3 lines.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/service-history/pdf", "issue": "Returns 500 (reportlab LayoutError: table row taller than page) when an entry's notes are about 1500 chars or more. 1000 chars works; 1500 and 2000 fail, even with normal words and spaces. The new 2000 limit cannot be used, and a normal 'Add to Notes' (one AI answer is about 1250-1400 chars) gets close. Two answers, or notes plus one answer, go over and break Export PDF. Traceback is in backend.err.log at service_history.py:80 doc.build. Fix: let rows split (e.g. Table(..., splitInRow=1) in reportlab 4.x), or put long notes in a Paragraph below the table row, or split notes into several rows.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "EngineerAsk textarea", "issue": "rows switches from 1 to 3 after typing, but the box stays 48px tall. The global .field-input class in App.css sets height: 48px, which overrides rows. The spec says it should grow to 3 lines. Fix: override the height on this textarea (inline style height:auto, or a class like !h-auto / min-h).", "selector": "[data-testid='engineer-question-input']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Engine Service", "issues": ["The answer card stays open after Log Service. Minor; the skipper can still close it."]}
+    ]
+  },
+  "passed_tests": [
+    "engine-ask: 401 unauth, 403 free, 422 blank/missing/>1024 question, 422 engine_type>80; real answer 200 {answer, asks_left}, no markdown",
+    "Engine quota counted separately: the engine ask increments only kind=engine; the list-topup drafts_left reflects only non-engine drafts",
+    "walkthrough-signoff: owner adds the item to data.shipsLog and updated_at changes; label ends '(1 stop)' or '(3 stops)'; crew (beta added to pro crew) pushes into the owner's log; 404 for no access and for a missing own boat; 422 for stops=0, empty when or missing when; 401 unauth",
+    "A stale owner PUT /me/boat after a crew sign-off keeps the crew item (merge works)",
+    "PDF notes over 2000 chars return 422",
+    "UI: topup-btn reads \"Ask The Magic Mariner what's missing from the list\" and opens the top-up dialog (Rigging Checks; the Pro account has no Leaving the Dock list)",
+    "UI: engineer-ask-panel sits under engine-notes-input with the label, placeholder, maxLength 1024 and the Ask button on the right; no horizontal overflow at 390px",
+    "UI: blank engine type shows the warning; 'Add engine type' focuses engine-type-input; 'Ask anyway' shows loading, then the answer card and '17 questions left today'; close hides the card; with an engine type set there is no warning",
+    "UI: Add to Notes appends 'Magic Marine Engineer - Q: .. A: ..' to the notes with a ' | ' separator; Log Service saves the entry with those notes; Export PDF returns 200 at 1254 chars",
+    "UI: free user clicking Ask gets the Pro dialog ('Magic Marine Engineer is a Pro feature') and no API call is made",
+    "UI: Crew Walkthrough shows the sign-off button only on the last stop; owner sign-off closes the dialog, shows a toast and adds the item to the Ship's Log (synced to the server); crew on a shared boat calls the endpoint (200) and gets a toast"
+  ],
+  "test_report_links": ["/app/backend/tests/test_engineer_ask_signoff.py", "/app/test_reports/pytest/pytest_iter38.xml"],
+  "action_items": [
+    "Fix the service-history PDF 500 for long notes (1500 to 2000 chars): use row splitting or render notes outside the fixed table cell",
+    "Make the engineer-question-input textarea actually grow to 3 lines (override .field-input height: 48px)"
+  ],
+  "critical_code_review_comments": [
+    "service_history.py: raising the notes max to 2000 without handling the layout means valid input crashes the PDF build; also catch LayoutError instead of returning a bare 500",
+    "EngineerAsk addToNotes does .replace(/\\s+/g,' '), which flattens the answer's numbered list into one line in the notes. Acceptable, but long notes get hard to read in the PDF",
+    "walkthrough_signoff does not bump list_ts.shipsLog. The merge keeps the item for stale owner PUTs, but if the owner edits the Ship's Log offline after the crew sign-off (owner list_ts later than the item ts) and syncs without fetching first, the crew item may be dropped"
+  ],
+  "updated_files": ["/app/backend/tests/test_engineer_ask_signoff.py"],
+  "success_rate": {"backend": "95% (18/19)", "frontend": "92% (textarea expansion fails)"},
+  "seed_data_creation": "Temporarily seeded a Pro zone map (locker1.jpg) with 2 pins and added test-user-beta as crew on the Pro main boat. Everything was removed afterwards: zone map deleted, crew pulled, sign-off Ship's Log items and the TEST_iter38 engine_log entry removed. Used about 4 Pro engine asks and 1 topup today.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro account has no 'Leaving the Dock' list; use riggingChecks to test topup. Engine list value is 'engineService'. To test the walkthrough, upload /app/test_assets/locker1.jpg via POST /api/boats/main/zone-maps and PUT pins. For crew, $addToSet crew test-user-beta on the pro boat and choose TEST_Kia Ora in boat-selector (role=option). Reproduce the PDF bug with a single entry whose notes are 1500 chars of normal text."
+}

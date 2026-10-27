@@ -55,8 +55,8 @@ export const EngineerAsk = ({ engineType, entries, online, locked, onUpgrade, on
     <div className="col-span-2 flex flex-col gap-2" data-testid="engineer-ask-panel">
       <label htmlFor="engineer-question" className="field-label">ASK THE MAGIC MARINE ENGINEER</label>
       <div className="flex items-start gap-2">
-        <textarea id="engineer-question" value={question} onChange={(e) => { setQuestion(e.target.value); setWarning(false); }} maxLength={1024} rows={question ? 3 : 1}
-          placeholder="e.g. the engine is making a rattling sound" className="field-input min-w-0 flex-1 resize-none py-2 leading-snug" data-testid="engineer-question-input" />
+        <textarea id="engineer-question" value={question} onChange={(e) => { setQuestion(e.target.value); setWarning(false); }} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
+          placeholder="e.g. the engine is making a rattling sound" className="field-input min-w-0 flex-1 resize-none leading-snug placeholder-shown:overflow-hidden placeholder-shown:text-ellipsis placeholder-shown:whitespace-nowrap" data-testid="engineer-question-input" />
         <button type="button" className="btn-solid h-11 shrink-0 px-4" onClick={ask} disabled={state.busy} data-testid="engineer-ask-btn">
           {state.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask..."}
         </button>
