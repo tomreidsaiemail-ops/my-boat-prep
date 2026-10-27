@@ -77,6 +77,11 @@ export default function BoatPrep({ boatId, boats }) {
   const gps = useGps();
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
+  const openDistress = (id) => {
+    if (!allLists.some((l) => l.id === id)) { toast.error(`The ${id === "mayDay" ? "Mayday" : "Pan-Pan"} list isn't on this boat`); return; }
+    setActiveId(id);
+    setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   const startBatchScan = () => {
     if (!needPro("Boat inventory") || !guard()) return;
     if (!online) { toast.error("Batch Magic Scan needs a signal"); return; }
@@ -356,7 +361,8 @@ export default function BoatPrep({ boatId, boats }) {
   return (
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq}
+        onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
       {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} />}

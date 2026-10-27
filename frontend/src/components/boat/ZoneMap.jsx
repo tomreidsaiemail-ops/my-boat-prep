@@ -1,12 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ImagePlus, Loader2, Map, MapPin, Trash2 } from "lucide-react";
+import { ChevronDown, Footprints, ImagePlus, Loader2, Map, MapPin, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { HelpPanel } from "@/components/boat/HelpPanel";
 import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
+import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 20;
@@ -72,10 +73,17 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin }) => {
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [walking, setWalking] = useState(false);
+  useEffect(() => {
+    const m = focusPin && (boat?.zone_maps || []).find((z) => z.id === focusPin.mapId);
+    if (!m) return;
+    setExpanded(true);
+    setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });
+  }, [focusPin]); // eslint-disable-line react-hooks/exhaustive-deps
   const tapPin = (pin) => {
     if (pin.area_id && areas.some((a) => a.id === pin.area_id)) onOpenArea?.(pin.area_id);
     else toast.message(`${pin.label} isn't listed in Boat Inventory yet`);
@@ -85,6 +93,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   const own = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
   const pics = own.length ? own.map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))
     : version && !failed.admin ? [{ key: "admin", src: mapUrl(version) }] : [];
+  const steps = walkSteps(pics.filter((p) => p.map));
   if (!pics.length && !admin && !canEdit) return null;
   const removeMap = async (m) => {
     if (!online) { toast.error("You need a signal to remove a zone map"); return; }
@@ -103,6 +112,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
         <HelpPanel storageKey="mbp_zone_map_help_seen" title="How to make a zone map" testId="zone-map-help">
           <p>Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.</p>
         </HelpPanel>
+      )}
+      {steps.length > 0 && (
+        <button type="button" className="btn-solid h-10 justify-center gap-2 text-sm" onClick={() => setWalking(true)} data-testid="crew-walkthrough-btn">
+          <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
+        </button>
       )}
       {pics.map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1" data-testid={`zone-map-item-${p.key}`}>
@@ -133,10 +147,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>
-          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={open.map?.pins} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }}
+          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={open.map?.pins} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
             imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
         </DialogContent>
       </Dialog>
+      {walking && <CrewWalkthrough steps={steps} areas={areas} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} />}
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>
   );

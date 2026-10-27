@@ -16,7 +16,7 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange, onOpenFaq }) => (
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange, onOpenFaq, onMayday, onPanPan }) => (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -31,9 +31,17 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
         <input id="trip-date" type="date" value={tripDate} onChange={(e) => e.target.value && onDateChange(e.target.value)}
           className="h-11 rounded-md bg-[var(--navy)] px-2.5 font-mono text-sm font-bold text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
       </label>
-      <div className={`ml-auto flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
-        <MapPin className="mt-px h-3 w-3 shrink-0" />
-        <span>{gps.text}</span>
+      <div className="ml-auto flex min-w-0 flex-col items-end gap-1">
+        <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
+          <MapPin className="mt-px h-3 w-3 shrink-0" />
+          <span>{gps.text}</span>
+        </div>
+        {onMayday && (
+          <div className="flex gap-1.5" data-testid="distress-buttons">
+            <button type="button" onClick={onMayday} className="h-6 rounded-md bg-[var(--red)] px-2.5 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="mayday-btn">Mayday</button>
+            <button type="button" onClick={onPanPan} className="h-6 rounded-md bg-orange-500 px-2.5 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="panpan-btn">Pan-Pan</button>
+          </div>
+        )}
       </div>
       <AppMenu onOpenFaq={onOpenFaq} />
       <AccountMenu />

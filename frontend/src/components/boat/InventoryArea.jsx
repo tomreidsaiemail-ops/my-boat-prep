@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { Check, ChevronDown, Link2, Loader2, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Link2, Loader2, MapPin, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0 }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -90,6 +90,11 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
       {open && (
         <>
           {total === 0 && <p className="border-t border-[var(--line)] px-3 py-3 text-sm text-[var(--muted)]" data-testid={`inventory-area-empty-${area.id}`}>Nothing listed in here yet.</p>}
+          {onShowOnMap && !query && (
+            <button type="button" className="flex w-full items-center gap-2 border-t border-[var(--line)] px-3 py-2 text-left text-sm font-bold text-[var(--blue)] hover:bg-sky-50" onClick={onShowOnMap} data-testid={`inventory-area-show-map-${area.id}`}>
+              <MapPin className="h-4 w-4 shrink-0" /> Show on zone map
+            </button>
+          )}
           <ul>
             {listed.map((i) => (
               <ContentRow key={i.id} item={i} readOnly={readOnly} query={query} onToggle={() => onToggle(i)} onEdit={() => onEditItem(i)} onDelete={() => onDeleteItem(i)} />
