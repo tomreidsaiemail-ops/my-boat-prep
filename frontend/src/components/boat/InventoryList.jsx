@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
+import { ChevronDown, HelpCircle, Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -17,6 +17,27 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const INSTR_KEY = "mbp_inventory_instructions_collapsed";
+
+const InventoryInstructions = ({ searching }) => {
+  const [open, setOpenState] = useState(() => localStorage.getItem(INSTR_KEY) !== "1");
+  const setOpen = (v) => { setOpenState(v); localStorage.setItem(INSTR_KEY, v ? "0" : "1"); };
+  useEffect(() => { if (searching) setOpen(false); }, [searching]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white text-sm text-[var(--muted)]" data-testid="inventory-instructions">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left font-bold text-[var(--navy)]" data-testid="inventory-instructions-toggle">
+        <HelpCircle className="h-4 w-4 shrink-0" /> How to take your Boat Inventory
+        <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 px-4 pb-4" data-testid="inventory-instructions-body">
+          <p data-testid="inventory-instructions-text">List each cupboard, lazarette, drawer, shelf, fridge, freezer etc then add what's stowed inside. You can tick an item to show it's been removed temporarily, e.g. a knife moved to the cockpit ready for passage.</p>
+          <p data-testid="inventory-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Use ++ below. This saves lots of time because while you take photos, the Magic Scan runs in the background. Taking the boat inventory should take 30 minutes for a 40 foot yacht, longer for larger vessels, shorter for Launches and Runabouts.</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AddArea = ({ onAdd, onBatch }) => {
   const [name, setName] = useState("");
@@ -227,10 +248,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         </div>
       )}
       {readOnly ? areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p> : (
-        <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-instructions">
-          <p data-testid="inventory-instructions-text">List each cupboard, lazarette, drawer, shelf, fridge, freezer etc then add what's stowed inside. You can tick an item to show it's been removed temporarily, e.g. a knife moved to the cockpit ready for passage.</p>
-          <p data-testid="inventory-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Use ++ below. This saves lots of time because while you take photos, the Magic Scan runs in the background. Taking the boat inventory should take 30 minutes for a 40 foot yacht, longer for larger vessels, shorter for Launches and Runabouts.</p>
-        </div>
+        <InventoryInstructions searching={!!q} />
       )}
       <ul className="flex flex-col gap-2">
         {results.map(({ area: a, visible, visibleLinked }) => (

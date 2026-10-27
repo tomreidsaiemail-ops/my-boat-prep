@@ -78,8 +78,8 @@ export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
     if (complete) setOpen(false);
   };
   const batchBtn = onBatchScan && (
-    <button type="button" onClick={onBatchScan} className="btn-ghost h-11 w-full justify-center gap-2 text-sm" data-testid="boat-details-batch-scan-btn">
-      <Sparkles className="h-4 w-4 shrink-0" /> On the boat? Take a Boat Inventory using Batch Magic Scan...
+    <button type="button" onClick={onBatchScan} className="btn-ghost h-auto min-h-11 w-full !justify-start gap-3 px-4 py-2.5 !text-left text-sm font-semibold leading-snug" data-testid="boat-details-batch-scan-btn">
+      <Sparkles className="h-4 w-4 shrink-0" /> <span>On the boat? Want you and your crew to find absolutely anything on it instantly? Take a Boat Inventory using Batch Magic Scan... you take the photos, and Magic Scan tells you what is in them. "Easy as"</span>
     </button>
   );
 
