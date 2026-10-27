@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import useBoatStore from "@/hooks/useBoatStore";
+import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
 import useGps from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, apiError } from "@/lib/api";
 import { addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds } from "@/lib/defaults";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
@@ -147,6 +147,21 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const setItems = (fn) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: fn(s.data[active.id] || []) } }));
   const isDup = (text, exceptId) => items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
+  const signOffWalkthrough = async (stops) => {
+    const when = new Date().toLocaleString("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    if (!crew) {
+      const label = `Crew Walkthrough signed off by ${user.name || user.email} on ${when} (${stops} ${stops === 1 ? "stop" : "stops"})`;
+      mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id: Date.now(), label, checked: false }] } }));
+      toast.success("Walkthrough signed off in the Ship's Log");
+      return true;
+    }
+    if (!online) { toast.error("Signing off on a shared boat needs a signal"); return false; }
+    try {
+      await api.post("/me/boat/walkthrough-signoff", { when, stops }, { params: boatParams(boats.current), timeout: 10000 });
+      toast.success("Walkthrough signed off in the skipper's Ship's Log");
+      return true;
+    } catch (e) { toast.error(apiError(e, "Couldn't sign off right now. Please try again.")); return false; }
+  };
 
   const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
   const remove = (id) => {
@@ -395,7 +410,7 @@ export default function BoatPrep({ boatId, boats }) {
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}
-          onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting}
+          onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting} online={online} onUpgrade={() => askUpgrade("Magic Marine Engineer")}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
@@ -409,7 +424,7 @@ export default function BoatPrep({ boatId, boats }) {
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
-              batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} />
+              batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
           {premium && (tagging || filterAreas.length > 0) && (

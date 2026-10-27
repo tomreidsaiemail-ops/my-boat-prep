@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 
@@ -22,8 +22,9 @@ const Contents = ({ area }) => {
   );
 };
 
-export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea }) => {
+export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff }) => {
   const [pos, setN] = useState(0);
+  const [signing, setSigning] = useState(false);
   useEffect(() => { if (!steps.length) onClose(); }, [steps.length]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!steps.length) return null;
   const n = Math.min(pos, steps.length - 1);
@@ -40,11 +41,17 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea }) => {
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <Contents area={area} />
         {area && <button type="button" className="btn-ghost h-9 w-fit justify-self-start px-3 text-xs" onClick={() => { onClose(); onOpenArea(area.id); }} data-testid="walkthrough-open-area-btn">Open in Boat Inventory</button>}
+        {n === steps.length - 1 && onSignOff && (
+          <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={signing} data-testid="walkthrough-signoff-btn"
+            onClick={async () => { setSigning(true); if (await onSignOff(steps.length)) onClose(); else setSigning(false); }}>
+            {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />} Sign off in Ship's Log
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" disabled={n === 0} onClick={() => setN(n - 1)} data-testid="walkthrough-back-btn"><ChevronLeft className="h-4 w-4" /> Back</button>
           {n < steps.length - 1
             ? <button type="button" className="btn-solid h-11 flex-1 justify-center" onClick={() => setN(n + 1)} data-testid="walkthrough-next-btn">Next <ChevronRight className="h-4 w-4" /></button>
-            : <button type="button" className="btn-solid h-11 flex-1 justify-center" onClick={onClose} data-testid="walkthrough-done-btn">Done</button>}
+            : <button type="button" className={`${onSignOff ? "btn-ghost" : "btn-solid"} h-11 flex-1 justify-center`} onClick={onClose} data-testid="walkthrough-done-btn">Done</button>}
         </div>
       </DialogContent>
     </Dialog>

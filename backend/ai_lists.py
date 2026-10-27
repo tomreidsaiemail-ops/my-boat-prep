@@ -62,13 +62,15 @@ def to_lines(text: str) -> list:
     return lines[:MAX_LINES]
 
 
-async def _run(user: dict, kind: str, prompt: str, parse, meta: dict):
+async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: str = SYSTEM, label: str = "Magic List Generation"):
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    if await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_DRAFTS:
-        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} Magic List Generations. Try again tomorrow.")
+    kinds = {"$in": ["engine"]} if kind == "engine" else {"$ne": "engine"}
+    used = {"user_id": user["user_id"], "kind": kinds, "created_at": {"$gte": since}}
+    if await db.ai_drafts.count_documents(used) >= DAILY_DRAFTS:
+        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} {label}s. Try again tomorrow.")
     draft_id = str(uuid.uuid4())
     await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "kind": kind, **meta, "created_at": datetime.now(timezone.utc).isoformat()})
-    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{kind}-{draft_id}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{kind}-{draft_id}", system_message=system).with_model("gemini", "gemini-3-flash-preview")
     text = ""
     try:
         async for ev in chat.stream_message(UserMessage(text=prompt)):
@@ -78,10 +80,10 @@ async def _run(user: dict, kind: str, prompt: str, parse, meta: dict):
                 break
         result = parse(text)
     except Exception as e:
-        log.error(f"Magic List Generation ({kind}) failed: {e}; reply={text[:300]!r}")
+        log.error(f"{label} ({kind}) failed: {e}; reply={text[:300]!r}")
         await db.ai_drafts.delete_one({"draft_id": draft_id})
-        raise HTTPException(status_code=503, detail="Magic List Generation couldn't do that right now. Please try again.")
-    left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))
+        raise HTTPException(status_code=503, detail=f"{label} couldn't do that right now. Please try again.")
+    left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents(used))
     return result, left
 
 
@@ -145,3 +147,43 @@ async def list_topup(body: TopUpIn, user: dict = Depends(require_premium)):
     existing = {i.label.strip().lower() for i in body.items}
     suggestions, left = await _run(user, "topup", prompt, lambda t: parse_suggestions(t, headings, existing), {"name": body.name.strip()})
     return {"suggestions": suggestions, "drafts_left": left}
+
+
+ENGINEER = ("You are the Magic Marine Engineer in the My Boat Prep app: an experienced, practical marine engineer helping a boat skipper with their engine. "
+            "Answer in plain English using short paragraphs or a short numbered list. Start with the most likely causes, then simple checks the skipper can do on board, "
+            "then say when to stop the engine or call a qualified marine engineer. Mention safety (hot parts, moving belts, fuel, exhaust fumes) where it matters. "
+            "If the engine type is known, tailor the answer to it. Keep it under 250 words. Plain text only: no markdown, headings, asterisks or code.")
+
+
+class EngineAskIn(BaseModel):
+    question: str = Field(default="", max_length=1024, validate_default=True)
+    engine_type: str = Field(default="", max_length=80)
+    history: List[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("question")
+    @classmethod
+    def need_question(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Type a question for the Magic Marine Engineer first")
+        return v.strip()
+
+    @field_validator("history")
+    @classmethod
+    def trim_history(cls, v: list) -> list:
+        return [str(x).strip()[:600] for x in v if str(x).strip()]
+
+
+def parse_answer(text: str) -> str:
+    answer = re.sub(r"\*\*|__|^#+\s*", "", text.strip(), flags=re.M).strip()
+    if not answer:
+        raise ValueError("empty answer")
+    return answer[:4000]
+
+
+@router.post("/ai/engine-ask")
+async def engine_ask(body: EngineAskIn, user: dict = Depends(require_premium)):
+    history = "\n".join(f"- {h}" for h in body.history) or "(none logged)"
+    prompt = (f"Engine type: {body.engine_type.strip() or 'not given'}\nRecent engine service history:\n{history}\n"
+              f'The skipper asks:\n"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""')
+    answer, left = await _run(user, "engine", prompt, parse_answer, {"question": body.question[:200]}, ENGINEER, "Magic Marine Engineer answer")
+    return {"answer": answer, "asks_left": left}

@@ -27,7 +27,7 @@ class ServiceEntry(BaseModel):
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     hours: Optional[float] = None
     electrician: Optional[str] = Field(default=None, max_length=80)
-    notes: str = Field(default="", max_length=300)
+    notes: str = Field(default="", max_length=2000)
     items: List[str] = Field(default=[], max_length=200)
 
 

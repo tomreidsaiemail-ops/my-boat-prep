@@ -66,7 +66,7 @@ export const TopUpDialog = ({ open, list, items, description, labelFor, onAdd, o
 
 export const TopUpButton = ({ online, onClick }) => (
   <button type="button" onClick={onClick} disabled={!online} className="btn-ghost h-12 justify-center gap-2" data-testid="topup-btn"
-    title={online ? "Suggest missing items with Magic List Generation" : "Magic List Top-Up needs a signal"}>
-    <Sparkles className="h-4 w-4 shrink-0" /> {online ? "Magic List Top-Up" : "Magic List Top-Up needs a signal"}
+    title={online ? "Ask The Magic Mariner what's missing from the list" : "The Magic Mariner needs a signal"}>
+    <Sparkles className="h-4 w-4 shrink-0" /> <span className="text-left">{online ? "Ask The Magic Mariner what's missing from the list" : "The Magic Mariner needs a signal"}</span>
   </button>
 );

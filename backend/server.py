@@ -201,6 +201,25 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
     return to_out(state, role)
 
 
+class SignOffIn(BaseModel):
+    when: str = Field(min_length=1, max_length=60)
+    stops: int = Field(ge=1, le=1000)
+
+
+@api_router.post("/me/boat/walkthrough-signoff")
+async def walkthrough_signoff(payload: SignOffIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
+    key, _ = await boat_access(user, boat_id, owner)
+    now = datetime.now(timezone.utc)
+    name = (user.get("name") or user.get("email") or "crew").strip()[:80]
+    when = re.sub(r"[^\w ,:/.\-]", "", payload.when).strip()
+    item = {"id": int(now.timestamp() * 1000), "label": f"Crew Walkthrough signed off by {name} on {when} ({payload.stops} {'stop' if payload.stops == 1 else 'stops'})",
+            "checked": False, "ts": now.isoformat()}
+    res = await db.user_boats.update_one(key, {"$push": {"data.shipsLog": item}, "$set": {"updated_at": now.isoformat()}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Boat not found")
+    return {"item": item}
+
+
 class LastBoatIn(BaseModel):
     key: str = Field(pattern=r"^[A-Za-z0-9_-]{1,140}$")
 

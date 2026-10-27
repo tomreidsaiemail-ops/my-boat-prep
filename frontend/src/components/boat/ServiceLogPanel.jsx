@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { FileDown, Gauge, Loader2, Lock, Trash2, Zap } from "lucide-react";
 import { ValidationBar } from "@/components/boat/ActionBar";
 import { ServiceDue } from "@/components/boat/ServiceDue";
+import { EngineerAsk } from "@/components/boat/EngineerAsk";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
@@ -33,7 +34,9 @@ const EngineTypeHead = ({ type }) => (
   <li className="bg-[var(--panel)] px-3 py-1.5 text-sm" data-testid="engine-type-heading"><span className="field-label">Engine type </span><b>{type}</b></li>
 );
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting }) => {
+const NOTES_MAX = 2000;
+
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
   const [value, setValue] = useState("");
@@ -79,7 +82,10 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Service date</span>
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={`${k.prefix}-date-input`} /></label>
         </div>
-        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
+        {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+          onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
+          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
         <p className="col-span-2 text-sm" data-testid={`${k.prefix}-ticked-summary`}>
           {ticked.length ? <><span className="field-label">Will log </span><b>{ticked.join(" · ")}</b></> : <span className="text-[var(--muted)]">No items ticked. Tick the jobs you did in the list below to add them to the history.</span>}
         </p>

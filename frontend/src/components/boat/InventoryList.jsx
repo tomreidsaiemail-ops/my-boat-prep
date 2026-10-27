@@ -62,7 +62,7 @@ const AddArea = ({ onAdd, onBatch }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled }) => {
+export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -232,7 +232,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} />
+        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})

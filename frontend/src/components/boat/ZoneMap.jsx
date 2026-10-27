@@ -73,7 +73,7 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff }) => {
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -151,7 +151,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
             imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
         </DialogContent>
       </Dialog>
-      {walking && <CrewWalkthrough steps={steps} areas={areas} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} />}
+      {walking && <CrewWalkthrough steps={steps} areas={areas} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff} />}
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>
   );
