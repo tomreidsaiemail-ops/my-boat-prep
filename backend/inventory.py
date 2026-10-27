@@ -34,17 +34,31 @@ class ZonePin(BaseModel):
     x: float = Field(ge=0, le=1)
     y: float = Field(ge=0, le=1)
     label: str = Field(min_length=1, max_length=60)
-    area_id: Optional[str] = Field(default=None, max_length=60)
+    area_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_.-]{1,60}$")
+
+    @field_validator("label")
+    @classmethod
+    def label_text(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Each label needs a name")
+        return v.strip()
 
 
 class ZonePinsIn(BaseModel):
     pins: List[ZonePin] = Field(max_length=60)
 
+    @field_validator("pins")
+    @classmethod
+    def unique_ids(cls, v: list) -> list:
+        if len({p.id for p in v}) != len(v):
+            raise ValueError("Each label needs its own id")
+        return v
+
 
 @router.put("/boats/{boat_id}/zone-maps/{map_id}/pins")
 async def save_map_pins(boat_id: BoatPath, map_id: MapPath, payload: ZonePinsIn, user: dict = Depends(get_current_user)):
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
-    pins = [{**p.model_dump(), "label": p.label.strip()} for p in payload.pins]
+    pins = [p.model_dump() for p in payload.pins]
     res = await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {"$set": {"zone_maps.$.pins": pins}})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Zone map not found")

@@ -9,11 +9,13 @@ const NEW = "__new";
 const pinId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 const PinForm = ({ pin, areas, onSave, onDelete, onCancel }) => {
-  const [areaId, setAreaId] = useState(pin.area_id || (pin.label ? NEW : areas[0]?.id || NEW));
-  const [name, setName] = useState(pin.area_id ? "" : pin.label || "");
+  const linked = areas.some((a) => a.id === pin.area_id);
+  const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas[0]?.id || NEW);
+  const [name, setName] = useState(linked ? "" : pin.label || "");
   const [error, setError] = useState("");
   const save = () => {
-    if (areaId !== NEW) return onSave({ ...pin, area_id: areaId, label: areas.find((a) => a.id === areaId).name });
+    const area = areas.find((a) => a.id === areaId);
+    if (area) return onSave({ ...pin, area_id: area.id, label: area.name });
     if (!name.trim()) { setError("Type a name for this spot"); return; }
     onSave({ ...pin, area_id: null, label: name.trim().slice(0, 60) });
   };
@@ -54,12 +56,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const keep = (p) => { setPins((ps) => (editing.isNew ? [...ps, p] : ps.map((x) => (x.id === p.id ? p : x)))); setEditing(null); };
   const save = async () => {
     if (!online) { toast.error("You need a signal to save zone map labels"); return; }
-    const fresh = [...new Set(pins.filter((p) => !p.area_id).map((p) => p.label))].filter((n) => !areas.some((a) => a.name.trim().toLowerCase() === n.toLowerCase()));
+    const fresh = [...new Set(pins.filter((p) => !areas.some((a) => a.id === p.area_id)).map((p) => p.label))].filter((n) => !areas.some((a) => a.name.trim().toLowerCase() === n.toLowerCase()));
     const ids = fresh.length ? onAddAreas(fresh) : {};
     const linked = pins.map((p) => {
-      if (p.area_id) return p;
-      const match = areas.find((a) => a.name.trim().toLowerCase() === p.label.toLowerCase());
-      return { ...p, area_id: match?.id || ids[p.label] || null };
+      const area = areas.find((a) => a.id === p.area_id) || areas.find((a) => a.name.trim().toLowerCase() === p.label.toLowerCase());
+      if (area) return { ...p, area_id: area.id, label: area.name.slice(0, 60) };
+      return { ...p, area_id: ids[p.label] || null };
     });
     setBusy(true);
     try {

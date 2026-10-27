@@ -1,0 +1,37 @@
+{
+  "summary": "Tested Annotate Zone Photos (pins) end to end as Pro user (boat 'main' / TEST_Kia Ora) at 390x844, with 768 and 1920 checks. Backend: 11/12 pytest pass (PUT pins validation, persistence via GET /api/me/boats, 404 for unknown map and another user's boat, 401 when logged out, max 60). Frontend: upload map, Label this map, tap to place, pick an existing area, New boat area with an empty-name error, add TEST_Cockpit Lazarette, remove a pin, Save (toast, dialog closes, 'Edit labels (2)', new inventory area created), reload persistence (same x/y), panel pin tap expands and scrolls to the area, full-size dialog shows pins and pin tap closes it and opens the area, rename follows on the pin, offline toast, no horizontal overflow, no letterboxing mismatch between views. All of these PASS. One crash bug found: a pin whose linked area was deleted ('orphan pin').",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/boats/{boat_id}/zone-maps/{map_id}/pins", "issue": "A label of only spaces ('   ') passes min_length=1 and is then stripped to '' and saved with 200. Validate after stripping, e.g. a field_validator that strips and rejects empty."},
+      {"endpoint": "PUT /api/boats/{boat_id}/zone-maps/{map_id}/pins", "issue": "Duplicate pin ids are not rejected, and area_id has no pattern. Low risk."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ZonePinEditor PinForm", "issue": "RUNTIME CRASH: open the editor and tap a pin whose area_id no longer exists (its area was deleted from Boat Inventory), then tap 'Place label' -> TypeError 'Cannot read properties of undefined (reading name)' and the Emergent runtime error overlay appears. Cause: useState(pin.area_id || ...) keeps the stale id, the select shows the first option, and save() runs areas.find(...).name on undefined. Fix: start areaId with areas.some(a=>a.id===pin.area_id) ? pin.area_id : NEW (with name = pin.label), and guard the find in save().", "selector": "[data-testid='zone-pin-save-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Area rename then delete", "issue": "The saved pin label is only the name at the time of saving. If the area is renamed (the pin shows the new name) and then deleted, the pin goes back to the old name (e.g. 'TEST_Cockpit Lazarette' instead of 'TEST_Stern Lazarette'). Tapping it shows the toast \"isn't listed in Boat Inventory yet\". Minor: consider refreshing the stored labels whenever the editor saves.", "affected_selectors": ["[data-testid^='zone-pin-']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_pins.py", "/app/test_reports/pytest/pytest_zone_pins.xml"],
+  "action_items": [
+    "HIGH: Fix the orphan-pin crash in ZonePinEditor PinForm (stale area_id -> undefined.name on Place label).",
+    "Minor: reject whitespace-only pin labels in the backend (validate after strip).",
+    "Optional: when an area linked to a pin is deleted, show the pin as unlinked in the editor (select 'New boat area...' with the old label pre-filled)."
+  ],
+  "critical_code_review_comments": [
+    "ZonePinEditor.jsx line 16: areas.find(...).name has no null guard.",
+    "ZonePinEditor save(): onAddAreas uses the local-first inventory onChange, but the pins PUT is online-only. If the PUT fails, the new areas are still created. That is acceptable, but the user gets no hint about it.",
+    "PinnedPhoto: the box ratio equals the natural ratio at 390/768/1920 (no object-contain letterbox), so pin positions are the same in the panel, the full-size view and the editor."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_pins.py"],
+  "success_rate": {"backend": "92% (11/12)", "frontend": "95% (all requested flows pass; the orphan-pin edge case crashes)"},
+  "seed_data_creation": "None left behind. The uploaded zone maps were removed and TEST_Cockpit/Stern Lazarette was deleted. TEST_Port Locker already existed (2 items) and was kept. FIRST5000/FIRST200 were not touched.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat_id='main'; zone_maps currently []. Reproduce the orphan pin: upload a map via API, PUT pins with area_id 'ghostarea', open the editor, tap the pin inside [data-testid=zone-pin-photo], then Place label. Scope pin selectors to [data-testid=zone-pin-photo] in the editor, because the panel pins behind it share the same testids. Network toggle: [data-testid=network-status]; going back online uses sync-confirm-ok-btn.",
+  "rca of the issue": "PinForm sets the initial areaId to pin.area_id even when that area no longer exists. The <select> cannot show that value, so it falls back to the first option, but the React state still holds the stale id. save() then calls areas.find(a=>a.id===areaId) and gets undefined, so reading .name throws."
+}
