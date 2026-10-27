@@ -4,6 +4,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone, timedelta
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
@@ -61,26 +62,79 @@ def to_lines(text: str) -> list:
     return lines[:MAX_LINES]
 
 
-@router.post("/ai/list-draft")
-async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
+async def _run(user: dict, kind: str, prompt: str, parse, meta: dict):
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     if await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_DRAFTS:
         raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} Magic List Generations. Try again tomorrow.")
     draft_id = str(uuid.uuid4())
-    await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "name": body.name.strip(), "description": body.description, "created_at": datetime.now(timezone.utc).isoformat()})
-    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"draft-{draft_id}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
+    await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "kind": kind, **meta, "created_at": datetime.now(timezone.utc).isoformat()})
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{kind}-{draft_id}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
     text = ""
-    prompt = PROMPT.format(name=body.name.strip().replace('"', "'") or "New list", description=body.description.replace('"""', "'''"))
     try:
         async for ev in chat.stream_message(UserMessage(text=prompt)):
             if isinstance(ev, TextDelta):
                 text += ev.content
             elif isinstance(ev, StreamDone):
                 break
-        lines = to_lines(text)
+        result = parse(text)
     except Exception as e:
-        log.error(f"Magic List Generation failed: {e}; reply={text[:300]!r}")
+        log.error(f"Magic List Generation ({kind}) failed: {e}; reply={text[:300]!r}")
         await db.ai_drafts.delete_one({"draft_id": draft_id})
-        raise HTTPException(status_code=503, detail="Magic List Generation couldn't create that list right now. Please try again.")
+        raise HTTPException(status_code=503, detail="Magic List Generation couldn't do that right now. Please try again.")
     left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))
+    return result, left
+
+
+@router.post("/ai/list-draft")
+async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
+    prompt = PROMPT.format(name=body.name.strip().replace('"', "'") or "New list", description=body.description.replace('"""', "'''"))
+    lines, left = await _run(user, "draft", prompt, to_lines, {"name": body.name.strip(), "description": body.description})
     return {"lines": lines, "drafts_left": left}
+
+
+TOPUP_PROMPT = (
+    'The list is called "{name}".{description}\nIts current items, with group headings marked "#", are:\n{outline}\n'
+    "Suggest up to 25 useful items that are missing from this list, following the same purpose, style and level of detail. "
+    "Do not repeat or reword items already on the list. For each suggestion give the exact text of the existing heading it belongs under, "
+    'or an empty heading if none fits. Return exactly: {{"suggestions": [{{"item": "...", "heading": "..."}}]}}'
+)
+
+
+class TopUpLine(BaseModel):
+    label: str = Field(max_length=300)
+    heading: bool = False
+
+
+class TopUpIn(BaseModel):
+    name: str = Field(default="", max_length=60)
+    description: str = Field(default="", max_length=512)
+    items: List[TopUpLine] = Field(default_factory=list, max_length=400)
+
+
+def parse_suggestions(text: str, headings: set, existing: set) -> list:
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        raise ValueError("no JSON")
+    raw = json.loads(match.group(0)).get("suggestions", [])
+    out, seen = [], set(existing)
+    for s in raw if isinstance(raw, list) else []:
+        item = str((s or {}).get("item", "")).strip()[:120]
+        if not item or item.lower() in seen:
+            continue
+        seen.add(item.lower())
+        heading = str(s.get("heading", "")).strip()
+        out.append({"item": item, "heading": heading if heading.lower() in headings else ""})
+    return out[:25]
+
+
+@router.post("/ai/list-topup")
+async def list_topup(body: TopUpIn, user: dict = Depends(require_premium)):
+    if not body.description.strip() and not body.name.strip() and not body.items:
+        raise HTTPException(status_code=422, detail="Add a list name, description or a few items first")
+    outline = "\n".join(f"# {i.label.strip()}" if i.heading else f"- {i.label.strip()}" for i in body.items if i.label.strip()) or "(no items yet)"
+    desc = f' The user described it as: """{body.description.strip().replace(chr(34) * 3, chr(39) * 3)}"""' if body.description.strip() else ""
+    prompt = TOPUP_PROMPT.format(name=body.name.strip().replace('"', "'") or "My list", description=desc, outline=outline)
+    headings = {i.label.strip().lower() for i in body.items if i.heading}
+    existing = {i.label.strip().lower() for i in body.items}
+    suggestions, left = await _run(user, "topup", prompt, lambda t: parse_suggestions(t, headings, existing), {"name": body.name.strip()})
+    return {"suggestions": suggestions, "drafts_left": left}

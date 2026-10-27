@@ -106,3 +106,23 @@ export const linesToItems = (lines, autoIndent, base) => {
     return { id: base + i, label, checked: false, ...(autoIndent && inGroup && !heading ? { indent: true } : {}) };
   });
 };
+
+// Items as Magic List Top-Up sees them: group headings are top-level items with sub-items, or numbered lines.
+export const topUpOutline = (items, labelFor = (i) => i.label) => {
+  const info = outlineInfo(items);
+  return items.map((i) => ({ label: labelFor(i), heading: !info[i.id].child && (info[i.id].subs > 0 || isHeadingLine(i.label)) }));
+};
+
+// Ticked suggestions go to the end of their heading's group (indented), or to the end of the list.
+export const insertSuggestions = (items, picks, base, labelFor = (i) => i.label) => {
+  let next = [...items];
+  picks.forEach((p, n) => {
+    const item = { id: base + n, label: p.item, checked: false };
+    const h = p.heading && next.findIndex((i, k) => !(k > 0 && i.indent) && labelFor(i).toLowerCase() === p.heading.toLowerCase());
+    if (!p.heading || h < 0) { next = [...next, item]; return; }
+    let end = h + 1;
+    while (end < next.length && next[end].indent) end += 1;
+    next = [...next.slice(0, end), { ...item, indent: true }, ...next.slice(end)];
+  });
+  return next;
+};

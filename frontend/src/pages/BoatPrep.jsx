@@ -41,13 +41,15 @@ import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { CreateListDialog } from "@/components/boat/CreateListDialog";
+import { RenameListDialog } from "@/components/boat/RenameListDialog";
+import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { flagOutline, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
+import { flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
@@ -56,6 +58,7 @@ const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${Stri
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
 const MEDIA_KINDS = ["youtube", "movies"];
+const NO_TOPUP = ["shipsLog", "myTodo"];
 const FREE_TODO_LIMIT = 5;
 
 const useWarn = () => {
@@ -104,6 +107,7 @@ export default function BoatPrep({ boatId, boats }) {
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
   const active = allLists.find((l) => l.id === activeId) || registry[0];
+  const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
   const [promptDelete, setPromptDelete] = useListSetting("mbp_prompt_delete", active.id, true);
@@ -286,15 +290,22 @@ export default function BoatPrep({ boatId, boats }) {
   const askRename = () => {
     if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be renamed"); return; }
     if (active.isInventory) { toast.warning("Boat Inventory cannot be renamed"); return; }
-    if (needPro("Rename lists") && guard()) setDialog({ type: "rename", list: active });
+    if (needPro("Rename lists") && guard()) setDialog({ type: "rename", list: { ...active, description: listDescription } });
   };
-  const renameList = (name) => {
+  const addTopUp = (picks) => {
+    if (!guard()) return;
+    setItems((cur) => insertSuggestions(cur, picks, Date.now(), labelFor));
+    setDialog(null);
+    toast.success(`${picks.length} ${picks.length === 1 ? "item" : "items"} added to ${active.name}`);
+  };
+  const renameList = (name, description = "") => {
     const { id, name: old } = dialog.list;
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
-    if (name !== old) {
-      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name } : l)) }));
-      toast.success(`${old} renamed to ${name}`);
+    const descChanged = description !== (dialog.list.description || "");
+    if (name !== old || descChanged) {
+      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, description: description.slice(0, 512) } : l)) }));
+      toast.success(name !== old ? `${old} renamed to ${name}` : `${name} description saved`);
     }
     setDialog(null);
     return true;
@@ -347,9 +358,9 @@ export default function BoatPrep({ boatId, boats }) {
       {!premium && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
-      {(active.description || templates?.[active.id]?.description) && (
+      {listDescription && (
         <p className="whitespace-pre-line rounded-md border-l-4 border-[var(--navy)] bg-white px-3 py-2 text-sm text-[var(--muted)]" data-testid="list-description">
-          {active.description || templates[active.id].description}
+          {listDescription}
         </p>
       )}
       {!crew && updatedIds.includes(active.id) && (
@@ -393,6 +404,7 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
+          {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
@@ -414,9 +426,8 @@ export default function BoatPrep({ boatId, boats }) {
           setDialog(null);
           toast.success(`${ids.length} ${ids.length === 1 ? "item" : "items"} added to ${name}`);
         }} />
-      <TextDialog open={dialog?.type === "rename"} title="Rename List" confirmLabel="Save" testId="rename-list"
-        initial={dialog?.type === "rename" ? dialog.list.name : ""}
-        onConfirm={dialog?.type === "rename" ? renameList : () => true} onClose={() => setDialog(null)} />
+      <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
+      <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
