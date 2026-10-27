@@ -117,6 +117,7 @@ export const topUpOutline = (items, labelFor = (i) => i.label) => {
 export const insertSuggestions = (items, picks, base, labelFor = (i) => i.label) => {
   let next = [...items];
   picks.forEach((p, n) => {
+    if (next.some((i) => labelFor(i).toLowerCase() === p.item.toLowerCase())) return;
     const item = { id: base + n, label: p.item, checked: false };
     const h = p.heading && next.findIndex((i, k) => !(k > 0 && i.indent) && labelFor(i).toLowerCase() === p.heading.toLowerCase());
     if (!p.heading || h < 0) { next = [...next, item]; return; }

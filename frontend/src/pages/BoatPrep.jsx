@@ -304,7 +304,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const descChanged = description !== (dialog.list.description || "");
     if (name !== old || descChanged) {
-      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, description: description.slice(0, 512) } : l)) }));
+      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, 512) } : {}) } : l)) }));
       toast.success(name !== old ? `${old} renamed to ${name}` : `${name} description saved`);
     }
     setDialog(null);

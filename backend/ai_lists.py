@@ -95,8 +95,9 @@ async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
 TOPUP_PROMPT = (
     'The list is called "{name}".{description}\nIts current items, with group headings marked "#", are:\n{outline}\n'
     "Suggest up to 25 useful items that are missing from this list, following the same purpose, style and level of detail. "
-    "Do not repeat or reword items already on the list. For each suggestion give the exact text of the existing heading it belongs under, "
-    'or an empty heading if none fits. Return exactly: {{"suggestions": [{{"item": "...", "heading": "..."}}]}}'
+    "Do not repeat or reword items already on the list. Most suggestions should belong under one of the existing headings: "
+    "for each suggestion copy the existing heading text exactly as written after the '#', or use an empty heading only if none fits. "
+    'Return exactly: {{"suggestions": [{{"item": "...", "heading": "..."}}]}}'
 )
 
 
@@ -111,7 +112,12 @@ class TopUpIn(BaseModel):
     items: List[TopUpLine] = Field(default_factory=list, max_length=400)
 
 
-def parse_suggestions(text: str, headings: set, existing: set) -> list:
+def _norm_heading(h: str) -> str:
+    h = re.sub(r"^\s*\d+[.)]?\s*", "", h.lower())
+    return re.sub(r"\s+", " ", h.split("(")[0]).strip(" .:-")
+
+
+def parse_suggestions(text: str, headings: dict, existing: set) -> list:
     match = re.search(r"\{.*\}", text, re.S)
     if not match:
         raise ValueError("no JSON")
@@ -123,7 +129,7 @@ def parse_suggestions(text: str, headings: set, existing: set) -> list:
             continue
         seen.add(item.lower())
         heading = str(s.get("heading", "")).strip()
-        out.append({"item": item, "heading": heading if heading.lower() in headings else ""})
+        out.append({"item": item, "heading": headings.get(heading.lower()) or headings.get(_norm_heading(heading)) or ""})
     return out[:25]
 
 
@@ -134,7 +140,8 @@ async def list_topup(body: TopUpIn, user: dict = Depends(require_premium)):
     outline = "\n".join(f"# {i.label.strip()}" if i.heading else f"- {i.label.strip()}" for i in body.items if i.label.strip()) or "(no items yet)"
     desc = f' The user described it as: """{body.description.strip().replace(chr(34) * 3, chr(39) * 3)}"""' if body.description.strip() else ""
     prompt = TOPUP_PROMPT.format(name=body.name.strip().replace('"', "'") or "My list", description=desc, outline=outline)
-    headings = {i.label.strip().lower() for i in body.items if i.heading}
+    labels = [i.label.strip() for i in body.items if i.heading]
+    headings = {**{_norm_heading(h): h for h in labels if _norm_heading(h)}, **{h.lower(): h for h in labels}}
     existing = {i.label.strip().lower() for i in body.items}
     suggestions, left = await _run(user, "topup", prompt, lambda t: parse_suggestions(t, headings, existing), {"name": body.name.strip()})
     return {"suggestions": suggestions, "drafts_left": left}

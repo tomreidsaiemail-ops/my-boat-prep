@@ -1,0 +1,47 @@
+{
+  "summary": "Tested Edit List Description (Rename List dialog) and Magic List Top-Up end to end. Backend: 13/14 pytest pass; the 1 failure was the real AI call where every suggestion came back with heading '' (no grouping). Running the same prompt directly through the LLM straight after gave correct headings, so heading matching is flaky. Frontend (390x844, Pro user): everything requested passed: rename + description, persistence, prefill, clear, duplicate error, blocked renames, topup grouping/insert order/shading, Cancel, hidden on shipsLog/myTodo/free, disabled offline, Create-list regression. Used 3 real AI calls in total (pytest 1, manual RCA script 1, UI 1). The Cancel test used a mocked route.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/list-topup", "issue": "Flaky heading matching: in 1 of 3 real calls (pytest), all 25 suggestions came back with heading '' even though the outline had '# 1. Deck (outside)' and '# 2. Below'. parse_suggestions only keeps a heading on an exact case-insensitive match (heading.lower() in headings), so if the model rewords a heading (e.g. drops the '1. ' prefix or the bracket text), the item falls to 'At the end of the list'. Make the match tolerant: strip a leading /^\\d+[.)]\\s*/, trim and collapse spaces on both sides (and maybe match on the text before the bracket), then return the exact original heading label."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TopUpDialog", "issue": "With nothing ticked the button text is 'Add  items' (double space, no number). Cosmetic only.", "selector": "[data-testid='topup-add-btn']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_checks": [
+    "Rename dialog: name prefilled, description empty, counter 18/512, maxlength 512; Save -> toast 'Rigging Checks description saved' and list-description banner shows it",
+    "Description persists after reload, and reopening Rename shows it prefilled",
+    "Duplicate name 'head (toilet)' -> rename-list-error 'head (toilet) already exists'; renaming to TEST_Rigging R and back worked, and the description stayed",
+    "Clearing the description removes the banner",
+    "Skipper's Tips and Boat Inventory: rename blocked with warning toast, no dialog",
+    "Create list from pasted outline with auto-indent -> 2 shaded groups",
+    "topup-btn hidden on shipsLog and myTodo, shown on checklist lists, hidden for free user, disabled with 'needs a signal' text when offline",
+    "Topup dialog: topup-loading shown, suggestions in 7.3s grouped 'Under: 1. Deck (outside)' / 'Under: 2. Below' / 'At the end of the list'; nothing pre-ticked; Add disabled until ticked; Tick all/Untick all toggles (Add 25 items); topup-left shown",
+    "Ticked 2+2+2 -> toast '6 items added'; items inserted as indented sub-items at the end of the right groups (shaded); no-heading items added at the end, not indented",
+    "Cancel (mocked route) closes without adding; reopening resets the ticks",
+    "Regression: 'Create items using Magic List Generation' with an empty description shows the note asking for a description and makes no /api/ai request"
+  ],
+  "test_report_links": ["/app/backend/tests/test_ai_list_topup.py", "/app/backend/tests/manual_topup_raw.py", "/app/test_reports/pytest/pytest_iter34.xml"],
+  "action_items": [
+    "Make heading matching in parse_suggestions tolerant (normalise numbering prefix, whitespace and case) and map back to the exact existing label, so suggestions don't randomly all land under 'At the end of the list'",
+    "Optional: topup-add-btn text when nothing is ticked ('Add items' rather than 'Add  items')"
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.renameList: if a list shows an admin template description (fallback) and the skipper renames only the name, the template description is copied into the registry entry (description: description.slice(0,512)). Later admin template description updates won't show for that list. Only write description when it actually changed.",
+    "Rename: clearing a description that came from the template fallback saves '' and the template description shows again, so the user can't hide it. Probably by design, but it may confuse users.",
+    "TopUpDialog fires the AI call on every open. Opening and cancelling straight away still uses one of the 20 daily generations; there is no abort on close.",
+    "insertSuggestions doesn't re-check for duplicates against current items. Fine now because the backend filters, but items edited while the dialog is open could duplicate.",
+    "_run quota check followed by insert isn't atomic (minor race on the 20/day limit)."
+  ],
+  "updated_files": ["/app/backend/tests/test_ai_list_topup.py", "/app/backend/tests/manual_topup_raw.py"],
+  "success_rate": {"backend": "93% (13/14; 1 failure from flaky AI heading grouping)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_TopUp Leave on the Pro boat TEST_Kia Ora, then emptied and deleted it. Rigging Checks was renamed to TEST_Rigging R and back, and its description was cleared, so it is back to its original state.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "On the Pro user's current boat (TEST_Kia Ora), Leaving Dock was deleted, so use riggingChecks as the built-in list. The offline toggle is the 'STATUS: ONLINE' header button. Switching back online didn't re-enable topup-btn within 800 ms in this run; that wasn't investigated (a longer wait may be needed). test_ai_list_topup.py makes 1 real AI call and its heading assertion can fail when the model rewords headings. Mock /api/ai/list-topup with page.route for UI checks that don't need real AI. The Pro user had about 11 daily generations left after this run."
+}

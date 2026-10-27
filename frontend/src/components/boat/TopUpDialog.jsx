@@ -28,9 +28,11 @@ export const TopUpDialog = ({ open, list, items, description, labelFor, onAdd, o
     if (!open) return;
     setState({ busy: true, error: "", suggestions: [], left: null });
     setPicked(new Set());
-    api.post("/ai/list-topup", { name: list.name, description: description || "", items: topUpOutline(items, labelFor).slice(0, 400).map((i) => ({ ...i, label: i.label.slice(0, 300) })) }, { timeout: 90000 })
+    const ctrl = new AbortController();
+    api.post("/ai/list-topup", { name: list.name, description: description || "", items: topUpOutline(items, labelFor).slice(0, 400).map((i) => ({ ...i, label: i.label.slice(0, 300) })) }, { timeout: 90000, signal: ctrl.signal })
       .then(({ data }) => setState({ busy: false, error: "", suggestions: data.suggestions, left: data.drafts_left }))
-      .catch((e) => setState({ busy: false, error: apiError(e, "Magic List Top-Up couldn't do that right now. Please try again."), suggestions: [], left: null }));
+      .catch((e) => !ctrl.signal.aborted && setState({ busy: false, error: apiError(e, "Magic List Top-Up couldn't do that right now. Please try again."), suggestions: [], left: null }));
+    return () => ctrl.abort();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tick = (n) => setPicked((p) => { const q = new Set(p); if (q.has(n)) q.delete(n); else q.add(n); return q; });
   const all = state.suggestions.length > 0 && picked.size === state.suggestions.length;
@@ -55,7 +57,7 @@ export const TopUpDialog = ({ open, list, items, description, labelFor, onAdd, o
         <DialogFooter className="flex-row justify-end gap-2">
           <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="topup-cancel-btn">Cancel</button>
           <button type="button" className="btn-solid px-5" disabled={!picked.size} data-testid="topup-add-btn"
-            onClick={() => onAdd(suggestions.filter((_, n) => picked.has(n)))}>Add {picked.size || ""} {picked.size === 1 ? "item" : "items"}</button>
+            onClick={() => onAdd(suggestions.filter((_, n) => picked.has(n)))}>{picked.size ? `Add ${picked.size} ${picked.size === 1 ? "item" : "items"}` : "Add items"}</button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
