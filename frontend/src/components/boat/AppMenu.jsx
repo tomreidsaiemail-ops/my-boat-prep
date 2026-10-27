@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, HelpCircle, Menu, MessageSquarePlus } from "lucide-react";
+import { FileText, HelpCircle, Menu, MessageSquarePlus, QrCode } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
+import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 
 export const AppMenu = ({ onOpenFaq }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
+  const [sharing, setSharing] = useState(false);
   return (
     <>
       <DropdownMenu>
@@ -19,10 +21,12 @@ export const AppMenu = ({ onOpenFaq }) => {
         <DropdownMenuContent align="end" className="w-56" data-testid="app-menu">
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setFeedback(true)} data-testid="app-menu-feedback-item"><MessageSquarePlus className="mr-2 h-4 w-4" />Submit feedback...</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSharing(true)} data-testid="app-menu-share-item"><QrCode className="mr-2 h-4 w-4" />Share the app</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => navigate("/terms")} data-testid="app-menu-terms-item"><FileText className="mr-2 h-4 w-4" />Terms of Service</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <FeedbackDialog open={feedback} onClose={() => setFeedback(false)} />
+      <ShareAppDialog open={sharing} onClose={() => setSharing(false)} />
     </>
   );
 };
