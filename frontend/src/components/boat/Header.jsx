@@ -29,7 +29,7 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
       <label className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-2" htmlFor="trip-date">
         <span className="field-label">Date</span>
         <input id="trip-date" type="date" value={tripDate} onChange={(e) => e.target.value && onDateChange(e.target.value)}
-          className="h-11 rounded-md bg-[var(--navy)] px-2.5 font-mono text-sm font-bold text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
+          className="h-11 rounded-md bg-[var(--navy)] px-1.5 font-mono text-xs font-bold sm:px-2.5 sm:text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
       </label>
       <div className="ml-auto flex min-w-0 flex-col items-end gap-1">
         <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
@@ -37,9 +37,9 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
           <span>{gps.text}</span>
         </div>
         {onMayday && (
-          <div className="flex gap-1.5" data-testid="distress-buttons">
-            <button type="button" onClick={onMayday} className="h-6 rounded-md bg-[var(--red)] px-2.5 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="mayday-btn">Mayday</button>
-            <button type="button" onClick={onPanPan} className="h-6 rounded-md bg-orange-500 px-2.5 text-[11px] font-extrabold uppercase tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="panpan-btn">Pan-Pan</button>
+          <div className="flex gap-1" data-testid="distress-buttons">
+            <button type="button" onClick={onMayday} className="h-6 whitespace-nowrap rounded-md bg-[var(--red)] px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="mayday-btn">Mayday</button>
+            <button type="button" onClick={onPanPan} className="h-6 whitespace-nowrap rounded-md bg-orange-500 px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="panpan-btn">Pan-Pan</button>
           </div>
         )}
       </div>

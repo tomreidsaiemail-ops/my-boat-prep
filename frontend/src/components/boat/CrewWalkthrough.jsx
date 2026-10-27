@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
@@ -23,7 +23,10 @@ const Contents = ({ area }) => {
 };
 
 export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea }) => {
-  const [n, setN] = useState(0);
+  const [pos, setN] = useState(0);
+  useEffect(() => { if (!steps.length) onClose(); }, [steps.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!steps.length) return null;
+  const n = Math.min(pos, steps.length - 1);
   const step = steps[n];
   const area = areas.find((a) => a.id === step.pin.area_id);
   return (
@@ -36,7 +39,7 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea }) => {
         <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <Contents area={area} />
-        {area && <button type="button" className="btn-ghost h-9 self-start px-3 text-xs" onClick={() => { onClose(); onOpenArea(area.id); }} data-testid="walkthrough-open-area-btn">Open in Boat Inventory</button>}
+        {area && <button type="button" className="btn-ghost h-9 w-fit justify-self-start px-3 text-xs" onClick={() => { onClose(); onOpenArea(area.id); }} data-testid="walkthrough-open-area-btn">Open in Boat Inventory</button>}
         <div className="flex items-center gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" disabled={n === 0} onClick={() => setN(n - 1)} data-testid="walkthrough-back-btn"><ChevronLeft className="h-4 w-4" /> Back</button>
           {n < steps.length - 1

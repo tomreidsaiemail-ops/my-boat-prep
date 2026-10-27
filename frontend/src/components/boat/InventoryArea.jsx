@@ -5,7 +5,7 @@ import { Check, ChevronDown, Link2, Loader2, MapPin, Move, Pencil, Plus, Sparkle
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
     <button type="button" role="checkbox" aria-checked={!!item.removed} aria-label={`${item.name}: ${item.removed ? "removed for now" : "in place"}`} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
-      className="flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left" data-testid={`inventory-item-toggle-${item.id}`}>
+      className={`flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left ${readOnly ? "pr-3" : ""}`} data-testid={`inventory-item-toggle-${item.id}`}>
       <span className={`tick-box ${item.removed ? "!border-[var(--red)] !bg-[var(--red)] text-white" : ""}`}>{item.removed && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
       <span className="item-text flex-1" data-testid={`inventory-item-name-${item.id}`}><Highlight text={item.name} query={query} /></span>
       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-sm font-bold text-[var(--navy)]" data-testid={`inventory-item-qty-${item.id}`}>&times;{item.qty}</span>

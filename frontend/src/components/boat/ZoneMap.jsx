@@ -79,7 +79,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   const [expanded, setExpanded] = useState(false);
   const [walking, setWalking] = useState(false);
   useEffect(() => {
-    const m = focusPin && (boat?.zone_maps || []).find((z) => z.id === focusPin.mapId);
+    const m = focusPin && (boat?.zone_maps || []).find((z) => z.id === focusPin.mapId && !failed[z.id]);
     if (!m) return;
     setExpanded(true);
     setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });

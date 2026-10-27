@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only test of three features: Mayday/Pan-Pan header buttons, 'Show on zone map', and Crew walkthrough. Tested at 390x844 (main) and 1920x800. Header: the buttons sit right under gps-position and are right-aligned. There is no horizontal overflow (scrollWidth equals clientWidth at both sizes). The app-menu and account-menu icons are still in the same row. With the admin account, tapping mayday-btn sets list-selector to mayDay and tapping panpan-btn sets it to panPan, and the page scrolls to the list. With the Pro account the buttons only show the toast \"The Mayday list isn't on this boat\", because the Pro boat's registry has no mayDay/panPan/leavingDock (a data problem, see context). Setup as Pro: added TEST_Galley Drawer and TEST_No Pin, uploaded locker1.jpg, and placed 3 pins (TEST_Port Locker, TEST_Galley Drawer, and a new TEST_Anchor Well, which became an area on save). Show on zone map: the button appears on areas with a pin (PL, GD, AW) and not on TEST_No Pin. It is also hidden while searching. Tapping it expands the Zone Map panel and opens zone-map-dialog with only that pin data-highlight=true (amber, pulsing) and the others dimmed. Reopening works, a different area highlights its own pin, and opening the plain image shows no highlight. Crew walkthrough: the button says '(3 stops)'. Stop 1 is TEST_Port Locker with items, a removed item on bg-red-100 marked '(removed for now)', and Back disabled. Stop 2 shows the empty message. Stop 3 is TEST_Anchor Well, empty, with a Done button. Back works, Done closes, reopening starts at stop 1, and 'Open in Boat Inventory' closes the dialog and expands and scrolls to the area. Ticking an item removed in the inventory shows it red in the walkthrough. Crew (beta added as crew on the Pro boat through the DB, then removed): it is read-only (no label buttons), and Show on zone map, highlight, the walkthrough and Open area all work. Cleanup done.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Header Pan-Pan button", "issue": "At 390px the 'PAN-PAN' label wraps at the hyphen onto 2 lines inside the h-6 button (scrollHeight 33 vs clientHeight 24). The second line spills out below the red/orange pill. Fix: add whitespace-nowrap (or a non-breaking hyphen) to both distress buttons.", "selector": "[data-testid='panpan-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header at 390px", "issues": ["'Position unavailable' wraps onto 2 lines next to the date input, which makes the header taller. Acceptable, but it looks crowded with the distress buttons below it."]},
+      {"screen": "Boat Inventory (crew, read-only)", "issues": ["The item qty pill (x1) touches the right card edge because readOnly rows have no action buttons and no right padding. Add pr-3 to the toggle button when readOnly."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Add whitespace-nowrap to mayday-btn/panpan-btn so 'PAN-PAN' stays on one line at 390px.",
+    "Optional: give read-only inventory rows right padding so the qty pill doesn't touch the card edge.",
+    "Data note: the test-user-pro 'main' boat registry has no mayDay/panPan/leavingDock, but deleted_lists is []. addMissingLists only re-adds head/engineService/electricalService/myTodo/riggingChecks. Decide whether mayDay/panPan should be restored when they're missing and not in deleted_lists, since the header buttons rely on them."
+  ],
+  "critical_code_review_comments": [
+    "CrewWalkthrough: step = steps[n] has no guard. If the pins shrink while the dialog is open (owner edits labels, a crew sync refreshes boat.zone_maps, or a map image fails and is filtered out by `failed`), steps[n] becomes undefined and step.pin throws. Clamp n (Math.min(n, steps.length-1)) and close when steps is empty.",
+    "ZoneMap focusPin effect uses boat.zone_maps and not `own`, so Show on zone map can open a map whose image already failed to load (an empty dialog). Minor.",
+    "InventoryList pinFor is rebuilt on every render. Fine for the size, could be a useMemo.",
+    "The 'Open in Boat Inventory' button has self-start, but DialogContent is a grid, so the button stretches full width. Cosmetic."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "96% (all requested flows pass; Pan-Pan label wraps at 390px)"},
+  "seed_data_creation": "Temporary only. TEST_Galley Drawer, TEST_No Pin and TEST_Anchor Well were created and then deleted. A zone map was uploaded and then removed. Beta was added to and removed from the Pro boat crew through mongosh. TEST_Port Locker was already there (2 items, Winch handle removed=true) and was kept, with the Knife toggle reverted. FIRST5000/FIRST200 were not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The Pro boat 'main' has no mayDay/panPan lists, so test the distress buttons with test_session_admin_1, which has them. Pro zone_maps is [] and areas is [TEST_Port Locker]. In the pin editor, wait for zone-pin-photo-img naturalWidth>0 before taking its bounding box. To test crew, add test-user-beta to user_boats.crew on the Pro boat, then pick 'TEST_Kia Ora' in boat-selector (shadcn Select, role=option). Scope pin selectors inside zone-map-dialog or walkthrough-dialog.",
+  "rca of the issue": "Pan-Pan wrap: the button has no whitespace-nowrap. In a narrow flex column the browser breaks 'Pan-Pan' at the hyphen, and the fixed h-6 height lets the second line overflow."
+}

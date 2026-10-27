@@ -78,7 +78,12 @@ export default function BoatPrep({ boatId, boats }) {
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const openDistress = (id) => {
-    if (!allLists.some((l) => l.id === id)) { toast.error(`The ${id === "mayDay" ? "Mayday" : "Pan-Pan"} list isn't on this boat`); return; }
+    const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
+    if (!allLists.some((l) => l.id === id)) {
+      if (crew) { toast.error(`The ${name} list isn't on this boat`); return; }
+      mutate((s) => resetLists(s, [id], templates));
+      toast.success(`${name} list added back to this boat`);
+    }
     setActiveId(id);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
