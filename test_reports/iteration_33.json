@@ -1,0 +1,27 @@
+{
+  "summary": "Batch Magic Scan (Boat Inventory) tested end-to-end at mobile 390x844 as the Pro user (session_token=test_session_pro_1) on own boat TEST_Kia Ora. Everything requested passed. Covered: the '++' button next to '+'; the form's validation (no name, no photo, duplicate name in the same batch, case-insensitive); photo preview; 'Confirm, and add another' resets the form; the real 3-area flow with sequential scans (progress went 'Scanning image 1 of 3 · 2 waiting' -> 2 -> 3 -> 'All scans finished · 0 of 3 reviewed', about 41s); tick gating and row validation (qty 0 and duplicate names rejected); 'Done' vs 'Confirm Batch' label; batch-confirm-btn disabled until all entries are ticked; Confirm Batch added 3 areas with 30 items, all onboard, including the edited row 'TEST Edited tool x7', and the toast showed '3 boat areas added with 30 items'. Also covered: data persisted after a reload; deleting a 'Waiting to scan' entry through the confirm prompt; the discard dialog (Keep going / Discard / Escape), where discarding added nothing; offline toast 'Batch Magic Scan needs a signal'; replace warning in the form and in the entry, where confirming replaced the existing area's 8 items with 1 and created no duplicate area; single Magic Scan regression (scan-review-dialog with 9 rows, replace warning, Save contents, toast); and scans_left reaching 49/48/47, which confirms the 50 daily limit. No horizontal overflow in the batch dialog or form (scrollWidth equals clientWidth), and the list scrolls (overflow-y auto, 2272 > 483). 4 real AI calls were used. The discard, delete and replace flows used a mocked /scan route via page.route, so they made no AI calls. All TEST_ areas were deleted afterwards, which was checked in the DB.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Batch confirm toast (replace case)", "issues": ["When a batch entry replaces an existing area, the toast still says '1 boat area added with N items'. 'updated' or 'replaced' would be more accurate (minor wording)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: say 'replaced/updated' in the batch toast when entries replace existing areas",
+    "Optional: when the batch is discarded or an entry is deleted mid-scan, the request still in flight still uses up a daily scan (no AbortController). Consider aborting it."
+  ],
+  "critical_code_review_comments": [
+    "useBatchScan: an in-flight scan is not aborted on discard, delete or unmount. The result is safely ignored, but the quota is still used.",
+    "BatchScanDialog.finish: if checkRows fails, the entry is unticked silently with no error message. This is practically unreachable because ticked rows can't be edited, so it is fine.",
+    "Inventory area delete uses the ConfirmDelete default testId 'media-delete-*'. Consider using 'inventory-area-delete-*' for clarity."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (scans_left check)", "frontend": "100%"},
+  "seed_data_creation": "None kept. TEST_Tool locker, TEST_Wall rack and TEST_Third were created and then deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro user's own boat is 'TEST_Kia Ora', and its Boat Inventory is empty. Use page.route('**/api/boats/*/scan') with fulfill to mock AI scans and avoid quota or latency. Inventory area delete confirm uses media-delete-dialog / media-delete-confirm-btn. The batch delete dialog is batch-area-delete-dialog and the discard dialog is batch-discard-dialog (cancel btn batch-discard-cancel-btn). AI calls used this iteration: 4."
+}

@@ -155,7 +155,10 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     });
     setBatchOpen(false);
     const count = list.reduce((n, a) => n + a.items.length, 0);
-    toast.success(`${list.length} boat ${list.length === 1 ? "area" : "areas"} added with ${count} ${count === 1 ? "item" : "items"}`);
+    const replaced = list.filter((a) => areas.some((x) => same(x.name, a.name))).length;
+    const added = list.length - replaced;
+    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
+    toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
   const renameArea = (name) => {
     const { area } = dialog;
