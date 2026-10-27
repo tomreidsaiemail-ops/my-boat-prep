@@ -70,6 +70,8 @@ class BoatDetails(BaseModel):
     log_email: str = ""
     shore_email: str = ""
     shore_enabled: bool = False
+    boat_type: str = Field(default="", max_length=60)
+    pob: int = Field(default=1, ge=1, le=999)
 
 
 class BoatStateIn(BaseModel):
@@ -260,17 +262,18 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     log = {
         "log_id": str(uuid.uuid4()), "owner_id": owner_id, "to": to, "created_at": now,
         "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
-        "local_date": payload.local_date.strip(),
+        "local_date": payload.local_date.strip(), "boat_type": b.boat_type.strip(), "pob": b.pob,
     }
     ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"]}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
+    numbered = {r.get("id") for r in state.registry if r.get("kind") in ("youtube", "movies", "tips")}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
     log["lists"] = [
         {"name": "Skipper's Tips", "items": render_items(tips, ctx), "numbered": True} if i == "skippersTips"
         else await media_list_for_pdf(i) if i in MEDIA_LISTS
         else await faq_list_for_pdf() if i == FAQ_ID
         else inventory_list_for_pdf(state.areas, state.registry, state.data) if i == INVENTORY_ID
-        else {"name": names[i], "items": render_items(state.data.get(i, []), ctx)}
+        else {"name": names[i], "items": render_items(state.data.get(i, []), ctx), "numbered": i in numbered}
         for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID, INVENTORY_ID) or i in MEDIA_LISTS
     ]
     if not log["lists"]:

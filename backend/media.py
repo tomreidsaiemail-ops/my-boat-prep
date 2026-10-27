@@ -11,7 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from db import db
-from auth import get_current_user, require_admin
+from auth import get_current_user, require_admin, require_premium
 
 router = APIRouter(prefix="/api")
 Kind = Literal["youtube", "movies"]
@@ -22,6 +22,16 @@ META_RES = [
     re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\'](?:og:image|twitter:image)', re.I),
 ]
 YT_ID = re.compile(r"^[\w-]{11}$")
+
+
+def normalize_url(v: str) -> str:
+    v = v.strip()
+    if not re.match(r"^https?://", v, re.I):
+        v = f"https://{v}"
+    p = urlparse(v)
+    if p.scheme not in ("http", "https") or not p.hostname or "." not in p.hostname:
+        raise ValueError("Please enter a valid web link")
+    return v
 
 
 class MediaIn(BaseModel):
@@ -40,13 +50,7 @@ class MediaIn(BaseModel):
     @field_validator("url")
     @classmethod
     def check_url(cls, v: str) -> str:
-        v = v.strip()
-        if not re.match(r"^https?://", v, re.I):
-            v = f"https://{v}"
-        p = urlparse(v)
-        if p.scheme not in ("http", "https") or not p.hostname or "." not in p.hostname:
-            raise ValueError("Please enter a valid web link")
-        return v
+        return normalize_url(v)
 
 
 class OrderIn(BaseModel):
@@ -121,6 +125,20 @@ def ensure_unique(items: List[dict], name: str, except_id: Optional[str] = None)
 @router.get("/media/{kind}")
 async def get_media(kind: Kind, _: dict = Depends(get_current_user)):
     return {"items": await load_media(kind)}
+
+
+class LinkIn(BaseModel):
+    url: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("url")
+    @classmethod
+    def check_url(cls, v: str) -> str:
+        return normalize_url(v)
+
+
+@router.post("/media/thumbnail")
+async def media_thumbnail(payload: LinkIn, _: dict = Depends(require_premium)):
+    return {"url": payload.url, "thumbnail": await find_thumbnail(payload.url)}
 
 
 @router.post("/admin/media/{kind}")

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const Toggle = ({ checked, onChange, label, testId }) => (
+export const SettingToggle = ({ checked, onChange, label, testId }) => (
   <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold text-[var(--navy)]" data-testid={testId}>
     <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} className="h-5 w-5" data-testid={`${testId}-checkbox`} />
     {label}
   </label>
 );
+const Toggle = SettingToggle;
 
 export const AddItemForm = ({ placeholder, onAdd, ordering, onOrderingChange, promptDelete, onPromptDeleteChange }) => {
   const [text, setText] = useState("");

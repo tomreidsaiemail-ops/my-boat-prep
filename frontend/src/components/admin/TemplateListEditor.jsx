@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { isHeadingLine, linesToItems } from "@/lib/outline";
+import { AiDraftButton, AutoIndentToggle, toLines } from "@/components/boat/ListDraftTools";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
 
 export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [name, setName] = useState(initial?.name || "");
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
+  const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const lines = [...new Map(text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => [l.toLowerCase(), l])).values()];
+  const lines = toLines(text);
+  const headings = lines.filter(isHeadingLine).length;
 
   const save = async (e) => {
     e.preventDefault();
@@ -16,7 +20,8 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
     if (!lines.length) { setError("Add at least one item"); return; }
     setBusy(true);
     setError("");
-    try { await onSave({ name: name.trim(), items: lines }); } catch (err) { setError(errText(err)); setBusy(false); }
+    const items = linesToItems(lines, autoIndent, 0).map((i) => ({ label: i.label, indent: !!i.indent }));
+    try { await onSave({ name: name.trim(), items }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
   return (
@@ -24,11 +29,13 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       <label className="flex flex-col gap-1 text-sm font-bold">List name
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="e.g. Prep your trip" className="field-input" data-testid="template-list-name-input" />
       </label>
+      <AiDraftButton name={name} hasText={!!lines.length} onDraft={setText} testId="template-list" />
       <label className="flex flex-col gap-1 text-sm font-bold">Items, one per line
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={"Check the marine forecast\nFuel and water topped up\nLodge trip report"}
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={"1. Before leaving (dock)\nCheck the marine forecast\nFuel and water topped up"}
           className="field-input min-h-[180px] py-2 font-normal leading-relaxed" data-testid="template-list-items-input" />
       </label>
-      <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}</p>
+      <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
+      <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} testId="template-list" />
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="template-list-error">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost px-5" onClick={onCancel} disabled={busy} data-testid="template-list-cancel-btn">Cancel</button>

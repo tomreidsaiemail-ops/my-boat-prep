@@ -36,28 +36,34 @@ RESERVED_NAMES = {n.lower() for n in TEMPLATE_LISTS.values()} | {
     "my to do list", "ship's log", "ship log", "boat inventory", "skipper's tips", "sailing youtube channels", "sailing movies", "faq"}
 
 
+class TemplateLine(BaseModel):
+    label: str = Field(max_length=1000)
+    indent: bool = False
+
+
 class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
-    items: List[str] = Field(max_length=300)
+    items: List[Union[str, TemplateLine]] = Field(max_length=300)
 
 
 def _custom_out(d: dict) -> dict:
     return {"id": d["list_id"], "name": d["name"], "items": d["items"], "created_at": d["created_at"], "updated_at": d["updated_at"]}
 
 
-def _items_from_labels(labels: List[str], old: Optional[list] = None) -> list:
+def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[list] = None) -> list:
     old_ids = {i["label"].lower(): i["id"] for i in old or []}
     nxt = max([i["id"] for i in old or [] if isinstance(i["id"], int)] + [0]) + 1
     out, seen = [], set()
     for raw in labels:
-        label = raw.strip()[:1000]
+        line = raw if isinstance(raw, TemplateLine) else TemplateLine(label=raw)
+        label = line.label.strip()[:1000]
         if not label or label.lower() in seen:
             continue
         seen.add(label.lower())
         iid = old_ids.get(label.lower())
         if iid is None:
             iid, nxt = nxt, nxt + 1
-        out.append({"id": iid, "label": label})
+        out.append({"id": iid, "label": label, **({"indent": True} if line.indent and out else {})})
     if not out:
         raise HTTPException(status_code=400, detail="Add at least one item before publishing")
     return out

@@ -6,6 +6,8 @@ const Meta = ({ boat, verboseDate }) => (
     <div>SKIPPER: <b data-testid="print-skipper">{boat.skipper}</b></div>
     <div>CALLSIGN: <b data-testid="print-callsign">{boat.callsign}</b></div>
     <div>DATE: <b data-testid="print-date">{verboseDate}</b></div>
+    <div>BOAT TYPE: <b data-testid="print-boat-type">{boat.boat_type || "-"}</b></div>
+    <div>POB: <b data-testid="print-pob">{boat.pob || 1}</b></div>
   </div>
 );
 
@@ -18,7 +20,7 @@ const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
     <Meta boat={boat} verboseDate={verboseDate} />
     {items.map((item, n) => (
       <div key={item.id} className="print-row" style={item.indent && n > 0 ? { marginLeft: "2rem" } : undefined} data-indented={item.indent && n > 0 ? "true" : "false"}>
-        {list.isShared ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
+        {list.isShared || list.kind ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
         <span className={item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}>
           {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{labelFor(item)}
         </span>

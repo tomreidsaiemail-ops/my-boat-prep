@@ -6,6 +6,7 @@ import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
 import { TipsList } from "@/components/boat/TipsList";
 import useMedia, { MEDIA_LISTS, mediaLabel } from "@/hooks/useMedia";
 import { MediaList } from "@/components/boat/MediaList";
+import { ownMediaStore, toOwnMedia } from "@/hooks/useOwnMedia";
 import useFaq, { FAQ_ID, FAQ_LIST, faqLabel } from "@/hooks/useFaq";
 import { FaqList } from "@/components/boat/FaqList";
 import { useAuth } from "@/context/AuthContext";
@@ -54,6 +55,7 @@ const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electric
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
+const MEDIA_KINDS = ["youtube", "movies"];
 const FREE_TODO_LIMIT = 5;
 
 const useWarn = () => {
@@ -258,17 +260,24 @@ export default function BoatPrep({ boatId, boats }) {
   const NO_CLONE = { myTodo: "My To Do List and Ship's Log cannot be cloned", shipsLog: "My To Do List and Ship's Log cannot be cloned",
     mayDay: "May Day and Pan Pan cannot be cloned", panPan: "May Day and Pan Pan cannot be cloned", boatInventory: "Boat Inventory cannot be cloned" };
   const askClone = () => {
-    if (active.isShared) { toast.warning("Skipper's Tips, Sailing YouTube Channels, Sailing Movies and FAQ are admin lists and cannot be cloned"); return; }
+    if (active.id === FAQ_ID) { toast.warning("FAQ is an admin list and cannot be cloned"); return; }
     if (NO_CLONE[active.id]) { toast.warning(NO_CLONE[active.id]); return; }
     if (needPro("Clone lists") && guard()) setDialog({ type: "clone", list: active });
+  };
+  const cloneSource = (source) => {
+    if (source.isMedia) return { kind: source.kind, items: media[source.id].items.map(toOwnMedia) };
+    if (source.id === TIPS_ID) return { kind: "tips", items: tips.map((t) => ({ id: t.id, label: t.label, checked: false })) };
+    const own = state.data[source.id] || [];
+    return { kind: source.kind, items: own.map((i) => (source.kind && source.kind !== "tips" ? { ...i, checked: false }
+      : { id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}) })) };
   };
   const cloneList = (name) => {
     const source = dialog.list;
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const id = `custom_${Date.now()}`;
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }],
-      data: { ...s.data, [id]: (s.data[source.id] || []).map((i) => ({ id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}) })) } }));
+    const { kind, items: copied } = cloneSource(source);
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(kind ? { kind } : {}) }], data: { ...s.data, [id]: copied } }));
     setActiveId(id);
     setDialog(null);
     toast.success(`${name} created from ${source.name}`);
@@ -358,6 +367,8 @@ export default function BoatPrep({ boatId, boats }) {
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
+        : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering}
+            store={ownMediaStore(items, online, (fn) => guard() && setItems(fn))} />
         : active.isInventory ? (premium
           ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
@@ -376,7 +387,7 @@ export default function BoatPrep({ boatId, boats }) {
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
-            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || `My own ${active.name} task name...`} />}
+            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (

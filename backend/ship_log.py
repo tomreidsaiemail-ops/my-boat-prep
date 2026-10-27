@@ -59,7 +59,8 @@ def build_pdf(log: dict) -> bytes:
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
                             title=log_title(log), author="My Boat Prep")
     meta = Table([[Paragraph(f"<b>VESSEL:</b> {escape(log['vessel'])}", META), Paragraph(f"<b>SKIPPER:</b> {escape(log['skipper'])}", META)],
-                  [Paragraph(f"<b>CALLSIGN:</b> {escape(log['callsign'])}", META), Paragraph(f"<b>DATE:</b> {escape(log['local_date'])}", META)]],
+                  [Paragraph(f"<b>CALLSIGN:</b> {escape(log['callsign'])}", META), Paragraph(f"<b>DATE:</b> {escape(log['local_date'])}", META)],
+                  [Paragraph(f"<b>BOAT TYPE:</b> {escape(log.get('boat_type') or '-')}", META), Paragraph(f"<b>POB:</b> {log.get('pob') or 1}", META)]],
                  colWidths=[87 * mm, 87 * mm])
     meta.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1.2, colors.black), ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
     story = []
@@ -100,7 +101,7 @@ def _wrap(log: dict, heading: str, rows: str, pdf_url: str, from_name: str) -> s
     return (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:24px;font-family:Arial,sans-serif;color:#0f172a">'
         f'<h1 style="margin:0 0 4px;font-size:22px">{escape(heading)}</h1>'
-        f'<p style="margin:0 0 16px;font-size:14px;color:#475569">{escape(log["vessel"])} &middot; Callsign {escape(log["callsign"])} &middot; Skipper {escape(log["skipper"])} &middot; {escape(log["local_date"])}</p>'
+        f'<p style="margin:0 0 16px;font-size:14px;color:#475569">{escape(log["vessel"])} &middot; Callsign {escape(log["callsign"])} &middot; Skipper {escape(log["skipper"])}{" &middot; " + escape(log["boat_type"]) if log.get("boat_type") else ""} &middot; POB {log.get("pob") or 1} &middot; {escape(log["local_date"])}</p>'
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>'
         f'<p style="margin:24px 0"><a href="{escape(pdf_url)}" style="background:#0f172a;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Download PDF</a></p>'
         '<p style="font-size:13px;color:#475569">Print it and add it to the binder on board.</p>'
