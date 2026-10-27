@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { isHeadingLine } from "@/lib/outline";
-import { AiDraftButton, AutoIndentToggle, toLines } from "@/components/boat/ListDraftTools";
+import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const HELP_SEEN = "mbp_newlist_help_seen";
@@ -23,6 +23,7 @@ const ItemsHelp = ({ open, onToggle }) => (
 
 export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [askEmpty, setAskEmpty] = useState(false);
@@ -33,13 +34,13 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
 
   useEffect(() => {
     if (!open) return;
-    setName(""); setText(""); setError(""); setAskEmpty(false); setAutoIndent(true);
+    setName(""); setDescription(""); setText(""); setError(""); setAskEmpty(false); setAutoIndent(true);
     setHelp(localStorage.getItem(HELP_SEEN) !== "1");
     localStorage.setItem(HELP_SEEN, "1");
   }, [open]);
 
   const create = () => {
-    const res = onConfirm(name.trim(), lines, autoIndent);
+    const res = onConfirm(name.trim(), lines, autoIndent, description.trim());
     if (typeof res === "string") { setError(res); setAskEmpty(false); }
   };
   const submit = (e) => {
@@ -58,8 +59,9 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
         <form onSubmit={submit} className="flex flex-col gap-3">
           <input autoFocus aria-label="List name" value={name} maxLength={60} placeholder="Enter new list name (e.g., Engine)" onChange={(e) => setName(e.target.value)}
             className="field-input" data-testid="create-list-input" />
+          <ListDescriptionField value={description} onChange={setDescription} />
           <ItemsHelp open={help} onToggle={() => setHelp((h) => !h)} />
-          <AiDraftButton name={name} online={online} hasText={!!lines.length} onDraft={(t) => { setText(t); setAskEmpty(false); }} />
+          <AiDraftButton name={name} description={description} online={online} hasText={!!lines.length} onDraft={(t) => { setText(t); setAskEmpty(false); }} />
           <label className="flex flex-col gap-1 text-sm font-bold">Items, one per line
             <textarea value={text} onChange={(e) => { setText(e.target.value); setAskEmpty(false); }} rows={7} placeholder={"1. Before leaving (dock)\nCheck the marine forecast\nFuel and water topped up"}
               className="field-input min-h-[150px] py-2 font-normal leading-relaxed" data-testid="create-list-items-input" />

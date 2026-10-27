@@ -13,23 +13,28 @@ from auth import require_premium
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
 DAILY_DRAFTS = 20
-SYSTEM = "You are an experienced yacht skipper who writes practical, safety-minded checklists for small boats. Reply with JSON only, no prose and no code fences."
+SYSTEM = ("You are Magic List Generation in the My Boat Prep app. You turn the user's description into a tidy, well-organised list. "
+          "Follow the description exactly, whatever the topic; it is boating related most of the time but not always. Reply with JSON only, no prose and no code fences.")
 PROMPT = (
-    'Write a checklist for a boat list called "{name}". Group it into 3 to 8 categories in a sensible order. '
-    "Give each category a short name with a brief explanation in brackets that helps new crew, e.g. 'Deck (before leaving the dock)'. "
-    "Give each category 3 to 10 short, actionable items a sailor would tick off, e.g. 'Check engine oil level'. "
+    'The list is called "{name}". The user described what it should contain:\n"""{description}"""\n'
+    "Follow that description exactly. If it asks for categories or groups, use them as headings with the items under each; "
+    "otherwise group the items into sensible categories in a sensible order. "
+    "For practical checklists, give each heading a brief explanation in brackets that helps new crew, e.g. 'Deck (before leaving the dock)', and keep items short and actionable. "
+    "Use at most 280 items in total. "
     'Return exactly: {{"groups": [{{"heading": "...", "items": ["..."]}}]}}'
 )
+MAX_LINES = 300
 
 
 class DraftIn(BaseModel):
-    name: str = Field(min_length=1, max_length=60)
+    name: str = Field(default="", max_length=60)
+    description: str = Field(default="", max_length=512, validate_default=True)
 
-    @field_validator("name")
+    @field_validator("description")
     @classmethod
-    def strip_name(cls, v: str) -> str:
+    def need_description(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("Please enter a list name")
+            raise ValueError("Please describe the list in List Description first")
         return v.strip()
 
 
@@ -49,30 +54,33 @@ def to_lines(text: str) -> list:
         for i in items:
             seen.add(i.lower())
             lines.append(i)
+        if len(lines) >= MAX_LINES:
+            break
     if not lines:
         raise ValueError("empty draft")
-    return lines
+    return lines[:MAX_LINES]
 
 
 @router.post("/ai/list-draft")
 async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     if await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_DRAFTS:
-        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} AI list drafts. Try again tomorrow.")
+        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} Magic List Generations. Try again tomorrow.")
     draft_id = str(uuid.uuid4())
-    await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "name": body.name.strip(), "created_at": datetime.now(timezone.utc).isoformat()})
+    await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "name": body.name.strip(), "description": body.description, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"draft-{draft_id}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
     text = ""
+    prompt = PROMPT.format(name=body.name.strip().replace('"', "'") or "New list", description=body.description.replace('"""', "'''"))
     try:
-        async for ev in chat.stream_message(UserMessage(text=PROMPT.format(name=body.name.strip().replace('"', "'")))):
+        async for ev in chat.stream_message(UserMessage(text=prompt)):
             if isinstance(ev, TextDelta):
                 text += ev.content
             elif isinstance(ev, StreamDone):
                 break
         lines = to_lines(text)
     except Exception as e:
-        log.error(f"AI list draft failed: {e}; reply={text[:300]!r}")
+        log.error(f"Magic List Generation failed: {e}; reply={text[:300]!r}")
         await db.ai_drafts.delete_one({"draft_id": draft_id})
-        raise HTTPException(status_code=503, detail="The AI couldn't write that list right now. Please try again.")
+        raise HTTPException(status_code=503, detail="Magic List Generation couldn't create that list right now. Please try again.")
     left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))
     return {"lines": lines, "drafts_left": left}

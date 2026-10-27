@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { isHeadingLine, linesToItems } from "@/lib/outline";
-import { AiDraftButton, AutoIndentToggle, toLines } from "@/components/boat/ListDraftTools";
+import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
 
 export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [name, setName] = useState(initial?.name || "");
+  const [description, setDescription] = useState(initial?.description || "");
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
   const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent));
   const [error, setError] = useState("");
@@ -21,7 +22,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
     setBusy(true);
     setError("");
     const items = linesToItems(lines, autoIndent, 0).map((i) => ({ label: i.label, indent: !!i.indent }));
-    try { await onSave({ name: name.trim(), items }); } catch (err) { setError(errText(err)); setBusy(false); }
+    try { await onSave({ name: name.trim(), description: description.trim(), items }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
   return (
@@ -29,7 +30,8 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       <label className="flex flex-col gap-1 text-sm font-bold">List name
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="e.g. Prep your trip" className="field-input" data-testid="template-list-name-input" />
       </label>
-      <AiDraftButton name={name} hasText={!!lines.length} onDraft={setText} testId="template-list" />
+      <ListDescriptionField value={description} onChange={setDescription} testId="template-list" />
+      <AiDraftButton name={name} description={description} hasText={!!lines.length} onDraft={setText} testId="template-list" />
       <label className="flex flex-col gap-1 text-sm font-bold">Items, one per line
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={"1. Before leaving (dock)\nCheck the marine forecast\nFuel and water topped up"}
           className="field-input min-h-[180px] py-2 font-normal leading-relaxed" data-testid="template-list-items-input" />

@@ -245,13 +245,13 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     return true;
   };
-  const createList = (name, lines = [], autoIndent = false) => {
+  const createList = (name, lines = [], autoIndent = false, description = "") => {
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const now = Date.now();
     const id = `custom_${now}`;
     const newItems = linesToItems(lines, autoIndent, now);
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false }], data: { ...s.data, [id]: newItems } }));
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(description ? { description: description.slice(0, 512) } : {}) }], data: { ...s.data, [id]: newItems } }));
     if (newItems.length) toast.success(`${name} created with ${newItems.length} ${newItems.length === 1 ? "item" : "items"}`);
     setActiveId(id);
     setDialog(null);
@@ -347,6 +347,11 @@ export default function BoatPrep({ boatId, boats }) {
       {!premium && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
+      {(active.description || templates?.[active.id]?.description) && (
+        <p className="whitespace-pre-line rounded-md border-l-4 border-[var(--navy)] bg-white px-3 py-2 text-sm text-[var(--muted)]" data-testid="list-description">
+          {active.description || templates[active.id].description}
+        </p>
+      )}
       {!crew && updatedIds.includes(active.id) && (
         <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onGetLatest={getLatest}
           onKeepMine={() => mutate((s) => keepMine(s, active.id, templates))} />

@@ -43,11 +43,12 @@ class TemplateLine(BaseModel):
 
 class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
+    description: str = Field(default="", max_length=512)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
 
 
 def _custom_out(d: dict) -> dict:
-    return {"id": d["list_id"], "name": d["name"], "items": d["items"], "created_at": d["created_at"], "updated_at": d["updated_at"]}
+    return {"id": d["list_id"], "name": d["name"], "description": d.get("description", ""), "items": d["items"], "created_at": d["created_at"], "updated_at": d["updated_at"]}
 
 
 def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[list] = None) -> list:
@@ -83,7 +84,7 @@ async def _check_name(name: str, exclude: Optional[str] = None) -> str:
 async def get_templates(_: dict = Depends(get_current_user)):
     docs = await db.list_templates.find({}, {"_id": 0, "updated_by": 0}).to_list(200)
     return {"templates": {d["list_id"]: {"items": d["items"], "updated_at": d["updated_at"],
-                                         **({"custom": True, "name": d["name"], "created_at": d["created_at"]} if d.get("custom") else {})} for d in docs}}
+                                         **({"custom": True, "name": d["name"], "description": d.get("description", ""), "created_at": d["created_at"]} if d.get("custom") else {})} for d in docs}}
 
 
 @router.get("/admin/template-lists")
@@ -96,7 +97,7 @@ async def list_template_lists(_: dict = Depends(require_admin)):
 async def create_template_list(payload: TemplateListIn, admin: dict = Depends(require_admin)):
     name = await _check_name(payload.name)
     now = datetime.now(timezone.utc).isoformat()
-    doc = {"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "items": _items_from_labels(payload.items),
+    doc = {"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "description": payload.description.strip(), "items": _items_from_labels(payload.items),
            "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
     await db.list_templates.insert_one({**doc})
     return _custom_out(doc)
@@ -110,7 +111,7 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     name = await _check_name(payload.name, exclude=list_id)
     items = _items_from_labels(payload.items, doc["items"])
     changed = items != doc["items"]
-    upd = {"name": name, "items": items, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
+    upd = {"name": name, "description": payload.description.strip(), "items": items, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
     return _custom_out({**doc, **upd})
 

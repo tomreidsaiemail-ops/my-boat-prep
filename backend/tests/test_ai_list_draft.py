@@ -17,29 +17,29 @@ def sess(token):
 
 class TestAiListDraft:
     def test_unauthenticated_401(self):
-        r = requests.post(URL, json={"name": "Anchoring"})
+        r = requests.post(URL, json={"name": "Anchoring", "description": "Anchoring checks"})
         assert r.status_code == 401
 
     def test_free_user_403(self):
-        r = sess("test_session_free_1").post(URL, json={"name": "Anchoring"})
+        r = sess("test_session_free_1").post(URL, json={"name": "Anchoring", "description": "Anchoring checks"})
         assert r.status_code == 403
         assert "upgrade to pro" in r.text.lower()
 
-    def test_empty_name_422(self):
-        r = sess("test_session_pro_1").post(URL, json={"name": ""})
+    def test_empty_description_422(self):
+        r = sess("test_session_pro_1").post(URL, json={"name": "X", "description": "  "})
         assert r.status_code == 422
 
-    def test_missing_name_422(self):
+    def test_missing_description_422(self):
         r = sess("test_session_pro_1").post(URL, json={})
         assert r.status_code == 422
 
     def test_too_long_name_422(self):
-        r = sess("test_session_pro_1").post(URL, json={"name": "x" * 61})
+        r = sess("test_session_pro_1").post(URL, json={"name": "x" * 61, "description": "ok"})
         assert r.status_code == 422
 
     def test_pro_draft_success(self):
         t = time.time()
-        r = sess("test_session_pro_1").post(URL, json={"name": "Mooring up"}, timeout=120)
+        r = sess("test_session_pro_1").post(URL, json={"name": "Mooring up", "description": "Mooring up checks"}, timeout=120)
         print(f"took {time.time() - t:.1f}s")
         assert r.status_code == 200, r.text
         data = r.json()
@@ -52,3 +52,8 @@ class TestAiListDraft:
         assert 3 <= len(nums) <= 8
         assert len(lines) > len(nums)
         print("\n".join(lines))
+
+
+def test_too_long_description_422():
+    r = sess("test_session_pro_1").post(URL, json={"name": "X", "description": "x" * 513})
+    assert r.status_code == 422
