@@ -23,7 +23,7 @@ from ship_log import build_pdf, build_email_html, render_items, log_title  # noq
 from db import db, client  # noqa: E402
 from auth import router as auth_router, get_current_user, require_premium, to_user_out  # noqa: E402
 from payments import router as payments_router  # noqa: E402
-from tips import router as tips_router, load_tips  # noqa: E402
+from tips import router as tips_router, load_tips, TIPS_KEY  # noqa: E402
 
 from urls import public_base, request_host  # noqa: E402
 from password_auth import router as password_router  # noqa: E402
@@ -398,16 +398,27 @@ UPGRADES = {
 }
 MMSI_ITEM = {"id": 400, "label": "or MMSI Number (Optional, skipper to delete or add one)", "checked": False}
 ALL_STATIONS = {"id": 401, "label": "ALL STATIONS, ALL STATIONS, ALL STATIONS", "checked": False}
-PANPAN_TX = "transmit: pan pan pan pan pan pan"
+PANPAN_TX = ("transmit: pan pan pan pan pan pan", "transmit: pan-pan pan-pan pan-pan")
+RADIO_NAMES = {"mayDay": "Mayday", "panPan": "Pan-Pan"}
+RADIO_TEXT = [(re.compile(r"\b(May|MAY|may) (Day|DAY|day)\b"), lambda m: m.group(1) + m.group(2).lower() if m.group(1) != "MAY" else "MAYDAY"),
+              (re.compile(r"(?<![-\w])(Pan|PAN|pan) (Pan|PAN|pan)(?![-\w])"), lambda m: f"{m.group(1)}-{m.group(2)}")]
+
+
+def radio_text(s: str) -> str:
+    for rx, fn in RADIO_TEXT:
+        s = rx.sub(fn, s)
+    return s
 
 
 def upgrade_items(items: list) -> Optional[list]:
     out, changed = [], False
     has_all = any(x.get("id") == ALL_STATIONS["id"] or (x.get("label") or "").lower().startswith("all stations") for x in items)
-    for i in items:
-        if (i.get("label") or "").strip().lower() == PANPAN_TX and not has_all:
+    for raw in items:
+        i = raw if raw.get("dynamic") or not raw.get("label") else {**raw, "label": radio_text(raw["label"])}
+        changed = changed or i is not raw and i["label"] != raw["label"]
+        if (i.get("label") or "").strip().lower() in PANPAN_TX and not has_all:
             out += [i, dict(ALL_STATIONS)]
-            changed = True
+            has_all = changed = True
             continue
         up = None if i.get("dynamic") else UPGRADES.get((i.get("label") or "").strip().lower())
         if not up:
@@ -420,21 +431,32 @@ def upgrade_items(items: list) -> Optional[list]:
     return out if changed else None
 
 
+def rename_radio_lists(registry: list) -> Optional[list]:
+    if not any(RADIO_NAMES.get(r.get("id")) and not r.get("radio_v2") for r in registry):
+        return None
+    return [{**r, "name": RADIO_NAMES[r["id"]], "radio_v2": True} if RADIO_NAMES.get(r.get("id")) and not r.get("radio_v2") else r for r in registry]
+
+
 async def _upgrade_pob_lines():
-    # Idempotent: old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
-    labels = [re.compile(f"^{re.escape(k)}$", re.I) for k in UPGRADES]
-    tx = re.compile(f"^{re.escape(PANPAN_TX)}$", re.I)
-    def needs(path: str) -> dict:
-        return {"$or": [{f"{path}.label": {"$in": labels}}, {f"{path}.label": tx, f"{path}.id": {"$ne": ALL_STATIONS["id"]}}]}
-    for k in ("mayDay", "panPan"):
-        async for d in db.user_boats.find(needs(f"data.{k}"), {"_id": 1, f"data.{k}": 1}):
-            new = upgrade_items(d["data"][k])
-            if new is not None:
-                await db.user_boats.update_one({"_id": d["_id"]}, {"$set": {f"data.{k}": new}})
-    async for d in db.list_templates.find({"list_id": {"$in": ["mayDay", "panPan"]}, **needs("items")}, {"_id": 1, "items": 1}):
-        new = upgrade_items(d["items"])
-        if new is not None:
+    # Runs once: Mayday / Pan-Pan renames and the lines filled in from Boat Details and GPS.
+    if await db.migrations.find_one({"_id": "radio_calls_v2"}):
+        return
+    async for d in db.user_boats.find({"registry.id": {"$in": list(RADIO_NAMES)}}, {"_id": 1, "registry": 1, "data.mayDay": 1, "data.panPan": 1}):
+        upd = {f"data.{k}": new for k in RADIO_NAMES if (new := upgrade_items((d.get("data") or {}).get(k) or [])) is not None}
+        if (reg := rename_radio_lists(d.get("registry") or [])) is not None:
+            upd["registry"] = reg
+        if upd:
+            await db.user_boats.update_one({"_id": d["_id"]}, {"$set": upd})
+    async for d in db.list_templates.find({"list_id": {"$in": list(RADIO_NAMES)}}, {"_id": 1, "items": 1}):
+        if (new := upgrade_items(d.get("items") or [])) is not None:
             await db.list_templates.update_one({"_id": d["_id"]}, {"$set": {"items": new}})
+    tips = await db.tips.find_one({"key": TIPS_KEY}, {"_id": 0, "items": 1})
+    if tips:
+        await db.tips.update_one({"key": TIPS_KEY}, {"$set": {"items": [{**t, "label": radio_text(t.get("label", ""))} for t in tips.get("items", [])]}})
+    faq = await db.faq.find_one({"key": "master"}, {"_id": 0, "items": 1})
+    if faq:
+        await db.faq.update_one({"key": "master"}, {"$set": {"items": [{**f, "question": radio_text(f.get("question", "")), "answer": radio_text(f.get("answer", ""))} for f in faq.get("items", [])]}})
+    await db.migrations.insert_one({"_id": "radio_calls_v2", "at": datetime.now(timezone.utc).isoformat()})
 
 
 @app.on_event("shutdown")

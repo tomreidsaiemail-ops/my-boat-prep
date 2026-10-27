@@ -29,12 +29,12 @@ const INTROS = {
   mayDay: {
     cls: "border-[var(--red)] bg-[var(--red)] text-white", Icon: Siren, testId: "mayday-banner",
     title: "MAYDAY · VHF Channel 16", text: "Grave and imminent danger to vessel or life. Read each line aloud, tick as you go.",
-    confirm: "I, the Skipper, have checked the May Day list below and confirm it is a valid May Day call for the waters I am in.",
+    confirm: "I, the Skipper, have checked the Mayday list below and confirm it is a valid Mayday call for the waters I am in.",
   },
   panPan: {
     cls: "border-[var(--amber)] bg-[var(--amber)] text-white", Icon: Radio, testId: "panpan-banner",
-    title: "PAN PAN · VHF Channel 16", text: "Urgent situation, no immediate danger to life. Read each line aloud, tick as you go.",
-    confirm: "I, the Skipper, have checked the Pan Pan list below and confirm it is a valid Pan Pan call for the waters I am in.",
+    title: "PAN-PAN · VHF Channel 16", text: "Urgent situation, no immediate danger to life. Read each line aloud, tick as you go.",
+    confirm: "I, the Skipper, have checked the Pan-Pan list below and confirm it is a valid Pan-Pan call for the waters I am in.",
   },
 };
 

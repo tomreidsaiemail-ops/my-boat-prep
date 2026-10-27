@@ -19,9 +19,9 @@ export const TERMS_SECTIONS = [
     ],
   },
   {
-    id: "as-is", title: "3. Mayday and Pan Pan scripts are a reference tool only", important: true,
+    id: "as-is", title: "3. Mayday and Pan-Pan scripts are a reference tool only", important: true,
     body: [
-      "The Mayday and Pan Pan scripts, checklists, Skipper's Tips, FAQ and all other content in the App are general reference material only. They are provided \"as is\" and \"as available\".",
+      "The Mayday and Pan-Pan scripts, checklists, Skipper's Tips, FAQ and all other content in the App are general reference material only. They are provided \"as is\" and \"as available\".",
       "Radio procedures, legal requirements and best practice differ between countries, jurisdictions, waters and vessel types, and can change. We make no warranty or representation that any text in the App is accurate, complete, up to date or suitable for your situation, jurisdiction, waters or vessel.",
       "Information filled in automatically (such as vessel name, callsign, date and GPS position) depends on what you enter and on your device. GPS positions may be inaccurate, out of date or unavailable.",
     ],
@@ -46,7 +46,7 @@ export const TERMS_SECTIONS = [
     id: "responsibility", title: "6. The Skipper's responsibility", important: true,
     body: [
       "The skipper or captain of the vessel is solely responsible for the safety of the vessel and everyone on board, for safe navigation, and for calling for help in the right way when needed.",
-      "Before relying on any checklist or script, the skipper must check that it is correct and complete for their vessel, crew, waters and local rules, and must edit or add to it as needed. Ticking the Skipper's check box on the May Day and Pan Pan lists is your confirmation that you have done this.",
+      "Before relying on any checklist or script, the skipper must check that it is correct and complete for their vessel, crew, waters and local rules, and must edit or add to it as needed. Ticking the Skipper's check box on the Mayday and Pan-Pan lists is your confirmation that you have done this.",
       "You use the App at your own risk and must always use your own judgement and seamanship.",
     ],
   },

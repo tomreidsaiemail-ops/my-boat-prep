@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api")
 TEMPLATE_LISTS = {
     "leavingDock": "Leaving Dock", "returningDock": "Returning to Dock", "arrivingDest": "Arriving at Destination",
     "safety": "Safety", "riggingChecks": "Rigging Checks", "routeHazards": "Route Hazards", "crewPrep": "Crew Prep", "provisions": "Provisions",
-    "head": "Head (Toilet)", "engineService": "Engine Service", "electricalService": "Electrical Service", "grabBag": "Grab Bag", "mayDay": "May Day", "panPan": "Pan Pan",
+    "head": "Head (Toilet)", "engineService": "Engine Service", "electricalService": "Electrical Service", "grabBag": "Grab Bag", "mayDay": "Mayday", "panPan": "Pan-Pan",
 }
 REQUIRED_DYNAMIC = {
     "mayDay": {"maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps"},

@@ -31,7 +31,7 @@ def mk(name, items, ids):
     return r.json()
 
 
-@pytest.mark.parametrize("name", ["My To Do List", "boat inventory", "FAQ", "  Leaving Dock  ", "May Day", "Ship's Log", "Skipper's Tips"])
+@pytest.mark.parametrize("name", ["My To Do List", "boat inventory", "FAQ", "  Leaving Dock  ", "Mayday", "Ship's Log", "Skipper's Tips"])
 def test_reserved_names_rejected(name):
     r = s(ADMIN).post(f"{BASE_URL}/api/admin/template-lists", json={"name": name, "items": ["x"]})
     assert r.status_code == 400 and "already exists" in r.json()["detail"]

@@ -258,7 +258,7 @@ export default function BoatPrep({ boatId, boats }) {
     return true;
   };
   const NO_CLONE = { myTodo: "My To Do List and Ship's Log cannot be cloned", shipsLog: "My To Do List and Ship's Log cannot be cloned",
-    mayDay: "May Day and Pan Pan cannot be cloned", panPan: "May Day and Pan Pan cannot be cloned", boatInventory: "Boat Inventory cannot be cloned" };
+    mayDay: "Mayday and Pan-Pan cannot be cloned", panPan: "Mayday and Pan-Pan cannot be cloned", boatInventory: "Boat Inventory cannot be cloned" };
   const askClone = () => {
     if (active.id === FAQ_ID) { toast.warning("FAQ is an admin list and cannot be cloned"); return; }
     if (NO_CLONE[active.id]) { toast.warning(NO_CLONE[active.id]); return; }

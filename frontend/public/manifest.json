@@ -1,7 +1,7 @@
 {
   "short_name": "MyBoatPrep",
   "name": "My Boat Prep Checklist System",
-  "description": "Marine checklists, ship's log and Mayday / Pan Pan scripts that work offline at sea.",
+  "description": "Marine checklists, ship's log and Mayday / Pan-Pan scripts that work offline at sea.",
   "icons": [
     { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
     { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }

@@ -3,8 +3,13 @@ const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat i
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
 const MMSI_ITEM = { id: 400, label: "or MMSI Number (Optional, skipper to delete or add one)", checked: false };
 const ALL_STATIONS = { id: 401, label: "ALL STATIONS, ALL STATIONS, ALL STATIONS", checked: false };
-const PANPAN_TX = "transmit: pan pan pan pan pan pan";
-// Old fixed May Day / Pan Pan lines become lines filled in from Boat Details and GPS.
+const PANPAN_TX = ["transmit: pan pan pan pan pan pan", "transmit: pan-pan pan-pan pan-pan"];
+const radioText = (s) => s.replace(/\b(May|MAY|may) (Day|DAY|day)\b/g, (_, a, b) => (a === "MAY" ? "MAYDAY" : a + b.toLowerCase()))
+  .replace(/(^|[^-\w])(Pan|PAN|pan) (Pan|PAN|pan)(?![-\w])/g, (_, pre, a, b) => `${pre}${a}-${b}`);
+const RADIO_NAMES = { mayDay: "Mayday", panPan: "Pan-Pan" };
+// One-off: the Mayday and Pan-Pan lists get their new names on every boat (radio_v2 marks it done).
+const renameRadioLists = (registry) => registry?.map((l) => (RADIO_NAMES[l.id] && !l.radio_v2 ? { ...l, name: RADIO_NAMES[l.id], radio_v2: true } : l));
+// Old fixed Mayday / Pan-Pan lines become lines filled in from Boat Details and GPS.
 const UPGRADES = {
   "number of persons on board pob and vital information": { dynamic: "pobDescription", label: POB_LABEL },
   "state number of persons on board pob and vessel description": { dynamic: "pobDescription", label: POB_LABEL },
@@ -12,8 +17,9 @@ const UPGRADES = {
   "state vessel name call sign and mmsi number": { dynamic: "panPanVessel", label: PANPAN_VESSEL },
 };
 const upgradePob = (data) => {
-  const fix = (items) => items?.flatMap((i) => {
-    if ((i.label || "").trim().toLowerCase() === PANPAN_TX && !items.some((x) => x.id === ALL_STATIONS.id || /^all stations/i.test(x.label || ""))) return [i, { ...ALL_STATIONS }];
+  const fix = (items) => items?.flatMap((raw) => {
+    const i = raw.dynamic || !raw.label ? raw : { ...raw, label: radioText(raw.label) };
+    if (PANPAN_TX.includes((i.label || "").trim().toLowerCase()) && !items.some((x) => x.id === ALL_STATIONS.id || /^all stations/i.test(x.label || ""))) return [i, { ...ALL_STATIONS }];
     const up = !i.dynamic && UPGRADES[(i.label || "").trim().toLowerCase()];
     if (!up) return [i];
     const next = { ...i, ...up };
@@ -40,8 +46,8 @@ export const DEFAULT_REGISTRY = [
   { id: "myTodo", name: "My To Do List", isSystem: true },
   { id: "shipsLog", name: "Ship's Log", isSystem: true },
   { id: "grabBag", name: "Grab Bag", isSystem: true },
-  { id: "mayDay", name: "May Day", isSystem: true },
-  { id: "panPan", name: "Pan Pan", isSystem: true },
+  { id: "mayDay", name: "Mayday", isSystem: true, radio_v2: true },
+  { id: "panPan", name: "Pan-Pan", isSystem: true, radio_v2: true },
 ];
 
 export const DEFAULT_DATA = {
@@ -77,7 +83,7 @@ export const DEFAULT_DATA = {
   panPan: mk(113, [
     { dynamic: "panPanGps", label: "Check GPS position [Position]" },
     "Tune VHF Radio to Channel 16",
-    "Transmit: PAN PAN PAN PAN PAN PAN",
+    "Transmit: PAN-PAN PAN-PAN PAN-PAN",
     ALL_STATIONS,
     { dynamic: "panPanVessel", label: PANPAN_VESSEL },
     MMSI_ITEM,
@@ -190,7 +196,7 @@ export const resetLists = (s, ids, templates) => {
 export const migrateState = (s) => s && addMissingLists({
   ...s,
   data: upgradePob(s.data),
-  registry: s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l)),
+  registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l))),
 });
 
 export const displayLabel = (item, ctx) => {
