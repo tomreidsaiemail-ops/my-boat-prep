@@ -7,7 +7,7 @@ import os
 import re
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, BeforeValidator
+from pydantic import BaseModel, Field, ConfigDict, BeforeValidator, field_validator
 from typing import Annotated, Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import uuid
@@ -70,8 +70,21 @@ class BoatDetails(BaseModel):
     log_email: str = ""
     shore_email: str = ""
     shore_enabled: bool = False
-    boat_type: str = Field(default="", max_length=60)
-    pob: int = Field(default=1, ge=1, le=999)
+    boat_type: str = ""
+    pob: int = Field(default=1)
+
+    @field_validator("boat_type", mode="before")
+    @classmethod
+    def trim_type(cls, v):
+        return str(v or "")[:60]
+
+    @field_validator("pob", mode="before")
+    @classmethod
+    def clamp_pob(cls, v):
+        try:
+            return min(999, max(1, int(v)))
+        except (TypeError, ValueError):
+            return 1
 
 
 class BoatStateIn(BaseModel):

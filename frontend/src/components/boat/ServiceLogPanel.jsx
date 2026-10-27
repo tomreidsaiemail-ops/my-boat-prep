@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { FileDown, Gauge, Loader2, Lock, Trash2, Zap } from "lucide-react";
 import { ValidationBar } from "@/components/boat/ActionBar";
 import { ServiceDue } from "@/components/boat/ServiceDue";
@@ -8,7 +8,7 @@ const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/$
 const KINDS = {
   engine_log: {
     title: "Engine Service History", Icon: Gauge, prefix: "engine", panelId: "engine-hours-panel", fieldId: "engine-hours-input", errorId: "engine-hours-error",
-    field: "hours", fieldLabel: "Engine hours", placeholder: "e.g. 1250", numeric: true, missing: "Enter the engine hours", notesHint: "e.g. 250hr service", dueLabel: "Engine service",
+    field: "hours", fieldLabel: "Engine hours", placeholder: "1250", numeric: true, missing: "Enter the engine hours", notesHint: "e.g. 250hr service", dueLabel: "Engine service",
     summary: (e) => <><b className="font-mono">{e.hours} hrs</b> · {fmtDate(e.date)}</>,
   },
   electrical_log: {
@@ -43,6 +43,8 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
   const last = sorted[0];
   const [engineType, setEngineType] = useState(() => sorted.find((e) => e.engine_type)?.engine_type || "");
+  const lastType = sorted.find((e) => e.engine_type)?.engine_type || "";
+  useEffect(() => { if (lastType) setEngineType((t) => t || lastType); }, [lastType]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -68,9 +70,9 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
       </div>
       <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} warn={dueWarn} />
       <form onSubmit={submit} className="grid grid-cols-2 gap-2">
-        <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-[1.25fr_0.85fr_1.4fr] items-end" : "grid-cols-2"}`}>
+        <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-[1.1fr_0.85fr_1.45fr] items-end" : "grid-cols-2"}`}>
         {engine && <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
-          <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="e.g. Yanmar 3JH" className="field-input min-w-0 px-2 text-sm" data-testid="engine-type-input" /></label>}
+          <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>}
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}
             onChange={(e) => setValue(e.target.value)} placeholder={k.placeholder} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={k.fieldId} /></label>
@@ -89,7 +91,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         <ul className="divide-y divide-slate-200 rounded-md border border-[var(--line)]" data-testid={`${k.prefix}-log-list`}>
           {sorted.map((e, i) => (
             <Fragment key={e.id}>
-              {engine && e.engine_type && e.engine_type !== sorted[i - 1]?.engine_type && <EngineTypeHead type={e.engine_type} />}
+              {engine && (e.engine_type || "") !== (i ? sorted[i - 1].engine_type || "" : "") && <EngineTypeHead type={e.engine_type || "Not recorded"} />}
               <Entry e={e} k={k} onDelete={onDelete} />
             </Fragment>
           ))}

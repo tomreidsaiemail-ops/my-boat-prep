@@ -23,6 +23,7 @@ const OTHER = "__other";
 
 const BoatTypeField = ({ value, onChange }) => {
   const [other, setOther] = useState(!!value && !BOAT_TYPES.includes(value));
+  useEffect(() => { if (value) setOther(!BOAT_TYPES.includes(value)); }, [value]);
   const pick = (v) => { setOther(v === OTHER); onChange(v === OTHER ? "" : v); };
   return (
     <label htmlFor="boat-type" className="flex min-w-0 flex-col gap-1">
@@ -30,7 +31,7 @@ const BoatTypeField = ({ value, onChange }) => {
       <select id="boat-type" value={other ? OTHER : value || ""} onChange={(e) => pick(e.target.value)} className="field-input" data-testid="boat-type-select">
         <option value="">Choose...</option>
         {BOAT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        <option value={OTHER}>Other (type your own)</option>
+        <option value={OTHER}>Other...</option>
       </select>
       {other && <input value={value} maxLength={60} placeholder="e.g. Gaff Cutter" onChange={(e) => onChange(e.target.value)} className="field-input" aria-label="Your boat type" data-testid="boat-type-other-input" />}
     </label>
@@ -47,7 +48,7 @@ const PobField = ({ value, onChange }) => {
   };
   return (
     <label htmlFor="pob" className="flex min-w-0 flex-col gap-1">
-      <span className="field-label">Persons on board (POB)</span>
+      <span className="field-label">Persons on board</span>
       <input id="pob" type="number" inputMode="numeric" min="1" max="999" step="1" value={text} data-testid="pob-input" className="field-input"
         onChange={(e) => set(e.target.value)} onBlur={() => setText(String(value))} />
     </label>

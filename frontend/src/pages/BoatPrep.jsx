@@ -341,7 +341,7 @@ export default function BoatPrep({ boatId, boats }) {
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails boat={boat} onChange={updateBoat} />}
+      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {!premium && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
@@ -367,7 +367,7 @@ export default function BoatPrep({ boatId, boats }) {
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
-        : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering}
+        : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering} onDeleteList={askDeleteList}
             store={ownMediaStore(items, online, (fn) => guard() && setItems(fn))} />
         : active.isInventory ? (premium
           ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
@@ -397,7 +397,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
-        description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}, with every item unticked.` : ""}
+        description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}${dialog.list.isMedia || MEDIA_KINDS.includes(dialog.list.kind) ? " that you can add to, edit and reorder." : ", with every item unticked."}` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
       <ApplyAreaDialog open={dialog?.type === "applyArea"} area={areas.find((a) => a.id === areaFilter)} items={items.filter((i) => !areaName(i))} labelFor={labelFor}

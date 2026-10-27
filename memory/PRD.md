@@ -295,3 +295,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Redeployed to myboatprep.com with NZD 49.99 pricing, FIRST5000 and launch banner.
 - Auto Indent Categories (2026-06): checkbox in Create New List (on by default). Lines like "1. Deck" / "2) Cabin" become headings (number kept), following lines become sub-items. Logic: lib/outline.js isHeadingLine/linesToItems.
 - AI List Builder (2026-06): "Write this list with AI" button in Create New List (Pro/Beta). POST /api/ai/list-draft {name} -> {lines, drafts_left}; Gemini 3 Flash via Emergent LLM key; 20 drafts/day/user (db.ai_drafts). Draft fills the items box, grouped with numbered headings. Tested iteration_31.
+- 2026-06: Skippers (Pro) can clone Sailing YouTube Channels / Sailing Movies (own media list: registry kind youtube|movies, items {id,name,url,note,thumbnail,label}, POST /api/media/thumbnail) and Skipper's Tips (kind tips, normal checklist). Ordering toggle on own media lists; FAQ still not cloneable. Cloned media lists deletable when empty.
+- 2026-06: Admin Template List editor has AI draft + auto-indent; backend template-lists accepts items as strings or {label, indent}.
+- 2026-06: Boat details: boat_type (list + Other) and pob (default 1, clamped 1-999 server side); shown on print view + emailed PDF meta.
+- 2026-06: Engine Service: engine_type field (one row with hours + date), pre-filled from latest; history shows engine type heading once per run ("Not recorded" for untyped after typed). Not on service PDF (user choice).

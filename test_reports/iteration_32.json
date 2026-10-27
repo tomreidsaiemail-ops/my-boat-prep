@@ -1,0 +1,58 @@
+{
+  "summary": "Tested the new features on the backend (pytest, 23/23 pass incl. regression files) and in the mobile UI at 390x844 (Pro, Admin). These work: cloning Sailing YouTube Channels, Sailing Movies and Skipper's Tips (no warning toast; channels/movies are added with an auto-fetched thumbnail, and offline with the default icon); edit, delete, ordering arrows, duplicate-name error, and data kept after reload. The FAQ clone warning still shows, original lists stay read-only, and Export Current prints numbered rows. In the admin template list editor the AI draft and auto-indent work: indent:true is stored on sub-items, plain strings are still accepted, and the test template was deleted. Boat type, Other and POB work (saved to the server and shown in the print view). Engine type is pre-filled and its heading shows correctly. Electrical Service still has 2 columns. Create New List with paste and auto-indent still works. Used 1 AI call (admin).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/me/boat", "issue": "boat.pob has ge=1, so the whole PUT returns 422 if any client sends pob 0 or null. The current UI never sends 0, but one bad value from an old or edited client would block every sync for that boat. Consider coercing or clamping pob instead of rejecting the request."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Cloned media list (MediaList own)", "issue": "A cloned YouTube or Movies list can NEVER be deleted. The delete-list-btn only exists in Checklist's empty state, and MediaList's media-empty row has no delete button. Confirmed: TEST_My YT with 0 channels has no delete-list-btn.", "selector": "[data-testid='media-empty']", "priority": "HIGH"},
+      {"component": "MediaList own delete confirm", "issue": "On the skipper's own copy, the delete confirm says 'It will be removed for every skipper.' (the ConfirmDelete default note). Pass a note like 'It will be removed from <list name>.' when own.", "selector": "[data-testid='media-delete-dialog']", "priority": "MEDIUM"},
+      {"component": "Clone dialog", "issue": "For media lists the description says 'with every item unticked', but media rows have no ticks. Change the wording for media sources.", "selector": "[data-testid='clone-list-dialog']", "priority": "LOW"},
+      {"component": "MediaDialog duplicate name", "issue": "The duplicate-name error shows twice: inline (media-dialog-error) and as a toast.", "selector": "[data-testid='media-dialog-error']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Boat details (390px)", "issues": ["The 'PERSONS ON BOARD (POB)' label wraps to 2 lines, so the POB input sits about 16px lower than the Boat type select in the same row.", "The select text is cut off: 'Other (type you'."]},
+      {"screen": "Engine Service form (390px)", "issues": ["No horizontal overflow (scrollWidth 390). But the 'ENGINE HOURS' label wraps to 2 lines, the date value is cut off ('10/27/202'), and the placeholders are cut off ('e.g. Yanmar', 'e.g. 1')."]},
+      {"screen": "Engine history list", "issues": ["Entries without an engine_type that come after a typed entry appear under that type's heading. Example: an untyped 1450 hrs entry showed under 'ENGINE TYPE TEST Volvo D2-40'. Consider an 'Engine type not recorded' heading, or setting old entries apart."]}
+    ]
+  },
+  "passed_tests": [
+    "Clone Sailing YouTube Channels: no toast, dialog opens with default name 'My Sailing YouTube Channels', copy has the admin channel and thumbnail, own-copy intro text shown",
+    "Own YT: add (thumbnail fetched from yt3.googleusercontent), edit name, ordering-toggle shows/hides media-up/down, move up reorders, delete with confirm, data kept after reload, synced to the server registry (kind youtube)",
+    "Sailing Movies clone: IMDb link without a scheme is fixed to https and the thumbnail img appears; duplicate name rejected; offline add gives media-thumb-default; invalid link offline gives 'Please enter a valid web link'",
+    "Export Current on the cloned movies list: numbered '1. Master and Commander (url)' rows, plus BOAT TYPE and POB meta",
+    "Skipper's Tips clone: placeholder 'Add a Skipper's Tip...', add tip, ordering up works, delete + Undo restores the tip",
+    "FAQ clone gives the toast 'FAQ is an admin list and cannot be cloned' and no dialog",
+    "Original shared lists: no media-add-btn, ordering toggle or add-item-input for a Pro non-admin",
+    "Admin /admin/templates: AI button with an empty name shows a note; with the name 'TEST_Dinghy Launch' it fills 29 items with 5 headings; Publish stores 24 sub-items with indent:true; DELETE returns 200",
+    "API: template-lists accepts a mix of [{label,indent}] and plain strings; indent is dropped on the first item; non-admin gets 403",
+    "Boat details: 14 options incl. Other; the Other input persists after reload; typing 0 then 3 saves pob 3; server boat has boat_type 'Gaff Cutter TEST', pob 3; print-boat-type and print-pob are correct",
+    "API: pob 0/-1/1000 give 422, a 61-char boat_type gives 422, engine_log engine_type kept; ship_log.build_pdf with boat_type/pob makes a valid PDF",
+    "Engine Service: 3 fields on one row (type 113px, hours 77px, date 126px); same type gives a single heading; type pre-filled after reload; Electrical shows 2 equal columns",
+    "Regression: Create New List paste '1. Deck...' gives 5 items with 2 headings, grouped and indented"
+  ],
+  "test_report_links": ["/app/backend/tests/test_boat_type_pob_templates.py", "/app/test_reports/pytest/pytest_iter32.xml"],
+  "action_items": [
+    "HIGH: Give cloned YouTube and Movies lists a way to be deleted. For example, show delete-list-btn in MediaList's own empty state, or always show it for own lists.",
+    "Pass a correct delete note for own media lists. It should not say 'removed for every skipper'.",
+    "Change the clone dialog wording for media lists (no 'unticked').",
+    "Optional: show the media duplicate-name error once only; fix the POB label wrap and the cut-off engine row fields at 390px; decide how untyped engine entries are grouped under headings."
+  ],
+  "critical_code_review_comments": [
+    "ServiceLogPanel: engineType comes from useState(initializer), so if entries arrive from the server after the panel mounts (e.g. first load on a new device), the field stays empty. Consider syncing it in a useEffect when it is empty and entries change.",
+    "BoatTypeField: the 'other' state comes only from the first value. If the value changes from outside (e.g. switching boats, where BoatDetails is not keyed by boat), the select may show the wrong mode. Key BoatDetails by boat or derive 'other' from value.",
+    "MediaList: when own, ConfirmDelete gets no note or testId override, so the admin copy is reused.",
+    "Publishing a test template list immediately adds it to every boat that loads while it exists. Retired templates then stay on those boats as the skipper's own lists. Test templates are risky on shared data."
+  ],
+  "updated_files": ["/app/backend/tests/test_boat_type_pob_templates.py"],
+  "success_rate": {"backend": "100%", "frontend": "90%"},
+  "seed_data_creation": "Pro boat 'main' (TEST_Kia Ora) now has boat_type 'Gaff Cutter TEST' and pob 3, plus the lists TEST_My YT (empty) and TEST_My Movies (Master and Commander, TEST Movie). These lists can't be deleted from the UI (bug). Engine log test entries were deleted. TEST_My Tips, TEST_Regress Paste and the TEST_Dinghy Launch template were deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use the /admin/templates route for the template lists editor (not /admin). Each browser_automation run is a fresh context, so offline changes in localStorage are lost between runs (not an app bug). The header 'Status: Online' text toggles offline mode; going back online shows sync-confirm-dialog (Sync Now). Media ConfirmDelete testId is media-delete-*. AI used: 1 admin call this iteration.",
+  "rca of the issue": "Cloned media lists can't be deleted: BoatPrep renders MediaList for registry entries with kind youtube/movies, and only Checklist renders delete-list-btn (in its empty state). MediaList has no onDeleteList prop. Fix: pass onDeleteList={askDeleteList} to the own MediaList and render a delete button in the media-empty row when own."
+}
