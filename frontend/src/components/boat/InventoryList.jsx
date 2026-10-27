@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
@@ -41,7 +41,7 @@ const AddArea = ({ onAdd, onBatch }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems }) => {
+export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -65,7 +65,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   };
   const saveScan = (list) => {
     const { area } = scan;
-    setArea(area.id, (x) => ({ ...x, items: list.map((i) => ({ id: newId(), name: i.name, qty: i.qty, onboard: true })) }));
+    setArea(area.id, (x) => ({ ...x, items: list.map((i) => ({ id: newId(), name: i.name, qty: i.qty })) }));
     setScan(null);
     toast.success(`${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };
@@ -78,8 +78,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     return hits.length || linkHits.length ? [{ area: a, visible: hits, visibleLinked: linkHits }] : [];
   });
   const found = results.reduce((n, r) => n + (r.visible || []).reduce((m, i) => m + (i.qty || 1), 0) + (r.visibleLinked || []).length, 0);
-  const aboard = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.onboard).reduce((m, i) => m + (i.qty || 1), 0)
-    + (r.visibleLinked || []).filter((l) => l.item.checked).length, 0);
+  const out = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).reduce((m, i) => m + (i.qty || 1), 0), 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
   const moveItem = (area, item, edits, targetId) => {
@@ -91,7 +90,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       if (a.id === area.id) return { ...a, items: a.items.filter((i) => i.id !== item.id) };
       if (a.id !== targetId) return a;
       if (!match) return { ...a, items: [...(a.items || []), moved] };
-      return { ...a, items: a.items.map((i) => (i.id === match.id ? { ...i, qty: i.qty + edits.qty, onboard: i.onboard || item.onboard } : i)) };
+      return { ...a, items: a.items.map((i) => (i.id === match.id ? { ...i, qty: i.qty + edits.qty, removed: !!(i.removed || item.removed) } : i)) };
     }));
     setDialog(null);
     toast.success(`Moved ${edits.name} to ${dest.name}`);
@@ -141,9 +140,14 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   };
   const addSuggested = (names) => onChange((list) => [...list, ...names.map((name) => ({ id: newId(), name, items: [] }))]);
   const [batchOpen, setBatchOpen] = useState(false);
+  useEffect(() => {
+    if (!batchRequest) return;
+    onBatchHandled();
+    if (boat && !boat.owner_id && !readOnly) setBatchOpen(true);
+  }, [batchRequest]); // eslint-disable-line react-hooks/exhaustive-deps
   const openBatch = () => (online ? setBatchOpen(true) : toast.error("Batch Magic Scan needs a signal"));
   const applyBatch = (list) => {
-    const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty, onboard: true }));
+    const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty }));
     onChange((cur) => {
       const next = [...cur];
       list.forEach(({ name, items }) => {
@@ -170,7 +174,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   };
   const addItem = (area) => ({ name, qty }) => {
     if ((area.items || []).some((i) => same(i.name, name))) return `${name} is already in ${area.name}`;
-    setArea(area.id, (a) => ({ ...a, items: [...(a.items || []), { id: newId(), name, qty, onboard: false }] }));
+    setArea(area.id, (a) => ({ ...a, items: [...(a.items || []), { id: newId(), name, qty }] }));
     return true;
   };
   const saveItem = ({ name, qty, target }) => {
@@ -208,17 +212,21 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             {query && <button type="button" className="icon-btn" aria-label="Clear search" onClick={() => setQuery("")} data-testid="inventory-search-clear"><X className="h-5 w-5" /></button>}
           </label>
           {q && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="inventory-search-summary">
-            {results.length ? `${found} found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"} · ${aboard} on board` : `Nothing matches "${query.trim()}"`}</p>}
+            {results.length ? `${found} found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"}${out ? ` · ${out} removed for now` : ""}` : `Nothing matches "${query.trim()}"`}</p>}
         </div>
       )}
-      {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">
-        {readOnly ? "The skipper hasn't added any cupboards yet." : "List each cupboard, locker or lazarette, then add what's stowed inside and tick it when it's on board."}</p>}
+      {readOnly ? areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p> : (
+        <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-instructions">
+          <p data-testid="inventory-instructions-text">List each cupboard, lazarette, drawer, shelf, fridge, freezer etc then add what's stowed inside. You can tick an item to show it's been removed temporarily, e.g. a knife moved to the cockpit ready for passage.</p>
+          <p data-testid="inventory-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Use ++ below. This saves lots of time because while you take photos, the Magic Scan runs in the background. Taking the boat inventory should take 30 minutes for a 40 foot yacht, longer for larger vessels, shorter for Launches and Runabouts.</p>
+        </div>
+      )}
       <ul className="flex flex-col gap-2">
         {results.map(({ area: a, visible, visibleLinked }) => (
           <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
             linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
             onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id}
-            onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, onboard: !y.onboard } : y)) }))}
+            onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => deleteItem(a, i)}
             onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)} />

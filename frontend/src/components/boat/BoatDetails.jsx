@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Ship } from "lucide-react";
+import { ChevronDown, ChevronUp, Ship, Sparkles } from "lucide-react";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 
 const Field = ({ id, label, value, onChange, placeholder, type = "text" }) => (
@@ -67,7 +67,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const focused = useRef(false);
@@ -77,8 +77,13 @@ export const BoatDetails = ({ boat, onChange }) => {
     focused.current = false;
     if (complete) setOpen(false);
   };
+  const batchBtn = onBatchScan && (
+    <button type="button" onClick={onBatchScan} className="btn-ghost h-11 w-full justify-center gap-2 text-sm" data-testid="boat-details-batch-scan-btn">
+      <Sparkles className="h-4 w-4 shrink-0" /> On the boat? Take a Boat Inventory using Batch Magic Scan...
+    </button>
+  );
 
-  if (complete && !open) return <Summary boat={boat} onExpand={() => setOpen(true)} />;
+  if (complete && !open) return <div className="flex flex-col gap-2"><Summary boat={boat} onExpand={() => setOpen(true)} />{batchBtn}</div>;
   return (
     <section className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="boat-details-bar"
       onFocus={() => { focused.current = true; }} onBlur={onBlur}>
@@ -96,6 +101,7 @@ export const BoatDetails = ({ boat, onChange }) => {
         <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
         <PobField value={boat.pob ?? 1} onChange={(v) => onChange("pob", v)} />
       </div>
+      {batchBtn}
     </section>
   );
 };

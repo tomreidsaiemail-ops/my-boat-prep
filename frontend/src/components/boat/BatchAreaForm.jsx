@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -41,13 +42,19 @@ export const BatchAreaForm = ({ open, existing, batchNames, full, onAdd, onClose
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">New boat area</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
+        <HelpPanel storageKey="mbp_batch_area_help_seen" title="How Batch Magic Scan works" testId="batch-area-help">
+          <p>Name a cupboard that makes sense, open that cupboard - maybe pull a few things out so they appear on the photo, and take and use that photo, and press "Confirm, and add another". Continue around your boat taking photos and naming them, until you have taken a photo of all nooks and crannies.</p>
+          <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
+          <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
+        </HelpPanel>
         <input autoFocus value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="e.g. Aft starboard lazarette"
           aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
           {clash.name} is already on your boat. Confirming the batch will replace its {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"} with this scan.</p>}
         <button type="button" onClick={() => input.current?.click()} className="flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)]" data-testid="batch-area-photo-btn">
           {preview ? <img src={preview} alt="Boat area" className="max-h-56 w-full object-contain" data-testid="batch-area-photo-preview" />
-            : <><Camera className="h-7 w-7" /> Take or choose a photo</>}
+            : <><Camera className="h-7 w-7" /> Take or choose a photo
+              <span className="px-4 text-center text-xs font-medium text-[var(--muted)]" data-testid="batch-area-photo-hint">Consider laying some things out so Magic Scan sees everything you want</span></>}
         </button>
         {preview && <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" onClick={() => input.current?.click()} data-testid="batch-area-photo-change-btn"><ImagePlus className="h-4 w-4" /> Change photo</button>}
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={pick} data-testid="batch-area-photo-input" />

@@ -1,12 +1,13 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Map, Trash2 } from "lucide-react";
+import { ChevronDown, ImagePlus, Loader2, Map, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
+import { HelpPanel } from "@/components/boat/HelpPanel";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
-const MAX_MAPS = 3;
+const MAX_MAPS = 20;
 const boatMapUrl = (b, m) => `${API}/boats/${b.boat_id}/zone-maps/${m.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(m.v)}`;
 
 const pickPicture = async (e) => {
@@ -71,6 +72,7 @@ const AdminTools = ({ has, online, onChanged }) => {
 
 export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps }) => {
   const [open, setOpen] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [failed, setFailed] = useState({});
   const [removing, setRemoving] = useState(null);
   const own = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
@@ -85,7 +87,16 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   };
   return (
     <section className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-map">
-      <h2 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]"><Map className="h-4 w-4" /> {own.length > 1 ? "Zone maps" : "Zone map"}</h2>
+      <button type="button" onClick={() => setExpanded((x) => !x)} aria-expanded={expanded} className="flex items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
+        <Map className="h-4 w-4" /> {own.length > 1 ? `Zone maps (${own.length})` : "Zone map"}
+        <ChevronDown className={`ml-auto h-5 w-5 [transition:transform_.15s] ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && <>
+      {canEdit && (
+        <HelpPanel storageKey="mbp_zone_map_help_seen" title="How to make a zone map" testId="zone-map-help">
+          <p>Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.</p>
+        </HelpPanel>
+      )}
       {pics.map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1" data-testid={`zone-map-item-${p.key}`}>
           <button type="button" onClick={() => setOpen(p.src)} aria-label={`Open zone map ${n + 1} full size`} data-testid={p.key === "admin" ? "zone-map-open-btn" : `boat-zone-map-open-${p.key}`}>
@@ -100,7 +111,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
         </div>
       ))}
       {!pics.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
-      {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the standard map. Upload your own boat's map to use it here instead.</p>}
+      {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with boat areas, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that boat area. You can do that after taking the boat inventory. You can rename boat areas later should the zone map photo have a better name.</p>}
       {canEdit && <OwnerTools boat={boat} count={own.length} online={online} onMaps={onBoatMaps} />}
       {admin && (
         <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-2">
@@ -108,6 +119,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           <AdminTools has={!!version} online={online} onChanged={onChanged} />
         </div>
       )}
+      </>}
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>

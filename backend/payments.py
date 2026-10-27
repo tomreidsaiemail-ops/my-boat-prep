@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
+from launch import first200_running
 from auth import get_current_user, to_user_out, UserOut
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -30,7 +31,7 @@ def _price(lookup: str):
 
 async def _offer() -> dict:
     full, first = await asyncio.gather(asyncio.to_thread(_price, PRO_LOOKUP_KEY), asyncio.to_thread(_price, FIRST5000_LOOKUP))
-    return {"first5000": await first5000_running(), "price": (full.unit_amount / 100) if full else None,
+    return {"first5000": await first5000_running(), "first200": await first200_running(), "price": (full.unit_amount / 100) if full else None,
             "first5000_price": (first.unit_amount / 100) if first else None}
 
 
@@ -62,6 +63,8 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid origin")
     if to_user_out(user).has_subscription:
         raise HTTPException(status_code=400, detail="You already have Pro")
+    if await first200_running(fresh=True):
+        raise HTTPException(status_code=400, detail="My Boat Prep Pro is free for everyone during the FIRST200 launch, no payment needed")
     launch = await first5000_running()
     lookup = FIRST5000_LOOKUP if launch else PRO_LOOKUP_KEY
     price, full = await asyncio.gather(asyncio.to_thread(_price, lookup), asyncio.to_thread(_price, PRO_LOOKUP_KEY))

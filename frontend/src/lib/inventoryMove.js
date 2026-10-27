@@ -20,7 +20,7 @@ export const applyMove = (s, { sourceId, order, moves, links }) => {
     const match = dest.items.findIndex((x) => same(x.name, item.name));
     if (match >= 0) {
       const m = dest.items[match];
-      dest.items[match] = { ...m, qty: Math.min(9999, (m.qty || 1) + n), onboard: !!(m.onboard || item.onboard) };
+      dest.items[match] = { ...m, qty: Math.min(9999, (m.qty || 1) + n), removed: !!(m.removed || item.removed) };
     } else dest.items.push({ ...item, id: n >= have ? item.id : newAreaItemId(), qty: n });
   });
   const data = { ...s.data };

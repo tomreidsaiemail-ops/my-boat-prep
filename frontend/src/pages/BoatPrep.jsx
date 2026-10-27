@@ -75,7 +75,14 @@ export default function BoatPrep({ boatId, boats }) {
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
   const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew, loaded } = useBoatStore(user.user_id, boats.current);
   const gps = useGps();
-  const [activeId, setActiveId] = useState("leavingDock");
+  const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
+  const [batchRequest, setBatchRequest] = useState(false);
+  const startBatchScan = () => {
+    if (!needPro("Boat inventory") || !guard()) return;
+    if (!online) { toast.error("Batch Magic Scan needs a signal"); return; }
+    setActiveId("boatInventory");
+    setBatchRequest(true);
+  };
   const [warn, showWarn] = useWarn();
   const [dialog, setDialog] = useState(null);
   const [printMode, setPrintMode] = useState(null);
@@ -101,7 +108,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (i.area && areas.some((a) => a.id === i.area)) (linked[i.area] ||= []).push({ key: `${l.id}-${i.id}`, listId: l.id, listName: l.name, item: i, text: i.label });
   }));
   const inventoryLines = areas.flatMap((a) => [
-    ...(a.items || []).map((i) => ({ id: i.id, label: `${a.name}: ${i.name} x${i.qty}`, checked: !!i.onboard })),
+    ...(a.items || []).map((i) => ({ id: i.id, label: `${a.name}: ${i.name} x${i.qty}${i.removed ? " (removed for now)" : ""}`, checked: false })),
     ...(linked[a.id] || []).map((l) => ({ id: l.key, label: `${a.name}: ${l.listName} - ${l.text}`, checked: !!l.item.checked })),
   ]);
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
@@ -352,10 +359,10 @@ export default function BoatPrep({ boatId, boats }) {
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} />}
+      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
-      {!premium && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
+      {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
       {listDescription && (
@@ -390,7 +397,8 @@ export default function BoatPrep({ boatId, boats }) {
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
-              boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} />
+              boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
+              batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
           {premium && (tagging || filterAreas.length > 0) && (

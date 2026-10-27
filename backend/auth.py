@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from db import db
 from billing import refresh_if_lapsed
+from launch import first200_cached, first200_running
 
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].strip().lower()
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
@@ -36,6 +37,7 @@ class UserOut(BaseModel):
     cancel_at_period_end: bool = False
     has_subscription: bool = False
     first5000: bool = False
+    launch_free: bool = False
     renew_price: Optional[float] = None
     created_at: Optional[str] = None
     tos_version: Optional[str] = None
@@ -46,7 +48,7 @@ def to_user_out(u: dict) -> UserOut:
     role = u.get("role", "free")
     return UserOut(
         user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", ""),
-        role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro"),
+        role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro") or first200_cached(), launch_free=first200_cached(),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
@@ -74,6 +76,7 @@ async def get_current_user(request: Request) -> dict:
     user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    await first200_running()
     return await refresh_if_lapsed(user)
 
 

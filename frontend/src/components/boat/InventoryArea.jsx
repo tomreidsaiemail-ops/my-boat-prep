@@ -3,10 +3,10 @@ import { Highlight } from "@/components/boat/Highlight";
 import { Check, ChevronDown, Link2, Loader2, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
-  <li className={`flex items-center border-t border-[var(--line)] ${item.onboard ? "is-checked bg-emerald-50/60" : ""}`} data-testid={`inventory-item-${item.id}`}>
-    <button type="button" role="checkbox" aria-checked={!!item.onboard} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
+  <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
+    <button type="button" role="checkbox" aria-checked={!!item.removed} aria-label={`${item.name}: ${item.removed ? "removed for now" : "in place"}`} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
       className="flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left" data-testid={`inventory-item-toggle-${item.id}`}>
-      <span className="tick-box">{item.onboard && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
+      <span className={`tick-box ${item.removed ? "!border-[var(--red)] !bg-[var(--red)] text-white" : ""}`}>{item.removed && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
       <span className="item-text flex-1" data-testid={`inventory-item-name-${item.id}`}><Highlight text={item.name} query={query} /></span>
       <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-sm font-bold text-[var(--navy)]" data-testid={`inventory-item-qty-${item.id}`}>&times;{item.qty}</span>
     </button>
@@ -66,7 +66,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
   const items = area.items || [];
   const listed = visible || items;
   const shownLinks = visibleLinked || linked;
-  const onboard = items.filter((i) => i.onboard).length + linked.filter((l) => l.item.checked).length;
+  const removed = items.filter((i) => i.removed).length;
   const total = items.length + linked.length;
   return (
     <li className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid={`inventory-area-${area.id}`}>
@@ -75,7 +75,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
           <span className="flex flex-1 flex-col py-2">
             <span className="font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}><Highlight text={area.name} query={query} /></span>
-            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{onboard}/{total} on board</span>
+            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{total} {total === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {!readOnly && (

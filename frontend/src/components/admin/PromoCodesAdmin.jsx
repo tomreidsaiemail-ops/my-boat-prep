@@ -29,14 +29,19 @@ export const PromoCodesAdmin = () => {
     api.get("/admin/promo-codes").then(({ data: d }) => setData(d)).catch(() => { toast.error("Couldn't load promo codes"); setData({ base_price: null, codes: [] }); });
   }, []);
 
-  const setFirst5000 = async (running) => {
-    setData((d) => ({ ...d, first5000: running }));
+  const setPromo = async (key, running) => {
+    const label = key === "first200" ? "FIRST200" : "FIRST5000";
+    const prev = data;
+    setData((d) => ({ ...d, [key]: running, ...(running ? { [key === "first200" ? "first5000" : "first200"]: false } : {}) }));
     try {
-      await api.put("/admin/promo-codes/first5000", { running });
-      toast.success(running ? "FIRST5000 is running: new Pro sign-ups get 50% off their first year and first renewal" : "FIRST5000 stopped: new sign-ups pay the full price");
+      const { data: res } = await api.put(`/admin/promo-codes/${key}`, { running });
+      setData((d) => ({ ...d, first5000: res.first5000, first200: res.first200 }));
+      toast.success(!running ? `${label} stopped`
+        : key === "first200" ? "FIRST200 is running: every skipper has Pro free, payments are hidden. FIRST5000 is off."
+        : "FIRST5000 is running: new Pro sign-ups get 50% off their first year and first renewal. FIRST200 is off.");
     } catch {
-      setData((d) => ({ ...d, first5000: !running }));
-      toast.error("Couldn't update FIRST5000");
+      setData(prev);
+      toast.error(`Couldn't update ${label}`);
     }
   };
   const save = async (body) => {
@@ -52,8 +57,17 @@ export const PromoCodesAdmin = () => {
         Create a discount code for Pro. Skippers enter it on the Stripe payment page, and any code that isn't on this list is rejected there.
       </p>
       {data && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] border-sky-300 bg-sky-50 p-3" data-testid="first200-toggle">
+          <Checkbox checked={!!data.first200} onCheckedChange={(v) => setPromo("first200", !!v)} className="mt-0.5 h-5 w-5" data-testid="first200-checkbox" />
+          <span className="flex flex-col gap-0.5">
+            <b className="text-sm text-sky-950">Promotion FIRST200 is running</b>
+            <span className="text-xs text-sky-900">The app is free during its initial launch: every signed-in skipper gets Pro, and upgrade and payment are hidden. Paying Pro skippers keep their subscription. Turning this on turns FIRST5000 off.</span>
+          </span>
+        </label>
+      )}
+      {data && (
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 p-3" data-testid="first5000-toggle">
-          <Checkbox checked={!!data.first5000} onCheckedChange={(v) => setFirst5000(!!v)} className="mt-0.5 h-5 w-5" data-testid="first5000-checkbox" />
+          <Checkbox checked={!!data.first5000} onCheckedChange={(v) => setPromo("first5000", !!v)} className="mt-0.5 h-5 w-5" data-testid="first5000-checkbox" />
           <span className="flex flex-col gap-0.5">
             <b className="text-sm text-emerald-950">Promotion FIRST5000 is running</b>
             <span className="text-xs text-emerald-900">New Pro sign-ups get 50% off automatically (NZD {data.first5000_price?.toFixed(2) ?? "24.99"} instead of {data.base_price ? data.base_price.amount.toFixed(2) : "49.99"}) for their first year and first renewal, then full price. Promo codes still come off on top.</span>

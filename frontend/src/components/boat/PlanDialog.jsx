@@ -19,7 +19,7 @@ const Perks = () => (
 const ProStatus = ({ user, onRenewal, busy }) => (
   <div className="flex flex-col gap-3" data-testid="plan-status">
     <p className="text-sm">
-      You&apos;re on <b data-testid="plan-tier">{user.is_admin && user.role === "free" ? "Admin" : TIER[user.role]}</b>: every feature, no ads.
+      You&apos;re on <b data-testid="plan-tier">{user.is_admin && user.role === "free" ? "Admin" : user.launch_free && user.role === "free" ? "Pro, free during the FIRST200 launch" : TIER[user.role]}</b>: every feature, no ads.
       {user.has_subscription && (user.cancel_at_period_end
         ? <> Pro ends on <b>{fmt(user.pro_until)}</b>.</>
         : <> Renews automatically on <b data-testid="plan-renew-date">{fmt(user.pro_until)}</b>.</>)}

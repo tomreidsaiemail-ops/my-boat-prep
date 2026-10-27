@@ -11,6 +11,7 @@ from auth import require_admin
 from db import db
 from billing import FIRST5000_LOOKUP
 from payments import PRO_LOOKUP_KEY, _price, first5000_running
+from launch import first200_running
 
 router = APIRouter(prefix="/api/admin/promo-codes")
 CODE_RE = re.compile(r"^[A-Z0-9_-]{3,30}$")
@@ -47,11 +48,23 @@ class First5000In(BaseModel):
     running: bool
 
 
+async def _set_promo(key: str, running: bool, admin: dict):
+    now = datetime.now(timezone.utc).isoformat()
+    await db.app_settings.update_one({"key": key}, {"$set": {"key": key, "running": running, "updated_by": admin["user_id"], "updated_at": now}}, upsert=True)
+    if running:
+        other = "first200" if key == "first5000" else "first5000"
+        await db.app_settings.update_one({"key": other}, {"$set": {"key": other, "running": False, "updated_by": admin["user_id"], "updated_at": now}}, upsert=True)
+    return {"first5000": await first5000_running(), "first200": await first200_running(fresh=True)}
+
+
 @router.put("/first5000")
 async def set_first5000(payload: First5000In, admin: dict = Depends(require_admin)):
-    await db.app_settings.update_one({"key": "first5000"}, {"$set": {"key": "first5000", "running": payload.running, "updated_by": admin["user_id"],
-                                                                     "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
-    return {"running": payload.running}
+    return {"running": payload.running, **await _set_promo("first5000", payload.running, admin)}
+
+
+@router.put("/first200")
+async def set_first200(payload: First5000In, admin: dict = Depends(require_admin)):
+    return {"running": payload.running, **await _set_promo("first200", payload.running, admin)}
 
 
 @router.get("")
@@ -64,7 +77,7 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
     except stripe.error.StripeError:
         usage, base = None, None
     first = await asyncio.to_thread(_price, FIRST5000_LOOKUP)
-    return {"base_price": base, "first5000": await first5000_running(), "first5000_price": first.unit_amount / 100 if first else None,
+    return {"base_price": base, "first5000": await first5000_running(), "first200": await first200_running(fresh=True), "first5000_price": first.unit_amount / 100 if first else None,
             "codes": [_out(d, usage) for d in docs]}
 
 
