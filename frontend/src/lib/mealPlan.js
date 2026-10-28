@@ -1,5 +1,5 @@
 // Built-in 7-day Meal Plan (3 meals a day). Format read by the MPA: meal name, then an indented
-// (recipe) line, then indented ingredients. Amounts are for one adult.
+// [recipe] line, then indented ingredients. Amounts are for one adult.
 const DAYS = [
   [
     ["Day 1 Breakfast: Porridge with banana and honey", "Simmer oats in milk for 5 minutes, top with sliced banana and honey", ["60g oats", "200 ml milk", "1 banana", "1 tbsp honey"]],
@@ -40,6 +40,6 @@ const DAYS = [
 
 export const MEAL_PLAN_ITEMS = DAYS.flat().flatMap(([meal, recipe, ingredients], m) => [
   { label: `${m + 1}. ${meal}` },
-  { label: `(${recipe})`, indent: true },
+  { label: `[${recipe}]`, indent: true },
   ...ingredients.map((label) => ({ label, indent: true })),
 ]);

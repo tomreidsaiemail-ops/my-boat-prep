@@ -1,5 +1,5 @@
 // Marine Magic Provisioning Assistant: meal plan parsing and the unified shopping list.
-const BRACKET = /^\s*\(.*\)\s*$/s;
+const BRACKET = /^\s*\[.*\]\s*$/s;
 const UNITS = {
   g: ["g", 1], gram: ["g", 1], grams: ["g", 1], gr: ["g", 1], kg: ["g", 1000], kgs: ["g", 1000],
   ml: ["ml", 1], l: ["ml", 1000], lt: ["ml", 1000], litre: ["ml", 1000], litres: ["ml", 1000], liter: ["ml", 1000], liters: ["ml", 1000],

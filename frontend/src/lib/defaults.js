@@ -196,9 +196,20 @@ export const resetLists = (s, ids, templates) => {
   return { ...s, registry, data, deleted_lists: (s.deleted_lists || []).filter((id) => !restored.includes(id)), emergency_checked: checked, template_versions: markVersions(s, ids, templates) };
 };
 
+// Built-in Meal Plan recipes moved from "(...)" to "[...]"; unedited lines are converted.
+const upgradeMealPlan = (data) => {
+  if (!data.mealPlan) return data;
+  const def = new Map(DEFAULT_DATA.mealPlan.map((i) => [i.id, i.label]));
+  const fix = (i) => {
+    const d = def.get(i.id);
+    return d?.startsWith("[") && i.label === `(${d.slice(1, -1)})` ? { ...i, label: d } : i;
+  };
+  return { ...data, mealPlan: data.mealPlan.map(fix) };
+};
+
 export const migrateState = (s) => s && addMissingLists({
   ...s,
-  data: upgradePob(s.data),
+  data: upgradeMealPlan(upgradePob(s.data)),
   registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l))),
 });
 
