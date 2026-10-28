@@ -7,11 +7,12 @@ import re
 import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
-from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
 from auth import require_premium
+from usage import record_usage
 from photos import MAX_BYTES, TYPES
 
 router = APIRouter(prefix="/api")
@@ -51,7 +52,7 @@ def parse_items(text: str) -> list:
 
 
 @router.post("/boats/{boat_id}/scan")
-async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), user: dict = Depends(require_premium)):
+async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), user: dict = Depends(require_premium)):
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:
@@ -70,16 +71,21 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), user: d
     await db.ai_scans.insert_one({"scan_id": scan_id, "user_id": user["user_id"], "boat_id": boat_id, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"scan-{uuid.uuid4()}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
     text = ""
+    usage = None
     try:
         msg = UserMessage(text=PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
         async for ev in chat.stream_message(msg):
             if isinstance(ev, TextDelta):
                 text += ev.content
             elif isinstance(ev, StreamDone):
+                usage = ev.usage
                 break
         items = parse_items(text)
     except Exception as e:
         log.error(f"AI scan failed: {e}; reply={text[:300]!r}")
         await db.ai_scans.delete_one({"scan_id": scan_id})
+        if usage:
+            await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
         raise HTTPException(status_code=503, detail="The AI couldn't read that photo. Please try again or add items by hand.")
+    await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
     return {"items": items, "scans_left": max(0, DAILY_SCANS - await db.ai_scans.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))}

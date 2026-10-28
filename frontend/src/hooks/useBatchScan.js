@@ -24,7 +24,7 @@ export default function useBatchScan(boatId) {
     form.append("file", next.blob, "cupboard.jpg");
     const ctrl = new AbortController();
     inflight.current = { key: next.key, ctrl };
-    api.post(`/boats/${boatId}/scan`, form, { timeout: 90000, signal: ctrl.signal })
+    api.post(`/boats/${boatId}/scan`, form, { params: { batch: true }, timeout: 90000, signal: ctrl.signal })
       .then(({ data }) => alive.current && patch(next.key, { status: "done", rows: toRows(data.items), found: data.items.length, scansLeft: data.scans_left }))
       .catch((err) => alive.current && !ctrl.signal.aborted && patch(next.key, { status: "error", error: apiError(err, "The AI scan didn't work") }))
       .finally(() => { busy.current = false; inflight.current = null; if (alive.current) setEntries((es) => [...es]); });

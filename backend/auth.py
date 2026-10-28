@@ -193,5 +193,6 @@ async def set_role(user_id: str, payload: RoleIn, _: dict = Depends(require_admi
         raise HTTPException(status_code=404, detail="User not found")
     if payload.role == "free" and to_user_out(target).has_subscription:
         raise HTTPException(status_code=409, detail="This user pays for Pro. Their plan drops to Free when their subscription ends.")
-    await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role}})
+    since = {"pro_since": datetime.now(timezone.utc).isoformat()} if payload.role == "pro" and target.get("role") != "pro" else {}
+    await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role, **since}})
     return to_user_out(await db.users.find_one({"user_id": user_id}, {"_id": 0}))

@@ -30,6 +30,7 @@ export const DoctorAsk = ({ kitName, kit, adults, children, online, locked, onUp
   return (
     <div className="flex flex-col gap-2" data-testid="doctor-ask-panel">
       <label htmlFor="doctor-question" className="field-label">ASK THE MAGIC MARINE DOCTOR</label>
+      <p className="-mt-1 text-xs italic text-[var(--muted)]" data-testid="doctor-caveat">(The MMD does not hold an M.D. but can help in an emergency)</p>
       <div className="flex items-start gap-2">
         <textarea id="doctor-question" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
           placeholder="e.g. a crew member has a deep cut on their hand" className="field-input min-w-0 flex-1 resize-none leading-snug placeholder-shown:overflow-hidden placeholder-shown:text-ellipsis placeholder-shown:whitespace-nowrap" data-testid="doctor-question-input" />

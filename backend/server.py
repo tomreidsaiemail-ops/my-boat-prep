@@ -35,6 +35,8 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys  # noqa: E402
+from admin_analytics import router as admin_analytics_router  # noqa: E402
+from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
@@ -393,6 +395,7 @@ app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(ai_lists_router)
+app.include_router(admin_analytics_router)
 
 
 @app.middleware("http")
@@ -433,6 +436,9 @@ async def create_indexes():
     await db.crew_invites.create_index("email_key")
     await db.invite_sends.create_index("at", expireAfterSeconds=2 * 86400)
     await backfill_invite_keys()
+    await db.ai_usage.create_index([("user_id", 1), ("created_at", 1)])
+    await db.ai_usage.create_index([("feature", 1), ("created_at", 1)])
+    await backfill_usage()
     await db.ai_scans.create_index([("user_id", 1), ("created_at", 1)])
     await db.ai_drafts.create_index([("user_id", 1), ("created_at", 1)])
     try:

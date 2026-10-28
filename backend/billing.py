@@ -65,6 +65,9 @@ async def apply_subscription(user_id: str, sub) -> None:
         fields["renew_price"] = items[0]["price"]["unit_amount"] / 100
     if sub.get("status") in ACTIVE:
         fields["role"] = "pro" if user.get("role") != "beta_tester" else user["role"]
+        if fields["role"] == "pro" and not user.get("pro_since"):
+            start = sub.get("start_date")
+            fields["pro_since"] = (datetime.fromtimestamp(start, timezone.utc) if start else datetime.now(timezone.utc)).isoformat()
     elif user.get("role") == "pro" and user.get("stripe_subscription_id") in (None, sub["id"]):
         fields["role"] = "free"
     await db.users.update_one({"user_id": user_id}, {"$set": fields})

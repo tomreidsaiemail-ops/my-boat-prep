@@ -25,7 +25,7 @@ def since():
 
 
 def count(uid, engine):
-    q = {"user_id": uid, "created_at": {"$gte": since()}, "kind": {"$in": ["engine"]} if engine else {"$ne": "engine"}}
+    q = {"user_id": uid, "created_at": {"$gte": since()}, "kind": {"$in": ["engine"]} if engine else {"$nin": ["engine", "doctor"]}}
     return DB.ai_drafts.count_documents(q)
 
 

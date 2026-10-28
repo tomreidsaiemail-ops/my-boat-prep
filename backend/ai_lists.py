@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
+from usage import KIND_FEATURE, record_usage
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
@@ -73,17 +74,22 @@ async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: st
     await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "kind": kind, **meta, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{kind}-{draft_id}", system_message=system).with_model("gemini", "gemini-3-flash-preview")
     text = ""
+    usage = None
     try:
         async for ev in chat.stream_message(UserMessage(text=prompt)):
             if isinstance(ev, TextDelta):
                 text += ev.content
             elif isinstance(ev, StreamDone):
+                usage = ev.usage
                 break
         result = parse(text)
     except Exception as e:
         log.error(f"{label} ({kind}) failed: {e}; reply={text[:300]!r}")
         await db.ai_drafts.delete_one({"draft_id": draft_id})
+        if usage:
+            await record_usage(user["user_id"], KIND_FEATURE.get(kind, "MLG"), usage)
         raise HTTPException(status_code=503, detail=f"{label} couldn't do that right now. Please try again.")
+    await record_usage(user["user_id"], KIND_FEATURE.get(kind, "MLG"), usage)
     left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents(used))
     return result, left
 
@@ -263,8 +269,11 @@ class DoctorAskIn(BaseModel):
 
 
 def parse_doctor(text: str) -> str:
-    answer = parse_answer(text)
-    return answer if DOCTOR_FOOTER.lower()[:40] in answer.lower() else f"{answer}\n\n{DOCTOR_FOOTER}"
+    lines = [ln for ln in parse_answer(text).splitlines() if "in an emergency call mayday" not in ln.lower() and "first-aid guidance only" not in ln.lower()]
+    answer = "\n".join(lines).strip()
+    if not answer:
+        raise ValueError("empty answer")
+    return f"{answer}\n\n{DOCTOR_FOOTER}"
 
 
 @router.post("/ai/doctor-ask")
