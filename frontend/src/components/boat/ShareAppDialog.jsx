@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
+import { QRCodeSVG } from "qrcode.react";
 import { Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,16 +16,30 @@ const share = async () => {
   catch { toast.error("Couldn't share on this device"); }
 };
 
+const PRINT_PX = 2048;
+
 export const ShareAppDialog = ({ open, onClose }) => {
   const printRef = useRef(null);
   const download = () => {
-    const canvas = printRef.current;
-    if (!canvas) return;
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL("image/png");
-    a.download = "myboatprep-qr-code.png";
-    a.click();
-    toast.success("QR code saved. It's 2048 pixels, sharp enough for flyers and stickers.");
+    const svg = printRef.current?.querySelector("svg");
+    if (!svg) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = PRINT_PX;
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, PRINT_PX, PRINT_PX);
+      ctx.drawImage(img, 0, 0, PRINT_PX, PRINT_PX);
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "myboatprep-qr-code.png";
+      a.click();
+      toast.success("QR code saved. It's 2048 pixels, sharp enough for flyers and stickers.");
+    };
+    img.onerror = () => toast.error("Couldn't make the QR picture on this device");
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -38,7 +52,9 @@ export const ShareAppDialog = ({ open, onClose }) => {
           <div className="rounded-lg border-2 border-[var(--navy)] bg-white p-4" data-testid="share-app-qr">
             <QRCodeSVG value={APP_URL} size={220} level="M" marginSize={1} fgColor="#0f172a" bgColor="#ffffff" title="QR code for myboatprep.com" />
           </div>
-          <QRCodeCanvas ref={printRef} value={APP_URL} size={2048} level="H" marginSize={4} fgColor="#000000" bgColor="#ffffff" className="hidden" data-testid="share-app-qr-print" />
+          <div ref={printRef} className="hidden" data-testid="share-app-qr-print">
+            <QRCodeSVG value={APP_URL} size={PRINT_PX} level="H" marginSize={4} fgColor="#000000" bgColor="#ffffff" />
+          </div>
           <p className="font-mono text-base font-bold" data-testid="share-app-url">myboatprep.com</p>
           <button type="button" className="btn-solid h-12 w-full justify-center gap-2" onClick={share} data-testid="share-app-btn">
             <Share2 className="h-4 w-4" /> Share link

@@ -98,7 +98,7 @@ def test_set_roles_unauth():
 def test_crew_voyage_initial():
     r = s(BETA).get(f"{BASE_URL}/api/crew/voyage", params={"owner_id": PRO_ID, "boat_id": BOAT})
     assert r.status_code == 200
-    assert r.json() == {"notes": "TEST leaving Friday", "rsvp": None}
+    assert r.json() == {"notes": "TEST leaving Friday", "rsvp": None, "rota": None}
     assert member(BETA_ID)["rsvp"] is None
 
 
@@ -116,7 +116,7 @@ def test_rsvp_in_out_and_isolation():
     b = s(BETA).get(f"{BASE_URL}/api/crew/voyage", params={"owner_id": PRO_ID, "boat_id": BOAT}).json()
     f = s(FREE).get(f"{BASE_URL}/api/crew/voyage", params={"owner_id": PRO_ID, "boat_id": BOAT}).json()
     assert b["rsvp"] == "in" and f["rsvp"] == "out"
-    assert set(b.keys()) == {"notes", "rsvp"}
+    assert set(b.keys()) == {"notes", "rsvp", "rota"}
     assert member(BETA_ID)["rsvp"] == "in" and member(FREE_ID)["rsvp"] == "out"
     # change mind
     s(BETA).post(f"{BASE_URL}/api/crew/rsvp", json={"owner_id": PRO_ID, "boat_id": BOAT, "status": "out"})

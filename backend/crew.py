@@ -167,9 +167,9 @@ class RotaIn(BaseModel):
 
 
 @router.put("/boats/{boat_id}/watch-rota")
-async def save_watch_rota(boat_id: BoatPath, payload: RotaIn, user: dict = Depends(get_current_user)):
+async def save_watch_rota(boat_id: BoatPath, payload: RotaIn, user: dict = Depends(require_premium)):
     await owned_boat(user, boat_id)
-    if any(p < 0 or p >= len(payload.people) for s in payload.slots for p in s.people):
+    if any(p < 0 or p >= len(payload.people) for s in payload.slots for p in s.people) or any(len(set(s.people)) != len(s.people) for s in payload.slots):
         raise HTTPException(status_code=400, detail="The rota lists someone who isn't on it")
     rota = {**payload.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"watch_rota": rota}})
@@ -219,7 +219,7 @@ class RsvpIn(CrewBoatIn):
 
 
 async def crew_boat(user: dict, owner_id: str, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 0, "voyage_notes": 1, "watch_rota": 1, f"rsvp.{user['user_id']}": 1})
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 0, "boat_id": 1, "voyage_notes": 1, "watch_rota": 1, f"rsvp.{user['user_id']}": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc

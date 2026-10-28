@@ -1,0 +1,35 @@
+{
+  "summary": "Tested Crew Watch Rota, Crew Invite QR and the printable Share QR download, at 390x844. Backend: new test_watch_rota.py has 22 tests, and the regression suites test_crew_roles_rsvp and test_crew_invites_v2 were run with it: 53/53 pass after one fix. PUT watch-rota is owner only (404 for non-owner or unknown boat, 401 when logged out). It returns 400 for an out-of-range or negative person index and 422 for a bad start/end format, hours 0 or 337, per_watch 0 or 3, empty people or slots, and more than 2 people in a slot. GET crew returns watch_rota and GET /crew/voyage returns the rota; DELETE removes it. Bug found and fixed: GET /crew/voyage returned 404 for real crew when the boat had no voyage_notes, rsvp or watch_rota fields. UI, skipper: by default the skipper is ticked and Beta (no reply) is not. The 14:30 + 12h preview gives exactly Afternoon 14:30-16:00, First Dog, Last Dog, First 20:00-00:00, Middle 00:00-02:30 with TUE/WED day headers. 1 per watch alternates the two people; 2 per watch lists both on every slot. 336h gives 99 slots. rota-empty shows and save is disabled when nobody is ticked. Save toasts and closes, and the button changes to 'Watch rota'. Reopening restores the start, length, per watch and who is ticked; Remove toasts and the button goes back to 'Make watch rota'. UI, crew (Beta): voyage-card shows the notes, the RSVP buttons and the rota; Beta's 4 watches are highlighted amber with a You badge. The card still shows the rota when the notes are empty (no RSVP buttons then). Invite QR: without an email it shows crew-invite-error; with an email it shows the panel with an svg and the email caption, the invite appears in crew-list, and Done hides the panel. Share QR at DPR 1: the download is myboatprep-qr-code.png, a 2048x2048 PNG, and the toast shows. At DPR 3 the PNG is 6144x6144 (bug, see below). No horizontal overflow in the crew, rota or invite dialogs; the two buttons sit side by side at 165px each.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/crew/voyage", "issue": "FIXED by testing agent. crew_boat() used a projection without any always-present field. When the boat had no voyage_notes, rsvp or watch_rota, find_one returned {}, which is falsy, so the API raised 404 'You're no longer crew' for real crew. Added boat_id:1 to the projection in crew.py."},
+      {"endpoint": "PUT /api/boats/{id}/watch-rota", "issue": "Uses get_current_user, not require_premium, so a Free owner can save a rota through the API. The UI gates it with premium. Also, watch names and people ids are not checked against the actual crew, and duplicate indices in one slot are allowed (e.g. [0,0])."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ShareAppDialog (Download QR for printing)", "issue": "QRCodeCanvas (qrcode.react 4.2) multiplies size by window.devicePixelRatio. On a DPR 3 phone the canvas and the downloaded PNG are 6144x6144 (verified), not 2048, and the toast still says 2048 pixels. 6144^2 = 37.7MP, which is over iOS Safari's 16.7MP canvas limit, so on iPhones toDataURL is likely to return an empty or broken image. The hidden canvas is also allocated (~150MB) every time the dialog opens. Fix: create the 2048 canvas on click (e.g. draw the QRCodeSVG markup into a fixed 2048x2048 canvas, or use the 'qrcode' lib toDataURL with width 2048) rather than mounting a DPR-scaled QRCodeCanvas.", "selector": "[data-testid='share-app-download-btn']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_watch_rota.py", "/app/backend/tests/test_crew_roles_rsvp.py", "/app/backend/tests/test_crew_invites_v2.py", "/app/test_reports/pytest/pytest_watch_rota.xml"],
+  "action_items": [
+    "Make the printable QR exactly 2048px whatever the devicePixelRatio, and build it on demand rather than as a permanently mounted DPR-scaled canvas (it breaks on iPhones).",
+    "Optional: require_premium on PUT watch-rota; reject duplicate person indices within a slot."
+  ],
+  "critical_code_review_comments": [
+    "crew.py crew_boat projection could return {} and be treated as not found (fixed).",
+    "The rota stores a snapshot of names and roles. Role or name edits and crew removal do not update a saved rota until the skipper saves it again. A removed crew member's slots stay in the rota, and crew_voyage still serves them to other crew. Consider pruning on remove or leave, or showing a 'rota out of date' hint to the skipper.",
+    "buildRota uses local Date arithmetic. Across a DST change, a voyage-length of N hours is wall-clock-shifted by an hour. Acceptable, but worth knowing.",
+    "invite_crew always overwrites voyage_notes with the payload notes (pre-existing behaviour), so a QR invite sent with an empty notes box clears the notes."
+  ],
+  "updated_files": ["/app/backend/crew.py", "/app/backend/tests/test_watch_rota.py", "/app/backend/tests/test_crew_roles_rsvp.py"],
+  "success_rate": {"backend": "100% (53/53 after fix)", "frontend": "95% (all flows pass; printable QR is the wrong size at DPR>1)"},
+  "seed_data_creation": "None persisted. Cleanup done: Pro main watch_rota/rsvp unset, beta removed from crew and its crew_roles unset, voyage_notes '', test_qr_crew@example.com invite deleted, beta last_boat unset. test_watch_rota.py creates and deletes boat TEST_rota.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n0 on tests/test_watch_rota.py, test_crew_roles_rsvp.py and test_crew_invites_v2.py. test_crew_roles_rsvp asserts /crew/voyage now includes a 'rota' key. To retest the crew UI, seed beta onto Pro main crew (roles Navigator) and set voyage notes. Use a new browser context with device_scale_factor=3 to check the QR PNG size.",
+  "rca of the issue": "Printable QR: qrcode.react sets canvas.width = size * devicePixelRatio, so the output depends on the device. /crew/voyage 404: a Mongo projection with only optional fields returns {} for a doc that matches, and `if not doc` treats that as missing."
+}
