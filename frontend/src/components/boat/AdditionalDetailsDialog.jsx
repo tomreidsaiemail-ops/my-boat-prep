@@ -74,13 +74,14 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog">
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog"
+        onCloseAutoFocus={(e) => { if (returnFocus?.current) { e.preventDefault(); returnFocus.current.focus(); } }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat details - Additional details</DialogTitle>
           <DialogDescription className="text-left text-sm">All optional. Boat type and people on board fill in your Mayday and Pan-Pan calls.</DialogDescription>

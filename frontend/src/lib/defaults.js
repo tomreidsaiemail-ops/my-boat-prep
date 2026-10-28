@@ -219,7 +219,7 @@ export const displayLabel = (item, ctx) => {
     case "panPanPosition": return `Report position ${ctx.position}`;
     case "panPanVessel": return `This is ${v}, ${v}, ${v}. Callsign ${c}${ctx.mmsi ? `, MMSI ${ctx.mmsi}` : ""}`;
     case "pobDescription": return `There are ${pobWords(ctx)} The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
-    default: return item.label;
+    default: return item.id === MMSI_ITEM.id && ctx.mmsi && item.label === MMSI_ITEM.label ? `(MMSI ${ctx.mmsi} is included above)` : item.label;
   }
 };
 

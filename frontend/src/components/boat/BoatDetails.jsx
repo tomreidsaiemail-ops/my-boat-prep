@@ -3,12 +3,12 @@ import { ChevronDown, ChevronRight, ChevronUp, Ship, Sparkles } from "lucide-rea
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 
-const MoreButton = ({ boat, onClick }) => (
-  <button type="button" onClick={onClick} data-testid="additional-details-btn"
+const MoreButton = ({ boat, onClick, btnRef }) => (
+  <button type="button" ref={btnRef} onClick={onClick} data-testid="additional-details-btn"
     className="col-span-2 flex min-h-[44px] w-full items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 text-left [transition:border-color_.15s] hover:border-[var(--navy)]">
     <span className="min-w-0 flex-1">
       <span className="block text-sm font-bold">Additional boat details...</span>
-      <span className="block truncate text-xs text-[var(--muted)]" data-testid="additional-details-summary">{[boat.boat_type, pobText(boat), boat.mmsi && `MMSI ${boat.mmsi}`].filter(Boolean).join(" · ")}</span>
+      <span className="block truncate text-xs text-[var(--muted)]" data-testid="additional-details-summary">{[boat.boat_type, pobText(boat), boat.mmsi?.length === 9 && `MMSI ${boat.mmsi}`].filter(Boolean).join(" · ")}</span>
     </span>
     <ChevronRight className="h-5 w-5 shrink-0 text-[var(--muted)]" />
   </button>
@@ -46,7 +46,8 @@ export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
-  const dialog = <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={() => setMore(false)} />;
+  const moreRef = useRef(null);
+  const dialog = <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={() => setMore(false)} returnFocus={moreRef} />;
   const focused = useRef(false);
   useEffect(() => { if (complete && !focused.current) setOpen(false); }, [complete]);
   const onBlur = (e) => {
@@ -76,7 +77,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
         <Field id="callsign" label="Callsign" value={boat.callsign} placeholder="Call..." onChange={(v) => onChange("callsign", v)} />
         <Field id="skipper" label="Skipper" value={boat.skipper} placeholder="Name..." onChange={(v) => onChange("skipper", v)} />
         <Field id="email" type="email" label="Email" value={boat.log_email || ""} placeholder="you@email.com" onChange={(v) => onChange("log_email", v)} />
-        <MoreButton boat={boat} onClick={() => setMore(true)} />
+        <MoreButton boat={boat} btnRef={moreRef} onClick={() => setMore(true)} />
       </div>
       {batchBtn}
     </section>

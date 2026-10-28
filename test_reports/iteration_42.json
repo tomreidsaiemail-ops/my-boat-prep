@@ -1,0 +1,36 @@
+{
+  "summary": "Tested Additional boat details dialog, MMSI/children wording in Mayday/Pan-Pan (frontend + ship_log._label), backend BoatDetails validators, and the Invite crew Clear/Keep prompt, all on mobile 390x844. Backend: 34/34 pytest pass (new test_boat_additional_details.py + existing test_boat_type_pob_templates.py). Frontend: all requested flows work. There is one minor UX regression (bar does not collapse after the dialog closes) and two small polish items.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/me/boat", "issue": "children is not clamped to pob-1 on the server (children=7 with pob=3 is stored as 7). Wording code clamps to pob when rendering, so output is fine. The stored data is just inconsistent."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatDetails bar after AdditionalDetailsDialog closes", "issue": "After Done or Esc, document.activeElement is BODY, because Radix cannot return focus to a trigger since none is used. The section's onBlur therefore never fires, so the complete bar stays expanded even when the user focuses other controls (e.g. list-selector). Before, it collapsed when focus left. Suggested fix: in onClose, refocus the additional-details-btn via a ref, or setOpen(false) if complete. Also reset focused.current.", "selector": "[data-testid='boat-details-bar']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Mayday / Pan-Pan lists", "issues": ["The manual item 'or MMSI Number (Optional, skipper to delete or add one)' still shows right after the Pan-Pan vessel line, which now includes the MMSI automatically. This repeats the MMSI when one is set. Consider hiding or removing it when a 9-digit MMSI exists."]},
+      {"screen": "additional-details-summary", "issue_note": "", "issues": ["The summary shows a partial MMSI (e.g. 'MMSI 5123') while Mayday leaves it out. Consider showing it only when it has 9 digits, or flagging it."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_boat_additional_details.py", "/app/backend/tests/test_boat_type_pob_templates.py", "/app/test_reports/pytest/pytest_results_iter42.xml"],
+  "action_items": [
+    "Fix the Boat Details bar not collapsing after the Additional details dialog closes (focus is lost to BODY)",
+    "Optional: hide the redundant 'or MMSI Number' manual item when a 9-digit MMSI is set",
+    "Optional: clamp children to pob-1 in the backend validator (model_validator)"
+  ],
+  "critical_code_review_comments": [
+    "BoatDetails.jsx: AdditionalDetailsDialog is used without a DialogTrigger, so focus is not restored on close. That breaks the focus/blur collapse logic.",
+    "IntField: typing a value over max (children=5 when max is 3) is silently ignored and stays on screen until blur. Acceptable, but no hint is shown.",
+    "The email-log endpoint ctx passes children and a 9-digit-only MMSI correctly. ship_log._label was verified with unit tests. The real email send was NOT tested end to end, to avoid sending email."
+  ],
+  "updated_files": ["/app/backend/tests/test_boat_additional_details.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "seed_data_creation": "None kept. Pro boat 'main' was restored to boat_type 'Gaff Cutter TEST', pob 3, children 0, mmsi '', units m, dims '', trip_days 0. Test invites test_invite_a/b/d@example.com were deleted. The TEST_bt_extra boat is deleted by the fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified: the bar no longer has boat-type or POB inputs. The dialog's split, clamping (POB 4->2 clamps children to 1), MMSI digits-only with warning, units toggle suffixes, comma decimals, trip days, and Done/Esc close all work. Values persist after reload and in GET /api/me/boat. Focus is kept while slow-typing MMSI and the Other type input. Mayday and Pan-Pan wording was checked for 4/2, 2/1 (singular), 3/2, 3/0 and short MMSI (left out). Invite Clear/Keep was tested for the message, link (clipboard checked) and QR modes. The email mode was not clicked, to avoid a real send. Reopening the dialog starts clean. No horizontal overflow at 390px. test_boat_type_pob_templates.py is API-only and needed no update."
+}

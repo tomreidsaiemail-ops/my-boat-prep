@@ -7,7 +7,7 @@ import os
 import re
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, BeforeValidator, field_validator
+from pydantic import BaseModel, Field, ConfigDict, BeforeValidator, field_validator, model_validator
 from typing import Annotated, Literal, Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import uuid
@@ -104,6 +104,12 @@ class BoatDetails(BaseModel):
     def dimension(cls, v):
         v = str(v or "").strip().replace(",", ".")[:8]
         return v if re.fullmatch(r"\d{0,4}(\.\d{0,2})?", v) else ""
+
+    @model_validator(mode="after")
+    def children_fit(self):
+        self.children = min(self.children, self.pob - 1)
+        self.trip_days = min(self.trip_days, 365)
+        return self
 
     @field_validator("boat_type", mode="before")
     @classmethod

@@ -23,6 +23,9 @@ def log_title(log: dict) -> str:
     return f"{name} - {log['vessel']} ({log['callsign']}) - {log['local_date']}"
 
 
+MMSI_LABEL = "or MMSI Number (Optional, skipper to delete or add one)"
+
+
 def _pob_words(ctx: dict) -> str:
     pob = ctx.get("pob") or 1
     kids = min(ctx.get("children") or 0, pob)
@@ -45,7 +48,7 @@ def _label(it: dict, ctx: dict) -> str:
         "panPanPosition": f"Report position {pos}",
         "panPanVessel": f"This is {v}, {v}, {v}. Callsign {c}{mmsi}",
         "pobDescription": f"There are {_pob_words(ctx)} The boat is a white {ctx.get('boat_type') or '[BOAT TYPE]'}. NOTE: If not white state correct colour of boat.",
-    }.get(it.get("dynamic"), it.get("label", ""))
+    }.get(it.get("dynamic"), f"(MMSI {ctx['mmsi']} is included above)" if it.get("id") == 400 and ctx.get("mmsi") and it.get("label") == MMSI_LABEL else it.get("label", ""))
 
 
 def render_items(items: list, ctx: dict) -> list:
