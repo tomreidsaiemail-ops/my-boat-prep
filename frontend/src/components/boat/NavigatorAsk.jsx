@@ -34,7 +34,8 @@ export const NavigatorAsk = ({ boat, onChange, items, online, locked, onUpgrade 
   const setRoute = (key, value) => {
     onChange(key, value);
     const next = routeText(key === "route_start" ? value : start, key === "route_dest" ? value : dest);
-    setQuestion((q) => (q.startsWith(auto.current) ? next + q.slice(auto.current.length) : q || next).slice(0, 1024));
+    const prev = auto.current;
+    setQuestion((q) => (q.startsWith(prev) ? next + q.slice(prev.length) : q || next).slice(0, 1024));
     auto.current = next;
     setState((s) => ({ ...s, error: "" }));
   };

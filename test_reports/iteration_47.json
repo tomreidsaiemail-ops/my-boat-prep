@@ -1,0 +1,30 @@
+{
+  "summary": "Tested the Magic Marine Navigator and the Route Hazards -> Route Planning rename. Backend: 13/13 pytest passed in tests/test_navigator.py. That covers 401 with no login, 403 for free, 422 for blank/missing start or destination, 422 for a question over 1024 chars and a place over 80 chars, one real Pro call (answer ends with the safety line exactly once, asks_left is an int, an ai_usage MMN row with tokens and 1 navigator ai_drafts row), admin analytics including MMN, PUT/GET /api/me/boat round-tripping route_start/route_dest (81 chars -> 422), and templates.py naming routeHazards 'Route Planning'. Frontend at 390x844 (Pro): list-selector shows 'Route Planning'. A boat seeded with 'Route Hazards' was renamed on load and the new name was saved to the DB. topup-btn comes before navigator-ask-panel. START and DESTINATION sit side by side (175px each). The label, placeholder and maxlength 1024 are correct, and the textarea is 44px when empty and 84px with text, with the Ask... button on the right. Blank START or DESTINATION shows navigator-error and makes no API call. navigator-loading shows, then the answer card with the safety line and '18 questions left today'; the close button hides it. The panel does not show on other lists. START/DESTINATION persist after reload and the question re-fills. Free user: the panel shows, Ask opens plan-dialog ('Magic Marine Navigator is a Pro feature') and makes no API call. Admin: tile-feature-MMN renders. No horizontal overflow. FOUND AND FIXED 1 bug in the auto-fill (see RCA).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "NavigatorAsk setRoute", "issue": "FIXED by testing agent. Editing DESTINATION after START did not update the route prefix. Typing START 'Mana' then DESTINATION 'Picton' left the question as 'Mana', and later edits never updated it.", "selector": "[data-testid='navigator-question-input']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "NavigatorAsk", "issues": ["NavigatorAsk has no key={boatId}. When a Pro user switches boats while on Route Planning, the question text and the auto prefix ref can carry over from the previous boat (BoatDetails uses key={boatId}). Not reproduced, found by code review."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_navigator.py", "/app/test_reports/pytest/iter47.xml"],
+  "action_items": [
+    "Review the 1-line fix in NavigatorAsk.jsx setRoute (capture prev = auto.current before setQuestion)",
+    "Optional: add key={boatId} to <NavigatorAsk> in BoatPrep.jsx so the question resets per boat"
+  ],
+  "critical_code_review_comments": [
+    "The free user sees the full panel and can edit START/DESTINATION (saved to the boat); only Ask is gated. This matches the request.",
+    "The text after the route prefix is not saved, so after a reload the question re-fills to 'START to DESTINATION' only. This is what the request asked for.",
+    "The test Pro/Free main boats had no routeHazards list in their registry and it was not in deleted_lists. addMissingLists does not re-add routeHazards, so existing users who lost it cannot get it back. Not a regression."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/NavigatorAsk.jsx", "/app/backend/tests/test_navigator.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% after fix"},
+  "seed_data_creation": "Temporarily added routeHazards (named 'Route Hazards', 3 items) to the test-user-pro and test-user-free main boats with /tmp/seed_rh.js. Removed it afterwards with MODE='clean', which also unset route_start/route_dest. 2 real Gemini calls (1 pytest, 1 UI), so the Pro navigator quota is now 18/20. A TEST_nav boat was created and deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0. The Pro/Free main boats have NO routeHazards list by default, so seed it with: mongosh $MONGO/$DB /tmp/seed_rh.js (clean: --eval 'var MODE=\"clean\"' /tmp/seed_rh.js). list-selector is a native select (select_option 'routeHazards'). In Playwright, press_sequentially into a non-empty input puts the cursor at the start; use fill.",
+  "rca of the issue": "In NavigatorAsk.setRoute, setQuestion was given an updater that read auto.current, and the very next line set auto.current = next. React 18 runs queued updaters lazily during the next render (the eager path only runs when the fiber has no pending work; the parent mutate had just scheduled an update). So the updater saw the NEW prefix, q.startsWith(new) was false, and it fell back to keeping q. Repro: type START 'Mana', then DESTINATION 'Picton'; the question stays 'Mana'. Fix: const prev = auto.current; setQuestion(q => q.startsWith(prev) ? next + q.slice(prev.length) : q || next). Verified: 'Mana to Picton', and START edits update the prefix while keeping ' via Queen Charlotte Sound'."
+}

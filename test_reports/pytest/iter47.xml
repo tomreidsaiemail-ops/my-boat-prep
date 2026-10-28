@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="13" time="14.156" timestamp="2026-10-28T23:46:44.728222+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_no_auth_401" time="0.301" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_free_403" time="0.212" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_blank_places_422[patch0]" time="0.165" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_blank_places_422[patch1]" time="0.167" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_blank_places_422[patch2]" time="0.165" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_question_too_long_422" time="0.144" /><testcase classname="tests.test_navigator.TestNavigatorValidation" name="test_place_too_long_422" time="0.186" /><testcase classname="tests.test_navigator.TestNavigatorAsk" name="test_ask_pro_and_usage" time="11.694" /><testcase classname="tests.test_navigator.TestNavigatorAsk" name="test_admin_analytics_has_mmn" time="0.224" /><testcase classname="tests.test_navigator.TestBoatRoute" name="test_route_fields_roundtrip" time="0.251" /><testcase classname="tests.test_navigator.TestBoatRoute" name="test_route_too_long_422" time="0.156" /><testcase classname="tests.test_navigator.TestBoatRoute" name="test_cleanup" time="0.155" /><testcase classname="tests.test_navigator" name="test_template_lists_route_planning" time="0.173"><failure message="KeyError: 'MONGO_URL'">tests/test_navigator.py:104: in test_template_lists_route_planning
+    from templates import TEMPLATE_LISTS
+templates.py:7: in &lt;module&gt;
+    from db import db
+db.py:4: in &lt;module&gt;
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+                                ^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'MONGO_URL'</failure></testcase></testsuite></testsuites>
