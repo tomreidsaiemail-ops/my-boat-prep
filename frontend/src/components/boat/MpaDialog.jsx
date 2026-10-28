@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { buildShopping, foodStock, initialsFor } from "@/lib/mpa";
+import { buildShopping, foodStock, initialsFor, keyOf } from "@/lib/mpa";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
 
 const Fact = ({ label, value, testId, warn }) => (
@@ -38,7 +38,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
       if (!online) toast.warning("No signal, so provisions are added without amounts");
       else {
         try {
-          const onBoard = Object.fromEntries(prov.map((p) => [p, Object.values(stock).find((s) => s.name.toLowerCase() === p.toLowerCase())?.qty]).filter(([, q]) => q));
+          const onBoard = Object.fromEntries(prov.map((p) => [p, stock[keyOf(p)]?.qty]).filter(([, q]) => q));
           amounts = (await api.post("/ai/mpa/provisions", { items: prov, on_board: onBoard, adults, children, days: days || 1 }, { timeout: 90000 })).data.amounts;
         } catch (e) { toast.warning(apiError(e, "The Magic Mariner couldn't size the provisions, so they're added without amounts")); }
       }
@@ -57,7 +57,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
         </DialogHeader>
         <div className="flex flex-col gap-2">
           <p className="field-label">Meal plans</p>
-          {lists.length === 0 && <p className="rounded-md bg-amber-50 p-3 text-sm" data-testid="mpa-no-lists">No meal plan lists yet. In a list, use each meal name as a heading, put the recipe in brackets as its first sub-item, then add the ingredients underneath.</p>}
+          {lists.length === 0 && <p className="rounded-md bg-amber-50 p-3 text-sm" data-testid="mpa-no-lists">No meal plan lists yet. Make a list with numbered meal names (e.g. "1. Curry") so the lines underneath are indented. Put the recipe in brackets as the first line under each meal, then the ingredients, e.g. "200g rice".</p>}
           {lists.map((l) => (
             <label key={l.id} className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3" data-testid={`mpa-list-${l.id}`}>
               <input type="checkbox" className="h-5 w-5 accent-[var(--navy)]" checked={picked.includes(l.id)} onChange={() => toggle(l.id)} data-testid={`mpa-list-check-${l.id}`} />

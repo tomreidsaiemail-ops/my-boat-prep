@@ -203,7 +203,10 @@ class ProvisionsIn(BaseModel):
     @field_validator("items")
     @classmethod
     def trim_items(cls, v: list) -> list:
-        return [s for s in dict.fromkeys(str(x).strip()[:80] for x in v) if s]
+        items = [s for s in dict.fromkeys(str(x).strip()[:80] for x in v) if s]
+        if not items:
+            raise ValueError("Add at least one provision")
+        return items
 
 
 def parse_provisions(text: str, names: list) -> dict:

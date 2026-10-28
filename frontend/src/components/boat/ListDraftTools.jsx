@@ -2,7 +2,23 @@ import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 
-export const toLines = (text) => [...new Map(text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => [l.toLowerCase(), l])).values()];
+// Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
+export const toLines = (text) => {
+  const out = [];
+  let seen = new Set();
+  const heads = new Set();
+  text.split("\n").map((l) => l.trim()).filter(Boolean).forEach((l) => {
+    const key = l.toLowerCase();
+    if (/^\d+[.)]\s/.test(l)) {
+      if (heads.has(key)) return;
+      heads.add(key);
+      seen = new Set();
+    } else if (seen.has(key)) return;
+    seen.add(key);
+    out.push(l);
+  });
+  return out;
+};
 export const DESCRIPTION_MAX = 512;
 
 export const ListDescriptionField = ({ value, onChange, testId = "create-list" }) => (

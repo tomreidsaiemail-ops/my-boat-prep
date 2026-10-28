@@ -77,9 +77,10 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  const [foodOnly, setFoodOnly] = useState(false);
+  const [foodOnlyState, setFoodOnly] = useState(false);
   const foodIds = new Set(areas.filter((a) => a.food).map((a) => a.id));
   const hasFoodPins = (boat?.zone_maps || []).some((m) => (m.pins || []).some((p) => foodIds.has(p.area_id)));
+  const foodOnly = foodOnlyState && hasFoodPins;
   const pinsFor = (pins) => (foodOnly ? (pins || []).filter((p) => foodIds.has(p.area_id)) : pins);
   const [walking, setWalking] = useState(false);
   useEffect(() => {

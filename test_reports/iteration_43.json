@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Marine Magic Provisioning Assistant (MPA) end to end on mobile 390x844 with the Pro user, plus the Food areas and the zone map Food filter. Backend: POST /api/ai/mpa/provisions passes 7 of 8 tests (Pro 200 with real Gemini amounts keyed by the input names, free 403, no auth 401, 422 for empty items / days 0 / days 366 / adults -1). It fails one edge case: whitespace-only items. Frontend: almost every requested flow works. Lists are created with numbered meal names, so auto-indent puts the bracket line and ingredients under each meal. Additional details were set to POB 4 / children 2 / 5 days. The Food toggle works (aria-pressed, toast, circled F badge). The zone map Food filter shows and hides correctly. MPA dialog values are right ('2 adults, 2 children', '5 days', '1 Food area...', provisions checked by default, Make button disabled until a list is picked, TM/HM tags). The generated list is correct: Meals (3) [1]TM [2]TM [3]HM, Pasta 300 g, 'Onion – 6 · 3 on board' [1][2], Rice 240 g, Fish 450 g, and Provisions for 5 days (Water 60 L, Bread 3 loaves, Milk 4 L). Onion was correctly left out of provisions because it is already an ingredient. Re-running replaces the same list (only one 'MPA Shopping List' in the selector, toast says 'updated'). With one list there are no source tags. Ticking works. The Export Current print view shows the text labels '(TM)(HM) [1][3]'. The list persists after reload and in the DB with the mpa field. The mpa-no-lists message shows when there are no meal lists. The free user gets the upgrade dialog. There is no horizontal overflow at 390px. Main bug: you cannot repeat the same ingredient line in two meals of one list. Create-list (and add item) drops or blocks duplicate lines, so Tom's second 'Salt' (Curry) was silently removed. Salt then shows [1][3] instead of the expected [1][2][3].",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/mpa/provisions", "issue": "items: ['  '] passes min_length=1. trim_items then returns []. The AI is still called with an empty list, takes about 60s, Gemini returns {items:[]}, and the endpoint returns 503 (502 via ingress). Fix: after trimming, raise ValueError when the list is empty so the endpoint returns 422 and never calls the AI."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Meal plan lists / CreateListDialog toLines + isDup in add/edit item", "issue": "Duplicate lines are deduplicated case-insensitively across the whole list. A meal plan that uses 'Salt' (or '1 onion') in two meals loses the second one. On paste it is dropped silently ('9 items' for 10 lines); add item says 'already exists'. The MPA then misses that meal's ingredient: Salt got [1][3] instead of [1][2][3], and an identical quantity line in a second meal is lost. Suggested fix: allow duplicates for sub-items under different parent headings (dedupe within a group only), or at least within meal-plan groups.", "selector": "[data-testid='create-list-items-input']", "priority": "HIGH"},
+      {"component": "ZoneMap food filter", "issue": "Turn on 'Show Food areas only', then unflag the last Food area in Boat Inventory. hasFoodPins becomes false so the filter button disappears, but foodOnly stays true. Every zone map is then hidden and there is no way to restore them except re-flagging or reloading. Fix: reset foodOnly when hasFoodPins is false (e.g. const effectiveFood = foodOnly && hasFoodPins).", "selector": "[data-testid='zone-map-food-filter']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Print view / Export Current of MPA Shopping List", "issues": ["The print layout numbers every row (1. Meals (3), 2. Spaghetti Bolognese (TM) [1], 4. Fish tacos (HM) [3]). These line numbers clash with the [n] meal numbers and are confusing. Consider hiding line numbers for kind 'mpa' lists."]},
+      {"screen": "List selector", "issues": ["Boat Inventory is not the first option in list-selector. allLists = [...registry, INVENTORY_LIST, ...], so it comes after all the registry lists. If 'Boat Inventory stays the first list' means dropdown order, this does not match."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_mpa.py", "/app/test_reports/pytest/pytest_mpa.xml"],
+  "action_items": [
+    "Allow repeated ingredient lines in different meals of the same list (toLines dedupe in ListDraftTools.jsx and isDup in BoatPrep.jsx add/edit). Otherwise shared ingredients within one list cannot be combined correctly.",
+    "ZoneMap.jsx: clear or ignore foodOnly when no food pins remain, so maps never become all hidden with no toggle",
+    "ai_lists.py ProvisionsIn.trim_items: raise ValueError if empty after trimming (return 422, skip the AI call)",
+    "Optional: hide print line numbers for MPA lists; confirm Boat Inventory dropdown position"
+  ],
+  "critical_code_review_comments": [
+    "mpa.js parseMeals requires meal names to be top-level and the bracket line to be indented. With auto-indent this only happens when meal names are numbered ('1. Curry'). Unnumbered pasted meal names are not indented, so the list is never recognised as a meal plan. Consider documenting this in mpa-no-lists or detecting it without indent.",
+    "saveMpa row ids are Date.now()+n. They are fine per list, but they are regenerated on every run, so ticks are lost on re-run (expected, as the list is replaced).",
+    "MpaDialog onBoard matches provisions to stock by exact lowercase name, while ingredients use keyOf (singular). So 'Onions' in a Food area vs 'Onion' in Provisions would not be sent as on_board. Use keyOf for both.",
+    "MpaDialog useEffect only sets useProv/picked on open, which is intentional. The tags useMemo calls initialsFor inside the map once per list (O(n^2)), which is trivial."
+  ],
+  "updated_files": ["/app/backend/tests/test_mpa.py"],
+  "success_rate": {"backend": "88% (7/8)", "frontend": "92%"},
+  "seed_data_creation": "Everything was cleaned up. The Pro boat was reset to pob 3, children 0, trip_days 0. The Tom's/Harry's Meals and MPA Shopping List lists were removed (ids added to deleted_lists). TEST_Galley area and the 2 uploaded zone maps were deleted. The temporarily seeded 'provisions' registry entry and data were removed from the pro, free and beta boats (none had it originally). The real AI calls used 2 to 3 of the Pro Magic quota.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The Pro boat has no Provisions list by default. Seed it in the DB (registry {id:'provisions',name:'Provisions',isSystem:true} and data.provisions) to test mpa-provisions-check. Free can't create lists, so seed provisions to see the upgrade dialog via mpa-open-btn. The Beta boat lacks a vessel name, so guard() blocks the MPA. Create meal lists with numbered meal names ('1. Spaghetti Bolognese') so auto-indent works. Zone maps can be seeded via POST /api/boats/main/zone-maps (multipart jpeg) and PUT .../pins with area_id. The boat details bar must be expanded (boat-details-summary) before additional-details-btn is visible."
+}
