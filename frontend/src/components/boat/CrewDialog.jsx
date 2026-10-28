@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Mail, UserMinus, X } from "lucide-react";
+import { UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
+import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
 
-const Row = ({ title, sub, onRemove, label, testId }) => (
+const Row = ({ title, sub, roles = [], onRemove, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
-    <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{title}</p><p className="truncate text-xs text-[var(--muted)]">{sub}</p></div>
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-bold">{title}</p>
+      <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
+      {roles.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1" data-testid={`${testId}-roles`}>
+          {roles.map((r) => <span key={r} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-900">{r}</span>)}
+        </div>
+      )}
+    </div>
     <button type="button" className="icon-btn hover:text-[var(--red)]" onClick={onRemove} aria-label={label} title={label} data-testid={`${testId}-remove-btn`}>
       {label.startsWith("Cancel") ? <X className="h-[18px] w-[18px]" /> : <UserMinus className="h-[18px] w-[18px]" />}
     </button>
@@ -15,27 +24,15 @@ const Row = ({ title, sub, onRemove, label, testId }) => (
 );
 
 export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPhoto, onClose }) => {
-  const [info, setInfo] = useState({ crew: [], invites: [] });
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
+  const [inviting, setInviting] = useState(false);
 
   const load = useCallback(() => api.get(`/boats/${boat.boat_id}/crew`).then(({ data }) => setInfo(data)).catch(() => {}), [boat.boat_id]);
-  useEffect(() => { if (open) { setError(""); setEmail(""); if (online) load(); } }, [open, online, load]);
-
-  const invite = async (e) => {
-    e.preventDefault();
+  useEffect(() => { if (open && online) load(); }, [open, online, load]);
+  const openInvite = () => {
     if (!premium) { onUpgrade(); return; }
-    if (!online) { setError("You're offline. Send the invite when you have signal."); return; }
-    if (!email.trim()) { setError("Please enter your crew member's email"); return; }
-    setBusy(true); setError("");
-    try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { email: email.trim() }, { timeout: 30000 });
-      toast.success(`Invite emailed to ${email.trim()}`);
-      setEmail("");
-      load();
-    } catch (err) { setError(apiError(err, "Couldn't send the invite, please try again")); }
-    finally { setBusy(false); }
+    if (!online) { toast.error("You're offline. Invite crew when you have signal."); return; }
+    setInviting(true);
   };
   const run = async (fn, msg) => {
     if (!online) { toast.error("Go online to change your crew"); return; }
@@ -50,28 +47,22 @@ export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPho
           <DialogDescription className="text-left text-sm">Crew see this boat on their own phones and can tick items. Only you can change anything else.</DialogDescription>
         </DialogHeader>
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
-        <form onSubmit={invite} className="flex flex-col gap-2">
-          <label className="field-label" htmlFor="crew-email">Invite crew by email</label>
-          <div className="flex gap-2">
-            <input id="crew-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="crew@email.com"
-              className="field-input min-w-0 flex-1 text-base normal-case tracking-normal" data-testid="crew-invite-email-input" />
-            <button type="submit" className="btn-solid flex items-center gap-2 px-4" disabled={busy} data-testid="crew-invite-send-btn">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Invite
-            </button>
-          </div>
-          {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}
-        </form>
+        <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
+          <UserPlus className="h-4 w-4" /> Invite crew
+        </button>
         <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="crew-list">
           {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
           {info.crew.map((m) => (
-            <Row key={m.user_id} title={m.name || m.email} sub={m.email} label="Remove from crew" testId={`crew-member-${m.user_id}`}
+            <Row key={m.user_id} title={m.name || m.email} sub={m.email} roles={m.roles} label="Remove from crew" testId={`crew-member-${m.user_id}`}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
-            <Row key={i.invite_id} title={i.email} sub="Invite sent, waiting to join" label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+            <Row key={i.invite_id} title={i.email} sub={i.declined_at ? "Declined the invite" : "Invited, joins when they log in"} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
+        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} online={online} premium={premium} onUpgrade={onUpgrade}
+          onInvited={load} onClose={() => setInviting(false)} />
       </DialogContent>
     </Dialog>
   );

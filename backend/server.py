@@ -34,7 +34,7 @@ from templates import router as templates_router  # noqa: E402
 from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
-from crew import router as crew_router  # noqa: E402
+from crew import router as crew_router, backfill_invite_keys  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
@@ -390,6 +390,8 @@ async def create_indexes():
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
     await db.crew_invites.create_index("token_hash", unique=True)
+    await db.crew_invites.create_index("email_key")
+    await backfill_invite_keys()
     await db.ai_scans.create_index([("user_id", 1), ("created_at", 1)])
     await db.ai_drafts.create_index([("user_id", 1), ("created_at", 1)])
     try:
