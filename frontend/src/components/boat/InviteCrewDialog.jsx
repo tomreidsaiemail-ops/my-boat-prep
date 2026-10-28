@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Link2, Loader2, Mail, MessageCircle } from "lucide-react";
+import { Link2, Loader2, Mail, MessageCircle, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +28,8 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  useEffect(() => { if (open) { setEmail(""); setRoles([]); setError(""); setNotes(info.voyage_notes || ""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [qrFor, setQrFor] = useState("");
+  useEffect(() => { if (open) { setEmail(""); setRoles([]); setError(""); setQrFor(""); setNotes(info.voyage_notes || ""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim() });
   const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
@@ -36,12 +38,13 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
     if (!premium) { onUpgrade(); return; }
     if (!online) { setError("You're offline. Invite crew when you have signal."); return; }
     if (!email.trim()) { setError("Enter your crew member's email first, so the app knows them when they log in"); return; }
-    const copied = mode === "email" ? true : await copy(mode === "link" ? APP_URL : message);
+    const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
       await api.post(`/boats/${boat.boat_id}/invites`, { email: email.trim(), roles, notes, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
-      if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
+      if (mode === "qr") setQrFor(who);
+      else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
       else if (copied) toast.success(mode === "link" ? `Link copied. ${who} logs in with that email to join.` : "Message copied. Paste it into WhatsApp or any messaging app.");
       else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.");
       if (copied) { setEmail(""); setRoles([]); }
@@ -77,8 +80,18 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
         </div>
         <RsvpSummary crew={info.crew || []} />
         {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}
+        {qrFor && (
+          <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-[var(--navy)] bg-white p-4 text-center" data-testid="crew-invite-qr-panel">
+            <div className="rounded-md bg-white p-2" data-testid="crew-invite-qr">
+              <QRCodeSVG value={APP_URL} size={200} level="M" marginSize={1} fgColor="#0f172a" bgColor="#ffffff" title="QR code for myboatprep.com" />
+            </div>
+            <p className="text-sm">Scan with the phone camera, then log in with<br /><b className="break-all" data-testid="crew-invite-qr-email">{qrFor}</b><br />and the app asks them to join {name}.</p>
+            <button type="button" className="btn-ghost h-11 w-full justify-center" onClick={() => setQrFor("")} data-testid="crew-invite-qr-done-btn">Done, invite someone else</button>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <Btn mode="email" icon={Mail} solid>Send email invite</Btn>
+          <Btn mode="qr" icon={QrCode}>Show QR code to scan</Btn>
           <Btn mode="message" icon={MessageCircle}>Copy WhatsApp message</Btn>
           <Btn mode="link" icon={Link2}>Copy link only</Btn>
         </div>

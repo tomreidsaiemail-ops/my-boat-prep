@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Loader2, Map as MapIcon, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { RotaList } from "@/components/boat/RotaList";
 
 export const VoyageCard = ({ boat, online }) => {
+  const { user } = useAuth();
   const [voyage, setVoyage] = useState(null);
   const [busy, setBusy] = useState("");
   const params = { owner_id: boat.owner_id, boat_id: boat.boat_id };
@@ -18,7 +21,7 @@ export const VoyageCard = ({ boat, online }) => {
     return () => document.removeEventListener("visibilitychange", onFocus);
   }, [online, boat.owner_id, boat.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!voyage?.notes) return null;
+  if (!voyage?.notes && !voyage?.rota) return null;
   const reply = async (status) => {
     if (!online) { toast.error("Go online to reply to the skipper"); return; }
     setBusy(status);
@@ -38,11 +41,21 @@ export const VoyageCard = ({ boat, online }) => {
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--navy)] bg-white p-3.5" data-testid="voyage-card">
       <h2 className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-tight"><MapIcon className="h-4 w-4" /> Planned voyage</h2>
-      <p className="whitespace-pre-line text-sm leading-relaxed" data-testid="voyage-notes-text">{voyage.notes}</p>
-      <div className="flex gap-2">
-        <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I'm in</Btn>
-        <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can't make it</Btn>
-      </div>
+      {voyage.notes && (
+        <>
+          <p className="whitespace-pre-line text-sm leading-relaxed" data-testid="voyage-notes-text">{voyage.notes}</p>
+          <div className="flex gap-2">
+            <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I'm in</Btn>
+            <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can't make it</Btn>
+          </div>
+        </>
+      )}
+      {voyage.rota && (
+        <div className="flex flex-col gap-1.5" data-testid="voyage-rota">
+          <p className="field-label">Watch rota <span className="normal-case tracking-normal text-[var(--muted)]">· your watches are highlighted</span></p>
+          <RotaList rota={voyage.rota} me={user?.user_id} testId="voyage-rota-list" />
+        </div>
+      )}
     </section>
   );
 };

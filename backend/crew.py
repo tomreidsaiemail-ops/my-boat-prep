@@ -24,7 +24,7 @@ def _hash(token: str) -> str:
 
 
 async def owned_boat(user: dict, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "voyage_notes": 1, "rsvp": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     return doc
@@ -138,7 +138,49 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
                                          {"_id": 0, "invite_id": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1}).to_list(100)
     rsvp = doc.get("rsvp") or {}
     return {"crew": [{**m, "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status")} for m in members], "invites": invites,
-            "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", "")}
+            "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""),
+            "watch_rota": doc.get("watch_rota")}
+
+
+class RotaPerson(BaseModel):
+    id: str = Field(max_length=80)
+    name: str = Field(max_length=120)
+    roles: List[str] = Field(default_factory=list, max_length=20)
+
+
+LOCAL_DT = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$"
+
+
+class RotaSlot(BaseModel):
+    start: str = Field(pattern=LOCAL_DT)
+    end: str = Field(pattern=LOCAL_DT)
+    watch: str = Field(max_length=20)
+    people: List[int] = Field(max_length=2)
+
+
+class RotaIn(BaseModel):
+    start: str = Field(pattern=LOCAL_DT)
+    hours: int = Field(ge=1, le=336)
+    per_watch: int = Field(ge=1, le=2)
+    people: List[RotaPerson] = Field(min_length=1, max_length=30)
+    slots: List[RotaSlot] = Field(min_length=1, max_length=400)
+
+
+@router.put("/boats/{boat_id}/watch-rota")
+async def save_watch_rota(boat_id: BoatPath, payload: RotaIn, user: dict = Depends(get_current_user)):
+    await owned_boat(user, boat_id)
+    if any(p < 0 or p >= len(payload.people) for s in payload.slots for p in s.people):
+        raise HTTPException(status_code=400, detail="The rota lists someone who isn't on it")
+    rota = {**payload.model_dump(), "updated_at": datetime.now(timezone.utc).isoformat()}
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"watch_rota": rota}})
+    return {"watch_rota": rota}
+
+
+@router.delete("/boats/{boat_id}/watch-rota")
+async def delete_watch_rota(boat_id: BoatPath, user: dict = Depends(get_current_user)):
+    await owned_boat(user, boat_id)
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$unset": {"watch_rota": ""}})
+    return {"ok": True}
 
 
 class RolesIn(BaseModel):
@@ -177,7 +219,7 @@ class RsvpIn(CrewBoatIn):
 
 
 async def crew_boat(user: dict, owner_id: str, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 0, "voyage_notes": 1, f"rsvp.{user['user_id']}": 1})
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 0, "voyage_notes": 1, "watch_rota": 1, f"rsvp.{user['user_id']}": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -187,7 +229,7 @@ async def crew_boat(user: dict, owner_id: str, boat_id: str) -> dict:
 async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")], boat_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")],
                       user: dict = Depends(get_current_user)):
     doc = await crew_boat(user, owner_id, boat_id)
-    return {"notes": doc.get("voyage_notes", ""), "rsvp": ((doc.get("rsvp") or {}).get(user["user_id"]) or {}).get("status")}
+    return {"notes": doc.get("voyage_notes", ""), "rsvp": ((doc.get("rsvp") or {}).get(user["user_id"]) or {}).get("status"), "rota": doc.get("watch_rota")}
 
 
 @router.post("/crew/rsvp")

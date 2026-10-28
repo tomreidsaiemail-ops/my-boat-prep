@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Pencil, UserMinus, UserPlus, X } from "lucide-react";
+import { Clock, Pencil, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
 import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
 import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
+import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
 
 const Row = ({ title, sub, roles = [], rsvp, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
@@ -35,6 +36,12 @@ export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPho
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [rota, setRota] = useState(false);
+  const openRota = () => {
+    if (!premium) { onUpgrade(); return; }
+    if (!online) { toast.error("You're offline. Make the watch rota when you have signal."); return; }
+    setRota(true);
+  };
   const saveRoles = async (roles) => {
     if (!online) { toast.error("Go online to change crew roles"); return false; }
     try { await api.put(`/boats/${boat.boat_id}/crew/${editing.user_id}/roles`, { roles }); toast.success("Roles saved"); load(); return true; }
@@ -61,9 +68,14 @@ export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPho
           <DialogDescription className="text-left text-sm">Crew see this boat on their own phones and can tick items. Only you can change anything else.</DialogDescription>
         </DialogHeader>
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
-        <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
-          <UserPlus className="h-4 w-4" /> Invite crew
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
+            <UserPlus className="h-4 w-4" /> Invite crew
+          </button>
+          <button type="button" className="btn-ghost h-12 flex-1 justify-center gap-2" onClick={openRota} data-testid="watch-rota-open-btn">
+            <Clock className="h-4 w-4" /> {info.watch_rota ? "Watch rota" : "Make watch rota"}
+          </button>
+        </div>
         <RsvpSummary crew={info.crew} onClear={info.voyage_notes || info.crew.some((m) => m.rsvp) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null} />
         <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="crew-list">
           {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
@@ -80,6 +92,7 @@ export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPho
         <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)} />
         <EditRolesDialog member={editing} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
+        <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>
   );
