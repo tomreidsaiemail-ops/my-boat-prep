@@ -97,7 +97,7 @@ export const DEFAULT_DATA = {
 };
 
 export const freshState = () => ({
-  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1 },
+  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0 },
   log_sent: null,
   engine_log: [],
   electrical_log: [],
@@ -199,19 +199,26 @@ export const migrateState = (s) => s && addMissingLists({
   registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l))),
 });
 
+const pobWords = (ctx) => {
+  const pob = ctx.pob || 1;
+  const kids = Math.min(ctx.children || 0, pob);
+  const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  return kids ? `${pob} persons on board POB, ${n(pob - kids, "adult", "adults")} and ${n(kids, "child", "children")}.` : `${pob} persons on board POB.`;
+};
+
 export const displayLabel = (item, ctx) => {
   const v = ctx.vessel || "Vessel Name";
   const c = ctx.callsign || "Callsign";
   switch (item.dynamic) {
     case "logDate": return item.label.replace("[DATE]", ctx.verboseDate);
     case "maydayVessel": return `This is ${v}, ${v}, ${v}`;
-    case "maydayCallsign": return `Callsign ${c}`;
+    case "maydayCallsign": return `Callsign ${c}${ctx.mmsi ? `, MMSI ${ctx.mmsi}` : ""}`;
     case "maydayVesselCallsign": return `MAYDAY ${v} ${c}`;
     case "maydayGps": return `Report position ${ctx.position}`;
     case "panPanGps": return `Check GPS position ${ctx.position}`;
     case "panPanPosition": return `Report position ${ctx.position}`;
-    case "panPanVessel": return `This is ${v}, ${v}, ${v}. Callsign ${c}`;
-    case "pobDescription": return `There are ${ctx.pob || 1} persons on board POB. The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
+    case "panPanVessel": return `This is ${v}, ${v}, ${v}. Callsign ${c}${ctx.mmsi ? `, MMSI ${ctx.mmsi}` : ""}`;
+    case "pobDescription": return `There are ${pobWords(ctx)} The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
     default: return item.label;
   }
 };

@@ -8,7 +8,7 @@ import re
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, BeforeValidator, field_validator
-from typing import Annotated, Optional, List, Dict, Any
+from typing import Annotated, Literal, Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 import uuid
 from urllib.parse import urlparse
@@ -72,6 +72,38 @@ class BoatDetails(BaseModel):
     shore_enabled: bool = False
     boat_type: str = ""
     pob: int = Field(default=1)
+    children: int = 0
+    mmsi: str = ""
+    units: Literal["m", "ft"] = "m"
+    loa: str = ""
+    beam: str = ""
+    draft: str = ""
+    mast_height: str = ""
+    trip_days: int = 0
+
+    @field_validator("children", "trip_days", mode="before")
+    @classmethod
+    def clamp_count(cls, v):
+        try:
+            return min(999, max(0, int(v or 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    @field_validator("mmsi", mode="before")
+    @classmethod
+    def digits_only(cls, v):
+        return re.sub(r"\D", "", str(v or ""))[:9]
+
+    @field_validator("units", mode="before")
+    @classmethod
+    def unit_or_metres(cls, v):
+        return v if v in ("m", "ft") else "m"
+
+    @field_validator("loa", "beam", "draft", "mast_height", mode="before")
+    @classmethod
+    def dimension(cls, v):
+        v = str(v or "").strip().replace(",", ".")[:8]
+        return v if re.fullmatch(r"\d{0,4}(\.\d{0,2})?", v) else ""
 
     @field_validator("boat_type", mode="before")
     @classmethod
@@ -294,9 +326,11 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     log = {
         "log_id": str(uuid.uuid4()), "owner_id": owner_id, "to": to, "created_at": now,
         "vessel": b.vessel.strip(), "skipper": b.skipper.strip(), "callsign": b.callsign.strip(),
-        "local_date": payload.local_date.strip(), "boat_type": b.boat_type.strip(), "pob": b.pob,
+        "local_date": payload.local_date.strip(), "boat_type": b.boat_type.strip(), "pob": b.pob, "children": min(b.children, b.pob),
+        "mmsi": b.mmsi if len(b.mmsi) == 9 else "",
     }
-    ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"], "pob": log["pob"], "boat_type": log["boat_type"]}
+    ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"], "pob": log["pob"],
+           "boat_type": log["boat_type"], "children": log["children"], "mmsi": log["mmsi"]}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
     numbered = {r.get("id") for r in state.registry if r.get("kind") in ("youtube", "movies", "tips")}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []

@@ -23,18 +23,28 @@ def log_title(log: dict) -> str:
     return f"{name} - {log['vessel']} ({log['callsign']}) - {log['local_date']}"
 
 
+def _pob_words(ctx: dict) -> str:
+    pob = ctx.get("pob") or 1
+    kids = min(ctx.get("children") or 0, pob)
+    if not kids:
+        return f"{pob} persons on board POB."
+    n = lambda k, one, many: f"{k} {one if k == 1 else many}"  # noqa: E731
+    return f"{pob} persons on board POB, {n(pob - kids, 'adult', 'adults')} and {n(kids, 'child', 'children')}."
+
+
 def _label(it: dict, ctx: dict) -> str:
     v, c, pos = ctx["vessel"], ctx["callsign"], ctx["position"]
+    mmsi = f", MMSI {ctx['mmsi']}" if ctx.get("mmsi") else ""
     return {
         "logDate": it.get("label", "").replace("[DATE]", ctx["local_date"]),
         "maydayVessel": f"This is {v}, {v}, {v}",
-        "maydayCallsign": f"Callsign {c}",
+        "maydayCallsign": f"Callsign {c}{mmsi}",
         "maydayVesselCallsign": f"MAYDAY {v} {c}",
         "maydayGps": f"Report position {pos}",
         "panPanGps": f"Check GPS position {pos}",
         "panPanPosition": f"Report position {pos}",
-        "panPanVessel": f"This is {v}, {v}, {v}. Callsign {c}",
-        "pobDescription": f"There are {ctx.get('pob') or 1} persons on board POB. The boat is a white {ctx.get('boat_type') or '[BOAT TYPE]'}. NOTE: If not white state correct colour of boat.",
+        "panPanVessel": f"This is {v}, {v}, {v}. Callsign {c}{mmsi}",
+        "pobDescription": f"There are {_pob_words(ctx)} The boat is a white {ctx.get('boat_type') or '[BOAT TYPE]'}. NOTE: If not white state correct colour of boat.",
     }.get(it.get("dynamic"), it.get("label", ""))
 
 

@@ -136,7 +136,7 @@ export default function BoatPrep({ boatId, boats }) {
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
   const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
   useEffect(() => { setAreaFilter(""); }, [active.id]);
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, boatType: (boat.boat_type || "").trim() }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim() }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
