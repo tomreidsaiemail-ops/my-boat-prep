@@ -1,0 +1,28 @@
+{
+  "summary": "MPA retest after fixes, mobile 390x844, Pro user. All 7 fixes are verified and the regression flow passes. Backend: test_mpa.py passes 8/8; whitespace-only items now return 422 right away (6.7s total run) without calling the AI. Frontend: (1) Pasted lists keep repeats across numbered groups. Tom's Meals kept 'Salt' under both Bolognese and Curry and dropped the in-group duplicate Salt and the repeated '1. Spaghetti Bolognese' heading (10 items, 2 headings, DB verified). On the meal list, adding or editing to a duplicate ('Salt') is allowed. On a normal list (TEST_Desc List), both add and edit are still blocked with 'TEST_Dup already exists'. (2) MPA with Tom's + Harry's, POB 4 / children 2: 'Salt – 3 tsp (TM)(HM) [1][2][3]', Pasta 300 g [1], Onion 6 · 3 on board [1][2], Rice 240 g, Fish 450 g, Meals (3) TM/TM/HM. (3) Zone map Food filter: filter on shows 1 of 2 maps. Unflagging TEST_Galley hides the filter button and shows both maps again. (4) Covered by backend test. (5) Export Current of the MPA list shows 13 print checkboxes and no line numbers. TEST_My Movies still shows '1.' and '2.' with 0 boxes. (6) 'Boat Inventory' is the first option in list-selector. (7) A Food area item 'Eggs' qty 6 was sent as on_board {'Egg': 6} for the provision 'Egg' (request body captured). Regression: the dialog shows '2 adults, 2 children', '5 days', '1 Food area', 'Provisions list (2)'. A re-run with only Tom's (provisions unchecked) updates the same list: one MPA option, toast 'updated', same id. Single-list mode has no source tags. The list persists after reload. No horizontal overflow.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ZoneMap food filter", "issue": "Minor: foodOnlyState is not reset when hasFoodPins goes false. It is only masked. Re-flagging a Food area turns the filter back on by itself (aria-pressed=true, 1 of 2 maps shown) without the user pressing it. Consider resetting the state (useEffect: if (!hasFoodPins) setFoodOnly(false)).", "selector": "[data-testid='zone-map-food-filter']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Print view (Movies list)", "issues": ["Long URL labels run slightly past the right edge of the dashed print page border at 390px (pre-existing, cosmetic). Consider break-all on item labels."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_mpa.py", "/app/test_reports/pytest/pytest_mpa_r2.xml"],
+  "action_items": [
+    "Optional: reset foodOnly state in ZoneMap.jsx when no Food pins remain, so re-flagging does not silently re-enable the filter",
+    "Optional: toLines drops a repeated numbered heading but merges its following lines into the previous group (deduped against it). This is fine, but worth knowing"
+  ],
+  "critical_code_review_comments": [
+    "isDup bypass applies only when the active list already parses as a meal plan (mealPlanLists). A list being built item by item before its first bracket line exists still blocks duplicates. This is acceptable.",
+    "Meal lists now allow duplicates even within the same meal group (editing '1 onion' to 'Salt' gave Salt twice under Bolognese). That matches the request, and the MPA merges them by key anyway."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Seeded temporarily, then cleaned up: Pro boat pob 4 / children 2 / trip_days 5, TEST_Galley Food area (Eggs 6, Onions 3), registry 'provisions' plus data (Egg, Drinking water), and 2 zone maps with pins. After cleanup the boat is back to pob 3 / children 0 / trip_days 0. TEST_Galley, the provisions entry and data, both zone maps, and the extra TEST_Dup item are removed. Tom's Meals, Harry's Meals and MPA Shopping List (custom_1793222453131, custom_1793222455480, custom_1793222501558) were removed and added to deleted_lists. One real Gemini provisions call was used.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Same seeding approach as iteration 43 works: a direct DB update of user_boats with bumped sec_ts/list_ts before the browser opens is picked up by the client. Zone maps: POST /api/boats/main/zone-maps (multipart jpeg), then PUT .../{id}/pins with area_id. TextDialog edit testids: edit-item-dialog, edit-item-input, edit-item-error. Use the Save button by role."
+}
