@@ -18,6 +18,7 @@ import { addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, reset
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
+import { VoyageCard } from "@/components/boat/VoyageCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
@@ -385,7 +386,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <CrewBanner boat={boat} owner={boats.current.owner_name} /> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} />}
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><VoyageCard boat={boats.current} online={online} /></> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector registry={allLists} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}

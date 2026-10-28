@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { RolePicker } from "@/components/boat/RolePicker";
+import { RsvpSummary } from "@/components/boat/Rsvp";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -72,8 +73,9 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
           <textarea id="voyage-notes" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={3}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
             className="field-input h-auto resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
-          <p className="text-xs text-[var(--muted)]">Saved with the boat, ready for your next invite.</p>
+          <p className="text-xs text-[var(--muted)]">Saved with the boat, ready for your next invite. Crew who have joined see these notes and can reply.</p>
         </div>
+        <RsvpSummary crew={info.crew || []} />
         {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}
         <div className="flex flex-col gap-2">
           <Btn mode="email" icon={Mail} solid>Send email invite</Btn>

@@ -4,8 +4,8 @@ import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 from html import escape
-from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from typing import Annotated, List, Literal
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
 from db import db
@@ -24,7 +24,7 @@ def _hash(token: str) -> str:
 
 
 async def owned_boat(user: dict, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "voyage_notes": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "voyage_notes": 1, "rsvp": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     return doc
@@ -136,14 +136,70 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     now = datetime.now(timezone.utc).isoformat()
     invites = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "expires_at": {"$gt": now}},
                                          {"_id": 0, "invite_id": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1}).to_list(100)
-    return {"crew": [{**m, "roles": roles.get(m["user_id"], [])} for m in members], "invites": invites,
+    rsvp = doc.get("rsvp") or {}
+    return {"crew": [{**m, "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status")} for m in members], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", "")}
+
+
+class RolesIn(BaseModel):
+    roles: List[str] = Field(default_factory=list, max_length=20)
+
+
+MemberPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
+
+
+@router.put("/boats/{boat_id}/crew/{member_id}/roles")
+async def set_crew_roles(boat_id: BoatPath, member_id: MemberPath, payload: RolesIn, user: dict = Depends(get_current_user)):
+    doc = await owned_boat(user, boat_id)
+    if member_id not in (doc.get("crew") or []):
+        raise HTTPException(status_code=404, detail="They're no longer crew on this boat")
+    roles = clean_roles(payload.roles)
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {f"crew_roles.{member_id}": roles}})
+    return {"roles": roles}
+
+
+@router.delete("/boats/{boat_id}/rsvp")
+async def clear_rsvp(boat_id: BoatPath, user: dict = Depends(get_current_user)):
+    await owned_boat(user, boat_id)
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$unset": {"rsvp": ""}})
+    return {"ok": True}
+
+
+class CrewBoatIn(BaseModel):
+    owner_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    boat_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+
+
+class RsvpIn(CrewBoatIn):
+    status: Literal["in", "out"]
+
+
+async def crew_boat(user: dict, owner_id: str, boat_id: str) -> dict:
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 0, "voyage_notes": 1, f"rsvp.{user['user_id']}": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
+    return doc
+
+
+@router.get("/crew/voyage")
+async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")], boat_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")],
+                      user: dict = Depends(get_current_user)):
+    doc = await crew_boat(user, owner_id, boat_id)
+    return {"notes": doc.get("voyage_notes", ""), "rsvp": ((doc.get("rsvp") or {}).get(user["user_id"]) or {}).get("status")}
+
+
+@router.post("/crew/rsvp")
+async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
+    await crew_boat(user, payload.owner_id, payload.boat_id)
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id},
+                                   {"$set": {f"rsvp.{user['user_id']}": {"status": payload.status, "at": datetime.now(timezone.utc).isoformat()}}})
+    return {"rsvp": payload.status}
 
 
 @router.delete("/boats/{boat_id}/crew/{member_id}")
 async def remove_crew(boat_id: BoatPath, member_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,80}$")], user: dict = Depends(get_current_user)):
     await owned_boat(user, boat_id)
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": ""}})
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": ""}})
     return {"ok": True}
 
 
@@ -230,5 +286,5 @@ class LeaveIn(BaseModel):
 
 @router.post("/crew/leave")
 async def leave_crew(payload: LeaveIn, user: dict = Depends(get_current_user)):
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": ""}})
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": ""}})
     return {"ok": True}
