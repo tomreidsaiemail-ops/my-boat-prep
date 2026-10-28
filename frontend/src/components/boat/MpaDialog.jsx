@@ -4,6 +4,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { buildShopping, foodStock, initialsFor, keyOf } from "@/lib/mpa";
+import { AISLE_NAMES, OTHER_AISLE, builtInAisle } from "@/lib/aisles";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
 
 const Fact = ({ label, value, testId, warn }) => (
@@ -16,8 +17,9 @@ const Fact = ({ label, value, testId, warn }) => (
 export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClose, onCreate }) => {
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
+  const [byAisle, setByAisle] = useState(true);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setPicked(lists.length === 1 ? [lists[0].id] : []); setUseProv(provisions.length > 0); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setPicked(lists.length === 1 ? [lists[0].id] : []); setUseProv(provisions.length > 0); setByAisle(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tags = useMemo(() => Object.fromEntries(lists.map((l, i) => [l.id, initialsFor(lists.map((x) => x.name))[i]])), [lists]);
   const pob = boat.pob || 1;
   const children = Math.min(boat.children || 0, pob - 1);
@@ -43,7 +45,20 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
         } catch (e) { toast.warning(apiError(e, "The Magic Mariner couldn't size the provisions, so they're added without amounts")); }
       }
     }
-    const items = buildShopping({ lists: chosen.map((l) => ({ ...l, tag: tags[l.id] })), adults, children, days: days || 1, stock, provisions: prov, amounts });
+    const lists4 = chosen.map((l) => ({ ...l, tag: tags[l.id] }));
+    let aisleOf = null;
+    if (byAisle) {
+      const all = [];
+      buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, aisleOf: (n) => { all.push(n); return OTHER_AISLE; } });
+      const ai = {};
+      const unknown = all.filter((n) => !builtInAisle(n));
+      if (unknown.length && online) {
+        try { Object.assign(ai, (await api.post("/ai/mpa/aisles", { items: unknown, aisles: AISLE_NAMES.slice(0, -1) }, { timeout: 90000 })).data.aisles); }
+        catch { toast.warning("The Magic Mariner couldn't sort a few items, so they're under Other"); }
+      }
+      aisleOf = (n) => builtInAisle(n) || ai[n] || OTHER_AISLE;
+    }
+    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES });
     setBusy(false);
     onCreate(items);
   };
@@ -81,6 +96,10 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
             Add my Provisions list ({provisions.length}) with suggested amounts
           </label>
         )}
+        <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold" data-testid="mpa-aisles">
+          <input type="checkbox" className="h-5 w-5 accent-[var(--navy)]" checked={byAisle} onChange={(e) => setByAisle(e.target.checked)} data-testid="mpa-aisles-check" />
+          Sort by shopping aisle
+        </label>
         <p className="text-xs text-[var(--muted)]">Amounts in recipes are for one adult; a child counts as half. Each meal is cooked once. Change people or trip days in Additional boat details.</p>
         <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={busy || !chosen.length} onClick={make} data-testid="mpa-make-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

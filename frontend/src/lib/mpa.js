@@ -121,20 +121,28 @@ const ingredientRows = (lists, portions, stock) => {
   return { meals, items };
 };
 
-export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {} }) => {
+export const itemName = (label) => String(label).split(" – ")[0].trim();
+
+export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [] }) => {
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
   const { meals, items } = ingredientRows(lists, portions, stock);
-  const keys = new Set(items.map((i) => keyOf(i.base.split(" – ")[0])));
+  const keys = new Set(items.map((i) => keyOf(itemName(i.base))));
   const extra = provisions.filter((p) => !keys.has(keyOf(p)));
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
+  const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals }, i.checked) }));
+  const provRows = extra.map((p) => ({ name: p, item: { label: amounts[p] ? `${p} – ${amounts[p]}` : p, checked: /^none needed/i.test(amounts[p] || ""), indent: true } }));
+  const mealKey = [{ label: `Meals (${meals.length})`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
+  if (aisleOf) {
+    const byAisle = new Map(aisleOrder.map((a) => [a, []]));
+    [...ingredientRowsOut, ...provRows].forEach((r) => { const a = aisleOf(r.name); byAisle.set(a, [...(byAisle.get(a) || []), r.item]); });
+    return [...mealKey, ...[...byAisle.entries()].filter(([, rs]) => rs.length).flatMap(([a, rs]) => [{ label: a, checked: false }, ...rs])];
+  }
   return [
-    { label: `Meals (${meals.length})`, checked: false },
-    ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] })),
+    ...mealKey,
     { label: `Ingredients for ${people}`, checked: false },
-    ...items.map((i) => row({ base: i.base, src: multi ? i.src : [], meals: i.meals }, i.checked)),
-    ...(extra.length ? [{ label: `Provisions for ${days} ${days === 1 ? "day" : "days"}`, checked: false },
-      ...extra.map((p) => ({ label: amounts[p] ? `${p} – ${amounts[p]}` : p, checked: /^none needed/i.test(amounts[p] || ""), indent: true }))] : []),
+    ...ingredientRowsOut.map((r) => r.item),
+    ...(provRows.length ? [{ label: `Provisions for ${days} ${days === 1 ? "day" : "days"}`, checked: false }, ...provRows.map((r) => r.item)] : []),
   ];
 };

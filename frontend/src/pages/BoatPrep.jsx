@@ -45,6 +45,7 @@ import { CreateListDialog } from "@/components/boat/CreateListDialog";
 import { RenameListDialog } from "@/components/boat/RenameListDialog";
 import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { MpaDialog } from "@/components/boat/MpaDialog";
+import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { MPA_KIND, MPA_NAME, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
 import { PrintView } from "@/components/boat/PrintView";
@@ -459,6 +460,10 @@ export default function BoatPrep({ boatId, boats }) {
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"))} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Marine Magic Provisioning Assistant
             </button>
+          )}
+          {/^first aid kit/i.test(active.name || "") && (
+            <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
+              children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")} />
           )}
         </>
       )}

@@ -1,3 +1,4 @@
+import { MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -40,6 +41,7 @@ export const DEFAULT_REGISTRY = [
   { id: "routeHazards", name: "Route Hazards", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
+  { id: "mealPlan", name: "Meal Plan", isSystem: true },
   { id: "head", name: "Head (Toilet)", isSystem: true },
   { id: "engineService", name: "Engine Service", isSystem: true },
   { id: "electricalService", name: "Electrical Service", isSystem: true },
@@ -51,6 +53,7 @@ export const DEFAULT_REGISTRY = [
 ];
 
 export const DEFAULT_DATA = {
+  mealPlan: mk(3000, MEAL_PLAN_ITEMS),
   leavingDock: mk(1, ["Tidy lines", "Free up head sail furler", "Secure Dinghy", "Remove main sail cover", "Drop lazy jacks", "Attach main halyard", "Fenders", "Wind direction check", "Boat hooks ready", "Assign crew life jackets", "Brief crew on exit plan", "Turn on instruments", "Set route on Navionics, and ready backup device if needed", "Text friend route, destination and ETA", "Lodge trip report with Coast Guard", "Set timer to close trip report"]),
   returningDock: mk(17, ["Fenders out", "Mooring lines ready", "Engine revs checked", "Crew briefed on docking", "Ready boat hooks", "Prepare crew with arrival plan", "Clear arrival timer"]),
   arrivingDest: mk(24, ["Ready boat hooks", "Anchor ready", "Mooring lines ready", "Brief crew", "Close trip report"]),
@@ -133,7 +136,7 @@ const addMissingLists = (s) => {
   const registry = [...s.registry];
   const data = { ...s.data };
   const deleted = s.deleted_lists || [];
-  ["head", "engineService", "electricalService", "myTodo", "riggingChecks"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
+  ["head", "engineService", "electricalService", "myTodo", "riggingChecks", "mealPlan"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
   return { ...s, registry, data, deleted_lists: deleted };
 };
 

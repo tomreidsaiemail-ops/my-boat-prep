@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api")
 TEMPLATE_LISTS = {
     "leavingDock": "Leaving Dock", "returningDock": "Returning to Dock", "arrivingDest": "Arriving at Destination",
     "safety": "Safety", "riggingChecks": "Rigging Checks", "routeHazards": "Route Hazards", "crewPrep": "Crew Prep", "provisions": "Provisions",
-    "head": "Head (Toilet)", "engineService": "Engine Service", "electricalService": "Electrical Service", "grabBag": "Grab Bag", "mayDay": "Mayday", "panPan": "Pan-Pan",
+    "head": "Head (Toilet)", "engineService": "Engine Service", "electricalService": "Electrical Service", "grabBag": "Grab Bag", "mayDay": "Mayday", "panPan": "Pan-Pan", "mealPlan": "Meal Plan",
 }
 REQUIRED_DYNAMIC = {
     "mayDay": {"maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps"},
@@ -54,16 +54,23 @@ def _custom_out(d: dict) -> dict:
 def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[list] = None) -> list:
     old_ids = {i["label"].lower(): i["id"] for i in old or []}
     nxt = max([i["id"] for i in old or [] if isinstance(i["id"], int)] + [0]) + 1
-    out, seen = [], set()
+    out, seen, group, used = [], set(), set(), set()
     for raw in labels:
         line = raw if isinstance(raw, TemplateLine) else TemplateLine(label=raw)
         label = line.label.strip()[:1000]
-        if not label or label.lower() in seen:
+        sub = line.indent and out
+        # Sub-items may repeat under different headings (e.g. Salt in several meals).
+        if not label or label.lower() in (group if sub else seen):
             continue
-        seen.add(label.lower())
+        if sub:
+            group.add(label.lower())
+        else:
+            seen.add(label.lower())
+            group = set()
         iid = old_ids.get(label.lower())
-        if iid is None:
+        if iid is None or iid in used:
             iid, nxt = nxt, nxt + 1
+        used.add(iid)
         out.append({"id": iid, "label": label, **({"indent": True} if line.indent and out else {})})
     if not out:
         raise HTTPException(status_code=400, detail="Add at least one item before publishing")

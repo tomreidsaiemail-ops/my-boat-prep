@@ -14,6 +14,7 @@ from auth import require_premium
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
 DAILY_DRAFTS = 20
+OWN_QUOTA = ("engine", "doctor")
 SYSTEM = ("You are Magic List Generation in the My Boat Prep app. You turn the user's description into a tidy, well-organised list. "
           "Follow the description exactly, whatever the topic; it is boating related most of the time but not always. Reply with JSON only, no prose and no code fences.")
 PROMPT = (
@@ -64,7 +65,7 @@ def to_lines(text: str) -> list:
 
 async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: str = SYSTEM, label: str = "Magic List Generation"):
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    kinds = {"$in": ["engine"]} if kind == "engine" else {"$ne": "engine"}
+    kinds = {"$in": [kind]} if kind in OWN_QUOTA else {"$nin": list(OWN_QUOTA)}
     used = {"user_id": user["user_id"], "kind": kinds, "created_at": {"$gte": since}}
     if await db.ai_drafts.count_documents(used) >= DAILY_DRAFTS:
         raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} {label}s. Try again tomorrow.")
@@ -236,3 +237,61 @@ async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premiu
               'Return exactly: {"items": [{"name": "<provision exactly as given>", "amount": "..."}]}')
     amounts, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
     return {"amounts": amounts, "drafts_left": left}
+
+
+DOCTOR = ("You are the Magic Marine Doctor in the My Boat Prep app: a calm, practical offshore first-aid adviser helping a boat skipper. "
+          "Give clear first-aid steps in plain English as a short numbered list, using items from the boat's first aid kit where they help. "
+          "Start with any danger signs that need urgent help. Adjust for children when relevant. Keep it under 250 words. Plain text only: no markdown, headings or asterisks. "
+          "You are not a doctor and must not diagnose; always finish with exactly this line: "
+          "'This is first-aid guidance only. In an emergency call Mayday on VHF channel 16 or the coastguard, and get medical help as soon as you can.'")
+DOCTOR_FOOTER = "This is first-aid guidance only. In an emergency call Mayday on VHF channel 16 or the coastguard, and get medical help as soon as you can."
+
+
+class DoctorAskIn(BaseModel):
+    question: str = Field(default="", max_length=1024, validate_default=True)
+    kit_name: str = Field(default="First Aid Kit", max_length=80)
+    kit: List[str] = Field(default_factory=list, max_length=150)
+    adults: int = Field(default=1, ge=0, le=999)
+    children: int = Field(default=0, ge=0, le=999)
+
+    @field_validator("question")
+    @classmethod
+    def need_question(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Type a question for the Magic Marine Doctor first")
+        return v.strip()
+
+
+def parse_doctor(text: str) -> str:
+    answer = parse_answer(text)
+    return answer if DOCTOR_FOOTER.lower()[:40] in answer.lower() else f"{answer}\n\n{DOCTOR_FOOTER}"
+
+
+@router.post("/ai/doctor-ask")
+async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
+    kit = ", ".join(str(k).strip()[:120] for k in body.kit if str(k).strip()) or "(not listed)"
+    prompt = (f"First aid kit ({body.kit_name.strip()}): {kit}\nOn board: {body.adults} adults, {body.children} children\n"
+              f'The skipper asks:\n"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""')
+    answer, left = await _run(user, "doctor", prompt, parse_doctor, {"question": body.question[:200]}, DOCTOR, "Magic Marine Doctor answer")
+    return {"answer": answer, "asks_left": left}
+
+
+class AislesIn(BaseModel):
+    items: List[str] = Field(min_length=1, max_length=150)
+    aisles: List[str] = Field(min_length=1, max_length=20)
+
+
+@router.post("/ai/mpa/aisles")
+async def mpa_aisles(body: AislesIn, user: dict = Depends(require_premium)):
+    items = [s for s in dict.fromkeys(str(x).strip()[:80] for x in body.items) if s]
+    aisles = [str(a).strip()[:40] for a in body.aisles if str(a).strip()]
+    if not items or not aisles:
+        raise HTTPException(status_code=422, detail="Nothing to sort")
+    prompt = (f"Supermarket aisles: {json.dumps(aisles)}\nShopping items: {json.dumps(items)}\n"
+              'Put each item in the best aisle. Return exactly: {"items": [{"name": "<item exactly as given>", "amount": "<aisle exactly as given>"}]}')
+
+    def parse(t: str) -> dict:
+        got = parse_provisions(t, items)
+        return {k: v for k, v in got.items() if v in aisles}
+    mapping, left = await _run(user, "mpa", prompt, parse, {"name": "MPA aisles"}, PROVISIONER, "Magic Provisioning")
+    return {"aisles": mapping, "drafts_left": left}
