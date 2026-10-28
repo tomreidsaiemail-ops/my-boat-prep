@@ -1,0 +1,18 @@
+{
+  "summary": "Tested Edit Crew Roles and Crew RSVP from start to finish. Backend: new pytest file test_crew_roles_rsvp.py, 14/14 pass. Regression suites test_crew_invites_v2 and test_crew_photos also pass (50/50). PUT roles: owner only, dedupes case-insensitively, collapses whitespace, caps at 12 roles of 40 chars, returns 422 for more than 20, 404 for non-crew and non-owner, 401 when unauthenticated. GET /crew/voyage returns only the caller's {notes, rsvp}; non-crew and the owner get 404. POST /crew/rsvp accepts only in/out (422 for maybe, empty, IN, null) and returns 404 for non-crew. DELETE rsvp is owner only and clears everything. Remove crew and leave crew both unset rsvp and crew_roles. UI at 390x844, skipper (Pro): crew-dialog shows rsvp-summary in/out/waiting, rsvp-clear-btn and the member rsvp and role badges. Edit roles: toggled a chip off and added the custom role 'Fish Whisperer'; saving closes the dialog, toasts 'Roles saved' and updates the badges. Cancel discards changes. invite-crew-dialog shows rsvp-summary under the voyage notes. Clear replies resets the badge to 'No reply yet' and the summary to '1 still to reply', and hides the clear button. UI, crew (Beta): boat option shows the CREW badge; voyage-card shows the notes; in/out buttons toggle aria-pressed and toast; the selection survives a reload; the card is hidden when notes are empty and on the user's own boat; no horizontal overflow; the skipper's crew API reflects the crew reply.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/crew/rsvp, PUT /api/boats/{id}/crew/{member}/roles", "issue": "Membership is checked first and the update runs separately without a crew filter, so there is a small race. If the member is removed between the check and the update, an orphan rsvp or crew_roles entry is written back. Fix: add 'crew': user_id/member_id to the update_one filter and return 404 when matched_count is 0."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [
+    {"screen": "VoyageCard", "issues": ["voyage state isn't reset when the user switches between two crew boats. The previous boat's notes and reply can show briefly, and stay if the new fetch fails. Fix: setVoyage(null) at the start of the effect.", "The card doesn't refetch on window focus, so a crew member keeps seeing their old highlighted reply after the skipper taps Clear replies, until they reload (minor)."]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_crew_roles_rsvp.py", "/app/test_reports/pytest/pytest_crew_roles_rsvp.xml"],
+  "action_items": ["Optional: add the crew filter to the rsvp and roles update_one calls to close the race", "Optional: reset VoyageCard state when the boat changes"],
+  "critical_code_review_comments": ["Clearing or changing voyage notes doesn't clear replies. This matches the user's choice ('kept until Clear replies'), but the skipper may forget to clear them and see stale 'I'm in' replies for a new voyage."],
+  "updated_files": ["/app/backend/tests/test_crew_roles_rsvp.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Pytest creates and deletes the Pro boat TEST_rsvp. Cleanup done: beta removed from Pro main crew (crew=[], crew_roles={}), rsvp cleared, voyage_notes='', last_boat unset for beta.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest tests/test_crew_roles_rsvp.py -n0. Crew boat key in the selector is c_<owner_id>_<boat_id> (boat-option-c_test-user-pro_main). The Pro main boat now has no crew and no notes, so re-add beta via DB (crew + crew_roles) to test the crew UI."
+}

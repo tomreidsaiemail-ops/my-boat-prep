@@ -154,7 +154,9 @@ async def set_crew_roles(boat_id: BoatPath, member_id: MemberPath, payload: Role
     if member_id not in (doc.get("crew") or []):
         raise HTTPException(status_code=404, detail="They're no longer crew on this boat")
     roles = clean_roles(payload.roles)
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {f"crew_roles.{member_id}": roles}})
+    res = await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id, "crew": member_id}, {"$set": {f"crew_roles.{member_id}": roles}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="They're no longer crew on this boat")
     return {"roles": roles}
 
 
@@ -190,9 +192,10 @@ async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,
 
 @router.post("/crew/rsvp")
 async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
-    await crew_boat(user, payload.owner_id, payload.boat_id)
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id},
-                                   {"$set": {f"rsvp.{user['user_id']}": {"status": payload.status, "at": datetime.now(timezone.utc).isoformat()}}})
+    res = await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]},
+                                         {"$set": {f"rsvp.{user['user_id']}": {"status": payload.status, "at": datetime.now(timezone.utc).isoformat()}}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return {"rsvp": payload.status}
 
 

@@ -9,8 +9,13 @@ export const VoyageCard = ({ boat, online }) => {
   const params = { owner_id: boat.owner_id, boat_id: boat.boat_id };
 
   useEffect(() => {
+    setVoyage(null);
     if (!online) return;
-    api.get("/crew/voyage", { params, timeout: 10000 }).then(({ data }) => setVoyage(data)).catch(() => {});
+    const load = () => api.get("/crew/voyage", { params, timeout: 10000 }).then(({ data }) => setVoyage(data)).catch(() => {});
+    load();
+    const onFocus = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onFocus);
+    return () => document.removeEventListener("visibilitychange", onFocus);
   }, [online, boat.owner_id, boat.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!voyage?.notes) return null;

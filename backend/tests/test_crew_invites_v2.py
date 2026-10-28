@@ -46,6 +46,7 @@ def cleanup():
     DB.crew_invites.delete_many({"owner_id": PRO_ID, "boat_id": {"$regex": "^TEST_inv"}})
     DB.list_templates.delete_many({"custom": True, "name": {"$regex": "^crew roles$", "$options": "i"}})
     DB.users.update_many({"user_id": {"$in": [FREE_ID, BETA_ID, ADMIN_ID]}, "last_boat": {"$regex": f"_{BOAT}$"}}, {"$unset": {"last_boat": ""}})
+    DB.invite_sends.delete_many({"owner_id": PRO_ID})
 
 
 @pytest.fixture(scope="module", autouse=True)
