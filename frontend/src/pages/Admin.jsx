@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { TierBadge } from "@/components/boat/AccountMenu";
-import { fmtCost, fmtTokens } from "@/pages/AdminAnalytics";
+import { fmtCost, fmtTokens, plural } from "@/pages/AdminAnalytics";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
 
@@ -24,7 +24,7 @@ const Joined = ({ u }) => (
 const Compute = ({ c, cur }) => (
   <span className="flex flex-col items-end text-xs" data-testid={`admin-user-compute-${c.id}`}>
     <span className="font-bold tabular-nums" data-testid={`admin-user-compute-month-${c.id}`}>{fmtTokens(c.tokens_month || 0)} tokens this month · {fmtCost(c.cost_month || 0, cur)}</span>
-    <span className="tabular-nums text-[var(--muted)]" data-testid={`admin-user-compute-all-${c.id}`}>{fmtTokens(c.tokens || 0)} all-time · {fmtCost(c.cost || 0, cur)} · {c.uses || 0} AI calls</span>
+    <span className="tabular-nums text-[var(--muted)]" data-testid={`admin-user-compute-all-${c.id}`}>{fmtTokens(c.tokens || 0)} all-time · {fmtCost(c.cost || 0, cur)} · {plural(c.uses || 0, "AI call")}</span>
   </span>
 );
 
@@ -73,7 +73,9 @@ export default function Admin() {
   const shown = useMemo(() => {
     const list = (users || []).filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(q.toLowerCase()));
     const key = sort === "month" ? "tokens_month" : "tokens";
-    return sort === "newest" ? list : [...list].sort((a, b) => (compute.users[b.user_id]?.[key] || 0) - (compute.users[a.user_id]?.[key] || 0));
+    const uses = sort === "month" ? "uses_month" : "uses";
+    const c = (u, k) => compute.users[u.user_id]?.[k] || 0;
+    return sort === "newest" ? list : [...list].sort((a, b) => c(b, key) - c(a, key) || c(b, uses) - c(a, uses));
   }, [users, q, sort, compute]);
   const counts = useMemo(() => (users || []).reduce((c, u) => ({ ...c, [u.role]: (c[u.role] || 0) + 1 }), {}), [users]);
 
@@ -102,7 +104,7 @@ export default function Admin() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="field-input w-full !pl-9" data-testid="admin-search-input" />
       </label>
-      <label className="flex items-center justify-between gap-2 text-sm font-bold">Sort users
+      <label className="flex items-center justify-between gap-2 whitespace-nowrap text-sm font-bold">Sort users
         <select value={sort} onChange={(e) => setSort(e.target.value)} className="field-input h-10 w-56 py-0 text-sm" data-testid="admin-sort-select">
           <option value="newest">Newest first</option>
           <option value="month">Most compute this month</option>

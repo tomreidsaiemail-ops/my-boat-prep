@@ -1,0 +1,28 @@
+{
+  "summary": "Tested the Admin Analytics dashboard, AI usage tracking, compute pricing, per-user compute and the Doctor caveat. Backend: 26/26 pytest passed. That covers auth (401 with no login, 403 for pro/free/beta), the analytics response shape, totals matching across endpoints, pricing validation and cost recompute, PATCH role->pro setting pro_since (pro_month +1), and one real AI call each for MMD, MME, MLG (list-draft), MPA (aisles), MMS and BMMS (scan with batch=true). Every call recorded tokens > 0 under the right feature. Frontend at 390x844: account-analytics-item goes to /admin/analytics. All tiles render, the refresh button and 30s auto-refresh update analytics-updated, and the pricing form saves (NZD 100/200 changed costs to 'NZD 1.55') and was restored. User tiers show compute month/all per user and the sort select reorders. A pro user is redirected away from /admin/analytics and has no menu item. The Doctor caveat shows directly under the label. No horizontal overflow.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH /api/admin/users/{id}", "issue": "pro_since is left on a user after they are demoted to free. If an existing pro is set to free and back to pro, pro_since resets to now and they count as 'Pro this month' again. This is acceptable but worth knowing."},
+      {"endpoint": "billing.py _sync", "issue": "pro_since is only set when it is missing, so a user who lapses and re-subscribes in a later month is not counted in 'Pro users this month'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminAnalytics feature tiles / Admin user rows", "issues": ["No singular/plural handling: '1 uses', '1 AI calls'"]},
+      {"screen": "Admin User tiers", "issues": ["Sort uses tokens only. Users with backfilled 0-token calls tie with users who never used AI (e.g. the admin with 1 AI call sorts last); could tie-break on uses", "The 'Sort users' label wraps onto 2 lines at 390px", "admin-sort-select is a native <select>, not a shadcn Select (it matches the existing role selects)"]},
+      {"screen": "Pricing form", "issues": ["An empty number field is sent as 0 (Number('')) and saved without warning"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_admin_analytics.py", "/app/test_reports/pytest/iter46.xml"],
+  "action_items": ["Optional: pluralise 'uses'/'AI calls'", "Optional: tie-break the compute sort on uses", "Optional: check for empty pricing inputs before saving"],
+  "critical_code_review_comments": ["Usage recording correctly uses emergentintegrations Usage dataclass attributes; failures with usage are still recorded", "users_month relies on string comparison of mixed ISO formats ('Z' vs '+00:00'); works because the prefixes sort correctly, but storing datetimes would be more robust", "token_totals $addToSet of user_ids per group is fine at current scale but grows unbounded"],
+  "updated_files": ["/app/backend/tests/test_admin_analytics.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporarily added list 'First Aid Kit TEST46' (id test_fak46) to test-user-pro main boat via /tmp/seed_fak.py and removed it afterwards. Real AI calls added ~6 ai_usage rows plus 1 TEST_ list-draft ai_drafts row for test-user-pro. Pricing restored to 0.5/3/USD; test-user-free restored to free and its stale pro_since was unset.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest with -n 0. test_admin_analytics.py makes 6 real AI calls (cost); deselect TestUsageRecording if you don't need them. List selector on BoatPrep is a native <select>: use select_option with the list id. Seed First Aid list with python3 /tmp/seed_fak.py seed|clean."
+}

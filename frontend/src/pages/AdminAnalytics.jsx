@@ -7,6 +7,7 @@ import { api, apiError } from "@/lib/api";
 const REFRESH_MS = 30000;
 export const fmtTokens = (n = 0) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`);
 export const fmtCost = (c = 0, cur = "USD") => `${cur === "USD" ? "$" : `${cur} `}${c < 0.01 && c > 0 ? c.toFixed(4) : c.toFixed(2)}`;
+export const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 const Tile = ({ label, value, sub, testId }) => (
   <div className="flex flex-col gap-0.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white px-3 py-3" data-testid={testId}>
@@ -29,6 +30,7 @@ const PricingForm = ({ pricing, onSaved }) => {
   useEffect(() => setForm(pricing), [pricing]);
   const save = async (e) => {
     e.preventDefault();
+    if (form.input_per_m === "" || form.output_per_m === "") { toast.error("Enter both token prices"); return; }
     setBusy(true);
     try { await api.put("/admin/compute-pricing", { input_per_m: Number(form.input_per_m), output_per_m: Number(form.output_per_m), currency: form.currency }); toast.success("Token prices saved"); onSaved(); }
     catch (err) { toast.error(apiError(err, "Couldn't save the prices")); }
@@ -75,7 +77,7 @@ export default function AdminAnalytics() {
       </div>
       {!data ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
         <>
-          <p className="-mt-3 text-xs text-[var(--muted)]" data-testid="analytics-updated">Updates every 30 seconds · last {new Date(data.generated_at).toLocaleTimeString()} · "This month" from {new Date(data.month_start).toLocaleDateString()}</p>
+          <p className="-mt-3 text-xs text-[var(--muted)]" data-testid="analytics-updated">Updates every 30 seconds · last {new Date(data.generated_at).toLocaleTimeString("en-NZ")} · "This month" from {new Date(data.month_start).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}</p>
           <Section title="Growth & monetisation" testId="analytics-growth">
             <Tile label="Total users" value={data.growth.users} testId="tile-users" />
             <Tile label="Users this month" value={data.growth.users_month} testId="tile-users-month" />
@@ -83,15 +85,15 @@ export default function AdminAnalytics() {
             <Tile label="Pro users this month" value={data.growth.pro_month} testId="tile-pro-month" />
           </Section>
           <Section title="Compute & token economics" testId="analytics-compute">
-            <Tile label="Compute all-time" value={fmtTokens(data.compute.all.tokens)} sub={`${fmtCost(data.compute.all.cost, cur)} · ${data.compute.all.uses} AI calls`} testId="tile-compute-all" />
-            <Tile label="Compute this month" value={fmtTokens(data.compute.month.tokens)} sub={`${fmtCost(data.compute.month.cost, cur)} · ${data.compute.month.uses} AI calls`} testId="tile-compute-month" />
+            <Tile label="Compute all-time" value={fmtTokens(data.compute.all.tokens)} sub={`${fmtCost(data.compute.all.cost, cur)} · ${plural(data.compute.all.uses, "AI call")}`} testId="tile-compute-all" />
+            <Tile label="Compute this month" value={fmtTokens(data.compute.month.tokens)} sub={`${fmtCost(data.compute.month.cost, cur)} · ${plural(data.compute.month.uses, "AI call")}`} testId="tile-compute-month" />
             <Tile label="Average per user" value={fmtTokens(data.compute.avg_per_user.tokens)} sub={`${fmtCost(data.compute.avg_per_user.cost, cur)} across all users`} testId="tile-compute-avg" />
             <Tile label="Users of any Magic" value={data.compute.ai_users} testId="tile-ai-users" />
           </Section>
           <Section title="The Magic Suite" testId="analytics-features">
             {data.features.map((f) => (
               <Tile key={f.code} label={`${f.code} users`} value={f.users} testId={`tile-feature-${f.code}`}
-                sub={`${f.name} · ${f.users_month} this month · ${f.uses} uses (${f.uses_month} this month) · ${fmtTokens(f.tokens)} tokens`} />
+                sub={`${f.name} · ${f.users_month} this month · ${plural(f.uses, "use")} (${f.uses_month} this month) · ${fmtTokens(f.tokens)} tokens`} />
             ))}
           </Section>
           <p className="text-xs text-[var(--muted)]">Uses before token tracking started are counted, with 0 tokens.</p>
