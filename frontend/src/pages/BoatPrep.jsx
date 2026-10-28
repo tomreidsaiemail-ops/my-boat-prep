@@ -44,6 +44,9 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { CreateListDialog } from "@/components/boat/CreateListDialog";
 import { RenameListDialog } from "@/components/boat/RenameListDialog";
 import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
+import { MpaDialog } from "@/components/boat/MpaDialog";
+import { MPA_KIND, MPA_NAME, mealPlanLists } from "@/lib/mpa";
+import { Sparkles } from "lucide-react";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
@@ -124,6 +127,18 @@ export default function BoatPrep({ boatId, boats }) {
   ]);
   const data = { ...state.data, [TIPS_ID]: tips, ...mediaData, [INVENTORY_LIST.id]: inventoryLines, [FAQ_ID]: faq.map((f) => ({ id: f.id, label: faqLabel(f) })) };
   const allLists = [...registry, INVENTORY_LIST, TIPS_LIST, ...MEDIA_LISTS, FAQ_LIST];
+  const mealLists = mealPlanLists(registry, state.data);
+  const provisionNames = (state.data.provisions || []).map((i) => (i.label || "").trim()).filter(Boolean);
+  const saveMpa = (rows) => {
+    const now = Date.now();
+    const old = registry.find((l) => l.kind === MPA_KIND);
+    const id = old?.id || `custom_${now}`;
+    mutate((s) => ({ ...s, registry: old ? s.registry : [...s.registry, { id, name: MPA_NAME, isSystem: false, kind: MPA_KIND }],
+      data: { ...s.data, [id]: rows.map((r, n) => ({ id: now + n, ...r })) } }));
+    setActiveId(id);
+    setDialog(null);
+    toast.success(`${MPA_NAME} ${old ? "updated" : "created"}. Tick, export or email it like any list.`);
+  };
   const active = allLists.find((l) => l.id === activeId) || registry[0];
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
@@ -440,6 +455,11 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
+          {!crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id)) && (
+            <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"))} data-testid="mpa-open-btn">
+              <Sparkles className="h-4 w-4 shrink-0" /> Marine Magic Provisioning Assistant
+            </button>
+          )}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
@@ -463,6 +483,7 @@ export default function BoatPrep({ boatId, boats }) {
         }} />
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
+      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>

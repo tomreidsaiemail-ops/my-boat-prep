@@ -77,6 +77,10 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [foodOnly, setFoodOnly] = useState(false);
+  const foodIds = new Set(areas.filter((a) => a.food).map((a) => a.id));
+  const hasFoodPins = (boat?.zone_maps || []).some((m) => (m.pins || []).some((p) => foodIds.has(p.area_id)));
+  const pinsFor = (pins) => (foodOnly ? (pins || []).filter((p) => foodIds.has(p.area_id)) : pins);
   const [walking, setWalking] = useState(false);
   useEffect(() => {
     const m = focusPin && (boat?.zone_maps || []).find((z) => z.id === focusPin.mapId && !failed[z.id]);
@@ -118,9 +122,16 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
         </button>
       )}
-      {pics.map((p, n) => (
+      {hasFoodPins && (
+        <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
+          onClick={() => setFoodOnly((f) => !f)} aria-pressed={foodOnly} data-testid="zone-map-food-filter">
+          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${foodOnly ? "border-white" : "border-emerald-700 text-emerald-800"}`}>F</span>
+          {foodOnly ? "Showing Food areas only" : "Show Food areas only"}
+        </button>
+      )}
+      {pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1" data-testid={`zone-map-item-${p.key}`}>
-          <PinnedPhoto src={p.src} alt={`Boat zone map ${n + 1}`} pins={p.map?.pins} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
+          <PinnedPhoto src={p.src} alt={`Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
             onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
           {p.map && canEdit && (
             <div className="flex flex-wrap justify-end gap-2">
@@ -147,7 +158,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>
-          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={open.map?.pins} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
+          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={pinsFor(open.map?.pins)} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
             imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
         </DialogContent>
       </Dialog>

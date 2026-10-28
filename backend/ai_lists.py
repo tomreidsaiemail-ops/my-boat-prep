@@ -187,3 +187,49 @@ async def engine_ask(body: EngineAskIn, user: dict = Depends(require_premium)):
               f'The skipper asks:\n"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""')
     answer, left = await _run(user, "engine", prompt, parse_answer, {"question": body.question[:200]}, ENGINEER, "Magic Marine Engineer answer")
     return {"answer": answer, "asks_left": left}
+
+
+PROVISIONER = ("You are the Marine Magic Provisioning Assistant in the My Boat Prep app. You suggest practical shopping amounts for a boat trip. "
+               "Allow sensible safety margins for drinking water. Children eat and drink about half as much as adults. Reply with JSON only, no prose and no code fences.")
+
+
+class ProvisionsIn(BaseModel):
+    items: List[str] = Field(min_length=1, max_length=120)
+    on_board: dict = Field(default_factory=dict)
+    adults: int = Field(ge=0, le=999)
+    children: int = Field(ge=0, le=999)
+    days: int = Field(ge=1, le=365)
+
+    @field_validator("items")
+    @classmethod
+    def trim_items(cls, v: list) -> list:
+        return [s for s in dict.fromkeys(str(x).strip()[:80] for x in v) if s]
+
+
+def parse_provisions(text: str, names: list) -> dict:
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        raise ValueError("no JSON")
+    rows = json.loads(match.group(0)).get("items", [])
+    wanted = {n.lower(): n for n in names}
+    out = {}
+    for r in rows if isinstance(rows, list) else []:
+        name = wanted.get(str((r or {}).get("name", "")).strip().lower())
+        if name:
+            out[name] = str(r.get("amount", "")).strip()[:40]
+    if not out:
+        raise ValueError("no amounts")
+    return out
+
+
+@router.post("/ai/mpa/provisions")
+async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premium)):
+    stock = {str(k)[:80]: v for k, v in list(body.on_board.items())[:120] if isinstance(v, (int, float))}
+    prompt = (f"Trip: {body.days} days, {body.adults} adults and {body.children} children on board.\n"
+              f"Provisions to buy: {json.dumps(body.items)}\n"
+              f"Already on board (count of each): {json.dumps(stock)}\n"
+              "For each provision, give the amount still to buy for the whole trip after what is already on board, "
+              "in shop-friendly units (e.g. '42 L', '3 dozen', '2 loaves', '6 x 250 g packs'). Use 'None needed' if what's on board is enough. "
+              'Return exactly: {"items": [{"name": "<provision exactly as given>", "amount": "..."}]}')
+    amounts, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
+    return {"amounts": amounts, "drafts_left": left}
