@@ -63,7 +63,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
         </DialogHeader>
         <div className="flex flex-col gap-1.5">
           <label className="field-label" htmlFor="crew-email">Crew member's email</label>
-          <input id="crew-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="crew@email.com"
+          <input id="crew-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="crew@email.com"
             className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-email-input" />
         </div>
         <RolePicker options={info.role_options || []} selected={roles} onChange={setRoles} />

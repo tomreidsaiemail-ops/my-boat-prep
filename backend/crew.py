@@ -102,8 +102,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     crew = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "email": 1}).to_list(100)
     if any(email_key(m.get("email", "")) == key for m in crew):
         raise HTTPException(status_code=400, detail="They're already crew on this boat")
-    since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    if await db.crew_invites.count_documents({"owner_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_INVITE_LIMIT:
+    if await db.invite_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": datetime.now(timezone.utc) - timedelta(days=1)}}) >= DAILY_INVITE_LIMIT:
         raise HTTPException(status_code=429, detail="Daily invite limit reached, try again tomorrow")
     vessel = doc.get("boat", {}).get("vessel", "").strip() or "my boat"
     token = secrets.token_urlsafe(32)
@@ -115,6 +114,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     if payload.send_email:
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
                          html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes))
+    await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"voyage_notes": notes}})
@@ -230,5 +230,5 @@ class LeaveIn(BaseModel):
 
 @router.post("/crew/leave")
 async def leave_crew(payload: LeaveIn, user: dict = Depends(get_current_user)):
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}})
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": ""}})
     return {"ok": True}
