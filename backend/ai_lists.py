@@ -15,7 +15,7 @@ from usage import KIND_FEATURE, record_usage
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
 DAILY_DRAFTS = 20
-OWN_QUOTA = ("engine", "doctor")
+OWN_QUOTA = ("engine", "doctor", "navigator")
 SYSTEM = ("You are Magic List Generation in the My Boat Prep app. You turn the user's description into a tidy, well-organised list. "
           "Follow the description exactly, whatever the topic; it is boating related most of the time but not always. Reply with JSON only, no prose and no code fences.")
 PROMPT = (
@@ -304,3 +304,63 @@ async def mpa_aisles(body: AislesIn, user: dict = Depends(require_premium)):
         return {k: v for k, v in got.items() if v in aisles}
     mapping, left = await _run(user, "mpa", prompt, parse, {"name": "MPA aisles"}, PROVISIONER, "Magic Provisioning")
     return {"aisles": mapping, "drafts_left": left}
+
+
+NAVIGATOR = ("You are the Magic Marine Navigator in the My Boat Prep app: an experienced cruising navigator helping a skipper plan a passage. "
+             "Suggest a sensible route from START to DESTINATION as a short numbered list of legs with approximate distances in nautical miles, "
+             "key waypoints or headlands, hazards to keep clear of, tidal gates or current to time, and good anchorages or shelter on the way. "
+             "Take the boat's draft, mast height and size into account (bridges, shallows) and the crew on board. Keep it under 300 words. "
+             "Plain text only: no markdown, headings or asterisks. Always finish with exactly this line: "
+             "'Suggested route only. Check official charts, notices to mariners, tides and the latest weather before you sail.'")
+NAV_FOOTER = "Suggested route only. Check official charts, notices to mariners, tides and the latest weather before you sail."
+
+
+class NavBoat(BaseModel):
+    boat_type: str = Field(default="", max_length=60)
+    units: str = Field(default="m", max_length=2)
+    loa: str = Field(default="", max_length=10)
+    beam: str = Field(default="", max_length=10)
+    draft: str = Field(default="", max_length=10)
+    mast_height: str = Field(default="", max_length=10)
+    pob: int = Field(default=1, ge=0, le=999)
+    children: int = Field(default=0, ge=0, le=999)
+    trip_days: int = Field(default=0, ge=0, le=365)
+
+
+class NavigatorAskIn(BaseModel):
+    question: str = Field(default="", max_length=1024)
+    start: str = Field(default="", max_length=80, validate_default=True)
+    destination: str = Field(default="", max_length=80, validate_default=True)
+    boat: NavBoat = Field(default_factory=NavBoat)
+    items: List[str] = Field(default_factory=list, max_length=150)
+
+    @field_validator("start", "destination")
+    @classmethod
+    def need_place(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("The Magic Marine Navigator needs both a START and a DESTINATION")
+        return v.strip()
+
+
+def parse_navigator(text: str) -> str:
+    lines = [ln for ln in parse_answer(text).splitlines() if "suggested route only" not in ln.lower()]
+    answer = "\n".join(lines).strip()
+    if not answer:
+        raise ValueError("empty answer")
+    return f"{answer}\n\n{NAV_FOOTER}"
+
+
+@router.post("/ai/navigator-ask")
+async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premium)):
+    b = body.boat
+    u = "ft" if b.units == "ft" else "m"
+    dims = ", ".join(f"{k} {v} {u}" for k, v in (("LOA", b.loa), ("beam", b.beam), ("draft", b.draft), ("mast height", b.mast_height)) if v)
+    kids = min(b.children, b.pob)
+    crew = f"{b.pob} on board ({b.pob - kids} adults, {kids} children)" if kids else f"{b.pob} on board"
+    checks = "; ".join(str(i).strip()[:120] for i in body.items if str(i).strip()) or "(none listed)"
+    prompt = (f"START: {body.start}\nDESTINATION: {body.destination}\n"
+              f"Boat: {b.boat_type.strip() or 'type not given'}{', ' + dims if dims else ''}. Crew: {crew}. Trip: {b.trip_days or 'not set'} days.\n"
+              f"The skipper's Route Planning checklist: {checks}\n"
+              f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
+    answer, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
+    return {"answer": answer, "asks_left": left}

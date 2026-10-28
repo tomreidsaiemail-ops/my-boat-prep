@@ -38,7 +38,7 @@ export const DEFAULT_REGISTRY = [
   { id: "arrivingDest", name: "Arriving at Destination", isSystem: true },
   { id: "safety", name: "Safety", isSystem: true },
   { id: "riggingChecks", name: "Rigging Checks", isSystem: true },
-  { id: "routeHazards", name: "Route Hazards", isSystem: true },
+  { id: "routeHazards", name: "Route Planning", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
   { id: "mealPlan", name: "Meal Plan", isSystem: true },
@@ -100,7 +100,7 @@ export const DEFAULT_DATA = {
 };
 
 export const freshState = () => ({
-  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0 },
+  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0, route_start: "", route_dest: "" },
   log_sent: null,
   engine_log: [],
   electrical_log: [],
@@ -210,7 +210,8 @@ const upgradeMealPlan = (data) => {
 export const migrateState = (s) => s && addMissingLists({
   ...s,
   data: upgradeMealPlan(upgradePob(s.data)),
-  registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" } : l))),
+  registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" }
+    : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Route Planning" } : l))),
 });
 
 const pobWords = (ctx) => {

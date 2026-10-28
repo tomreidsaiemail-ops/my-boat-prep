@@ -46,6 +46,7 @@ import { RenameListDialog } from "@/components/boat/RenameListDialog";
 import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
+import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
 import { PrintView } from "@/components/boat/PrintView";
@@ -456,6 +457,9 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
+          {!crew && active.id === "routeHazards" && (
+            <NavigatorAsk boat={boat} onChange={updateBoat} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+          )}
           {!crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id)) && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"))} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Marine Magic Provisioning Assistant

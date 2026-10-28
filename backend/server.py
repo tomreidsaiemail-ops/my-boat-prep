@@ -82,6 +82,8 @@ class BoatDetails(BaseModel):
     draft: str = ""
     mast_height: str = ""
     trip_days: int = 0
+    route_start: str = Field(default="", max_length=80)
+    route_dest: str = Field(default="", max_length=80)
 
     @field_validator("children", "trip_days", mode="before")
     @classmethod
