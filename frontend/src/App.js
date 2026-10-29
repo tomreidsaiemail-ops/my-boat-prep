@@ -56,7 +56,7 @@ function App() {
           </UpgradeProvider>
         </AuthProvider>
       </BrowserRouter>
-      <Toaster position="bottom-center" richColors />
+      <Toaster position="bottom-center" richColors style={{ pointerEvents: "auto" }} />
     </div>
   );
 }

@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Magic balance, the bigger pack, the low-balance nudge and the top-up history. Backend: I added 20 tests to test_magic_quota.py, and all 20 pass (2 of them are real Gemini calls). The full file passes 49, with 4 skipped, run with QUOTA_REAL_AI=0 -n 0. Checked: quota packs and big_pack fields; the 429 body includes packs; admin big_pack validation (422) and edge values; omitted big fields keep their stored values; checkout for big / small / omitted pack (1500/100, 500/20, 500/20 NZD); invalid pack returns 422; the big-pack webhook credits +100 once; X-Magic-Free-Left='3' on a free call and no header on a purchased call; CORS exposes the header; /payments/topups gives 401 signed out, shows only the user's own credited rows newest first, null receipt for fake sessions, and an empty list for the free user. I made one real Stripe test-card payment through the UI: the success page credited +20, and /payments/topups returned and cached the real pay.stripe.com receipt_url. Frontend at 1920 and 390: the account menu shows 'X of 20 free today · Y bought'; Buy more Magic opens the dialog with 'Buy +20 for NZ$5' and 'Buy +100 for NZ$15' plus the BEST VALUE tag; big goes to Stripe with NZ$15.00; the 429 opens 'Daily Magic limit reached' with both packs; My plan shows rows with date, +N Magic, NZ$ amount, a Receipt link (target _blank) or 'No receipt yet'; admin big-pack inputs save, persist and show up in the dialog (+120 for NZ$17.50); free users see no balance. The nudge toast shows once per day and stays silent on the second response. Bug found: the nudge's 'Buy more' action can't be clicked while a Magic dialog is open, which is where Magic is normally used.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/payments/topups", "issue": "date is a naive ISO string (e.g. '2026-10-29T20:23:25.953000', no Z/offset), because Motor returns naive UTC datetimes. The frontend new Date() reads it as LOCAL time, so for NZ users (UTC+13) a top-up made at 20:23 UTC shows the previous day. Fix: return created.replace(tzinfo=timezone.utc).isoformat() or use tz_aware=True on the Mongo client."},
+      {"endpoint": "429 daily_limit detail", "issue": "The detail text still says 'Buy +20 more for NZ$5.' even though the dialog now offers both packs. Copy could mention both packs or say 'Buy more below'."},
+      {"endpoint": "server.py middleware", "issue": "X-Magic-Free-Left is also set on 503 responses after an AI failure (the refund happens after note is filled), so the value is off by 1. The frontend only reads it on success, so there is no impact today."},
+      {"endpoint": "GET /api/payments/topups", "issue": "Rows with no receipt (e.g. a webhook-fallback row or a Stripe error) call Stripe again on every open of My plan (up to 30 calls in a row), and failures are not cached. This is fast for fake ids now, but it can be slow for real sessions without a charge."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Low-balance nudge toast (lib/api.js nudgeLowBalance + sonner Toaster)", "issue": "When the nudge fires while a Radix Dialog is open (Create list, Engineer, Doctor, Navigator, Provisioning and Scan are all dialogs), Radix sets body pointer-events:none. The sonner toast inherits pointer-events:none, so its 'Buy more' action can't be clicked. A real mouse click goes through to the dialog element underneath. At 1920 that element was create-list-confirm-btn, at 390 it was the dialog itself. Confirmed by elementFromPoint and page.mouse.click at both viewports. Fix: give the Toaster/toasts pointer-events:auto (e.g. style={{pointerEvents:'auto'}} on <Toaster> plus toastOptions.style), and add onPointerDownOutside/onInteractOutside to DialogContent so a click inside [data-sonner-toaster] doesn't dismiss the underlying dialog.", "selector": "[data-sonner-toast] button[data-action]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "My plan top-up history at 390px", "issues": ["The layout fits. The date column uses toLocaleDateString without a time zone fix (see backend minor)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_magic_quota.py", "/app/test_reports/pytest/magic_quota.xml", "/app/test_reports/pytest/magic_quota_55.xml"],
+  "action_items": [
+    "HIGH: Make the nudge toast's 'Buy more' action clickable while a Radix dialog is open (pointer-events:auto on the sonner toaster/toasts), and make sure clicking the toast doesn't close or submit the underlying dialog",
+    "Return a timezone-aware ISO date (with Z/+00:00) from GET /api/payments/topups",
+    "Optional: update the 429 detail copy to reflect both packs",
+    "Optional: don't set X-Magic-Free-Left on refunded (503) responses; cache 'no receipt' lookups or retry them less often"
+  ],
+  "critical_code_review_comments": [
+    "The packs() / TopUpIn Literal['small','big'] / settings-prefix lookup is clean. Omitted big fields are kept through exclude_none. Good.",
+    "nudgeLowBalance needs exactly '3'. If an admin sets daily_limit < 3, or a batch scan skips past 3 (2 calls at the same time), the nudge never shows. That is acceptable, but worth knowing.",
+    "TopUpHistory swallows errors into an empty list ('No top-ups yet.'), so a network/500 error shows as a misleading empty state."
+  ],
+  "updated_files": ["/app/backend/tests/test_magic_quota.py"],
+  "success_rate": {"backend": "100%", "frontend": "92%"},
+  "seed_data_creation": "Temporary magic_quota doc and magic_topup transactions for test-user-pro/test-user-beta (including 1 real Stripe test-card paid session cs_test_a1brxz13...). All removed. Admin settings restored to 20/20/5 and 100/15.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: export REACT_APP_BACKEND_URL from frontend/.env; QUOTA_REAL_AI=0 pytest tests/test_magic_quota.py -n 0. To test the nudge cheaply, use page.route on /api/ai/list-draft and fulfil with header x-magic-free-left: 3 (clear localStorage mbp_magic_nudge first). To retest the bug, open create-list-btn, fill create-list-description-input, click create-list-ai-draft-btn, then page.mouse.click on the toast's 'Buy more' (not locator.click) and confirm magic-buy-big-btn appears. Stripe hosted checkout can be paid with Playwright: #cardNumber/#cardExpiry/#cardCvc/#billingName, select #billingCountry NZ, 'Enter address manually', #billingAddressLine1/#billingLocality/#billingPostalCode, uncheck #enableStripePass, then submit."
+}

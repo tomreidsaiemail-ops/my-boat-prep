@@ -149,7 +149,7 @@ class TestConsumption:
         assert r.status_code == 429, f"{path}: {r.status_code} {r.text[:300]}"
         d = r.json()
         assert d["code"] == "daily_limit" and d["left"] == 0 and d["daily_limit"] == 1 and d["pack_size"] == 20 and d["price_text"] == "NZ$5"
-        assert d["detail"] == "You've reached your daily limit of 1 Magic generations. Buy +20 more for NZ$5."
+        assert d["detail"] == "You've reached your daily limit of 1 Magic generations. Buy +20 more for NZ$5, or +100 for NZ$15."
         assert DB.ai_drafts.count_documents({"user_id": PRO_ID}) == before
         assert qdoc()["daily_used"] == 1 and qdoc()["purchased_allowance"] == 0
 
@@ -168,7 +168,7 @@ class TestConsumption:
         seed(daily_used=3, purchased=0)
         r = s(PRO).post(f"{BASE_URL}/api/ai/engine-ask", json={"question": "Impeller?"}, timeout=60)
         assert r.status_code == 429
-        assert r.json()["detail"] == "You've reached your daily limit of 3 Magic generations. Buy +30 more for NZ$7.50."
+        assert r.json()["detail"] == "You've reached your daily limit of 3 Magic generations. Buy +30 more for NZ$7.50, or +100 for NZ$15."
         put_settings(20, 20, 5)
 
     def test_daily_limit_zero_blocks(self):
@@ -310,3 +310,161 @@ class TestProCheckoutRegression:
             DB.payment_transactions.delete_one({"session_id": sid})
         else:
             print("Pro checkout 400:", r.json())
+
+
+# ===== Iteration 55: bigger pack, X-Magic-Free-Left header, top-up history =====
+def put_full(dl=20, ps=20, pp=5, bs=None, bp=None):
+    body = {"daily_limit": dl, "pack_size": ps, "pack_price": pp}
+    if bs is not None:
+        body["big_pack_size"] = bs
+    if bp is not None:
+        body["big_pack_price"] = bp
+    return s(ADMIN).put(f"{BASE_URL}/api/admin/settings/quota", json=body)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def restore_big():
+    yield
+    put_full(20, 20, 5, 100, 15)
+    DB.payment_transactions.delete_many({"user_id": {"$in": [PRO_ID, "test-user-beta"]}, "kind": "magic_topup"})
+
+
+# --- packs in quota + 429 ---
+class TestPacks:
+    def test_quota_includes_big_pack_and_packs(self):
+        assert put_full(20, 20, 5, 100, 15).status_code == 200
+        d = s(PRO).get(f"{BASE_URL}/api/magic/quota").json()
+        assert d["big_pack_size"] == 100 and d["big_pack_price"] == 15.0
+        assert d["packs"] == [{"id": "small", "size": 20, "price": 5, "price_text": "NZ$5"},
+                              {"id": "big", "size": 100, "price": 15, "price_text": "NZ$15"}]
+
+    def test_429_includes_packs(self):
+        put_full(1, 20, 5, 100, 15)
+        seed(daily_used=1, purchased=0)
+        r = s(PRO).post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "Burn?"}, timeout=60)
+        assert r.status_code == 429
+        assert [p["id"] for p in r.json()["packs"]] == ["small", "big"]
+        assert r.json()["packs"][1]["price_text"] == "NZ$15"
+        put_full(20, 20, 5)
+
+
+# --- admin big pack settings ---
+class TestAdminBigPack:
+    @pytest.mark.parametrize("extra", [{"big_pack_size": 0}, {"big_pack_size": 5001}, {"big_pack_price": 0.5}, {"big_pack_price": 1001}])
+    def test_big_validation_422(self, extra):
+        assert s(ADMIN).put(f"{BASE_URL}/api/admin/settings/quota", json={"daily_limit": 20, "pack_size": 20, "pack_price": 5, **extra}).status_code == 422
+
+    def test_big_put_get_and_omitted_kept(self):
+        r = put_full(20, 20, 5, 150, 22.5)
+        assert r.status_code == 200 and r.json()["big_pack_size"] == 150 and r.json()["big_pack_price"] == 22.5
+        g = s(ADMIN).get(f"{BASE_URL}/api/admin/settings/quota").json()
+        assert g["big_pack_size"] == 150 and g["big_pack_price"] == 22.5
+        # omit big fields -> stored values kept
+        r = put_full(21, 20, 5)
+        assert r.status_code == 200 and r.json()["daily_limit"] == 21 and r.json()["big_pack_size"] == 150 and r.json()["big_pack_price"] == 22.5
+        q = s(PRO).get(f"{BASE_URL}/api/magic/quota").json()
+        assert q["packs"][1] == {"id": "big", "size": 150, "price": 22.5, "price_text": "NZ$22.50"}
+        assert put_full(20, 20, 5, 100, 15).status_code == 200
+
+    def test_edge_values_accepted(self):
+        assert put_full(20, 20, 5, 5000, 1000).status_code == 200
+        assert put_full(20, 20, 5, 1, 1).status_code == 200
+        assert put_full(20, 20, 5, 100, 15).status_code == 200
+
+
+# --- big pack checkout + webhook ---
+class TestBigTopup:
+    def _co(self, body):
+        return s(PRO).post(f"{BASE_URL}/api/payments/topup-checkout", json={"origin_url": BASE_URL, **body}, timeout=60)
+
+    def test_invalid_pack_422(self):
+        assert self._co({"pack": "huge"}).status_code == 422
+
+    @pytest.mark.parametrize("body,size,cents", [({"pack": "big"}, "100", 1500), ({"pack": "small"}, "20", 500), ({}, "20", 500)])
+    def test_checkout_amounts(self, body, size, cents):
+        import stripe
+        stripe.api_key = ENV["STRIPE_SECRET_KEY"]
+        put_full(20, 20, 5, 100, 15)
+        r = self._co(body)
+        assert r.status_code == 200, r.text
+        sess = stripe.checkout.Session.retrieve(r.json()["session_id"])
+        assert sess.currency == "nzd" and sess.amount_subtotal == cents and sess.metadata["pack_size"] == size
+        tx = DB.payment_transactions.find_one({"session_id": r.json()["session_id"]})
+        assert tx["pack_size"] == int(size) and tx["amount"] == cents / 100
+
+    def test_big_webhook_credits_100_once(self):
+        put_full(20, 20, 5, 100, 15)
+        seed(daily_used=0, purchased=0)
+        r = self._co({"pack": "big"})
+        sid = r.json()["session_id"]
+        assert webhook(topup_event(sid, pack="100")).status_code == 200
+        assert qdoc()["purchased_allowance"] == 100
+        assert webhook(topup_event(sid, pack="100", eid="evt_TEST_x2")).status_code == 200
+        assert qdoc()["purchased_allowance"] == 100
+
+
+# --- X-Magic-Free-Left header ---
+class TestFreeLeftHeader:
+    def test_quota_get_has_no_header(self):
+        r = s(PRO).get(f"{BASE_URL}/api/magic/quota")
+        assert "x-magic-free-left" not in {k.lower() for k in r.headers}
+
+    def test_cors_exposes_header(self):
+        r = requests.options(f"{BASE_URL}/api/ai/mpa/aisles", headers={"Origin": BASE_URL, "Access-Control-Request-Method": "POST"})
+        r2 = s(PRO).get(f"{BASE_URL}/api/magic/quota", headers={"Origin": BASE_URL})
+        exp = r2.headers.get("access-control-expose-headers", "") + r.headers.get("access-control-expose-headers", "")
+        print("expose:", exp)
+
+    @pytest.mark.skipif(not REAL_AI, reason="real AI disabled")
+    def test_free_call_sets_header(self):
+        put_full(20, 20, 5)
+        seed(daily_used=16, purchased=0)
+        r = s(PRO).post(f"{BASE_URL}/api/ai/mpa/aisles", json={"items": ["Bread"], "aisles": ["Bakery"]}, timeout=120)
+        if r.status_code == 503:
+            pytest.skip("AI 503")
+        assert r.status_code == 200, r.text
+        assert r.headers.get("X-Magic-Free-Left") == "3"
+        assert qdoc()["daily_used"] == 17
+
+    @pytest.mark.skipif(not REAL_AI, reason="real AI disabled")
+    def test_purchased_call_no_header(self):
+        put_full(20, 20, 5)
+        seed(daily_used=20, purchased=2)
+        r = s(PRO).post(f"{BASE_URL}/api/ai/mpa/aisles", json={"items": ["Milk"], "aisles": ["Dairy"]}, timeout=120)
+        if r.status_code == 503:
+            pytest.skip("AI 503")
+        assert r.status_code == 200, r.text
+        assert "X-Magic-Free-Left" not in r.headers
+        assert qdoc()["purchased_allowance"] == 1
+
+
+# --- top-up history ---
+class TestTopupHistory:
+    def test_signed_out_401(self):
+        assert s().get(f"{BASE_URL}/api/payments/topups").status_code == 401
+
+    def test_lists_only_own_credited_newest_first(self):
+        from datetime import timezone, timedelta
+        DB.payment_transactions.delete_many({"user_id": {"$in": [PRO_ID, "test-user-beta"]}, "kind": "magic_topup"})
+        now = datetime.now(timezone.utc)
+        base = {"kind": "magic_topup", "currency": "nzd", "status": "completed", "payment_status": "paid"}
+        DB.payment_transactions.insert_many([
+            {**base, "session_id": "cs_test_TEST_old", "user_id": PRO_ID, "pack_size": 20, "amount": 5.0, "credited": True, "created_at": now - timedelta(days=2)},
+            {**base, "session_id": "cs_test_TEST_new", "user_id": PRO_ID, "pack_size": 100, "amount": 15.0, "credited": True, "created_at": now},
+            {**base, "session_id": "cs_test_TEST_pending", "user_id": PRO_ID, "pack_size": 20, "amount": 5.0, "credited": False, "created_at": now},
+            {**base, "session_id": "cs_test_TEST_beta", "user_id": "test-user-beta", "pack_size": 20, "amount": 5.0, "credited": True, "created_at": now},
+        ])
+        t = time.time()
+        r = s(PRO).get(f"{BASE_URL}/api/payments/topups", timeout=60)
+        print("topups took", round(time.time() - t, 2))
+        assert r.status_code == 200, r.text
+        rows = r.json()
+        assert [x["session_id"] for x in rows] == ["cs_test_TEST_new", "cs_test_TEST_old"]
+        assert rows[0]["pack_size"] == 100 and rows[0]["amount"] == 15.0 and rows[0]["currency"] == "nzd" and rows[0]["receipt_url"] is None
+        assert isinstance(rows[0]["date"], str) and rows[0]["date"].startswith(now.date().isoformat()[:4])
+        b = s("test_session_beta_1").get(f"{BASE_URL}/api/payments/topups").json()
+        assert [x["session_id"] for x in b] == ["cs_test_TEST_beta"]
+
+    def test_empty_for_free_user(self):
+        r = s(FREE).get(f"{BASE_URL}/api/payments/topups")
+        assert r.status_code == 200 and r.json() == []

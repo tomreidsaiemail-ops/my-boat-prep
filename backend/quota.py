@@ -29,7 +29,8 @@ class QuotaExceeded(Exception):
 async def quota_exceeded_handler(_: Request, exc: QuotaExceeded):
     i = exc.info
     return JSONResponse(status_code=429, content={
-        "detail": f"You've reached your daily limit of {i['daily_limit']} Magic generations. Buy +{i['pack_size']} more for {i['price_text']}.",
+        "detail": f"You've reached your daily limit of {i['daily_limit']} Magic generations. Buy +{i['pack_size']} more for {i['price_text']}"
+                  + "".join(f", or +{p['size']} for {p['price_text']}" for p in i.get("packs", [])[1:]) + ".",
         "code": "daily_limit", **i})
 
 
@@ -106,6 +107,9 @@ async def consume(user_id: str) -> str:
 
 
 async def refund(user_id: str, source: str):
+    note = quota_note.get()
+    if note is not None:
+        note.pop("free_left", None)
     if source == "free":
         await db.magic_quota.update_one({"user_id": user_id, "daily_used": {"$gt": 0}}, {"$inc": {"daily_used": -1}})
     else:

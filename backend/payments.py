@@ -2,7 +2,7 @@ import os
 import re
 import logging
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Literal
@@ -237,14 +237,19 @@ async def topup_history(user: dict = Depends(get_current_user)):
     out = []
     for r in rows:
         url = r.get("receipt_url")
-        if not url:
+        checked = r.get("receipt_checked_at")
+        if checked and checked.tzinfo is None:
+            checked = checked.replace(tzinfo=timezone.utc)
+        # Look a missing receipt up at most once an hour.
+        if not url and (not checked or checked < datetime.now(timezone.utc) - timedelta(hours=1)):
             try:
                 url = await asyncio.to_thread(_receipt_url, r["session_id"])
             except Exception as e:
                 logging.getLogger(__name__).warning("Receipt lookup failed for %s: %s", r["session_id"], e)
-            if url:
-                await db.payment_transactions.update_one({"session_id": r["session_id"]}, {"$set": {"receipt_url": url}})
+            await db.payment_transactions.update_one({"session_id": r["session_id"]}, {"$set": {"receipt_checked_at": datetime.now(timezone.utc), **({"receipt_url": url} if url else {})}})
         created = r.get("created_at")
+        if hasattr(created, "tzinfo") and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
         out.append({"session_id": r["session_id"], "date": created.isoformat() if hasattr(created, "isoformat") else created,
                     "pack_size": r.get("pack_size"), "amount": r.get("amount"), "currency": r.get("currency"), "receipt_url": url})
     return out
