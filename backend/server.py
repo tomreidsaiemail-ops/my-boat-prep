@@ -37,6 +37,7 @@ from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
+import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
@@ -407,6 +408,7 @@ app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 async def same_origin_writes(request: Request, call_next):
     # Session cookies are SameSite=None, so block cross-site writes to the API.
     quota.current_tz.set((request.headers.get("x-timezone") or "")[:64] or None)
+    auth_module.on_preview.set(request_host(request).endswith(auth_module.PREVIEW_HOST_SUFFIX))
     origin = request.headers.get("origin")
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api/") \
             and request.url.path != "/api/stripe/webhook" and origin and urlparse(origin).netloc.lower() != request_host(request):

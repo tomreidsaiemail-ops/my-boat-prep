@@ -7,12 +7,17 @@ from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from contextvars import ContextVar
 from pydantic import BaseModel, Field
 from db import db
 from billing import refresh_if_lapsed
 from launch import first200_cached, first200_running
 
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].strip().lower()
+# Extra admins honoured only on requests to the preview site (see server.py middleware), never on the live app.
+PREVIEW_ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("PREVIEW_ADMIN_EMAILS", "").split(",") if e.strip()}
+PREVIEW_HOST_SUFFIX = ".preview.emergentagent.com"
+on_preview: ContextVar[bool] = ContextVar("on_preview", default=False)
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -44,7 +49,8 @@ class UserOut(BaseModel):
 
 
 def to_user_out(u: dict) -> UserOut:
-    is_admin = u.get("email", "").lower() == ADMIN_EMAIL
+    email = u.get("email", "").lower()
+    is_admin = email == ADMIN_EMAIL or (on_preview.get() and email in PREVIEW_ADMIN_EMAILS)
     role = u.get("role", "free")
     return UserOut(
         user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", ""),
