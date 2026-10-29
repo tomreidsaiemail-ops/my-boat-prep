@@ -367,7 +367,7 @@ def parse_navigator(text: str) -> dict:
         except ValueError:
             data = {}
     raw = data.get("answer") if isinstance(data, dict) and data.get("answer") else text
-    lines = [ln for ln in parse_answer(str(raw)).splitlines() if "suggested route only" not in ln.lower()]
+    lines = [ln.strip() for ln in parse_answer(str(raw)).splitlines() if "suggested route only" not in ln.lower()]
     answer = "\n".join(lines).strip()
     if not answer or answer.startswith("{"):
         raise ValueError("empty answer")

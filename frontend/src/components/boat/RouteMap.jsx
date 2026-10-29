@@ -4,7 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { LocateFixed, Maximize2, Minimize2 } from "lucide-react";
 
-const pin = (n, end) => L.divIcon({ className: "", html: `<span class="route-pin${end ? " route-pin-end" : ""}">${n}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] });
+const pin = (n, kind) => L.divIcon({ className: "", html: `<span class="route-pin${kind ? ` route-pin-${kind}` : ""}">${n}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] });
 const BOAT = L.divIcon({ className: "", html: '<span class="boat-dot" data-testid="navigator-map-boat"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
 const hasFix = (gps) => gps?.status === "ok" && gps.lat != null;
 
@@ -19,7 +19,7 @@ const MapView = ({ waypoints, gps, big, onToggle, testId }) => {
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenSeaMap" }).addTo(m);
     const pts = waypoints.map((w) => [w.lat, w.lon]);
     L.polyline(pts, { color: "#0f172a", weight: 3, dashArray: "8 6" }).addTo(m);
-    waypoints.forEach((w, i) => L.marker(pts[i], { icon: pin(i + 1, i === 0 || i === pts.length - 1), title: w.name }).bindTooltip(`${i + 1}. ${w.name}`).addTo(m));
+    waypoints.forEach((w, i) => L.marker(pts[i], { icon: pin(i + 1, i === 0 ? "start" : i === pts.length - 1 ? "end" : ""), title: w.name }).bindTooltip(`${i + 1}. ${w.name}`).addTo(m));
     m.fitBounds(pts, { padding: [28, 28] });
     map.current = m;
     return () => { m.remove(); map.current = null; boat.current = null; };
@@ -36,12 +36,12 @@ const MapView = ({ waypoints, gps, big, onToggle, testId }) => {
       boat.current.ring.setLatLng(ll).setRadius(gps.acc || 0);
       boat.current.dot.setLatLng(ll);
     }
-  }, [gps]);
+  }, [gps, waypoints]);
 
   const showBoat = () => map.current && hasFix(gps) && map.current.fitBounds(L.latLngBounds([...waypoints.map((w) => [w.lat, w.lon]), [gps.lat, gps.lon]]), { padding: [28, 28] });
 
   return (
-    <div className={`relative overflow-hidden rounded-md border border-[var(--line)] ${big ? "h-full w-full" : "h-64 w-full sm:h-80"}`} data-testid={testId}>
+    <div className={`relative isolate overflow-hidden rounded-md border border-[var(--line)] ${big ? "h-full w-full" : "h-64 w-full sm:h-80"}`} data-testid={testId}>
       <div ref={el} className="h-full w-full" />
       <div className="absolute right-2 top-2 z-[500] flex flex-col gap-2">
         <button type="button" className="icon-btn h-10 w-10 bg-white shadow" onClick={onToggle} aria-label={big ? "Close full-screen map" : "Full-screen map"} data-testid={`${testId}-toggle-btn`}>

@@ -2,6 +2,7 @@ import { Copy, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const FILL = (s) => `[${s}]`;
+const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export const coastGuardReport = (boat, start, dest, result) => {
   const pob = boat.pob || 1;
@@ -10,10 +11,10 @@ export const coastGuardReport = (boat, start, dest, result) => {
   const size = boat.loa ? `, LOA ${boat.loa} ${boat.units === "ft" ? "ft" : "m"}` : "";
   return [
     `Vessel: ${boat.vessel || FILL("VESSEL NAME")}`,
-    `Callsign: ${boat.callsign || FILL("CALLSIGN")}${boat.mmsi ? ` · MMSI ${boat.mmsi}` : ""}`,
+    `Callsign: ${boat.callsign || FILL("CALLSIGN")}${/^\d{9}$/.test(boat.mmsi || "") ? ` · MMSI ${boat.mmsi}` : ""}`,
     `Boat: ${boat.boat_type || FILL("BOAT TYPE AND COLOUR")}${size}`,
     `Skipper: ${boat.skipper || FILL("SKIPPER NAME")}`,
-    `Persons on board: ${pob}${kids ? ` (${pob - kids} adults, ${kids} children)` : ""}`,
+    `Persons on board: ${pob}${kids ? ` (${count(pob - kids, "adult", "adults")}, ${count(kids, "child", "children")})` : ""}`,
     `Departing: ${start} at ${FILL("DEPARTURE TIME")}`,
     `Destination: ${dest}`,
     ...(via.length ? [`Route: via ${via.join(", ")}`] : []),

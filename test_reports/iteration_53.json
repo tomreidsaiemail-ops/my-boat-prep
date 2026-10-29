@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the Navigator waypoints and Route Map (inline, maximize, live GPS), the Coast Guard Trip Report, and the MPA PROV / On board badges in the email-log and PDF exports. Backend: 17 of 17 new tests pass, including 1 real Gemini ask (Mana Marina to Picton returned 6 valid Cook Strait waypoints, 46 nm, about 8 hours). The 12 regression tests in test_navigator.py pass with the real AI ask skipped. Frontend at 1920px and 390px: 1 real ask plus mocked replays. Map, OSM and OpenSeaMap tiles, 6 numbered pins, dashed line, maximize, Escape, live boat dot, locate, report, copy and close all work, with no page horizontal overflow. 1 real UI bug: the inline Leaflet map draws on top of shadcn dialogs. Also 1 minor wording bug and 1 small difference from the spec.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/ai/navigator-ask", "issue": "Each leg of the answer after the first starts with a space (prompt asks for \\n line breaks, Gemini returns '\\n 2. ...'). Display looks fine because of whitespace-pre-line, but stripping each line in parse_navigator would be cleaner."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RouteMap MapView (inline navigator-map)", "issue": "Leaflet panes (z-index 400) and controls (z-index 1000) are not in their own stacking context, so the inline map, zoom +/- and pins draw ON TOP of shadcn dialogs (z-50). Reproduced: open the item Edit dialog with the map on screen and the map covers the dialog's inputs (elementFromPoint on the dialog area returns leaflet-control-zoom-in / route-pin). Fix: add 'isolate' (isolation:isolate) or 'z-0' to the MapView wrapper div (relative overflow-hidden ...).", "selector": "[data-testid='navigator-map']", "priority": "HIGH"},
+      {"component": "CoastGuardReport", "issue": "Wrong plurals: shows 'Persons on board: 3 (2 adults, 1 children)'. Should use singular/plural like ship_log._pob_words (1 adult / 1 child).", "selector": "[data-testid='coast-guard-report-text']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Navigator route map", "issues": ["Both the START pin (1) and the last pin are red (route-pin-end is set for i===0 too). The review request said only the last one is red. Fine if intentional.", "Start pins 1 and 2 (Mana Marina and Mana Bar, about 1 nm apart) overlap at the default zoom. Minor."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_navigator_map_exports.py", "/app/test_reports/pytest/pytest_iter53.xml", "/app/tests/nav_route_seed.py"],
+  "action_items": [
+    "HIGH: Add isolation:isolate (Tailwind 'isolate') or z-0 to the MapView wrapper in RouteMap.jsx so the Leaflet map stops drawing over dialogs and modals",
+    "LOW: Fix adult/child plurals in coastGuardReport()",
+    "Optional: strip leading spaces from each answer line in parse_navigator; decide whether the start pin should be red"
+  ],
+  "critical_code_review_comments": [
+    "RouteMap: the gps effect depends only on [gps]. If waypoints changed while the component stayed mounted, the map would rebuild and boat.current would reset, but the boat would only come back on the next GPS update. Not reachable today because waypoints stay the same per result.",
+    "The Coast Guard report shows boat.mmsi whenever it is set (any length), but the email-log only uses MMSI when it is 9 digits. Small inconsistency.",
+    "The waypoint order and the START/DESTINATION names are only enforced by the prompt, not by _waypoints. Acceptable: the live run returned the right order (Mana Marina first, Picton Marina last)."
+  ],
+  "updated_files": ["/app/backend/tests/test_navigator_map_exports.py", "/app/tests/nav_route_seed.py"],
+  "success_rate": {"backend": "100% (17/17 new, 12/12 regression)", "frontend": "95% (all flows pass; 1 dialog stacking bug, 1 wording bug)"},
+  "seed_data_creation": "Temporary TEST_mpaexp boat (deleted by the test fixture). The Pro main boat was changed temporarily (Route Planning list, MMSI, children, trip days; vessel details blanked for the placeholder check) and then restored from /tmp/pro_boat_53.json with nav_route_seed.py restore. 1 ship_log email was sent to delivered@resend.dev.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The Pro main boat registry has no routeHazards list; use /app/tests/nav_route_seed.py seed [mmsi] | restore to add Route Planning for UI tests. About 13 Navigator asks were left today. To save quota, capture one real navigator-ask response and replay it with page.route. To control GPS, fake navigator.geolocation with an init script, or use context.set_geolocation (both worked)."
+}
