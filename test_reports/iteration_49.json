@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only test of the MPA soft warnings and the 'Meals (N) from <list>' heading, as the Pro user at 390x844 plus one desktop screenshot. 17/17 checks passed. Trip duration not set ('Not set, using 1 day'), built-in Meal Plan: mpa-warning-count reads '21 meals are picked for a 1-day trip, which allows up to 3 (3 a day).' and mpa-warning-types reads 'No desserts, snacks found in the meal names.'. Go back and Escape each close only the warning; the MPA dialog stays open and no list is made. Make it anyway creates the MPA Shopping List with first row 'Meals (21) from Meal Plan'. Trip 7 days, Meal Plan: only the types warning shows. A custom list whose meal names cover breakfast, lunch, dinner, dessert and snack (5 meals) makes the list with no popup, heading 'Meals (5) from TEST_Kids Meals'. Meal Plan + Kids (26 meals, 7 days) shows only the count warning (26 > 21) and gives 'Meals (26) from Meal Plan, TEST_Kids Meals'. A single 'Brunch eggs' list counts as a breakfast. The warning dialog fits 390px (left 11, right 378) and looks fine once its fade-in finishes.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MpaWarningsDialog", "issues": ["The amber-50 warning rows are very faint on the white dialog. A slightly stronger tint or an amber left border would help (cosmetic)."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/mpa_seed.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "mpaWarnings: when trip_days is not set the count warning says '1-day trip' but gives no hint to set Trip duration in Additional boat details. Consider adding that hint (optional).",
+    "MEAL_TYPES matching uses meal names only: a meal named e.g. 'Pasta' with no type word counts toward none. This is expected by design but may cause frequent types warnings for user lists."
+  ],
+  "updated_files": ["/app/tests/mpa_seed.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "Via /app/tests/mpa_seed.py (direct Mongo): set trip_days, added TEST_Kids Meals and TEST_Extra Meals lists. All cleaned with 'clean': TEST lists and the generated MPA Shopping List removed, trip_days restored to 0 (original).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro boat original trip_days = 0 and it has no MPA Shopping List. Use 'python3 /app/tests/mpa_seed.py days N | lists | clean' to seed or restore. The list selector is a native select (data-testid list-selector); select_option('mealPlan'). Untick mpa-aisles-check and mpa-provisions-check to avoid AI calls. Wait about 1s after the warning dialog opens before taking a screenshot (fade-in animation)."
+}

@@ -134,7 +134,7 @@ export const mpaWarnings = (meals, days) => {
   const d = days || 1;
   const max = d * 3;
   const out = [];
-  if (meals.length > max) out.push({ id: "count", text: `${meals.length} meals are picked for a ${d}-day trip, which allows up to ${max} (3 a day).` });
+  if (meals.length > max) out.push({ id: "count", text: `${meals.length} meals are picked for a ${d}-day trip, which allows up to ${max} (3 a day).${days ? "" : " Trip duration isn't set, so 1 day is used. Set it in Additional boat details."}` });
   const missing = MEAL_TYPES.filter(([, re]) => !meals.some((m) => re.test(m.name))).map(([n]) => n);
   if (meals.length && missing.length) out.push({ id: "types", text: `No ${missing.join(", ").toLowerCase()} found in the meal names.` });
   return out;

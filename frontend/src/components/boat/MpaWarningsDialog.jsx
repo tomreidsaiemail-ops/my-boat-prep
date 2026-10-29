@@ -13,7 +13,7 @@ export const MpaWarningsDialog = ({ warnings, onBack, onProceed }) => (
       </AlertDialogHeader>
       <ul className="flex flex-col gap-2">
         {(warnings || []).map((w) => (
-          <li key={w.id} className="rounded-md bg-amber-50 p-3 text-sm font-medium" data-testid={`mpa-warning-${w.id}`}>{w.text}</li>
+          <li key={w.id} className="rounded-md border-l-4 border-amber-500 bg-amber-100 p-3 text-sm font-medium" data-testid={`mpa-warning-${w.id}`}>{w.text}</li>
         ))}
       </ul>
       <AlertDialogFooter className="flex-row justify-end gap-2">
