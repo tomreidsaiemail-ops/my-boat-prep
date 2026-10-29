@@ -3,6 +3,7 @@ import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
 import { MpaText } from "@/components/boat/MpaBadges";
 import { MealTypeBadge } from "@/components/boat/MealTypePicker";
+import { isMealHead } from "@/lib/mpa";
 
 const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
@@ -26,7 +27,7 @@ const FoldButton = ({ id, folded, onFold }) => (
   </button>
 );
 
-const Row = ({ item, text, info, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold }) => (
+const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold }) => (
   <li className={`checklist-row ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {info?.child && <div className="w-7 shrink-0" aria-hidden="true" />}
@@ -38,7 +39,7 @@ const Row = ({ item, text, info, onToggle, onEdit, onDelete, emergency, tools, n
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
           <span className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} data-testid={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></span>
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
-          {item.meal_type && !info?.child && <MealTypeBadge id={item.id} type={item.meal_type} />}
+          {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
         </span>
       </button>
@@ -75,7 +76,7 @@ export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDelet
       {items.filter((item) => !hidden(item)).map((item) => {
         const inf = info[item.id];
         return (
-          <Row key={item.id} item={item} info={inf} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
+          <Row key={item.id} item={item} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} onPlace={(n) => onPlace(item.id, n)} />}

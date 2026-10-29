@@ -1,0 +1,18 @@
+{
+  "summary": "Meal Type Tags + built-in Desserts/Snacks tested as the Pro user (390x844), backend and frontend. All checks passed: 41/41 UI checks and 17/17 backend tests. The built-in plan upgrades to 35 meals (21 main meals, then 7 desserts 22-28, then 7 snacks 29-35) with correct badges on head lines only (35 badges, 0 on sub-items). The untouched old 21-meal plan is upgraded on load, including the older '(recipe)' format, which is converted to '[recipe]'. Edited plans (label changed, item deleted) are left alone at 135 items with no badges. The Edit Item meal-type picker has the right 6 options and is preselected; set, change and clear all work and survive a reload/cloud save. Ingredient lines, recipe lines and other lists (Rigging Checks) show no picker. MPA: with 7 days there is no popup and the list 'Meals (35) from Meal Plan' is made. With 1 day the count warning reads exactly '21 meals (not counting 14 desserts and snacks) are picked for a 1-day trip, which allows up to 3 (3 a day)...'. For an untagged custom list, the types warning lists all 5 types. After tagging the meals as dinner/lunch/breakfast/dessert/snack, there is no warning on a 1-day trip (3 main meals, so dessert and snack are not counted). The group-delete-dialog still works on a dessert meal group.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_meal_type_templates.py", "/app/backend/tests/test_doctor_aisles_templates.py", "/app/tests/meal_type_seed.py", "/app/test_reports/pytest/pytest_iter50.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "upgradeMealPlan only runs on load (migrateState) and isn't written to the cloud until the next change to the list. Not a bug: it does the same thing again on every load, and the first edit saved all 192 items (checked in the DB).",
+    "saveEdit keeps meal_type when the head line is edited, but if the [recipe] line under a tagged meal is deleted, the old meal_type stays on the item and the badge still shows, even though isMealHead/parseMeals no longer treat it as a meal. Minor; you could hide the badge when isMealHead is false.",
+    "The header date field uses the browser's own date picker (input type=date). This was already there and has nothing to do with this feature."
+  ],
+  "updated_files": ["/app/backend/tests/test_meal_type_templates.py", "/app/tests/meal_type_seed.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Pro boat seeded temporarily via /app/tests/meal_type_seed.py (old | oldparen | edited | deleted | custom) and mpa_seed.py days 7. The whole Pro user_boats doc was backed up before testing and restored afterwards (mealPlan back to 135 old items, trip_days 0, no MPA list, no TEST_Typeless list).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The Pro boat's cloud mealPlan is still the old untouched 135-item version (no meal_type), so it upgrades on load in the browser. The default active list is Boat Inventory, so select_option('mealPlan') on list-selector before clicking mpa-open-btn. Checkbox testid is checklist-item-toggle-{id}. The edit dialog uses edit-item-dialog / edit-item-confirm-btn / edit-item-cancel-btn. Backend pytest needs REACT_APP_BACKEND_URL exported (pytest.ini uses xdist)."
+}
