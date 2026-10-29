@@ -92,7 +92,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         kwargs["customer"] = user["stripe_customer_id"]
     else:
         kwargs["customer_email"] = user["email"]
-    session = await asyncio.to_thread(_create_session, **kwargs)
+    session = await _start_session(kwargs, user)
     now = datetime.now(timezone.utc)
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": user["user_id"], "lookup_key": lookup,
@@ -102,21 +102,23 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     return {"checkout_url": session.url, "session_id": session.id}
 
 
-async def _start_topup_session(kwargs: dict, user: dict):
+async def _start_session(kwargs: dict, user: dict):
+    """Creates a Checkout Session; a saved customer from another Stripe account or mode is dropped and the user starts fresh by email."""
     log = logging.getLogger(__name__)
     try:
         try:
             return await asyncio.to_thread(_create_session, **kwargs)
         except stripe.error.InvalidRequestError as e:
-            # A saved customer from another Stripe account or mode (e.g. test vs live) can't be used: start fresh by email.
-            if "customer" not in kwargs or getattr(e, "param", None) != "customer":
+            if "customer" not in kwargs or (getattr(e, "param", None) != "customer" and getattr(e, "code", None) != "resource_missing"):
                 raise
-            log.warning("Top-up checkout: customer %s not usable (%s), retrying by email", kwargs["customer"], e.user_message or e)
+            log.warning("Checkout: customer %s not usable (%s), clearing it and retrying by email", kwargs["customer"], e.user_message or e)
+            await db.users.update_one({"user_id": user["user_id"], "stripe_customer_id": kwargs["customer"]}, {"$unset": {"stripe_customer_id": ""}})
             retry = {k: v for k, v in kwargs.items() if k != "customer"}
             return await asyncio.to_thread(_create_session, **retry, customer_email=user["email"])
     except stripe.error.StripeError as e:
-        log.error("Top-up checkout failed for %s: %s", user["user_id"], e)
-        raise HTTPException(status_code=502, detail=f"Stripe couldn't start the checkout: {e.user_message or 'please try again shortly'}")
+        log.error("Checkout failed for %s: %s", user["user_id"], e)
+        reason = (e.user_message or "please try again shortly")[:200]
+        raise HTTPException(status_code=502, detail=f"Stripe couldn't start the checkout: {reason}")
 
 
 @router.post("/payments/topup-checkout")
@@ -142,7 +144,7 @@ async def topup_checkout(payload: TopUpIn, user: dict = Depends(require_premium)
         kwargs["customer"] = user["stripe_customer_id"]
     else:
         kwargs["customer_email"] = user["email"]
-    session = await _start_topup_session(kwargs, user)
+    session = await _start_session(kwargs, user)
     now = datetime.now(timezone.utc)
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": user["user_id"], "kind": "magic_topup", "pack_size": size,

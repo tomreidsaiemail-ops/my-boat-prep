@@ -1,0 +1,38 @@
+{
+  "summary": "Tested the 'Couldn't start checkout' fix for top-ups (POST /api/payments/topup-checkout). Backend: 10/10 new tests pass (Pro small NZ$5.00 and big NZ$15.00 test-mode sessions checked against the Stripe API, the 429 daily_limit state, a bogus stored customer cus_DOESNOTEXIST123 falling back to customer_email (backend log shows 'not usable ... retrying by email'), free user 403, preview admin previewadminuser1 gets a checkout_url, invalid origin 400, Pro subscription checkout regression, and unit tests of _start_topup_session: currency 'zzz' gives HTTPException 502 'Stripe couldn't start the checkout: Invalid currency: zzz...' and the bogus-customer retry works). Regression test_magic_quota.py: 49 passed, 4 skipped. Frontend: account menu -> Buy more Magic -> both buttons redirect to Stripe test checkout with the right amounts. Opened from a real 429 response, both buttons also work. One real payment with card 4242 went through: /payment/success?kind=topup showed 'Magic top-up added!' and purchased_allowance went from 0 to 20 exactly once, even after 3 extra status polls plus the webhook. A simulated 502 shows the Stripe detail in the toast and re-enables the buttons. The free user sees the 'Upgrade to Pro to use this feature' toast.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/payments/checkout", "issue": "The Pro subscription checkout has neither fix. It still sends user.stripe_customer_id with no 'No such customer' retry and no StripeError -> 502 handling. If the live app's users have customer IDs from another Stripe mode or account, Pro upgrade will fail with a bare 500 in the same way. Should reuse _start_topup_session or a shared helper."},
+      {"endpoint": "/api/payments/topup-checkout", "issue": "After the retry by email succeeds, the stale stripe_customer_id stays on the user. Every later checkout repeats the failed call and the retry, and the Stripe customer created at checkout is never saved. Consider clearing or replacing it after a 'No such customer' error."},
+      {"endpoint": "/api/payments/topup-checkout", "issue": "The 502 detail passes Stripe's user_message through as-is. For an invalid currency that message lists 150+ currencies, so the toast becomes a very long message. Consider truncating it (for example to 200 characters)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MagicLimitDialog error toast", "issues": ["The sonner error toast appears at the bottom, under the AlertDialog's dark overlay. It is dimmed and partly cut off at 1920x1080, so it is easy to miss. Consider a higher toast z-index or showing the error inside the dialog."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_topup_checkout_fix.py", "/app/test_reports/pytest/it57_topup_fix.xml", "/app/backend/tests/test_magic_quota.py"],
+  "action_items": [
+    "Apply the same customer-fallback and StripeError -> 502 handling to POST /api/payments/checkout, which is likely the same live failure for Pro upgrades",
+    "Clear or replace a stale stripe_customer_id after a 'No such customer' fallback",
+    "Truncate long Stripe user_message values in the 502 detail",
+    "Make the error toast visible above the dialog overlay",
+    "On live: check that STRIPE_SECRET_KEY is the live key, that automatic_tax / Stripe Tax is set up in the live account (calc_only mode uses automatic_tax), and that the live webhook secret is set. The new 502 detail will now show the real Stripe reason."
+  ],
+  "critical_code_review_comments": [
+    "payments.py _start_topup_session: the retry only happens when e.param == 'customer'. That held for 'No such customer' here (verified). Other customer problems, such as a deleted customer, may come back with a different param or code and would not be retried.",
+    "payments.py checkout(): asyncio.to_thread(_create_session) has no try/except, so any Stripe error is an unhandled 500. The frontend then shows a generic message.",
+    "payment_status() swallows StripeError silently. That is acceptable, but nothing is logged."
+  ],
+  "updated_files": ["/app/backend/tests/test_topup_checkout_fix.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Made 1 real Stripe test-mode payment (cs_test_a1eFRHfN..., NZ$5, test-user-pro) plus several unpaid test checkout sessions in payment_transactions. Cleaned up afterwards: Pro magic_quota restored to daily_used 3 / purchased 0; Pro stripe_customer_id unset (it was unset originally); TEMP_check_pa1 and TEST_pa_session_it57 sessions deleted; admin quota settings unchanged (20/20/5, 100/15).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run backend/tests/test_topup_checkout_fix.py and test_magic_quota.py with -n 0 (QUOTA_REAL_AI=0). test_magic_quota teardown deletes the Pro magic_quota doc, so re-upsert it if needed. In Stripe hosted checkout, set #billingCountry to NZ, fill #billingAddressLine1, then click the first .AddressAutocomplete-result, because the suggestions list otherwise blocks the Pay button. Free users have no account-buy-magic-item; dispatch window 'magic-buy' event to open the dialog.",
+  "rca of the issue": "Before the fix, any stripe.error from checkout.Session.create in topup-checkout went unhandled and returned a 500 with no detail, so the frontend fell back to 'Couldn't start checkout'. The most likely live cause is a stored stripe_customer_id from the other Stripe mode or account ('No such customer'), which is now retried by email. Any other live Stripe problem (for example tax settings) now shows its real reason in the toast. Not reproducible in preview with normal users."
+}
