@@ -1,0 +1,21 @@
+{
+  "summary": "Frontend-only test of auto meal type detection from the meal name, done as the Pro user (390x844). All 8 feature areas passed (36/36 checks). (1) Create list with '1. Sunday brunch eggs/[Fry eggs]/2 eggs, 2. Pasta/[Boil]/100g pasta, 3. Snack then dinner mix/[Mix]/40g nuts': badges are Breakfast, none, Snack (first word wins), and the cloud saved meal_type plus meal_type_auto=true. (2) Edit Item on an auto meal shows meal-type-select preselected as 'breakfast'. The untyped Pasta meal shows ''. (3) Renaming to '1. Sunday lunch eggs' with the picker untouched changes the badge to Lunch. (4) Picking Dessert by hand overrides the name. Renaming keeps Dessert and the picker shows 'dessert'. (5) Picking 'Not set' finds Lunch again from the name. Renaming Pasta to '2. Pasta dinner' gives Dinner / main, and renaming it back removes the badge. (6) Added 'Dinner stew', '[Stew]' and '1kg beef', then indented them: no badge before the indent, a Dinner / main badge after it. Deleting the recipe line (with the confirm dialog) removes the badge, and Undo brings it back. Unindenting the recipe removes the badge, and re-indenting through the merge-group dialog brings it back. (7) Types stay after reload. A list written straight into the cloud DB with no types gets an auto Lunch badge on load (migrateState), and a hand-set type (snack on '2. Dessert cake') is kept. MPA: the custom list with brekkie/lunch/supper/pudding/snack words gives no warning on a 1-day trip and makes the 'MPA Shopping List'. A list with only lunch/snack/dinner gives the exact types warning 'No breakfasts, desserts found...'. (8) Regression: the built-in Meal Plan has 35 badges. Rigging Checks, Head and a pasted custom list have 0. Add, tick, delete (with prompt), Undo and delete all work on Rigging Checks. detectMealType edge cases were checked in node: 'Maintenance stew', 'Domain pie', 'Pudsey cake' and 'Tea time' give null; 'Mains: curry', 'Evening meal' and 'Supper then breakfast' give dinner; 'Breakfast: lunch leftovers' gives breakfast. No page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx saveEdit: if the user opens Edit on an auto-typed meal and picks the same type it already has from the picker, the type stays auto (meal_type_auto kept, because auto && meal === mt). A later rename then changes it, even though the user chose it. This is minor and only matters for that one case. To fix it, track whether the picker was touched (a dirty flag) instead of comparing values.",
+    "There is no visual difference between auto and hand-picked badges. Consider an optional hint, e.g. a lighter style or a '(from name)' title on auto badges."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "Created the TEST_Auto Meals, TEST_All Types, MPA Shopping List and TEST_Cloud Seed (custom_9000000000077) lists on the Pro boat. All were removed afterwards. The Pro mealPlan was put back to the old 135-item untouched version and riggingChecks is unchanged (backup at /tmp/pro_boat.json).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Log in with the session_token cookie test_session_pro_1. Switch lists with select_option on list-selector by list id (mealPlan, riggingChecks, custom_...). The edit dialog uses edit-item-dialog/-input/-confirm-btn/-cancel-btn and meal-type-select (value ''|breakfast|lunch|dinner|dessert|snack). 'Prompt on delete' is on for the Pro user, so confirm with item-delete-confirm-btn. Indenting a group under another group opens merge-group-dialog (merge-group-confirm-btn). Turn on ordering-toggle-checkbox first to get the indent buttons. There is no 'Safety' list on the Pro boat, so use riggingChecks or head as non-meal lists."
+}

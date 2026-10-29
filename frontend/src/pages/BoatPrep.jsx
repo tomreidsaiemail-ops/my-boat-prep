@@ -113,7 +113,7 @@ export default function BoatPrep({ boatId, boats }) {
   const inventoryShared = useInventoryShared(online);
   const [areaFilter, setAreaFilter] = useState("");
   const [editArea, setEditArea] = useState("");
-  const [editMeal, setEditMeal] = useState("");
+  const [editMeal, setEditMeal] = useState(null);
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
   useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
@@ -316,8 +316,9 @@ export default function BoatPrep({ boatId, boats }) {
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
       const { dynamic, area, meal_type: mt, meal_type_auto: auto, ...rest } = i;
-      const meal = mealHead ? editMeal : mt;
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && meal === mt ? { meal_type_auto: true } : {}) } : {}) };
+      const picked = mealHead && editMeal !== null;
+      const meal = picked ? editMeal : mt;
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}) };
     }));
     setDialog(null);
     return true;
@@ -474,7 +475,7 @@ export default function BoatPrep({ boatId, boats }) {
           {!areaFilter && <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
-            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(item.meal_type || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
@@ -520,7 +521,7 @@ export default function BoatPrep({ boatId, boats }) {
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
-        {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal} onChange={setEditMeal} />}
+        {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
       </TextDialog>
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
