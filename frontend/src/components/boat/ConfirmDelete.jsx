@@ -12,7 +12,7 @@ export const ConfirmDelete = ({ item, onConfirm, onClose, note = "It will be rem
       </AlertDialogHeader>
       <AlertDialogFooter className="flex-row justify-end gap-2">
         <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid={`${testId}-cancel-btn`}>{cancelLabel}</AlertDialogCancel>
-        <AlertDialogAction className={`btn-solid px-5 ${danger ? "bg-[var(--red)]" : ""}`} onClick={onConfirm} data-testid={`${testId}-confirm-btn`}>{confirmLabel}</AlertDialogAction>
+        <AlertDialogAction className={`btn-solid px-5 ${danger ? "!bg-[var(--red)]" : ""}`} onClick={onConfirm} data-testid={`${testId}-confirm-btn`}>{confirmLabel}</AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>

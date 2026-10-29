@@ -39,7 +39,7 @@ export const DeleteGroupDialog = ({ group, labelFor, onConfirm, onClose }) => {
         </div>
         <AlertDialogFooter className="flex-row justify-end gap-2">
           <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid="group-delete-cancel-btn">Keep</AlertDialogCancel>
-          <button type="button" className="btn-solid bg-[var(--red)] px-5 disabled:opacity-50" disabled={!ids.length}
+          <button type="button" className="btn-solid !bg-[var(--red)] px-5 disabled:opacity-50" disabled={!ids.length}
             onClick={() => onConfirm(ids)} data-testid="group-delete-confirm-btn">Delete{ids.length ? ` (${ids.length})` : ""}</button>
         </AlertDialogFooter>
       </AlertDialogContent>

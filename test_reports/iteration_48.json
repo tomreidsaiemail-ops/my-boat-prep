@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only test of the Quick Category Delete dialog (DeleteGroupDialog) at 390x844 as a Pro user (test_session_pro_1). I made a custom list TEST_CatDel with 2 categories: a long-named head with 3 sub-items (one sub-item is a long word with no spaces), and '2. Deck' with 2 sub-items. 36 checks ran; 35 passed on the first run. The 1 failure was my test reading the earlier 'created' toast. On a re-run the toast read 'Deleted 4 items' with Undo, so every requirement passed. Verified: the dialog opens even when 'Prompt on delete' is off (and also when it is on). The category and every sub-item are ticked by default, and only that group's items are listed. The note says 'The category and all 3 items will be deleted.' and the button reads 'Delete (4)'. Keep and Escape close it with no changes. Confirming with the defaults removes all 4 items, and Undo puts them back in the original order with indents intact. Unticking one sub-item unticks the category; the note becomes 'The category stays with 1 item. 2 items will be deleted.' and the button 'Delete (2)'. Re-ticking that sub-item does not re-tick the category ('Delete (3)'), and ticking the category re-ticks every item. Confirming with one sub-item unticked keeps the head with that item still indented; Undo restores everything. Unticking only the category deletes just the sub-items and keeps the head; Undo works. With everything unticked the button is disabled. Deleting a sub-item with prompts off is immediate, with a 'Deleted \"Delta\"' toast and a working Undo. With prompts on, a sub-item opens item-delete-dialog, and a single top-level item also opens item-delete-dialog (not the group dialog). Category deletes are saved and survive a reload. At 390px the dialog has no horizontal overflow: dialog scrollWidth equals clientWidth, the list does not overflow, and the long text wraps.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "group-delete-dialog / item-delete-dialog", "issues": ["The confirm button is meant to be red (bg-[var(--red)]) but shows navy rgb(15,23,42) because the .btn-solid background overrides it. This was already the case in ConfirmDelete, so it is not new to this feature. It is cosmetic: a destructive action would usually be red."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/ui_group_delete.py"],
+  "action_items": ["Optional: make the red background on destructive confirm buttons win over .btn-solid (e.g. !bg-[var(--red)])."],
+  "critical_code_review_comments": [
+    "DeleteGroupDialog: with the category ticked, ids is head plus all subs; with it unticked, ids is only the ticked subs. This matches what the user sees. A kept sub-item stays indented under the kept head, which is correct.",
+    "removeMany Undo puts items back in ascending original index, which restores positions correctly. It is skipped if any id already exists, so a double Undo is safe.",
+    "Minor wording: with the category unticked and all items ticked, the note reads 'The category stays. 3 items will be deleted.' This is fine."
+  ],
+  "updated_files": ["/app/tests/ui_group_delete.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "Created the custom list TEST_CatDel on the Pro boat during the test and deleted it at the end.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Build a category through create-list-btn (.first) with auto-indent on (the default): a numbered line like '1. X' followed by plain lines. li[data-testid=checklist-item-{id}] has data-indented='true' for sub-items. The Prompt on delete toggle checkbox is prompt-delete-toggle-checkbox (data-state). When reading the Sonner toast, filter by text; .last can pick an older toast. delete-list-btn only shows when the list is empty."
+}
