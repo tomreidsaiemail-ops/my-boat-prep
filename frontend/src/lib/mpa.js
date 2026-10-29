@@ -87,7 +87,7 @@ export const foodStock = (areas = []) => {
   const stock = {};
   areas.filter((a) => a.food).forEach((a) => (a.items || []).filter((i) => !i.removed).forEach((i) => {
     const k = keyOf(i.name);
-    stock[k] = { name: stock[k]?.name || i.name, qty: (stock[k]?.qty || 0) + (Number(i.qty) || 1) };
+    stock[k] = { name: stock[k]?.name || i.name, qty: (stock[k]?.qty || 0) + (Number(i.qty) || 1), areas: [...new Set([...(stock[k]?.areas || []), a.name])] };
   }));
   return stock;
 };
@@ -122,7 +122,7 @@ const ingredientRows = (lists, portions, stock) => {
     const covered = !!have && Object.keys(r.amounts).length > 0 && Object.keys(amounts).length === 0;
     const amt = Object.entries(amounts).map(([u, q]) => fmtAmount(u, q)).join(" + ");
     const base = `${r.name}${covered ? " – on board already" : amt ? ` – ${amt}` : ""}${covered ? "" : note}`;
-    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), checked: covered };
+    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), areas: stock[k]?.areas || [], checked: covered };
   });
   return { meals, items };
 };
@@ -198,8 +198,9 @@ export const buildShopping = ({ lists, adults, children, days, stock, provisions
   const extra = provisions.filter((p) => !keys.has(keyOf(p)));
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
-  const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals }, i.checked) }));
-  const provRows = extra.map((p) => ({ name: p, item: { label: amounts[p] ? `${p} – ${amounts[p]}` : p, checked: /^none needed/i.test(amounts[p] || ""), indent: true } }));
+  const onBoard = (areas = []) => (areas.length ? { areas } : {});
+  const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals, ...onBoard(i.areas) }, i.checked) }));
+  const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas) }, /^none needed/i.test(amounts[p] || "")) }));
   const mealKey = [{ label: `Meals (${meals.length}) from ${lists.map((l) => l.name).join(", ")}`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
   if (aisleOf) {
     const byAisle = new Map(aisleOrder.map((a) => [a, []]));
