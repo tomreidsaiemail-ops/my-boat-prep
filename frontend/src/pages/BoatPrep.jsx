@@ -53,6 +53,7 @@ import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { DeleteGroupDialog } from "@/components/boat/DeleteGroupDialog";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
 import { flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
@@ -201,11 +202,29 @@ export default function BoatPrep({ boatId, boats }) {
     const name = labelFor(item);
     toast(`Deleted "${name.length > 40 ? `${name.slice(0, 40)}…` : name}"`, { duration: 6000, action: { label: "Undo", onClick: undo } });
   };
+  // Category delete: removes the chosen ids; one Undo puts them all back in place.
+  const removeMany = (ids) => {
+    if (!guard()) return;
+    const listId = active.id;
+    const gone = items.map((item, index) => ({ item, index })).filter((x) => ids.includes(x.item.id));
+    setItems((list) => list.filter((i) => !ids.includes(i.id)));
+    const undo = () => mutate((s) => {
+      const cur = s.data[listId];
+      if (!cur || cur.some((i) => ids.includes(i.id))) return s;
+      const restored = [...cur];
+      gone.forEach(({ item, index }) => restored.splice(Math.min(index, restored.length), 0, item));
+      return { ...s, data: { ...s.data, [listId]: restored } };
+    });
+    toast(`Deleted ${gone.length} item${gone.length === 1 ? "" : "s"}`, { duration: 6000, action: { label: "Undo", onClick: undo } });
+  };
   const flag = (id) => guard() && setItems((list) => flagOutline(list, id));
   const move = (id, dir) => guard() && setItems((list) => moveOutline(list, id, dir));
   const indent = (id, v) => guard() && setItems((list) => setIndent(list, id, v));
   const askRemove = (id) => {
     if (!guard()) return;
+    const i = items.findIndex((x) => x.id === id);
+    const info = outlineInfo(items)[id];
+    if (info?.subs) { setDialog({ type: "deleteGroup", group: { head: items[i], subs: items.slice(i + 1, i + 1 + info.subs) } }); return; }
     if (!promptDelete) { remove(id); return; }
     setDialog({ type: "deleteItem", item: items.find((i) => i.id === id) });
   };
@@ -501,8 +520,10 @@ export default function BoatPrep({ boatId, boats }) {
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "deleteItem" ? { name: labelFor(dialog.item) } : null} testId="item-delete"
-        note={dialog?.type === "deleteItem" && outlineInfo(items)[dialog.item.id]?.subs ? "Its sub-items stay in the list, and the first one becomes the group's main item." : `It will be removed from ${active.name}.`}
+        note={dialog?.type === "deleteItem" ? `It will be removed from ${active.name}.` : ""}
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
+      <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor}
+        onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "mergeGroup" ? dialog : null} testId="merge-group" danger={false} confirmLabel="Move into group" cancelLabel="Cancel"
         title={dialog?.type === "mergeGroup" ? `Move "${dialog.name}" into the group above?` : ""}
         note={dialog?.type === "mergeGroup" ? `"${dialog.name}" and its ${dialog.subs} sub-item${dialog.subs === 1 ? "" : "s"} will become sub-items of "${dialog.parent}". Its group will no longer show on its own. To get it back, unindent "${dialog.name}".` : ""}
