@@ -47,7 +47,7 @@ import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
-import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
+import { MPA_KIND, MPA_NAME, foodSynonyms, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
@@ -55,6 +55,7 @@ import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { DeleteGroupDialog } from "@/components/boat/DeleteGroupDialog";
 import { MealTypePicker } from "@/components/boat/MealTypePicker";
+import { DESCRIPTION_MAX } from "@/components/boat/ListDraftTools";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
 import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
@@ -329,7 +330,7 @@ export default function BoatPrep({ boatId, boats }) {
     const now = Date.now();
     const id = `custom_${now}`;
     const newItems = linesToItems(lines, autoIndent, now);
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(description ? { description: description.slice(0, 512) } : {}) }], data: { ...s.data, [id]: newItems } }));
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(description ? { description: description.slice(0, DESCRIPTION_MAX) } : {}) }], data: { ...s.data, [id]: newItems } }));
     if (newItems.length) toast.success(`${name} created with ${newItems.length} ${newItems.length === 1 ? "item" : "items"}`);
     setActiveId(id);
     setDialog(null);
@@ -378,7 +379,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const descChanged = description !== (dialog.list.description || "");
     if (name !== old || descChanged) {
-      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, 512) } : {}) } : l)) }));
+      mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, DESCRIPTION_MAX) } : {}) } : l)) }));
       toast.success(name !== old ? `${old} renamed to ${name}` : `${name} description saved`);
     }
     setDialog(null);
@@ -516,7 +517,7 @@ export default function BoatPrep({ boatId, boats }) {
         }} />
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
-      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
+      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} synonyms={dialog?.type === "mpa" ? foodSynonyms(state.registry, state.data) : null} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>

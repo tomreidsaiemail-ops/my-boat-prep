@@ -25,6 +25,18 @@ export const OnBoardBadge = ({ id, areas }) => (
   </span>
 );
 
+// A synonym from the Food Synonyms lists is on board instead, e.g. "Galley Cupboard 1: Table Salt" for a recipe asking for sea salt.
+export const SubBadge = ({ id, subs }) => {
+  const all = subs.flatMap((x) => x.areas.map((a) => `${a}: ${x.name}`));
+  return (
+    <span className="inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-full border border-dashed border-emerald-500 bg-emerald-50 px-2 text-[11px] font-bold leading-none text-emerald-800" title={`On board, may do instead: ${all.join(", ")}`} data-testid={`mpa-sub-${id}`}>
+      <Archive className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{all[0]}</span>
+      {all.length > 1 && <span className="shrink-0">+{all.length - 1}</span>}
+    </span>
+  );
+};
+
 export const MpaText = ({ item, text }) => {
   const m = item.mpa;
   if (!m || text !== mpaLabel(m)) return text;
@@ -33,6 +45,7 @@ export const MpaText = ({ item, text }) => {
       <span className="min-w-0 break-words">{m.base}</span>
       {m.prov && <ProvBadge id={item.id} />}
       {m.areas?.length > 0 && <OnBoardBadge id={item.id} areas={m.areas} />}
+      {m.subs?.length > 0 && <SubBadge id={item.id} subs={m.subs} />}
       {(m.src || []).map((s) => <SourceTag key={s} tag={s} />)}
       {(m.meals || []).map((n) => <MealSquare key={n} n={n} />)}
     </span>

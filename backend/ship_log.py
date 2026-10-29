@@ -61,7 +61,9 @@ def _with_badges(it: dict, label: str) -> str:
     m = it.get("mpa")
     if not isinstance(m, dict) or label != _mpa_label(m):
         return label
-    tags = (["PROV"] if m.get("prov") else []) + ([f"On board: {', '.join(m['areas'])}"] if m.get("areas") else [])
+    subs = [f"{a}: {x.get('name', '')}" for x in m.get("subs") or [] for a in x.get("areas") or []]
+    tags = (["PROV"] if m.get("prov") else []) + ([f"On board: {', '.join(m['areas'])}"] if m.get("areas") else []) \
+        + ([f"On board instead: {', '.join(subs)}"] if subs else [])
     return f"{label} · {' · '.join(tags)}" if tags else label
 
 

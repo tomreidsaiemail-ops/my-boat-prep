@@ -78,7 +78,7 @@ const fmtAmount = (unit, q) => {
   if (unit === "ml") return q >= 1000 ? `${round1(q / 1000)} L` : `${Math.ceil(q / 10) * 10} ml`;
   if (unit === "count") return `${Math.ceil(q)}`;
   const v = unit === "pinch" || unit === "clove" || unit === "can" || unit === "pack" || unit === "slice" ? Math.ceil(q) : round1(q);
-  return `${v} ${unit}${v === 1 || unit === "tsp" || unit === "tbsp" ? "" : "s"}`;
+  return `${v} ${unit}${v === 1 || unit === "tsp" || unit === "tbsp" ? "" : unit === "pinch" ? "es" : "s"}`;
 };
 
 export const mpaLabel = ({ base, src = [], meals = [] }) => [base, src.map((s) => `(${s})`).join(""), meals.map((n) => `[${n}]`).join("")].filter(Boolean).join(" ");
@@ -94,7 +94,28 @@ export const foodStock = (areas = []) => {
   return stock;
 };
 
-const ingredientRows = (lists, portions, stock) => {
+// Synonym groups from the boat's "Food Synonyms" list (from the admin template) and the skipper's own "My Food Synonyms".
+// A heading with items indented under it is one group; a line like "table salt = sea salt" is one too.
+// A word in My Food Synonyms is taken out of the admin groups, so the skipper's list wins.
+const SYN_ADMIN = "food synonyms";
+const SYN_MINE = "my food synonyms";
+const synGroups = (items = []) => groupsOf(items).flatMap((g) => {
+  const words = (g.length > 1 ? g : g[0].label.split(/\s*(?:=|→|->)\s*/)).map((i) => keyOf(tidy(typeof i === "string" ? i : i.label))).filter(Boolean);
+  return words.length > 1 ? [[...new Set(words)]] : [];
+});
+export const foodSynonyms = (registry = [], data = {}) => {
+  const listOf = (name) => registry.filter((l) => l.name.trim().toLowerCase() === name).flatMap((l) => data[l.id] || []);
+  const mine = synGroups(listOf(SYN_MINE));
+  const mineWords = new Set(mine.flat());
+  const map = new Map();
+  synGroups(listOf(SYN_ADMIN)).forEach((g) => { const left = g.filter((w) => !mineWords.has(w)); left.forEach((w) => map.set(w, left)); });
+  mine.forEach((g) => g.forEach((w) => map.set(w, g)));
+  return map;
+};
+// Food-area items that a synonym says could stand in for this one (only when it isn't on board under its own name).
+const subsFor = (k, stock, synonyms) => (stock[k] ? [] : (synonyms?.get(k) || []).filter((w) => w !== k && stock[w]).map((w) => ({ name: stock[w].name, areas: stock[w].areas })));
+
+const ingredientRows = (lists, portions, stock, synonyms) => {
   const rows = new Map();
   let n = 0;
   const meals = [];
@@ -124,7 +145,7 @@ const ingredientRows = (lists, portions, stock) => {
     const covered = !!have && Object.keys(r.amounts).length > 0 && Object.keys(amounts).length === 0;
     const amt = Object.entries(amounts).map(([u, q]) => fmtAmount(u, q)).join(" + ");
     const base = `${r.name}${covered ? " – on board already" : amt ? ` – ${amt}` : ""}${covered ? "" : note}`;
-    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), areas: stock[k]?.areas || [], checked: covered };
+    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), areas: stock[k]?.areas || [], subs: subsFor(k, stock, synonyms), checked: covered };
   });
   return { meals, items };
 };
@@ -192,17 +213,17 @@ export const mpaWarnings = (meals, days) => {
 
 export const itemName = (label) => String(label).split(" – ")[0].trim();
 
-export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [] }) => {
+export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], synonyms = null }) => {
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
-  const { meals, items } = ingredientRows(lists, portions, stock);
+  const { meals, items } = ingredientRows(lists, portions, stock, synonyms);
   const keys = new Set(items.map((i) => keyOf(itemName(i.base))));
   const extra = provisions.filter((p) => !keys.has(keyOf(p)));
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
-  const onBoard = (areas = []) => (areas.length ? { areas } : {});
-  const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals, ...onBoard(i.areas) }, i.checked) }));
-  const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas) }, /^none needed/i.test(amounts[p] || "")) }));
+  const onBoard = (areas = [], subs = []) => ({ ...(areas.length ? { areas } : {}), ...(subs.length ? { subs } : {}) });
+  const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals, ...onBoard(i.areas, i.subs) }, i.checked) }));
+  const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas, subsFor(keyOf(p), stock, synonyms)) }, /^none needed/i.test(amounts[p] || "")) }));
   const mealKey = [{ label: `Meals (${meals.length}) from ${lists.map((l) => l.name).join(", ")}`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
   if (aisleOf) {
     const byAisle = new Map(aisleOrder.map((a) => [a, []]));

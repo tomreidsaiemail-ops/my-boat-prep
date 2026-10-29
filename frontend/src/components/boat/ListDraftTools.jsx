@@ -19,7 +19,7 @@ export const toLines = (text) => {
   });
   return out;
 };
-export const DESCRIPTION_MAX = 512;
+export const DESCRIPTION_MAX = 1000;
 
 export const ListDescriptionField = ({ value, onChange, testId = "create-list" }) => (
   <label className="flex flex-col gap-1 text-sm font-bold">List description

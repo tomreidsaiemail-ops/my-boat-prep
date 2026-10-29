@@ -44,7 +44,7 @@ class TemplateLine(BaseModel):
 
 class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
-    description: str = Field(default="", max_length=512)
+    description: str = Field(default="", max_length=1000)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
 
 

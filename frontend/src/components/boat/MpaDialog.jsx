@@ -15,7 +15,7 @@ const Fact = ({ label, value, testId, warn }) => (
   </div>
 );
 
-export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClose, onCreate }) => {
+export const MpaDialog = ({ open, lists, boat, areas, provisions, synonyms, online, onClose, onCreate }) => {
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
   const [byAisle, setByAisle] = useState(true);
@@ -55,7 +55,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
     let aisleOf = null;
     if (byAisle) {
       const all = [];
-      buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, aisleOf: (n) => { all.push(n); return OTHER_AISLE; } });
+      buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, synonyms, aisleOf: (n) => { all.push(n); return OTHER_AISLE; } });
       const ai = {};
       const unknown = all.filter((n) => !builtInAisle(n));
       if (unknown.length && online) {
@@ -64,7 +64,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
       }
       aisleOf = (n) => builtInAisle(n) || ai[n] || OTHER_AISLE;
     }
-    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES });
+    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES, synonyms });
     setBusy(false);
     onCreate(items);
   };
