@@ -7,6 +7,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { SignOutDialog } from "@/components/boat/SignOutDialog";
+import { MagicBalance } from "@/components/boat/MagicBalance";
 
 const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
 
@@ -24,11 +25,12 @@ export const AccountMenu = () => {
   const { openPlan } = useUpgrade();
   const navigate = useNavigate();
   const [warnCount, setWarnCount] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   if (!user) return null;
   const signOut = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
   return (
     <>
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label="Account" data-testid="account-menu-btn"
           className="h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-[var(--navy)] bg-white [transition:transform_.1s] active:scale-95">
@@ -42,6 +44,7 @@ export const AccountMenu = () => {
           <span className="truncate text-xs font-normal text-[var(--muted)]" data-testid="account-email">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {user.premium && <><MagicBalance open={menuOpen} /><DropdownMenuSeparator /></>}
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin/analytics")} data-testid="account-analytics-item"><BarChart3 className="mr-2 h-4 w-4" />Analytics dashboard</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}

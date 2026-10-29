@@ -4,6 +4,7 @@ import { Check, Crown, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { TopUpHistory } from "@/components/boat/TopUpHistory";
 
 const PERKS = ["No ads", "Export All lists in one go", "Email PDF and Email Ship's Log (with Shore Contact)",
   "Create your own lists", "Clone lists", "Rename lists", "More than one boat", "Crew sharing", "Boat inventory and area tags", "Hide help panels", "Unlimited My To Do List items"];
@@ -83,7 +84,7 @@ export const PlanDialog = ({ open, reason, onClose }) => {
           </DialogDescription>
         </DialogHeader>
         <Perks />
-        {user.premium ? <ProStatus user={user} onRenewal={renewal} busy={busy} /> : (
+        {user.premium ? <><ProStatus user={user} onRenewal={renewal} busy={busy} /><TopUpHistory /></> : (
           <div className="flex flex-col gap-2">
             {offer?.first5000 && (
               <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950" data-testid="plan-first5000-offer">

@@ -12,10 +12,12 @@ from db import db
 from auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api")
-DEFAULTS = {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}
+DEFAULTS = {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0, "big_pack_size": 100, "big_pack_price": 15.0}
 PRO_LOOKUP_KEY = "pro_yearly"
 # Set per request from the X-Timezone header (see server.py middleware) so the day resets at the skipper's local midnight.
 current_tz: ContextVar[str | None] = ContextVar("current_tz", default=None)
+# A dict the middleware creates per request; consume() fills free_left so the response can carry the X-Magic-Free-Left header.
+quota_note: ContextVar[dict | None] = ContextVar("quota_note", default=None)
 _price_cache: dict = {}
 
 
@@ -73,19 +75,30 @@ async def _fresh(user_id: str) -> dict:
     return doc or await db.magic_quota.find_one({"user_id": user_id}, {"_id": 0})
 
 
+def packs(s: dict, currency: str) -> list:
+    return [{"id": "small", "size": s["pack_size"], "price": s["pack_price"], "price_text": price_text(s["pack_price"], currency)},
+            {"id": "big", "size": s["big_pack_size"], "price": s["big_pack_price"], "price_text": price_text(s["big_pack_price"], currency)}]
+
+
 async def status(user_id: str) -> dict:
     s, doc = await get_settings(), await _fresh(user_id)
     used, bought = int(doc.get("daily_used", 0)), int(doc.get("purchased_allowance", 0))
     currency, _ = await pro_currency()
     return {**s, "daily_used": used, "purchased_allowance": bought, "free_left": max(0, s["daily_limit"] - used),
-            "left": max(0, s["daily_limit"] - used) + bought, "currency": currency, "price_text": price_text(s["pack_price"], currency)}
+            "left": max(0, s["daily_limit"] - used) + bought, "currency": currency, "price_text": price_text(s["pack_price"], currency),
+            "packs": packs(s, currency)}
 
 
 async def consume(user_id: str) -> str:
     """Takes one Magic generation: today's free quota first, then purchased allowance. Returns the source used."""
     s = await get_settings()
     await _fresh(user_id)
-    if await db.magic_quota.find_one_and_update({"user_id": user_id, "daily_used": {"$lt": s["daily_limit"]}}, {"$inc": {"daily_used": 1}}):
+    doc = await db.magic_quota.find_one_and_update({"user_id": user_id, "daily_used": {"$lt": s["daily_limit"]}}, {"$inc": {"daily_used": 1}},
+                                                   return_document=ReturnDocument.AFTER)
+    if doc:
+        note = quota_note.get()
+        if note is not None:
+            note["free_left"] = max(0, s["daily_limit"] - int(doc["daily_used"]))
         return "free"
     if await db.magic_quota.find_one_and_update({"user_id": user_id, "purchased_allowance": {"$gt": 0}}, {"$inc": {"purchased_allowance": -1}}):
         return "purchased"
@@ -131,6 +144,8 @@ class QuotaSettingsIn(BaseModel):
     daily_limit: int = Field(ge=0, le=1000)
     pack_size: int = Field(ge=1, le=1000)
     pack_price: float = Field(ge=1, le=500)
+    big_pack_size: int | None = Field(default=None, ge=1, le=5000)
+    big_pack_price: float | None = Field(default=None, ge=1, le=1000)
 
 
 @router.get("/admin/settings/quota")
@@ -141,7 +156,7 @@ async def admin_get_quota(_: dict = Depends(require_admin)):
 
 @router.put("/admin/settings/quota")
 async def admin_set_quota(body: QuotaSettingsIn, admin: dict = Depends(require_admin)):
-    vals = {**body.model_dump(), "pack_price": round(body.pack_price, 2)}
+    vals = {k: (round(v, 2) if k.endswith("price") else v) for k, v in body.model_dump(exclude_none=True).items()}
     await db.app_settings.update_one({"key": "magic_quota"}, {"$set": {**vals, "updated_by": admin["email"], "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
     currency, _t = await pro_currency()
     return {**await get_settings(), "currency": currency}

@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime, timezone
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import Literal
 from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
@@ -49,6 +50,10 @@ async def public_offer():
 
 class CheckoutIn(BaseModel):
     origin_url: str = Field(max_length=200)
+
+
+class TopUpIn(CheckoutIn):
+    pack: Literal["small", "big"] = "small"
 
 
 def _create_session(**kwargs):
@@ -98,13 +103,14 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
 
 
 @router.post("/payments/topup-checkout")
-async def topup_checkout(payload: CheckoutIn, user: dict = Depends(require_premium)):
+async def topup_checkout(payload: TopUpIn, user: dict = Depends(require_premium)):
     origin = payload.origin_url.rstrip("/").lower()
     if not ORIGIN_RE.match(origin):
         raise HTTPException(status_code=400, detail="Invalid origin")
     settings = await quota.get_settings()
     currency, tax_behavior = await quota.pro_currency()
-    size, amount = int(settings["pack_size"]), int(round(settings["pack_price"] * 100))
+    pre = "big_" if payload.pack == "big" else ""
+    size, amount = int(settings[f"{pre}pack_size"]), int(round(settings[f"{pre}pack_price"] * 100))
     meta = {"user_id": user["user_id"], "kind": "magic_topup", "pack_size": str(size)}
     price_data = {"currency": currency, "unit_amount": amount, "product_data": {"name": f"+{size} Magic generations", "description": "One-time top-up for My Boat Prep. Unused generations roll over until used."}}
     if tax_behavior in ("inclusive", "exclusive"):
@@ -216,3 +222,29 @@ async def set_renewal(payload: RenewIn, user: dict = Depends(get_current_user)):
     sub = await asyncio.to_thread(stripe.Subscription.modify, sub_id, cancel_at_period_end=not payload.renew)
     await apply_subscription(user["user_id"], sub)
     return to_user_out(await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0}))
+
+
+def _receipt_url(session_id: str) -> str | None:
+    s = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent.latest_charge"])
+    charge = getattr(getattr(s, "payment_intent", None), "latest_charge", None)
+    return getattr(charge, "receipt_url", None)
+
+
+@router.get("/payments/topups")
+async def topup_history(user: dict = Depends(get_current_user)):
+    rows = await db.payment_transactions.find({"user_id": user["user_id"], "kind": "magic_topup", "credited": True}, {"_id": 0}) \
+        .sort("created_at", -1).to_list(30)
+    out = []
+    for r in rows:
+        url = r.get("receipt_url")
+        if not url:
+            try:
+                url = await asyncio.to_thread(_receipt_url, r["session_id"])
+            except Exception as e:
+                logging.getLogger(__name__).warning("Receipt lookup failed for %s: %s", r["session_id"], e)
+            if url:
+                await db.payment_transactions.update_one({"session_id": r["session_id"]}, {"$set": {"receipt_url": url}})
+        created = r.get("created_at")
+        out.append({"session_id": r["session_id"], "date": created.isoformat() if hasattr(created, "isoformat") else created,
+                    "pack_size": r.get("pack_size"), "amount": r.get("amount"), "currency": r.get("currency"), "receipt_url": url})
+    return out

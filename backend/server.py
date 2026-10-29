@@ -411,11 +411,17 @@ async def same_origin_writes(request: Request, call_next):
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api/") \
             and request.url.path != "/api/stripe/webhook" and origin and urlparse(origin).netloc.lower() != request_host(request):
         return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked"})
-    return await call_next(request)
+    note = {}
+    quota.quota_note.set(note)
+    response = await call_next(request)
+    if "free_left" in note:
+        response.headers["X-Magic-Free-Left"] = str(note["free_left"])
+    return response
 
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
+    expose_headers=["X-Magic-Free-Left"],
     allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
