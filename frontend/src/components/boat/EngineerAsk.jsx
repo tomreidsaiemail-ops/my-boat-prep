@@ -25,7 +25,7 @@ const AnswerCard = ({ answer, left, onAddToNotes, onClose }) => (
     <p className="whitespace-pre-line text-sm" data-testid="engineer-answer-text">{answer}</p>
     <div className="flex items-center gap-2">
       <button type="button" className="btn-ghost h-9 px-3 text-xs" onClick={onAddToNotes} data-testid="engineer-add-to-notes-btn">Add to Notes</button>
-      {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="engineer-asks-left">{left} questions left today</span>}
+      {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="engineer-asks-left">{left} Magic generations left today</span>}
     </div>
   </div>
 );

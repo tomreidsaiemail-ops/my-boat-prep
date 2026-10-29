@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { TierBadge } from "@/components/boat/AccountMenu";
+import { MagicQuotaSettings } from "@/components/admin/MagicQuotaSettings";
 import { fmtCost, fmtTokens, plural } from "@/pages/AdminAnalytics";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
@@ -97,6 +98,7 @@ export default function Admin() {
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="admin-page">
       <Link to="/" className="btn-ghost self-start px-4" data-testid="admin-back-btn"><ArrowLeft className="h-4 w-4" /> Back to lists</Link>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">User tiers</h1>
+      <MagicQuotaSettings />
       <p className="text-sm text-[var(--muted)]" data-testid="admin-counts">
         {users ? `${users.length} users: ${counts.free || 0} Free, ${counts.beta_tester || 0} Beta, ${counts.pro || 0} Pro` : "Loading..."}
       </p>

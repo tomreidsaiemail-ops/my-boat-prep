@@ -5,19 +5,19 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
 from auth import require_premium
+import quota
 from usage import record_usage
 from photos import MAX_BYTES, TYPES
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
-DAILY_SCANS = 50
 MAX_ITEMS = 60
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 SYSTEM = (
@@ -64,9 +64,7 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
         Image.open(io.BytesIO(data)).verify()
     except Exception:
         raise HTTPException(status_code=400, detail="That file doesn't look like a photo")
-    since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    if await db.ai_scans.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) >= DAILY_SCANS:
-        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_SCANS} AI scans. Try again tomorrow, or add items by hand.")
+    source = await quota.consume(user["user_id"])
     scan_id = str(uuid.uuid4())
     await db.ai_scans.insert_one({"scan_id": scan_id, "user_id": user["user_id"], "boat_id": boat_id, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"scan-{uuid.uuid4()}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
@@ -84,8 +82,9 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
     except Exception as e:
         log.error(f"AI scan failed: {e}; reply={text[:300]!r}")
         await db.ai_scans.delete_one({"scan_id": scan_id})
+        await quota.refund(user["user_id"], source)
         if usage:
             await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
         raise HTTPException(status_code=503, detail="The AI couldn't read that photo. Please try again or add items by hand.")
     await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
-    return {"items": items, "scans_left": max(0, DAILY_SCANS - await db.ai_scans.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}))}
+    return {"items": items, "scans_left": await quota.left(user["user_id"])}

@@ -3,19 +3,18 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
+import quota
 from usage import KIND_FEATURE, record_usage
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
-DAILY_DRAFTS = 20
-OWN_QUOTA = ("engine", "doctor", "navigator")
 SYSTEM = ("You are Magic List Generation in the My Boat Prep app. You turn the user's description into a tidy, well-organised list. "
           "Follow the description exactly, whatever the topic; it is boating related most of the time but not always. Reply with JSON only, no prose and no code fences.")
 PROMPT = (
@@ -65,11 +64,7 @@ def to_lines(text: str) -> list:
 
 
 async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: str = SYSTEM, label: str = "Magic List Generation"):
-    since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
-    kinds = {"$in": [kind]} if kind in OWN_QUOTA else {"$nin": list(OWN_QUOTA)}
-    used = {"user_id": user["user_id"], "kind": kinds, "created_at": {"$gte": since}}
-    if await db.ai_drafts.count_documents(used) >= DAILY_DRAFTS:
-        raise HTTPException(status_code=429, detail=f"You've used today's {DAILY_DRAFTS} {label}s. Try again tomorrow.")
+    source = await quota.consume(user["user_id"])
     draft_id = str(uuid.uuid4())
     await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "kind": kind, **meta, "created_at": datetime.now(timezone.utc).isoformat()})
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{kind}-{draft_id}", system_message=system).with_model("gemini", "gemini-3-flash-preview")
@@ -86,12 +81,12 @@ async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: st
     except Exception as e:
         log.error(f"{label} ({kind}) failed: {e}; reply={text[:300]!r}")
         await db.ai_drafts.delete_one({"draft_id": draft_id})
+        await quota.refund(user["user_id"], source)
         if usage:
             await record_usage(user["user_id"], KIND_FEATURE.get(kind, "MLG"), usage)
         raise HTTPException(status_code=503, detail=f"{label} couldn't do that right now. Please try again.")
     await record_usage(user["user_id"], KIND_FEATURE.get(kind, "MLG"), usage)
-    left = max(0, DAILY_DRAFTS - await db.ai_drafts.count_documents(used))
-    return result, left
+    return result, await quota.left(user["user_id"])
 
 
 @router.post("/ai/list-draft")

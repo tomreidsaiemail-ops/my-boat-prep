@@ -36,6 +36,7 @@ from service_history import router as service_history_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
+import quota  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
@@ -398,11 +399,14 @@ app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(ai_lists_router)
 app.include_router(admin_analytics_router)
+app.include_router(quota.router)
+app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
 
 @app.middleware("http")
 async def same_origin_writes(request: Request, call_next):
     # Session cookies are SameSite=None, so block cross-site writes to the API.
+    quota.current_tz.set((request.headers.get("x-timezone") or "")[:64] or None)
     origin = request.headers.get("origin")
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path.startswith("/api/") \
             and request.url.path != "/api/stripe/webhook" and origin and urlparse(origin).netloc.lower() != request_host(request):

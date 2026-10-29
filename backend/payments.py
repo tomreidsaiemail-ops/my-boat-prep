@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
 from launch import first200_running
-from auth import get_current_user, to_user_out, UserOut
+from auth import get_current_user, require_premium, to_user_out, UserOut
+import quota
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PRO_LOOKUP_KEY = "pro_yearly"
@@ -96,6 +97,38 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     return {"checkout_url": session.url, "session_id": session.id}
 
 
+@router.post("/payments/topup-checkout")
+async def topup_checkout(payload: CheckoutIn, user: dict = Depends(require_premium)):
+    origin = payload.origin_url.rstrip("/").lower()
+    if not ORIGIN_RE.match(origin):
+        raise HTTPException(status_code=400, detail="Invalid origin")
+    settings = await quota.get_settings()
+    currency, tax_behavior = await quota.pro_currency()
+    size, amount = int(settings["pack_size"]), int(round(settings["pack_price"] * 100))
+    meta = {"user_id": user["user_id"], "kind": "magic_topup", "pack_size": str(size)}
+    price_data = {"currency": currency, "unit_amount": amount, "product_data": {"name": f"+{size} Magic generations", "description": "One-time top-up for My Boat Prep. Unused generations roll over until used."}}
+    if tax_behavior in ("inclusive", "exclusive"):
+        price_data["tax_behavior"] = tax_behavior
+    kwargs = dict(
+        line_items=[{"price_data": price_data, "quantity": 1}], mode="payment",
+        success_url=f"{origin}/payment/success?kind=topup&session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin}/payment/cancel?kind=topup", metadata=meta, payment_intent_data={"metadata": meta},
+        client_reference_id=user["user_id"], adaptive_pricing={"enabled": False},
+    )
+    if user.get("stripe_customer_id"):
+        kwargs["customer"] = user["stripe_customer_id"]
+    else:
+        kwargs["customer_email"] = user["email"]
+    session = await asyncio.to_thread(_create_session, **kwargs)
+    now = datetime.now(timezone.utc)
+    await db.payment_transactions.insert_one({
+        "session_id": session.id, "user_id": user["user_id"], "kind": "magic_topup", "pack_size": size,
+        "amount": amount / 100, "currency": currency, "status": "initiated", "payment_status": "pending", "credited": False,
+        "created_at": now, "updated_at": now,
+    })
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
 async def _mark_paid(session_id: str, subscription_id: str | None, user_id: str | None):
     await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
@@ -114,7 +147,11 @@ async def payment_status(session_id: str):
     if record.get("payment_status") != "paid":
         try:
             s = await asyncio.to_thread(stripe.checkout.Session.retrieve, session_id)
-            if s.payment_status == "paid" or s.status == "complete":
+            if record.get("kind") == "magic_topup":
+                if s.payment_status == "paid":
+                    await quota.credit_topup(session_id)
+                    record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+            elif s.payment_status == "paid" or s.status == "complete":
                 await _mark_paid(session_id, s.subscription, record.get("user_id"))
                 record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
         except stripe.error.StripeError:
@@ -138,7 +175,10 @@ async def stripe_webhook(request: Request):
     except (stripe.error.SignatureVerificationError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid signature")
     obj, t = event["data"]["object"], event["type"]
-    if t == "checkout.session.completed":
+    if t in ("checkout.session.completed", "checkout.session.async_payment_succeeded") and (obj.get("metadata") or {}).get("kind") == "magic_topup":
+        if obj.get("payment_status") == "paid":
+            await quota.credit_topup(obj["id"])
+    elif t == "checkout.session.completed":
         await _mark_paid(obj["id"], obj.get("subscription"), (obj.get("metadata") or {}).get("user_id"))
     elif t == "checkout.session.expired":
         await db.payment_transactions.update_one({"session_id": obj["id"], "payment_status": {"$ne": "paid"}},

@@ -34,11 +34,19 @@ const MESSAGES = {
   cancel: { Icon: XCircle, title: "Checkout cancelled", text: "No problem, nothing was charged. You're still on the Free plan." },
 };
 
+const TOPUP = {
+  ...MESSAGES,
+  paid: { Icon: CheckCircle2, title: "Magic top-up added!", text: "Your extra Magic generations are ready. They're used after your free daily ones and roll over until you use them." },
+  timeout: { Icon: Loader2, title: "Still confirming", text: "Your payment is taking longer than usual. The extra Magic generations are added by themselves once Stripe confirms it." },
+  error: { Icon: XCircle, title: "Payment not completed", text: "No money was taken. You can try again next time you reach the daily limit." },
+  cancel: { Icon: XCircle, title: "Top-up cancelled", text: "No problem, nothing was charged. Your free Magic generations come back at midnight." },
+};
+
 export default function PaymentResult({ success }) {
   const [params] = useSearchParams();
   const status = usePaymentStatus(success ? params.get("session_id") : null);
   const key = success ? status : "cancel";
-  const { Icon, title, text } = MESSAGES[key];
+  const { Icon, title, text } = (params.get("kind") === "topup" ? TOPUP : MESSAGES)[key];
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-5 px-6" data-testid="payment-result-page">
       <Icon className={`h-14 w-14 ${key === "paid" ? "text-[var(--green)]" : key === "checking" || key === "timeout" ? "animate-spin text-[var(--navy)]" : "text-[var(--red)]"}`} />
