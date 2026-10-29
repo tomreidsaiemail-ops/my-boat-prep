@@ -86,8 +86,10 @@ export const mpaLabel = ({ base, src = [], meals = [] }) => [base, src.map((s) =
 export const foodStock = (areas = []) => {
   const stock = {};
   areas.filter((a) => a.food).forEach((a) => (a.items || []).filter((i) => !i.removed).forEach((i) => {
+    const q = i.qty == null || i.qty === "" ? 1 : Number(i.qty) || 0;
+    if (q <= 0) return;
     const k = keyOf(i.name);
-    stock[k] = { name: stock[k]?.name || i.name, qty: (stock[k]?.qty || 0) + (Number(i.qty) || 1), areas: [...new Set([...(stock[k]?.areas || []), a.name])] };
+    stock[k] = { name: stock[k]?.name || i.name, qty: (stock[k]?.qty || 0) + q, areas: [...new Set([...(stock[k]?.areas || []), a.name])] };
   }));
   return stock;
 };
