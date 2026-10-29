@@ -309,9 +309,13 @@ async def mpa_aisles(body: AislesIn, user: dict = Depends(require_premium)):
 NAVIGATOR = ("You are the Magic Marine Navigator in the My Boat Prep app: an experienced cruising navigator helping a skipper plan a passage. "
              "Suggest a sensible route from START to DESTINATION as a short numbered list of legs with approximate distances in nautical miles, "
              "key waypoints or headlands, hazards to keep clear of, tidal gates or current to time, and good anchorages or shelter on the way. "
-             "Take the boat's draft, mast height and size into account (bridges, shallows) and the crew on board. Keep it under 300 words. "
-             "Plain text only: no markdown, headings or asterisks. Always finish with exactly this line: "
-             "'Suggested route only. Check official charts, notices to mariners, tides and the latest weather before you sail.'")
+             "Take the boat's draft, mast height and size into account (bridges, shallows) and the crew on board. Keep the answer under 300 words. "
+             "The answer is plain text only: no markdown, headings or asterisks; put each numbered leg on its own line using \\n line breaks. "
+             "Also give the route as waypoints with approximate latitude and longitude in decimal degrees, starting at START and ending at DESTINATION, "
+             "each in navigable water and in order along the route (2 to 20 waypoints), plus the total distance and an estimated passage time for this boat. "
+             "Reply with JSON only, no code fences: "
+             '{"answer": "<plain text answer>", "waypoints": [{"name": "<place>", "lat": <number>, "lon": <number>}], '
+             '"distance_nm": <number>, "passage_time": "<e.g. about 9 hours at 6 knots>"}')
 NAV_FOOTER = "Suggested route only. Check official charts, notices to mariners, tides and the latest weather before you sail."
 
 
@@ -342,12 +346,37 @@ class NavigatorAskIn(BaseModel):
         return v.strip()
 
 
-def parse_navigator(text: str) -> str:
-    lines = [ln for ln in parse_answer(text).splitlines() if "suggested route only" not in ln.lower()]
+def _waypoints(raw) -> list:
+    out = []
+    for w in raw if isinstance(raw, list) else []:
+        try:
+            lat, lon = float(w["lat"]), float(w["lon"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
+            out.append({"name": str(w.get("name", "")).strip()[:80], "lat": round(lat, 5), "lon": round(lon, 5)})
+    return out[:20] if len(out) >= 2 else []
+
+
+def parse_navigator(text: str) -> dict:
+    data = {}
+    m = re.search(r"\{.*\}", text, re.S)
+    if m:
+        try:
+            data = json.loads(m.group(0))
+        except ValueError:
+            data = {}
+    raw = data.get("answer") if isinstance(data, dict) and data.get("answer") else text
+    lines = [ln for ln in parse_answer(str(raw)).splitlines() if "suggested route only" not in ln.lower()]
     answer = "\n".join(lines).strip()
-    if not answer:
+    if not answer or answer.startswith("{"):
         raise ValueError("empty answer")
-    return f"{answer}\n\n{NAV_FOOTER}"
+    try:
+        dist = round(float(data.get("distance_nm")), 1) if data.get("distance_nm") is not None else None
+    except (TypeError, ValueError):
+        dist = None
+    return {"answer": f"{answer}\n\n{NAV_FOOTER}", "waypoints": _waypoints(data.get("waypoints")),
+            "distance_nm": dist, "passage_time": str(data.get("passage_time") or "").strip()[:80]}
 
 
 @router.post("/ai/navigator-ask")
@@ -362,5 +391,5 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
               f"Boat: {b.boat_type.strip() or 'type not given'}{', ' + dims if dims else ''}. Crew: {crew}. Trip: {b.trip_days or 'not set'} days.\n"
               f"The skipper's Route Planning checklist: {checks}\n"
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
-    answer, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
-    return {"answer": answer, "asks_left": left}
+    result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
+    return {**result, "asks_left": left}

@@ -18,7 +18,7 @@ export default function useGps() {
       return undefined;
     }
     const id = navigator.geolocation.watchPosition(
-      (p) => setGps({ status: "ok", text: formatPosition(p.coords.latitude, p.coords.longitude) }),
+      (p) => setGps({ status: "ok", text: formatPosition(p.coords.latitude, p.coords.longitude), lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }),
       () => setGps({ status: "unavailable", text: "Position unavailable" }),
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
     );

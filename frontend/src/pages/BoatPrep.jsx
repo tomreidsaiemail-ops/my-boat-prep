@@ -482,7 +482,7 @@ export default function BoatPrep({ boatId, boats }) {
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
           {!crew && active.id === "routeHazards" && (
-            <NavigatorAsk key={boatId} boat={boat} onChange={updateBoat} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+            <NavigatorAsk key={boatId} boat={boat} gps={gps} onChange={updateBoat} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {!crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id)) && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"))} data-testid="mpa-open-btn">

@@ -51,8 +51,22 @@ def _label(it: dict, ctx: dict) -> str:
     }.get(it.get("dynamic"), f"(MMSI {ctx['mmsi']} is included above)" if it.get("id") == 400 and ctx.get("mmsi") and it.get("label") == MMSI_LABEL else it.get("label", ""))
 
 
+def _mpa_label(m: dict) -> str:
+    parts = [m.get("base", ""), "".join(f"({s})" for s in m.get("src") or []), "".join(f"[{n}]" for n in m.get("meals") or [])]
+    return " ".join(p for p in parts if p)
+
+
+# MPA shopping rows keep their PROV and on-board badges as text in exports (only while the row is unedited).
+def _with_badges(it: dict, label: str) -> str:
+    m = it.get("mpa")
+    if not isinstance(m, dict) or label != _mpa_label(m):
+        return label
+    tags = (["PROV"] if m.get("prov") else []) + ([f"On board: {', '.join(m['areas'])}"] if m.get("areas") else [])
+    return f"{label} · {' · '.join(tags)}" if tags else label
+
+
 def render_items(items: list, ctx: dict) -> list:
-    return [{"label": _label(it, ctx), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0}
+    return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0}
             for n, it in enumerate(items)]
 
 

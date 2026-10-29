@@ -1,16 +1,20 @@
 import { useRef, useState } from "react";
 import { Compass, Loader2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { RouteMap } from "@/components/boat/RouteMap";
+import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
-const AnswerCard = ({ answer, left, onClose }) => (
+const AnswerCard = ({ result, boat, gps, left, onClose }) => (
   <div className="flex flex-col gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] px-3 py-2" data-testid="navigator-answer-card">
     <div className="flex items-center gap-2">
       <span className="flex flex-1 items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide"><Compass className="h-4 w-4" /> The Magic Marine Navigator suggests</span>
       <button type="button" className="icon-btn h-8 w-8" aria-label="Close answer" onClick={onClose} data-testid="navigator-answer-close-btn"><X className="h-4 w-4" /></button>
     </div>
-    <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{answer}</p>
+    <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
+    {result.waypoints?.length >= 2 && <RouteMap waypoints={result.waypoints} gps={gps} />}
+    <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
     {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} questions left today</span>}
   </div>
 );
@@ -23,12 +27,12 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
-export const NavigatorAsk = ({ boat, onChange, items, online, locked, onUpgrade }) => {
+export const NavigatorAsk = ({ boat, gps, onChange, items, online, locked, onUpgrade }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
   const [question, setQuestion] = useState(auto.current);
-  const [state, setState] = useState({ busy: false, error: "", answer: "", left: null });
+  const [state, setState] = useState({ busy: false, error: "", result: null, left: null });
 
   // Keep the route at the front of the question, leaving anything the skipper added after it.
   const setRoute = (key, value) => {
@@ -44,11 +48,12 @@ export const NavigatorAsk = ({ boat, onChange, items, online, locked, onUpgrade 
     if (locked) { onUpgrade(); return; }
     if (!start.trim() || !dest.trim()) { setState((s) => ({ ...s, error: "Add a START and a DESTINATION first. The Magic Marine Navigator needs both to suggest a route." })); return; }
     if (!online) { setState((s) => ({ ...s, error: "The Magic Marine Navigator needs a signal" })); return; }
-    setState({ busy: true, error: "", answer: "", left: null });
+    setState({ busy: true, error: "", result: null, left: null });
     const details = { boat_type: boat.boat_type, units: boat.units, loa: boat.loa, beam: boat.beam, draft: boat.draft, mast_height: boat.mast_height,
       pob: boat.pob, children: boat.children, trip_days: boat.trip_days };
-    api.post("/ai/navigator-ask", { question: question.trim(), start: start.trim(), destination: dest.trim(), boat: details, items: items.slice(0, 150) }, { timeout: 90000 })
-      .then(({ data }) => setState((s) => ({ ...s, busy: false, answer: data.answer, left: data.asks_left })))
+    const route = { start: start.trim(), dest: dest.trim() };
+    api.post("/ai/navigator-ask", { question: question.trim(), start: route.start, destination: route.dest, boat: details, items: items.slice(0, 150) }, { timeout: 90000 })
+      .then(({ data }) => setState((s) => ({ ...s, busy: false, result: { ...data, ...route }, left: data.asks_left })))
       .catch((e) => setState((s) => ({ ...s, busy: false, error: apiError(e, "The Magic Marine Navigator couldn't answer right now. Please try again.") })));
   };
 
@@ -68,7 +73,7 @@ export const NavigatorAsk = ({ boat, onChange, items, online, locked, onUpgrade 
       </div>
       {state.busy && <p className="flex items-center gap-2 text-sm font-semibold" data-testid="navigator-loading"><Loader2 className="h-4 w-4 animate-spin" /> The Magic Marine Navigator is plotting...</p>}
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-error">{state.error}</p>}
-      {state.answer && <AnswerCard answer={state.answer} left={state.left} onClose={() => setState((s) => ({ ...s, answer: "" }))} />}
+      {state.result && <AnswerCard result={state.result} boat={boat} gps={gps} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
     </div>
   );
 };
