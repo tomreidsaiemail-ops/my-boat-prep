@@ -121,6 +121,25 @@ const ingredientRows = (lists, portions, stock) => {
   return { meals, items };
 };
 
+const MEAL_TYPES = [
+  ["Breakfasts", /\b(breakfast|brekkie|brunch)/i],
+  ["Lunches", /\blunch/i],
+  ["Dinners / mains", /\b(dinner|mains?\b|supper|evening meal)/i],
+  ["Desserts", /\b(dessert|pudding|puds?\b)/i],
+  ["Snacks", /\bsnack/i],
+];
+
+// Soft checks before making the list: too many meals for the trip, and missing meal types.
+export const mpaWarnings = (meals, days) => {
+  const d = days || 1;
+  const max = d * 3;
+  const out = [];
+  if (meals.length > max) out.push({ id: "count", text: `${meals.length} meals are picked for a ${d}-day trip, which allows up to ${max} (3 a day).` });
+  const missing = MEAL_TYPES.filter(([, re]) => !meals.some((m) => re.test(m.name))).map(([n]) => n);
+  if (meals.length && missing.length) out.push({ id: "types", text: `No ${missing.join(", ").toLowerCase()} found in the meal names.` });
+  return out;
+};
+
 export const itemName = (label) => String(label).split(" – ")[0].trim();
 
 export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [] }) => {
@@ -133,7 +152,7 @@ export const buildShopping = ({ lists, adults, children, days, stock, provisions
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
   const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals }, i.checked) }));
   const provRows = extra.map((p) => ({ name: p, item: { label: amounts[p] ? `${p} – ${amounts[p]}` : p, checked: /^none needed/i.test(amounts[p] || ""), indent: true } }));
-  const mealKey = [{ label: `Meals (${meals.length})`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
+  const mealKey = [{ label: `Meals (${meals.length}) from ${lists.map((l) => l.name).join(", ")}`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
   if (aisleOf) {
     const byAisle = new Map(aisleOrder.map((a) => [a, []]));
     [...ingredientRowsOut, ...provRows].forEach((r) => { const a = aisleOf(r.name); byAisle.set(a, [...(byAisle.get(a) || []), r.item]); });

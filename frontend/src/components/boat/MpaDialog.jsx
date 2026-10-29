@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { buildShopping, foodStock, initialsFor, keyOf } from "@/lib/mpa";
+import { buildShopping, foodStock, initialsFor, keyOf, mpaWarnings } from "@/lib/mpa";
+import { MpaWarningsDialog } from "@/components/boat/MpaWarningsDialog";
 import { AISLE_NAMES, OTHER_AISLE, builtInAisle } from "@/lib/aisles";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
 
@@ -30,6 +31,11 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
   const chosen = lists.filter((l) => picked.includes(l.id));
   const mealCount = chosen.reduce((n, l) => n + l.meals.length, 0);
   const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const [warnings, setWarnings] = useState(null);
+  const check = () => {
+    const w = mpaWarnings(chosen.flatMap((l) => l.meals), days);
+    if (w.length) setWarnings(w); else make();
+  };
 
   const make = async () => {
     if (!chosen.length) { toast.error("Pick at least one meal plan list"); return; }
@@ -101,7 +107,8 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
           Sort by shopping aisle
         </label>
         <p className="text-xs text-[var(--muted)]">Amounts in recipes are for one adult; a child counts as half. Each meal is cooked once. Change people or trip days in Additional boat details.</p>
-        <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={busy || !chosen.length} onClick={make} data-testid="mpa-make-btn">
+        <MpaWarningsDialog warnings={warnings} onBack={() => setWarnings(null)} onProceed={() => { setWarnings(null); make(); }} />
+        <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={busy || !chosen.length} onClick={check} data-testid="mpa-make-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {busy ? "Working out your shopping..." : `Make shopping list${mealCount ? ` (${mealCount} ${mealCount === 1 ? "meal" : "meals"})` : ""}`}
         </button>
