@@ -1,0 +1,38 @@
+{
+  "summary": "Tested the shared daily Magic limit and the paid top-up. Backend: new file test_magic_quota.py, 33 of 33 pass when run serially with -n 0. It covers the quota shape and NZ$ price text, admin GET/PUT with 403/401/422 and changes taking effect at once, a 429 with code daily_limit before any AI call on all 7 Magic JSON endpoints and on the AI Scan, the 429 message following admin changes, daily_limit 0, free used before purchased (2 real Gemini calls), and the daily reset: an old date resets daily_used but keeps purchased, Auckland and Honolulu dates differ, and an invalid time zone falls back to UTC. Top-up: a real Stripe test session (mode payment, nzd, 500, kind magic_topup metadata), unpaid status stays pending, a bad signature returns 400, an unpaid event gives no credit, a signed paid event credits +20 exactly once even when replayed, and status then reads paid. Pro checkout regression passes. Legacy per-feature quota tests are updated to the shared pool. Frontend at 1920 and 390: the admin quota card saves with a toast, the values persist after reload, and invalid input shows an error toast. The limit dialog shows the backend text and adjusts to admin values (Buy +25 for NZ$7.50, Buy +20 for NZ$5). Buy goes to checkout.stripe.com showing NZ$5.00. Not now and Escape close the dialog. The X-Timezone header is sent. The top-up success, pending and cancel pages show the top-up text. One real list-draft took a purchased unit (20 to 19). No functional bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "quota.refund", "issue": "If the AI fails across the local midnight reset, a free refund lowers daily_used after the reset. daily_used can go to -1, which gives one extra free generation. Fix: clamp at 0, e.g. filter daily_used > 0."},
+      {"endpoint": "/api/payments/topup-checkout + webhook", "issue": "credit_topup only credits if the payment_transactions row exists. If the insert fails after Stripe creates the session, the user pays and gets no credit. Possible fix: fall back to the webhook metadata (user_id, pack_size) when no row is found."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Magic 429 inline message", "issue": "The limit message shows twice: once in the dialog and again as the inline note, error or toast of the component that made the call (e.g. under the Create list draft button). Batch scan keeps sending the remaining photos after a 429, so each one shows an error and reopens the dialog.", "affected_selectors": ["create-list-ai-draft-btn", "magic-limit-dialog"]}
+    ],
+    "design_issues": [
+      {"screen": "Admin MagicQuotaSettings", "issues": ["Inputs use min=0, but the backend needs at least 1 for pack size and price.", "The 422 toast says 'Input should be greater than or equal to 1' without naming the field."]},
+      {"screen": "Magic responses", "issues": ["'N Magic generations left today' also counts purchased units that roll over, so the word 'today' is slightly misleading."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_magic_quota.py", "/app/backend/tests/manual_seed_quota.py", "/app/test_reports/pytest/magic_quota.xml"],
+  "action_items": [
+    "Optional: clamp refund so daily_used never goes below 0",
+    "Optional: let the webhook credit a top-up from its metadata when the payment_transactions row is missing",
+    "Optional: show the 429 limit message only in the dialog, and stop the batch scan queue after a daily_limit 429",
+    "Optional: set the admin inputs to min=1 for pack size and price"
+  ],
+  "critical_code_review_comments": [
+    "consume() is atomic: it uses conditional find_one_and_update on daily_used < limit, then on purchased > 0. credit_topup is idempotent through credited != True. Both are good.",
+    "The X-Timezone ContextVar is set in the BaseHTTPMiddleware before call_next, and it does reach the endpoints (verified).",
+    "test_magic_quota.py changes the global app_settings.magic_quota. Run it with -n 0, and not at the same time as other AI test files; parallel xdist runs made other tests flaky."
+  ],
+  "updated_files": ["/app/backend/tests/test_magic_quota.py", "/app/backend/tests/manual_seed_quota.py", "/app/backend/tests/test_ai_scan.py", "/app/backend/tests/test_doctor_aisles_templates.py", "/app/backend/tests/test_engineer_ask_signoff.py", "/app/backend/tests/test_navigator.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary magic_quota docs and magic_topup payment_transactions for test-user-pro and test-user-beta, all removed afterwards. Admin settings restored to 20/20/5.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest tests/test_magic_quota.py -n 0 (QUOTA_REAL_AI=0 skips the 2 real Gemini calls). Seed the quota with python tests/manual_seed_quota.py <uid> <daily_used> <purchased> or 'clear <uid>'. The browser time zone is UTC. To trigger the limit dialog: create-list-btn, then fill create-list-description-input, then click create-list-ai-draft-btn. Sign the webhook with HMAC: 't=..,v1=sha256(secret, f\"{t}.{payload}\")' (helper in test_magic_quota.py)."
+}

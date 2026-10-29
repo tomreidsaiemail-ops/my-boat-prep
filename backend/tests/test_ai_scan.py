@@ -59,26 +59,19 @@ class TestScanGuards:
 
 
 class TestDailyLimit:
-    def test_429_after_20(self):
-        now = datetime.now(timezone.utc).isoformat()
-        DB.ai_scans.insert_many([{"user_id": "test-user-beta", "boat_id": "main", "created_at": now, "TEST": True} for _ in range(20)])
+    # Shared Magic pool (db.magic_quota): exhausted free + no purchased -> 429 daily_limit before AI, no ai_scans doc
+    def test_429_when_shared_pool_exhausted(self):
+        today = datetime.now(timezone.utc).date().isoformat()
+        DB.app_settings.update_one({"key": "magic_quota"}, {"$set": {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}}, upsert=True)
+        DB.magic_quota.update_one({"user_id": "test-user-beta"}, {"$set": {"daily_used": 20, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
+        before = DB.ai_scans.count_documents({"user_id": "test-user-beta"})
         try:
             r = post(BETA)
             assert r.status_code == 429
-            assert "20 AI scans" in r.json()["detail"]
-            assert DB.ai_scans.count_documents({"user_id": "test-user-beta"}) == 20
+            assert r.json()["code"] == "daily_limit" and "daily limit of 20 Magic generations" in r.json()["detail"]
+            assert DB.ai_scans.count_documents({"user_id": "test-user-beta"}) == before
         finally:
-            DB.ai_scans.delete_many({"user_id": "test-user-beta", "TEST": True})
-
-    def test_old_scans_not_counted_boundary(self):
-        # 20 docs older than a day must not block (no AI call: we send a text file to stop at 400 after limit check order? limit is after type check)
-        old = "2020-01-01T00:00:00+00:00"
-        DB.ai_scans.insert_many([{"user_id": "test-user-beta", "boat_id": "main", "created_at": old, "TEST": True} for _ in range(20)])
-        try:
-            since = (datetime.now(timezone.utc)).isoformat()
-            assert DB.ai_scans.count_documents({"user_id": "test-user-beta", "created_at": {"$gte": since}}) == 0
-        finally:
-            DB.ai_scans.delete_many({"user_id": "test-user-beta", "TEST": True})
+            DB.magic_quota.delete_one({"user_id": "test-user-beta"})
 
 
 @pytest.mark.skipif(not REAL_AI, reason="real AI disabled")
@@ -92,7 +85,7 @@ class TestRealScan:
         for i in d["items"]:
             assert isinstance(i["name"], str) and i["name"].strip()
             assert isinstance(i["qty"], int) and 1 <= i["qty"] <= 9999
-        assert 0 <= d["scans_left"] <= 19
+        assert isinstance(d["scans_left"], int) and d["scans_left"] >= 0
 
     def test_garbage_jpeg_rejected_before_ai(self):
         r = post(ADMIN, data=b"not really a jpeg at all" * 10)

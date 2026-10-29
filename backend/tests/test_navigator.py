@@ -60,7 +60,7 @@ class TestNavigatorAsk:
         d = r.json()
         assert isinstance(d["answer"], str) and d["answer"].strip().endswith(FOOTER)
         assert d["answer"].count("Suggested route only") == 1
-        assert isinstance(d["asks_left"], int) and 0 <= d["asks_left"] <= 19
+        assert isinstance(d["asks_left"], int) and d["asks_left"] >= 0  # shared Magic pool
         row = db.ai_usage.find_one({"user_id": "test-user-pro", "feature": "MMN"}, sort=[("_id", -1)])
         assert row is not None
         print("usage row", {k: v for k, v in row.items() if k != "_id"})

@@ -52,7 +52,7 @@ export const TopUpDialog = ({ open, list, items, description, labelFor, onAdd, o
             <button type="button" className="self-start text-sm font-bold underline" onClick={() => setPicked(all ? new Set() : new Set(suggestions.map((_, n) => n)))} data-testid="topup-tick-all-btn">{all ? "Untick all" : "Tick all"}</button>
             <Groups suggestions={suggestions} picked={picked} onTick={tick} />
           </>}
-          {left !== null && <p className="text-xs text-[var(--muted)]" data-testid="topup-left">{left} Magic generations left today.</p>}
+          {left !== null && <p className="text-xs text-[var(--muted)]" data-testid="topup-left">{left} Magic generations left (free today + bought).</p>}
         </div>
         <DialogFooter className="flex-row justify-end gap-2">
           <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="topup-cancel-btn">Cancel</button>

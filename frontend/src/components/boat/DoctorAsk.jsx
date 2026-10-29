@@ -9,7 +9,7 @@ const AnswerCard = ({ answer, left, onClose }) => (
       <button type="button" className="icon-btn h-8 w-8" aria-label="Close answer" onClick={onClose} data-testid="doctor-answer-close-btn"><X className="h-4 w-4" /></button>
     </div>
     <p className="whitespace-pre-line text-sm" data-testid="doctor-answer-text">{answer}</p>
-    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="doctor-asks-left">{left} Magic generations left today</span>}
+    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="doctor-asks-left">{left} Magic generations left (free today + bought)</span>}
   </div>
 );
 

@@ -16,6 +16,7 @@ api.interceptors.response.use(undefined, (e) => {
 });
 
 export const apiError = (e, fallback = "Something went wrong. Please try again.") => {
+  if (e?.response?.data?.code === "daily_limit") return "Daily Magic limit reached.";
   const detail = e?.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((d) => (typeof d?.msg === "string" ? d.msg.replace(/^Value error, /, "") : "")).filter(Boolean).join(" ") || fallback;

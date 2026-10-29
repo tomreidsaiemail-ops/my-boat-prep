@@ -177,7 +177,7 @@ async def stripe_webhook(request: Request):
     obj, t = event["data"]["object"], event["type"]
     if t in ("checkout.session.completed", "checkout.session.async_payment_succeeded") and (obj.get("metadata") or {}).get("kind") == "magic_topup":
         if obj.get("payment_status") == "paid":
-            await quota.credit_topup(obj["id"])
+            await quota.credit_topup(obj["id"], obj.get("metadata") or {})
     elif t == "checkout.session.completed":
         await _mark_paid(obj["id"], obj.get("subscription"), (obj.get("metadata") or {}).get("user_id"))
     elif t == "checkout.session.expired":

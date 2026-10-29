@@ -37,20 +37,20 @@ def test_doctor_pro_answer_and_separate_quota():
     assert after["engine"] == before["engine"] and after["mpa"] == before["mpa"] and after["draft"] == before["draft"]
 
 
-def test_doctor_quota_independent():
-    # Fill doctor quota with 20 fake docs -> doctor 429 but engine still allowed (not 429)
+def test_doctor_shared_quota_429():
+    # Shared Magic pool: exhausted -> doctor 429 daily_limit; validation errors still 422 (not 429)
     db = _db()
-    now = datetime.now(timezone.utc).isoformat()
-    db.ai_drafts.insert_many([{"draft_id": f"TEST_doc_{i}", "user_id": "test-user-pro", "kind": "doctor", "created_at": now} for i in range(20)])
+    today = datetime.now(timezone.utc).date().isoformat()
+    db.app_settings.update_one({"key": "magic_quota"}, {"$set": {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}}, upsert=True)
+    db.magic_quota.update_one({"user_id": "test-user-pro"}, {"$set": {"daily_used": 20, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
     try:
         r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "headache"}, headers=PRO, timeout=60)
         assert r.status_code == 429, r.text
-        assert "Doctor" in r.json()["detail"]
-        # Aisles validation still fine and lists quota unaffected: send invalid body to avoid an AI call -> 422 not 429
+        assert r.json()["code"] == "daily_limit"
         r2 = requests.post(f"{BASE_URL}/api/ai/mpa/aisles", json={"items": ["  "], "aisles": AISLES}, headers=PRO, timeout=60)
         assert r2.status_code == 422
     finally:
-        db.ai_drafts.delete_many({"draft_id": {"$regex": "^TEST_doc_"}})
+        db.magic_quota.delete_one({"user_id": "test-user-pro"})
 
 
 def test_doctor_free_403():

@@ -41,7 +41,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
     try {
       const { data } = await api.post("/ai/list-draft", { name: name.trim(), description: description.trim() }, { timeout: 90000 });
       onDraft(data.lines.join("\n"));
-      setNote(`Items ready, edit them before you confirm. ${data.drafts_left} Magic generations left today.`);
+      setNote(`Items ready, edit them before you confirm. ${data.drafts_left} Magic generations left (free today + bought).`);
     } catch (e) { setNote(apiError(e, "Magic List Generation couldn't create that list right now. Please try again.")); }
     setBusy(false);
   };

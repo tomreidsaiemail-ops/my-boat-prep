@@ -15,7 +15,7 @@ const AnswerCard = ({ result, boat, gps, left, onClose }) => (
     <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
     {result.waypoints?.length >= 2 && <RouteMap waypoints={result.waypoints} gps={gps} />}
     <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
-    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left today</span>}
+    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left (free today + bought)</span>}
   </div>
 );
 

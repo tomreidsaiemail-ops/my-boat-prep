@@ -81,7 +81,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
       setScan({ area: a, items: data.items });
-      if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left today`);
+      if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left (free today + bought)`);
     } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
   };
   const saveScan = (list) => {

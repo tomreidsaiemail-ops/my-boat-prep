@@ -26,7 +26,13 @@ export default function useBatchScan(boatId) {
     inflight.current = { key: next.key, ctrl };
     api.post(`/boats/${boatId}/scan`, form, { params: { batch: true }, timeout: 90000, signal: ctrl.signal })
       .then(({ data }) => alive.current && patch(next.key, { status: "done", rows: toRows(data.items), found: data.items.length, scansLeft: data.scans_left }))
-      .catch((err) => alive.current && !ctrl.signal.aborted && patch(next.key, { status: "error", error: apiError(err, "The AI scan didn't work") }))
+      .catch((err) => {
+        if (!alive.current || ctrl.signal.aborted) return;
+        const msg = apiError(err, "The AI scan didn't work");
+        // Daily Magic limit: stop the whole queue (the limit dialog is already open); each photo can be retried later.
+        if (err?.response?.data?.code === "daily_limit") setEntries((es) => es.map((e) => (e.key === next.key || e.status === "queued" ? { ...e, status: "error", error: msg } : e)));
+        else patch(next.key, { status: "error", error: msg });
+      })
       .finally(() => { busy.current = false; inflight.current = null; if (alive.current) setEntries((es) => [...es]); });
   }, [entries, boatId]);
   const abort = (key) => { if (inflight.current && (!key || inflight.current.key === key)) inflight.current.ctrl.abort(); };

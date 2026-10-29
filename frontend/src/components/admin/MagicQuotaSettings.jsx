@@ -3,10 +3,10 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 
-const Num = ({ label, value, onChange, step = 1, testId, suffix }) => (
+const Num = ({ label, value, onChange, step = 1, min = 0, testId, suffix }) => (
   <label className="flex flex-col gap-1 text-sm font-bold">{label}
     <span className="flex items-center gap-2">
-      <input type="number" inputMode="decimal" step={step} min={0} value={value} onChange={(e) => onChange(e.target.value)} className="field-input h-11 w-28" data-testid={testId} />
+      <input type="number" inputMode="decimal" step={step} min={min} value={value} onChange={(e) => onChange(e.target.value)} className="field-input h-11 w-28" data-testid={testId} />
       {suffix && <span className="text-xs font-semibold text-[var(--muted)]">{suffix}</span>}
     </span>
   </label>
@@ -21,9 +21,14 @@ export const MagicQuotaSettings = () => {
   if (form.error) return <p className="text-sm text-[var(--red)]">Couldn't load the Magic limit settings.</p>;
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
   const save = async () => {
+    const d = Number(form.daily_limit), n = Number(form.pack_size), p = Number(form.pack_price);
+    const bad = !Number.isInteger(d) || d < 0 || d > 1000 ? "Free per day must be a whole number from 0 to 1000"
+      : !Number.isInteger(n) || n < 1 || n > 1000 ? "Top-up pack must be a whole number from 1 to 1000"
+      : !(p >= 1 && p <= 500) ? "Pack price must be from 1 to 500" : "";
+    if (bad) { toast.error(bad); return; }
     setBusy(true);
     try {
-      const { data } = await api.put("/admin/settings/quota", { daily_limit: Number(form.daily_limit), pack_size: Number(form.pack_size), pack_price: Number(form.pack_price) });
+      const { data } = await api.put("/admin/settings/quota", { daily_limit: d, pack_size: n, pack_price: p });
       setForm(data);
       toast.success("Magic limit settings saved");
     } catch (e) { toast.error(apiError(e, "Couldn't save the settings")); } finally { setBusy(false); }
@@ -34,8 +39,8 @@ export const MagicQuotaSettings = () => {
       <p className="text-xs text-[var(--muted)]">One shared daily limit covers every Magic feature (lists, Provisioning, Engineer, Doctor, Navigator and AI Scan). It resets at each skipper's local midnight. Changes apply straight away.</p>
       <div className="flex flex-wrap gap-4">
         <Num label="Free per day" value={form.daily_limit} onChange={set("daily_limit")} testId="quota-daily-limit-input" suffix="generations" />
-        <Num label="Top-up pack" value={form.pack_size} onChange={set("pack_size")} testId="quota-pack-size-input" suffix="generations" />
-        <Num label="Pack price" value={form.pack_price} onChange={set("pack_price")} step={0.5} testId="quota-pack-price-input" suffix={(form.currency || "").toUpperCase()} />
+        <Num label="Top-up pack" value={form.pack_size} onChange={set("pack_size")} min={1} testId="quota-pack-size-input" suffix="generations" />
+        <Num label="Pack price" value={form.pack_price} onChange={set("pack_price")} step={0.5} min={1} testId="quota-pack-price-input" suffix={(form.currency || "").toUpperCase()} />
       </div>
       <button type="button" className="btn-solid self-start px-5" disabled={busy} onClick={save} data-testid="quota-save-btn">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save

@@ -93,19 +93,28 @@ async def consume(user_id: str) -> str:
 
 
 async def refund(user_id: str, source: str):
-    field = "daily_used" if source == "free" else "purchased_allowance"
-    await db.magic_quota.update_one({"user_id": user_id}, {"$inc": {field: -1 if source == "free" else 1}})
+    if source == "free":
+        await db.magic_quota.update_one({"user_id": user_id, "daily_used": {"$gt": 0}}, {"$inc": {"daily_used": -1}})
+    else:
+        await db.magic_quota.update_one({"user_id": user_id}, {"$inc": {"purchased_allowance": 1}})
 
 
 async def left(user_id: str) -> int:
     return (await status(user_id))["left"]
 
 
-async def credit_topup(session_id: str) -> bool:
+async def credit_topup(session_id: str, meta: dict | None = None) -> bool:
     """Atomically marks a top-up paid and adds its pack once, however many times Stripe or the client confirms it."""
+    now = datetime.now(timezone.utc)
     tx = await db.payment_transactions.find_one_and_update(
         {"session_id": session_id, "kind": "magic_topup", "credited": {"$ne": True}},
-        {"$set": {"credited": True, "status": "completed", "payment_status": "paid", "updated_at": datetime.now(timezone.utc)}})
+        {"$set": {"credited": True, "status": "completed", "payment_status": "paid", "updated_at": now}})
+    if not tx and meta and meta.get("user_id") and str(meta.get("pack_size", "")).isdigit():
+        # Webhook fallback when the checkout's transaction row was never saved: create it already credited, only once.
+        res = await db.payment_transactions.update_one({"session_id": session_id}, {"$setOnInsert": {
+            "user_id": meta["user_id"], "kind": "magic_topup", "pack_size": int(meta["pack_size"]), "credited": True,
+            "status": "completed", "payment_status": "paid", "created_at": now, "updated_at": now}}, upsert=True)
+        tx = {"user_id": meta["user_id"], "pack_size": int(meta["pack_size"])} if res.upserted_id else None
     if not tx:
         return False
     await db.magic_quota.update_one({"user_id": tx["user_id"]}, {"$inc": {"purchased_allowance": int(tx["pack_size"])},
