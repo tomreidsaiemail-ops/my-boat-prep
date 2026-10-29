@@ -83,6 +83,15 @@ const fmtAmount = (unit, q) => {
 
 export const mpaLabel = ({ base, src = [], meals = [] }) => [base, src.map((s) => `(${s})`).join(""), meals.map((n) => `[${n}]`).join("")].filter(Boolean).join(" ");
 
+// Print/PDF text for MPA rows: badges become words, like the emailed log (only while the row is unedited).
+export const mpaPrintText = (item, text) => {
+  const m = item.mpa;
+  if (!m || text !== mpaLabel(m)) return text;
+  const subs = (m.subs || []).flatMap((x) => x.areas.map((a) => `${a}: ${x.name}`));
+  const tags = [...(m.prov ? ["PROV"] : []), ...(m.areas?.length ? [`On board: ${m.areas.join(", ")}`] : []), ...(subs.length ? [`On board instead: ${subs.join(", ")}`] : [])];
+  return tags.length ? `${text} · ${tags.join(" · ")}` : text;
+};
+
 export const foodStock = (areas = []) => {
   const stock = {};
   areas.filter((a) => a.food).forEach((a) => (a.items || []).filter((i) => !i.removed).forEach((i) => {
@@ -108,7 +117,11 @@ export const foodSynonyms = (registry = [], data = {}) => {
   const mine = synGroups(listOf(SYN_MINE));
   const mineWords = new Set(mine.flat());
   const map = new Map();
-  synGroups(listOf(SYN_ADMIN)).forEach((g) => { const left = g.filter((w) => !mineWords.has(w)); left.forEach((w) => map.set(w, left)); });
+  // Admin groups that share a word are joined into one group.
+  synGroups(listOf(SYN_ADMIN)).forEach((g) => {
+    const joined = [...new Set([...g.filter((w) => !mineWords.has(w)), ...g.flatMap((w) => map.get(w) || [])])];
+    joined.forEach((w) => map.set(w, joined));
+  });
   mine.forEach((g) => g.forEach((w) => map.set(w, g)));
   return map;
 };

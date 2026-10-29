@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the 1000-character list description limit and the MPA Food Synonyms matching. Backend: 9/9 pytest pass. Checked: /api/ai/list-draft and /api/ai/list-topup give 422 at 1001 characters; list-draft accepts 1000 (one real AI call); admin template-lists POST and PUT accept 1000, give 422 at 1001, and the GET shows the saved value; ship_log.render_items/_with_badges adds ' · On board instead: Galley Cupboard 1: Table Salt', combines it with PROV and On board, and adds no badge text to edited rows. Frontend (Pro boat seeded with /app/tests/mpa_synonym_seed.py; aisles were unticked and /api/ai/mpa/provisions was mocked with page.route, so no Magic quota was used): the Sea salt row shows a dashed mpa-sub badge 'Galley Cupboard 1: Table Salt' (the title lists them) and Butter shows 'Galley Cupboard 1: Margarine'. Amounts are not reduced (3 tsp, 60 g for 3 adults) and those rows are not ticked. Exact matches are unchanged: Eggs is 'on board already', ticked, with a solid Fridge badge and no sub badge; Rice shows '· 1 on board'. PROV 'Salt' gets a sub badge for Table Salt; PROV Coffee gets the normal on-board badge. A 'Sea salt' in a non-food area is correctly ignored. A 'my food SYNONYMS ' list (mixed case, trailing space) with 'Sea salt = Flaky salt' and Flaky salt in the Fridge gives Sea salt 'Fridge: Flaky salt', and Salt still matches Table Salt. With the synonym list renamed (no synonym lists), there are no sub badges and no JS errors. The synonym lists are not offered as meal plans in the MPA dialog. The saved MPA list data includes subs, and the server render gives the right export text. At 390px the rows wrap, with no horizontal overflow (scrollWidth 390). Create-list and rename-list description: a 1008-character paste is capped at 1000, the counter shows 1000/1000, maxlength=1000, and the 1000-character description persisted to the DB. The Pro boat was restored from /tmp/pro_boat_56.json, and the TEST template list was deleted.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Export Current / Save PDF (client PrintView, window.print)", "issue": "The client print view uses displayLabel only, so the PROV / On board / 'On board instead' badge text appears only in the emailed or server PDF (ship_log._with_badges), not in the browser 'Save PDF'. This was already the case before this change, but the request says 'PDF/email' should include it.", "affected_selectors": ["print-view", "print-save-pdf-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "MPA list at 390px", "issues": ["The sub badge truncates the most important part, e.g. 'Galley Cupboard 1: Table…' / 'Galley Cupboard 1: Marga…', so the substitute name is hidden on mobile. Consider 'Table Salt · Galley Cupboard 1' (name first) or letting the badge wrap."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_desc1000_synonyms.py", "/app/tests/mpa_synonym_seed.py", "/app/test_reports/pytest/pytest_iter56.xml"],
+  "action_items": [
+    "Optional: show the synonym badge text ('On board instead: …') in the client PrintView Save PDF, to match the email PDF",
+    "Optional: on mobile, put the substitute name first in the SubBadge, or let it wrap, so the name isn't cut off",
+    "Note: there is no admin template list named 'Food Synonyms' in db.template_lists yet, so the admin side of the feature only works after an admin creates it"
+  ],
+  "critical_code_review_comments": [
+    "foodSynonyms: if one word appears in two admin groups, the later group silently overwrites the earlier one (map.set). The two groups are not merged, so matches from the first group are lost.",
+    "subsFor returns [] when the exact item is on board, which is correct. However, an exact match with only partial stock (e.g. 1 of 6 needed) gets no synonym suggestion. This is acceptable, but worth knowing."
+  ],
+  "updated_files": ["/app/backend/tests/test_desc1000_synonyms.py", "/app/tests/mpa_synonym_seed.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of requested flows (2 minor suggestions)"},
+  "seed_data_creation": "/app/tests/mpa_synonym_seed.py seed|mine|none|restore (backup /tmp/pro_boat_56.json, taken on the first seed). The Pro boat has been restored.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the backend tests with: export REACT_APP_BACKEND_URL=...; pytest backend/tests/test_desc1000_synonyms.py (test_draft_1000_accepted makes 1 real AI call). For the UI, seed with mpa_synonym_seed.py, set the session_token cookie test_session_pro_1, select_option list-selector 'provisions', click mpa-open-btn, tick only mpa-list-check-custom_9000000000056, untick mpa-aisles-check, mock **/api/ai/mpa/provisions with {\"amounts\":{}}, click mpa-make-btn and then mpa-warnings-proceed-btn (trip days not set). Restore afterwards."
+}

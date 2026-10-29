@@ -25,9 +25,9 @@ export const OnBoardBadge = ({ id, areas }) => (
   </span>
 );
 
-// A synonym from the Food Synonyms lists is on board instead, e.g. "Galley Cupboard 1: Table Salt" for a recipe asking for sea salt.
+// A synonym from the Food Synonyms lists is on board instead, e.g. "Table Salt · Galley Cupboard 1" for a recipe asking for sea salt.
 export const SubBadge = ({ id, subs }) => {
-  const all = subs.flatMap((x) => x.areas.map((a) => `${a}: ${x.name}`));
+  const all = subs.flatMap((x) => x.areas.map((a) => `${x.name} · ${a}`));
   return (
     <span className="inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-full border border-dashed border-emerald-500 bg-emerald-50 px-2 text-[11px] font-bold leading-none text-emerald-800" title={`On board, may do instead: ${all.join(", ")}`} data-testid={`mpa-sub-${id}`}>
       <Archive className="h-3.5 w-3.5 shrink-0" />
