@@ -315,9 +315,9 @@ export default function BoatPrep({ boatId, boats }) {
     const mealHead = isMealHead(items, item.id);
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
-      const { dynamic, area, meal_type: mt, ...rest } = i;
+      const { dynamic, area, meal_type: mt, meal_type_auto: auto, ...rest } = i;
       const meal = mealHead ? editMeal : mt;
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal } : {}) };
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && meal === mt ? { meal_type_auto: true } : {}) } : {}) };
     }));
     setDialog(null);
     return true;

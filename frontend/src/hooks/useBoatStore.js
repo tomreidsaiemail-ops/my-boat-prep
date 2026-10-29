@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { applyTemplates, freshState, migrateState, stamp } from "@/lib/defaults";
+import { autoTypeData } from "@/lib/mpa";
 
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
@@ -134,7 +135,12 @@ export default function useBoatStore(userId, boatEntry) {
 
   const mutate = useCallback((fn, { count = true } = {}) => {
     editsRef.current += 1;
-    setState((prev) => { const now = new Date().toISOString(); return { ...stamp(prev, fn(prev), now), updated_at: now }; });
+    setState((prev) => {
+      const now = new Date().toISOString();
+      const raw = fn(prev);
+      const data = raw?.data && autoTypeData(raw.data, prev?.data);
+      return { ...stamp(prev, data && data !== raw.data ? { ...raw, data } : raw, now), updated_at: now };
+    });
     setPending((p) => (count ? p + 1 : Math.max(p, 1)));
     if (!onlineRef.current) queuedOffline.current = true;
   }, []);

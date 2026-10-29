@@ -1,4 +1,5 @@
 import { MEAL_PLAN_BASE_LEN, MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
+import { autoTypeData } from "@/lib/mpa";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -215,7 +216,7 @@ const upgradeMealPlan = (data) => {
 
 export const migrateState = (s) => s && addMissingLists({
   ...s,
-  data: upgradeMealPlan(upgradePob(s.data)),
+  data: autoTypeData(upgradeMealPlan(upgradePob(s.data))),
   registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" }
     : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Route Planning" } : l))),
 });

@@ -134,6 +134,42 @@ export const MEAL_TYPES = [
   { id: "dessert", one: "Dessert", many: "Desserts", re: /\b(dessert|pudding|puds?\b)/i },
   { id: "snack", one: "Snack", many: "Snacks", re: /\bsnack/i },
 ];
+// "First type in the name" = the type word that appears earliest.
+export const detectMealType = (name) => {
+  let best = null;
+  let at = Infinity;
+  MEAL_TYPES.forEach((t) => { const m = t.re.exec(name || ""); if (m && m.index < at) { at = m.index; best = t.id; } });
+  return best;
+};
+
+// Meals without a picked type get one from their name (marked meal_type_auto so it follows renames).
+export const autoMealTypes = (items) => {
+  if (!Array.isArray(items)) return items;
+  let changed = false;
+  const out = items.map((it, k) => {
+    if (it.meal_type && !it.meal_type_auto) return it;
+    const head = !(k > 0 && it.indent) && !!items[k + 1]?.indent && BRACKET.test(items[k + 1].label || "");
+    const t = head ? detectMealType(tidy(it.label)) : null;
+    if ((it.meal_type || null) === t) return it;
+    changed = true;
+    const { meal_type: _t, meal_type_auto: _a, ...rest } = it;
+    return t ? { ...rest, meal_type: t, meal_type_auto: true } : rest;
+  });
+  return changed ? out : items;
+};
+
+// Runs on lists that changed since `prev` (or all lists without it); returns the same object when nothing changes.
+export const autoTypeData = (data, prev) => {
+  if (!data) return data;
+  let changed = false;
+  const out = {};
+  Object.entries(data).forEach(([k, v]) => {
+    const n = prev && prev[k] === v ? v : autoMealTypes(v);
+    if (n !== v) changed = true;
+    out[k] = n;
+  });
+  return changed ? out : data;
+};
 const EXTRA_TYPES = ["dessert", "snack"];
 // A picked meal type wins; otherwise the type is read from words in the meal name.
 const typesOf = (m) => (m.type ? [m.type] : MEAL_TYPES.filter((t) => t.re.test(m.name)).map((t) => t.id));
