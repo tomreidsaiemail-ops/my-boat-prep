@@ -1,4 +1,4 @@
-import { MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
+import { MEAL_PLAN_BASE_LEN, MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -197,6 +197,7 @@ export const resetLists = (s, ids, templates) => {
 };
 
 // Built-in Meal Plan recipes moved from "(...)" to "[...]"; unedited lines are converted.
+// An untouched 21-meal plan also gets meal types and the new desserts and snacks.
 const upgradeMealPlan = (data) => {
   if (!data.mealPlan) return data;
   const def = new Map(DEFAULT_DATA.mealPlan.map((i) => [i.id, i.label]));
@@ -204,7 +205,12 @@ const upgradeMealPlan = (data) => {
     const d = def.get(i.id);
     return d?.startsWith("[") && i.label === `(${d.slice(1, -1)})` ? { ...i, label: d } : i;
   };
-  return { ...data, mealPlan: data.mealPlan.map(fix) };
+  const plan = data.mealPlan.map(fix);
+  const base = DEFAULT_DATA.mealPlan.slice(0, MEAL_PLAN_BASE_LEN);
+  const untouched = plan.length === base.length && plan.every((i, k) => i.id === base[k].id && i.label === base[k].label && !!i.indent === !!base[k].indent);
+  if (!untouched) return { ...data, mealPlan: plan };
+  const typed = plan.map((i, k) => (base[k].meal_type ? { ...i, meal_type: base[k].meal_type } : i));
+  return { ...data, mealPlan: [...typed, ...DEFAULT_DATA.mealPlan.slice(MEAL_PLAN_BASE_LEN)] };
 };
 
 export const migrateState = (s) => s && addMissingLists({

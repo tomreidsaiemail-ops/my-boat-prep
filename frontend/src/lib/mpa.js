@@ -20,8 +20,14 @@ const tidy = (s) => String(s || "").replace(/^\s*\d+[.)]\s*/, "").trim();
 
 export const parseMeals = (items = []) => groupsOf(items)
   .filter((g) => g.length >= 2 && g[1].indent && BRACKET.test(g[1].label || ""))
-  .map((g) => ({ name: tidy(g[0].label), recipe: g[1].label.trim().slice(1, -1).trim(), ingredients: g.slice(2).map((i) => (i.label || "").trim()).filter(Boolean) }))
+  .map((g) => ({ name: tidy(g[0].label), type: g[0].meal_type, recipe: g[1].label.trim().slice(1, -1).trim(), ingredients: g.slice(2).map((i) => (i.label || "").trim()).filter(Boolean) }))
   .filter((m) => m.name);
+
+// A meal is a top-level item whose first sub-item is a [recipe] line.
+export const isMealHead = (items, id) => {
+  const k = items.findIndex((i) => i.id === id);
+  return k >= 0 && !(k > 0 && items[k].indent) && !!items[k + 1]?.indent && BRACKET.test(items[k + 1].label || "");
+};
 
 export const mealPlanLists = (registry = [], data = {}) => registry
   .filter((l) => l.kind !== MPA_KIND && Array.isArray(data[l.id]))
@@ -121,22 +127,28 @@ const ingredientRows = (lists, portions, stock) => {
   return { meals, items };
 };
 
-const MEAL_TYPES = [
-  ["Breakfasts", /\b(breakfast|brekkie|brunch)/i],
-  ["Lunches", /\blunch/i],
-  ["Dinners / mains", /\b(dinner|mains?\b|supper|evening meal)/i],
-  ["Desserts", /\b(dessert|pudding|puds?\b)/i],
-  ["Snacks", /\bsnack/i],
+export const MEAL_TYPES = [
+  { id: "breakfast", one: "Breakfast", many: "Breakfasts", re: /\b(breakfast|brekkie|brunch)/i },
+  { id: "lunch", one: "Lunch", many: "Lunches", re: /\blunch/i },
+  { id: "dinner", one: "Dinner / main", many: "Dinners / mains", re: /\b(dinner|mains?\b|supper|evening meal)/i },
+  { id: "dessert", one: "Dessert", many: "Desserts", re: /\b(dessert|pudding|puds?\b)/i },
+  { id: "snack", one: "Snack", many: "Snacks", re: /\bsnack/i },
 ];
+const EXTRA_TYPES = ["dessert", "snack"];
+// A picked meal type wins; otherwise the type is read from words in the meal name.
+const typesOf = (m) => (m.type ? [m.type] : MEAL_TYPES.filter((t) => t.re.test(m.name)).map((t) => t.id));
 
-// Soft checks before making the list: too many meals for the trip, and missing meal types.
+// Soft checks before making the list: too many main meals for the trip (desserts and snacks don't count), and missing meal types.
 export const mpaWarnings = (meals, days) => {
   const d = days || 1;
   const max = d * 3;
   const out = [];
-  if (meals.length > max) out.push({ id: "count", text: `${meals.length} meals are picked for a ${d}-day trip, which allows up to ${max} (3 a day).${days ? "" : " Trip duration isn't set, so 1 day is used. Set it in Additional boat details."}` });
-  const missing = MEAL_TYPES.filter(([, re]) => !meals.some((m) => re.test(m.name))).map(([n]) => n);
-  if (meals.length && missing.length) out.push({ id: "types", text: `No ${missing.join(", ").toLowerCase()} found in the meal names.` });
+  const main = meals.filter((m) => { const t = typesOf(m); return !t.length || t.some((x) => !EXTRA_TYPES.includes(x)); }).length;
+  const extras = meals.length - main;
+  if (main > max) out.push({ id: "count", text: `${main} meals${extras ? ` (not counting ${extras} desserts and snacks)` : ""} are picked for a ${d}-day trip, which allows up to ${max} (3 a day).${days ? "" : " Trip duration isn't set, so 1 day is used. Set it in Additional boat details."}` });
+  const found = new Set(meals.flatMap(typesOf));
+  const missing = MEAL_TYPES.filter((t) => !found.has(t.id)).map((t) => t.many);
+  if (meals.length && missing.length) out.push({ id: "types", text: `No ${missing.join(", ").toLowerCase()} found. Set a meal's type when editing it, or use the word in its name.` });
   return out;
 };
 

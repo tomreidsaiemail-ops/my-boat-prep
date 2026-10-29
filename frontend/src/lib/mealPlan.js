@@ -1,4 +1,4 @@
-// Built-in 7-day Meal Plan (3 meals a day). Format read by the MPA: meal name, then an indented
+// Built-in 7-day Meal Plan (3 meals a day, plus a dessert and a snack each day). Format read by the MPA: meal name, then an indented
 // [recipe] line, then indented ingredients. Amounts are for one adult.
 const DAYS = [
   [
@@ -38,8 +38,30 @@ const DAYS = [
   ],
 ];
 
-export const MEAL_PLAN_ITEMS = DAYS.flat().flatMap(([meal, recipe, ingredients], m) => [
-  { label: `${m + 1}. ${meal}` },
+// Desserts and snacks come after the 21 main meals so the original item ids stay the same.
+const EXTRAS = [
+  ["Day 1 Dessert: Chocolate brownie with cream", "Warm brownie slices in a pan, serve with a spoon of cream", ["1 brownie", "30 ml cream"]],
+  ["Day 2 Dessert: Tinned peaches and custard", "Warm custard gently, pour over peaches", ["1/2 can peaches", "100 ml custard"]],
+  ["Day 3 Dessert: Rice pudding with jam", "Heat rice pudding, top with a spoon of jam", ["1/2 can rice pudding", "1 tbsp jam"]],
+  ["Day 4 Dessert: Grilled bananas with chocolate", "Split bananas, add chocolate pieces, wrap in foil and warm on the grill or in a pan", ["1 banana", "20g chocolate"]],
+  ["Day 5 Dessert: Fruit salad with yoghurt", "Chop fruit, serve with yoghurt", ["1 orange", "1 kiwifruit", "100g yoghurt"]],
+  ["Day 6 Dessert: Pikelets with butter and honey", "Warm pikelets in a dry pan, spread with butter and honey", ["2 pikelets", "10g butter", "1 tbsp honey"]],
+  ["Day 7 Dessert: Ice cream and chocolate sauce", "Scoop ice cream straight from the freezer, drizzle with sauce", ["150 ml ice cream", "1 tbsp chocolate sauce"]],
+  ["Day 1 Snack: Apple and peanut butter", "Slice apple, dip in peanut butter", ["1 apple", "1 tbsp peanut butter"]],
+  ["Day 2 Snack: Trail mix", "Mix nuts and dried fruit in a cup", ["40g nuts", "30g raisins"]],
+  ["Day 3 Snack: Cheese and crackers", "Slice cheese, serve on crackers", ["40g crackers", "30g cheese"]],
+  ["Day 4 Snack: Muesli bar and an orange", "Hand out from the snack locker", ["1 muesli bar", "1 orange"]],
+  ["Day 5 Snack: Hummus and carrot sticks", "Cut carrot into sticks, serve with hummus", ["1 carrot", "50g hummus"]],
+  ["Day 6 Snack: Ginger biscuits", "Good for queasy tummies, keep within reach", ["4 ginger biscuits"]],
+  ["Day 7 Snack: Popcorn", "Pop the corn in a lidded pan with a little oil, add salt", ["30g popcorn kernels", "1 tsp oil"]],
+];
+const TYPES = [["dessert", /Dessert/], ["snack", /Snack/], ["breakfast", /Breakfast/], ["lunch", /Lunch/], ["dinner", /Dinner/]];
+const typeOf = (meal) => TYPES.find(([, re]) => re.test(meal))[0];
+const toItems = (meals, from) => meals.flatMap(([meal, recipe, ingredients], m) => [
+  { label: `${from + m + 1}. ${meal}`, meal_type: typeOf(meal) },
   { label: `[${recipe}]`, indent: true },
   ...ingredients.map((label) => ({ label, indent: true })),
 ]);
+const MAIN_ITEMS = toItems(DAYS.flat(), 0);
+export const MEAL_PLAN_BASE_LEN = MAIN_ITEMS.length;
+export const MEAL_PLAN_ITEMS = [...MAIN_ITEMS, ...toItems(EXTRAS, DAYS.flat().length)];

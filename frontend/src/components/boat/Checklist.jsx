@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, Flag, IndentDecre
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
 import { MpaText } from "@/components/boat/MpaBadges";
+import { MealTypeBadge } from "@/components/boat/MealTypePicker";
 
 const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
@@ -37,6 +38,7 @@ const Row = ({ item, text, info, onToggle, onEdit, onDelete, emergency, tools, n
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
           <span className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} data-testid={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></span>
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
+          {item.meal_type && !info?.child && <MealTypeBadge id={item.id} type={item.meal_type} />}
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
         </span>
       </button>
