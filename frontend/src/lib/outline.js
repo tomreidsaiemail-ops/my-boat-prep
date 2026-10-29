@@ -96,11 +96,13 @@ export const removeOutline = (items, id) => {
 };
 
 export const isHeadingLine = (label) => /^\d+[.)]\s+\S/.test(label);
+export const ITEM_MAX = 1000;
 
 // Pasted lines → items; with autoIndent, lines after a numbered heading become its sub-items.
 export const linesToItems = (lines, autoIndent, base) => {
   let inGroup = false;
-  return lines.map((label, i) => {
+  return lines.map((raw, i) => {
+    const label = raw.slice(0, ITEM_MAX);
     const heading = isHeadingLine(label);
     if (heading) inGroup = true;
     return { id: base + i, label, checked: false, ...(autoIndent && inGroup && !heading ? { indent: true } : {}) };

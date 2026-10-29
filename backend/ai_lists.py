@@ -49,7 +49,7 @@ def to_lines(text: str) -> list:
     lines, seen, n = [], set(), 0
     for g in groups if isinstance(groups, list) else []:
         heading = str((g or {}).get("heading", "")).strip()[:80]
-        items = [i for i in dict.fromkeys(str(x).strip()[:120] for x in g.get("items", [])) if i and i.lower() not in seen] if heading else []
+        items = [i for i in dict.fromkeys(str(x).strip()[:1000] for x in g.get("items", [])) if i and i.lower() not in seen] if heading else []
         if not items:
             continue
         n += 1
@@ -133,7 +133,7 @@ def parse_suggestions(text: str, headings: dict, existing: set) -> list:
     raw = json.loads(match.group(0)).get("suggestions", [])
     out, seen = [], set(existing)
     for s in raw if isinstance(raw, list) else []:
-        item = str((s or {}).get("item", "")).strip()[:120]
+        item = str((s or {}).get("item", "")).strip()[:1000]
         if not item or item.lower() in seen:
             continue
         seen.add(item.lower())

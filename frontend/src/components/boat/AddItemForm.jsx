@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ITEM_MAX } from "@/lib/outline";
 
 export const SettingToggle = ({ checked, onChange, label, testId }) => (
   <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold text-[var(--navy)]" data-testid={testId}>
@@ -33,7 +34,7 @@ export const AddItemForm = ({ placeholder, onAdd, ordering, onOrderingChange, pr
       )}
       {alert && <div role="alert" data-testid="add-item-alert" className="mbp-pop rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm font-bold text-amber-900">{alert}</div>}
       <div className="flex gap-2">
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder}
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} maxLength={ITEM_MAX}
           className="field-input flex-1" data-testid="add-item-input" />
         <button type="submit" className="btn-solid px-6" data-testid="add-item-submit-btn">Add</button>
       </div>

@@ -57,7 +57,7 @@ import { DeleteGroupDialog } from "@/components/boat/DeleteGroupDialog";
 import { MealTypePicker } from "@/components/boat/MealTypePicker";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
+import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 
@@ -516,7 +516,7 @@ export default function BoatPrep({ boatId, boats }) {
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
-      <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item"
+      <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
