@@ -1,4 +1,5 @@
 // Marine Magic Provisioning Assistant: meal plan parsing and the unified shopping list.
+import { withoutYouTube } from "@/lib/youtube";
 const BRACKET = /^\s*\[.*\]\s*$/s;
 const UNITS = {
   g: ["g", 1], gram: ["g", 1], grams: ["g", 1], gr: ["g", 1], kg: ["g", 1000], kgs: ["g", 1000],
@@ -20,7 +21,7 @@ const tidy = (s) => String(s || "").replace(/^\s*\d+[.)]\s*/, "").trim();
 
 export const parseMeals = (items = []) => groupsOf(items)
   .filter((g) => g.length >= 2 && g[1].indent && BRACKET.test(g[1].label || ""))
-  .map((g) => ({ name: tidy(g[0].label), type: g[0].meal_type, recipe: g[1].label.trim().slice(1, -1).trim(), ingredients: g.slice(2).map((i) => (i.label || "").trim()).filter(Boolean) }))
+  .map((g) => ({ name: tidy(g[0].label), type: g[0].meal_type, recipe: g[1].label.trim().slice(1, -1).trim(), ingredients: g.slice(2).map((i) => withoutYouTube(i.label)).filter(Boolean) }))
   .filter((m) => m.name);
 
 // A meal is a top-level item whose first sub-item is a [recipe] line.
@@ -178,7 +179,7 @@ const ingredientRows = (lists, portions, stock, rules) => {
     n += 1;
     meals.push({ n, name: m.name, src: l.tag });
     m.ingredients.forEach((raw) => {
-      const p = parseQty(raw);
+      const p = parseQty(withoutYouTube(raw));
       const k = keyOf(p.name);
       if (!k) return;
       const r = rows.get(k) || { name: p.name.charAt(0).toUpperCase() + p.name.slice(1), amounts: {}, src: new Set(), meals: new Set() };
@@ -273,7 +274,7 @@ export const buildShopping = ({ lists, adults, children, days, stock, provisions
   const multi = lists.length > 1;
   const { meals, items } = ingredientRows(lists, portions, stock, rules);
   const keys = new Set(items.map((i) => keyOf(itemName(i.base))));
-  const extra = provisions.filter((p) => !keys.has(keyOf(p)));
+  const extra = provisions.map(withoutYouTube).filter((p) => p && !keys.has(keyOf(p)));
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
   const onBoard = (areas = [], subs = []) => ({ ...(areas.length ? { areas } : {}), ...(subs.length ? { subs } : {}) });

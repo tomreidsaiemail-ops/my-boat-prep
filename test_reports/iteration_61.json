@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only test of YouTube link rendering (LinkedText/splitYouTube) on the Pro boat, with seeded lists and Playwright on desktop and 390px mobile. All 8 requested scenarios pass. (1) Checklist items render a red 'YouTube' pill with an icon, plus text before and after the link: https watch, youtu.be without a protocol and with a trailing '.]', shorts, and 2 links in one item (m.youtube.com + youtu.be). href is normalised to https://, target=_blank, rel='noopener noreferrer', and title shows the full URL. Trailing punctuation stays outside the link. An item added through the add-item-input also gets a link. (2) Clicking a link opens a new tab with the correct URL, does not tick the item (aria-checked stays false) and opens no dialog. Clicking a plain row still ticks it. (3) https://example.com stays plain text, and plain items are unchanged. (4) Meal list '[...]' sub-items and ingredient rows render links. The generated MPA row 'Basil <url>' renders the link next to the [1] meal-ref badge. (5) Crew view (beta user added as crew of the Pro boat) shows voyage-notes-text with voyage-notes-youtube-link-1/-3. The new tab opens, and the example.com text stays plain. (6) The Edit dialog shows the raw text. (7) Export Current preview shows raw URLs. (8) 390px: no horizontal overflow (scrollWidth 390) and the pills wrap. MPA unit tests: node /app/tests/mpa_bidir_unit.mjs gives 28/28 (the comma-in-brackets edge case is fixed). 1 functional gap found: a URL inside an ingredient breaks MPA matching (see action items).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "MPA build with a YouTube URL in an ingredient line", "issue": "mpa.js treats the URL as part of the ingredient name. 'Basil https://youtu.be/basil99' gets no '· 1 on board' badge even though 'Basil' is in a food area; plain 'Basil' does get it. 'Basil 10g <url>' does not merge with 'Basil 10g' from another meal and its quantity is not normalised ('Basil – 10 g'). The URL is also sent to /api/ai/mpa/provisions as part of the name. Reproduced in /app/tests/yt_mpa_unit.mjs and in the UI.", "affected_selectors": ["mpa-text-{id}", "mpa-onboard-*"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/tests/yt_links_seed.py", "/app/tests/yt_mpa_unit.mjs", "/app/tests/mpa_bidir_unit.mjs"],
+  "action_items": [
+    "Medium: in mpa.js, strip YouTube URLs from the ingredient name before parseQty/keying/matching/provisions (e.g. reuse the YT regex from LinkedText). Keep the URL on the display base if you want the link shown. Then 'Basil 10g https://youtu.be/x' matches and merges like 'Basil 10g'.",
+    "Low: the link <a> is rendered inside the row's <button role=checkbox> (Checklist.jsx item-text). This is invalid HTML (interactive content inside a button). It works in Chromium (tested), but Firefox and some WebKit versions may send the click to the button and not follow the link. Consider rendering the text outside the button, or handling it with window.open in the onClick.",
+    "Low: the YT regex has no left boundary, so 'notyoutube.com/watch?v=1' links as https://youtube.com/watch?v=1 with 'not' left as text. Add (?<![\\w.]) or \\b before the host.",
+    "Cosmetic: the data-testid index is the part index, not a link counter (e.g. -link-1 for the first link after text, -link-0 and -link-2 for two links). This is fine for testing but not sequential."
+  ],
+  "critical_code_review_comments": [
+    "LinkedText: splitYouTube logic is correct, including null and empty text. Trailing ')' is always trimmed, so a URL that really ends with ')' would lose it. This is rare for YouTube, so it is acceptable.",
+    "Channel and handle URLs (youtube.com/@chef, /c/, /playlist?list=) are not linked. This may be intended; mention it if the user expects all YouTube URLs to link."
+  ],
+  "updated_files": ["/app/tests/yt_links_seed.py (new)", "/app/tests/yt_mpa_unit.mjs (new)"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of requested scenarios (8/8); 1 extra MPA matching gap"},
+  "seed_data_creation": "The Pro boat was seeded with 'TEST_YT Links' and 'TEST_YT Meals' lists, voyage notes, beta added as crew, and a Galley area. It was then fully restored from /tmp/pro_boat_61.json: crew [], voyage_notes '', and no TEST_YT lists or MPA list remain.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run python3 /app/tests/yt_links_seed.py seed (backup /tmp/pro_boat_61.json; delete it first for a fresh backup) and 'restore' to undo. List ids: custom_9000000000061 (links) and custom_9000000000062 (meals). Crew view: session test_session_beta_1, then pick boat-option-c_test-user-pro_main. node /app/tests/yt_mpa_unit.mjs shows the URL-in-ingredient MPA gap ('with url' row has no areas)."
+}

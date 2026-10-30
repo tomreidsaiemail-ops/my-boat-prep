@@ -1,6 +1,7 @@
 // Unit check of bidirectional synonym matching in mpa.js (iteration 59). Run: node /app/tests/mpa_bidir_unit.mjs
 import fs from "fs";
-const src = fs.readFileSync("/app/frontend/src/lib/mpa.js", "utf8");
+fs.copyFileSync("/app/frontend/src/lib/youtube.js", "/tmp/youtube_copy.mjs");
+const src = fs.readFileSync("/app/frontend/src/lib/mpa.js", "utf8").replace("@/lib/youtube", "/tmp/youtube_copy.mjs");
 fs.writeFileSync("/tmp/mpa_copy.mjs", src);
 const m = await import("/tmp/mpa_copy.mjs");
 const syn = [{ label: "1. Salt" }, { label: "Table Salt", indent: true }, { label: "Sea salt", indent: true }];

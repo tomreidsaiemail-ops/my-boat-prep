@@ -1,33 +1,29 @@
 import { Fragment } from "react";
 import { Youtube } from "lucide-react";
+import { splitYouTube } from "@/lib/youtube";
 
-// Raw YouTube addresses (youtube.com watch/shorts/live/embed links and youtu.be short links), with or without https://
-const YT = /((?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?\S+|shorts\/\S+|live\/\S+|embed\/\S+)|youtu\.be\/\S+))/gi;
-const TRAIL = /[.,;:!?)\]'"]+$/;
-
-export const splitYouTube = (text) => {
-  const out = [];
-  let last = 0;
-  String(text ?? "").replace(YT, (match, _g, at) => {
-    const url = match.replace(TRAIL, "");
-    if (at > last) out.push(text.slice(last, at));
-    out.push({ url: /^https?:\/\//i.test(url) ? url : `https://${url}` });
-    last = at + url.length;
-    return match;
-  });
-  if (last < String(text ?? "").length) out.push(String(text).slice(last));
-  return out;
+// Shown inside the row's tick button, so it's a span that opens the video itself rather than a nested <a>.
+const open = (e, url) => {
+  e.preventDefault();
+  e.stopPropagation();
+  window.open(url, "_blank", "noopener,noreferrer");
 };
 
 export const LinkedText = ({ text, testId }) => {
   const parts = splitYouTube(text);
   if (!parts.some((p) => typeof p !== "string")) return text;
-  return parts.map((p, i) => (typeof p === "string" ? <Fragment key={i}>{p}</Fragment> : (
-    <a key={i} href={p.url} target="_blank" rel="noopener noreferrer" title={p.url}
-      onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-      className="mx-0.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 align-middle text-xs font-bold text-red-700 underline-offset-2 hover:underline"
-      data-testid={testId ? `${testId}-youtube-link-${i}` : undefined}>
-      <Youtube className="h-3.5 w-3.5" />YouTube
-    </a>
-  )));
+  let n = 0;
+  return parts.map((p, i) => {
+    if (typeof p === "string") return <Fragment key={i}>{p}</Fragment>;
+    n += 1;
+    return (
+      <span key={i} role="link" tabIndex={0} title={p.url} data-href={p.url}
+        onClick={(e) => open(e, p.url)} onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && open(e, p.url)}
+        className="mx-0.5 inline-flex cursor-pointer items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 align-middle text-xs font-bold text-red-700 underline-offset-2 hover:underline"
+        data-testid={testId ? `${testId}-youtube-link-${n}` : undefined}>
+        <Youtube className="h-3.5 w-3.5" />YouTube
+      </span>
+    );
+  });
 };
