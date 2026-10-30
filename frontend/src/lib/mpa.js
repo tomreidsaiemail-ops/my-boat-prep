@@ -137,17 +137,22 @@ export const matchRules = ({ synonyms = [], noise = [] } = {}) => {
   return { noise: nz, synonyms: map };
 };
 const NO_RULES = matchRules();
-const wideKeys = (name, rules) => splitParts(name).flatMap((part) => {
+// Everything a name stands for: its own key, plus every synonym group whose word it is or contains as whole words
+// (so "Salt", "Sea salt" and "Pinch of salt" all reach the Salt group). Matching is two-way: names match when these overlap.
+const conceptsOf = (name, rules) => splitParts(name).flatMap((part) => {
   const k = normKey(part, rules.noise);
-  return k ? [k, ...(rules.synonyms.get(k) || [])] : [];
+  if (!k) return [];
+  const padded = ` ${k} `;
+  const groups = [...rules.synonyms].filter(([w]) => padded.includes(` ${w} `)).map(([, g]) => g);
+  return [k, ...groups];
 });
 // Food-area items that might do instead (only when the item isn't on board under its own name).
 const subsFor = (k, name, stock, rules) => {
   if (stock[k]) return [];
   const r = rules || NO_RULES;
-  const want = new Set(wideKeys(name, r));
+  const want = new Set(conceptsOf(name, r));
   return Object.entries(stock)
-    .filter(([sk, st]) => sk !== k && splitParts(st.name).some((part) => want.has(normKey(part, r.noise))))
+    .filter(([sk, st]) => sk !== k && conceptsOf(st.name, r).some((c) => want.has(c)))
     .map(([, st]) => ({ name: st.name, areas: st.areas }));
 };
 
