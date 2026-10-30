@@ -1,4 +1,5 @@
 import { Archive, Forward } from "lucide-react";
+import { LinkedText } from "@/components/boat/LinkedText";
 import { mpaLabel } from "@/lib/mpa";
 
 export const SourceTag = ({ tag }) => (
@@ -39,10 +40,10 @@ export const SubBadge = ({ id, subs }) => {
 
 export const MpaText = ({ item, text }) => {
   const m = item.mpa;
-  if (!m || text !== mpaLabel(m)) return text;
+  if (!m || text !== mpaLabel(m)) return <LinkedText text={text} testId={`checklist-item-${item.id}`} />;
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-x-1.5 gap-y-1" data-testid={`mpa-text-${item.id}`}>
-      <span className="min-w-0 break-words">{m.base}</span>
+      <span className="min-w-0 break-words"><LinkedText text={m.base} testId={`checklist-item-${item.id}`} /></span>
       {m.prov && <ProvBadge id={item.id} />}
       {m.areas?.length > 0 && <OnBoardBadge id={item.id} areas={m.areas} />}
       {m.subs?.length > 0 && <SubBadge id={item.id} subs={m.subs} />}

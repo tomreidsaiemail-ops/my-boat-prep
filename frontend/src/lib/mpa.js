@@ -153,7 +153,7 @@ export const matchRules = ({ synonyms = [], noise = [] } = {}) => {
 const NO_RULES = matchRules();
 // Everything a name stands for: its own key, plus every synonym group whose word it is or contains as whole words
 // (so "Salt", "Sea salt" and "Pinch of salt" all reach the Salt group). Matching is two-way: names match when these overlap.
-const conceptsOf = (name, rules) => splitParts(name).flatMap((part) => {
+const conceptsOf = (name, rules) => splitParts(rules.noise.spans.reduce((x, re) => x.replace(re, " "), String(name || ""))).flatMap((part) => {
   const k = normKey(part, rules.noise);
   if (!k) return [];
   const padded = ` ${k} `;

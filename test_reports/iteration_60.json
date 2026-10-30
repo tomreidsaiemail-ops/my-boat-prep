@@ -1,0 +1,24 @@
+{
+  "summary": "Tested the noise-pattern hardening in mpa.js (compileNoise/noiseRules/stripNoise) using the production-like private admin lists. I created them through the admin API: 'Admin - Food Synonyms' has 1. Salt / 2. Tomatoes / 4. Pepper groups with indented items, and 'Admin - Food Noise Words' has the full production list including '(.*)', '.*' and '[a-z]+'. GET /api/mpa/rules returned 14 synonym items (11 indented) and 25 noise items. Node unit check (/app/tests/mpa_bidir_unit.mjs, extended): 27/28 pass. The 11 tests from iteration 59 still pass. The synonym map is built with 12 keys, so '(.*)' no longer wipes names. '(.*)' compiles to the span /\\(.*?\\)/gi. '.*', '[a-z]+' and '(oops' are skipped. All requested pairs match. Exact matches show the solid badge, and the non-food area gives no badge. 1 edge-case failure: a comma inside brackets (see below). UI on the Pro boat (Playwright, aisles unticked, provisions mocked): P1: 'Salt 1 tsp' -> dashed sub badge 'Sea Salt · Galley Cupboard 1'. 'Tomatoes (finely chopped) 200g' -> 'Tinned plum tomatoes 400g'. 'Ground black pepper' -> 'White Pepper'. 'Fresh peas 200g' -> 'Frozen peas'. '2 Crisps' -> solid mpa-onboard badge, 'Crisps – 5 · 1 on board' (6 minus 1). P2: 'Sea salt 1 tsp' -> sub badge 'Salt'. P3: Salt and Sea Salt only in the non-food area 'Bosun Locker' -> no badge on either row. The rules were cached in localStorage mbp_mpa_rules. The production bug is fixed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/tests/mpa_bidir_unit.mjs", "/app/tests/mpa_bidir_seed.py", "/app/tests/mpa_bidir_ui.py", "/app/tests/mpa_noise_lists.py"],
+  "action_items": [
+    "Minor/optional: splitParts (split on , & and) runs BEFORE span noise is stripped in conceptsOf. So 'Tomatoes (finely chopped, drained) 200g' is split into 'Tomatoes (finely chopped' and 'drained)'. The '\\(.*?\\)' span then never matches, the key becomes 'tomatoes chopped', and there is no sub badge against 'Tinned plum tomatoes'. Fix: run the noise.spans replacement on the whole name before splitParts (e.g. in conceptsOf: splitParts(applySpans(name))). Reproduced in mpa_bidir_unit.mjs (the 'P EDGE' case)."
+  ],
+  "critical_code_review_comments": [
+    "compileNoise: patterns go to the 'patterns' bucket, are not anchored, and drop a token if they match anywhere in it. For example, '[0-9]+' drops any token that contains a digit, such as 'b12' or '7up'. This is acceptable for food names. Anchoring with ^...$ would be stricter.",
+    "The SAFE_WORD check only tests 'salt'. A pattern like '[a-r]+' or 'sa' would pass and could still remove real words. This is acceptable as a heuristic. Testing a few more sample words would make it more robust.",
+    "keyOf only makes the last word singular, so 'tomatoes chopped' never reaches the 'tomato' group. This is only relevant when noise stripping leaves extra words behind."
+  ],
+  "updated_files": ["/app/tests/mpa_bidir_unit.mjs (extended with production lists)", "/app/tests/mpa_bidir_seed.py (scenarios P1-P3, non-food area)", "/app/tests/mpa_noise_lists.py (new: create/delete the production-like admin lists)"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of requested scenarios (unit 27/28: only the extra edge case fails)"},
+  "seed_data_creation": "The Pro boat was seeded with scenarios P1/P2/P3, then restored from /tmp/pro_boat_59.json (fresh backup). Both private admin lists were deleted, and GET /api/admin/template-lists returns [].",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: python3 /app/tests/mpa_noise_lists.py create|delete (production-like admin lists, via admin Bearer). Then python3 /app/tests/mpa_bidir_seed.py seed P1|P2|P3 (delete /tmp/pro_boat_59.json first so a fresh backup is taken; 'restore' to undo). Then run the body of mpa_bidir_ui.py in browser_automation. Unit check: node /app/tests/mpa_bidir_unit.mjs (expects 1 FAIL 'P EDGE' until the comma-in-brackets fix)."
+}

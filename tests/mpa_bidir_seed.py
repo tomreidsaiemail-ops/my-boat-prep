@@ -29,7 +29,12 @@ SC = {
     "S3": (["Table salt"], ["Sea Salt 500g"], []),
     "S4": (["Pinch of salt", "Table salt 2"], ["Table Salt"], []),
     "S5": (["Salt 1 tsp", "Olive oil and Dijon Mustard"], ["Sea salt", "Olive oil"], ["Sea salt"]),
+    # iteration 60: production noise list scenarios
+    "P1": (["Salt 1 tsp", "Tomatoes (finely chopped) 200g", "Ground black pepper", "Fresh peas 200g", "2 Crisps"], ["Sea Salt", "Tinned plum tomatoes 400g", "White Pepper", "Frozen peas", "Crisps"], []),
+    "P2": (["Sea salt 1 tsp"], ["Salt"], []),
+    "P3": (["Sea salt 1 tsp", "Salt 1 tsp"], ["Crisps"], []),  # Salt only in the NON-food area
 }
+NONFOOD = {"P3": ["Salt", "Sea Salt"]}
 ingr, food, prov = SC[sys.argv[2]]
 doc = db.user_boats.find_one(KEY)
 if not os.path.exists(BK):
@@ -41,6 +46,9 @@ sets = {"registry": reg, f"data.{LID}": meals, f"list_ts.{LID}": t, "sec_ts.regi
         "data.provisions": [it(59100 + n, p) for n, p in enumerate(prov)], "list_ts.provisions": t}
 sets["areas"] = [{"id": "t59galley", "name": "Galley Cupboard 1", "food": True,
     "items": [{"id": f"t59a{n}", "name": f, "qty": 1, "removed": False} for n, f in enumerate(food)]}]
+if sys.argv[2] in NONFOOD:
+    sets["areas"].append({"id": "t59bosun", "name": "Bosun Locker", "food": False,
+        "items": [{"id": f"t59b{n}", "name": f, "qty": 1, "removed": False} for n, f in enumerate(NONFOOD[sys.argv[2]])]})
 unset = {f"data.{l['id']}": "" for l in doc["registry"] if l.get("kind") == "mpa"}
 db.user_boats.update_one(KEY, {"$set": sets, **({"$unset": unset} if unset else {})})
 print("seeded", sys.argv[2], ingr, food, prov)

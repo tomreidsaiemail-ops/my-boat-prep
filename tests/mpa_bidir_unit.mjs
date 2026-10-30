@@ -34,3 +34,38 @@ check("No rules split: Olive oil and mustard vs Olive oil", ["Olive oil and must
 check("PROV Salt vs Sea salt", ["Rice 200g"], ["Sea salt"], "Sea salt", rules, ["Salt"]);
 check("PROV Sea salt vs Salt", ["Rice 200g"], ["Salt"], "Salt", rules, ["Sea salt"]);
 console.log(`\n${pass} passed, ${fail} failed`);
+
+// Iteration 60: production noise list including '(.*)', '.*', '[a-z]+' (compileNoise hardening).
+console.log("\n--- production lists ---");
+const L = (s, indent = false) => ({ label: s, ...(indent ? { indent: true } : {}) });
+const PSYN = [L("1. Salt"), ...["Salt", "Table Salt", "Sea Salt", "Rock Salt", "Garlic Salt"].map((s) => L(s, true)),
+  L("2. Tomatoes"), ...["Tinned Plum Tomatoes", "Fresh Cherry Tomatoes", "Tomato"].map((s) => L(s, true)),
+  L("4. Pepper"), ...["Black Peppercorns", "Ground Black Pepper", "White Pepper"].map((s) => L(s, true))];
+const PNOISE = ["[0-9]+", "[0-9]/[0-9]", "(.*)", "[0-9]g", "[0-9]grams", "[0-9]grammes", "tbsp", "tsp", "fresh", "frozen", "tinned", "canned", "finely", "sliced", "diced", "dried", "of", "or", "pinch", "salted", "unsalted", "large", "small", ".*", "[a-z]+", "(oops"].map((s) => L(s));
+const P = m.matchRules({ synonyms: PSYN, noise: PNOISE });
+console.log("noise:", JSON.stringify({ words: P.noise.words.length, patterns: P.noise.patterns.map(String), spans: P.noise.spans.map(String) }));
+console.log("synonym keys:", [...P.synonyms.keys()].join(" | "));
+const t = (ok, name) => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"} ${name}`); };
+t(P.synonyms.size >= 12, "synonym map built (not wiped by '(.*)')");
+t(P.noise.spans.some((r) => r.source === "\\(.*?\\)"), "'(.*)' compiled to literal-bracket lazy span");
+t(!P.noise.patterns.concat(P.noise.spans).some((r) => r.test("salt") || r.test("")), "no pattern matches '' or 'salt' ('.*','[a-z]+' skipped)");
+check("P Salt 1 tsp vs Sea Salt", ["Salt 1 tsp"], ["Sea Salt"], "Sea Salt", P);
+check("P Sea salt 1 tsp vs Salt", ["Sea salt 1 tsp"], ["Salt"], "Salt", P);
+check("P Tomatoes (finely chopped) 200g vs Tinned plum tomatoes 400g", ["Tomatoes (finely chopped) 200g"], ["Tinned plum tomatoes 400g"], "Tinned plum tomatoes 400g", P);
+check("P Ground black pepper vs White Pepper", ["Ground black pepper"], ["White Pepper"], "White Pepper", P);
+check("P Fresh peas 200g vs Frozen peas", ["Fresh peas 200g"], ["Frozen peas"], "Frozen peas", P);
+check("P Garlic salt vs Rock Salt", ["Garlic salt"], ["Rock Salt"], "Rock Salt", P);
+check("P Salted butter 20g vs Sea Salt -> none", ["Salted butter 20g"], ["Sea Salt"], null, P);
+check("P Tomatoes vs White Pepper -> none", ["Tomatoes 200g"], ["White Pepper"], null, P);
+check("P 1/2 tsp salt vs Sea Salt", ["1/2 tsp salt"], ["Sea Salt"], "Sea Salt", P);
+const exP = check("P exact Sea salt 2 vs Sea Salt -> no sub", ["Sea salt 2"], ["Sea Salt"], null, P);
+t(exP?.mpa.areas?.length === 1, "P exact match keeps solid on-board areas");
+check("P PROV Salt vs Sea Salt", ["Rice 200g"], ["Sea Salt"], "Sea Salt", P, ["Salt"]);
+// non-food area never matches
+const rowsNF = m.buildShopping({ lists: [{ tag: "A", name: "L", meals: [{ name: "Dinner", ingredients: ["Sea salt 1 tsp"] }] }], adults: 1, children: 0, days: 1,
+  stock: m.foodStock([{ id: "b", name: "Bosun locker", food: false, items: [{ id: "x", name: "Salt", qty: 1 }] }]), rules: P });
+const nf = rowsNF.find((x) => x.mpa && /Sea salt/.test(x.mpa.base));
+t(!nf.mpa.subs && !nf.mpa.areas, "P non-food area Salt -> no badge");
+// edge: comma inside brackets (splitParts runs before span stripping)
+check("P EDGE Tomatoes (finely chopped, drained) vs Tinned plum tomatoes", ["Tomatoes (finely chopped, drained) 200g"], ["Tinned plum tomatoes"], "Tinned plum tomatoes", P);
+console.log(`\nTOTAL ${pass} passed, ${fail} failed`);

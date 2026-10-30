@@ -1,3 +1,4 @@
+import { LinkedText } from "@/components/boat/LinkedText";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Loader2, Map as MapIcon, X } from "lucide-react";
@@ -43,7 +44,7 @@ export const VoyageCard = ({ boat, online }) => {
       <h2 className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-tight"><MapIcon className="h-4 w-4" /> Planned voyage</h2>
       {voyage.notes && (
         <>
-          <p className="whitespace-pre-line text-sm leading-relaxed" data-testid="voyage-notes-text">{voyage.notes}</p>
+          <p className="whitespace-pre-line text-sm leading-relaxed" data-testid="voyage-notes-text"><LinkedText text={voyage.notes} testId="voyage-notes" /></p>
           <div className="flex gap-2">
             <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I'm in</Btn>
             <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can't make it</Btn>
