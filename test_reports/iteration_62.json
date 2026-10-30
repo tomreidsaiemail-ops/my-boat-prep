@@ -1,0 +1,28 @@
+{
+  "summary": "Tested the MPA main-word matching fix and the places popover. Both node unit scripts pass (mpa_bidir_unit 37/37, yt_mpa_unit ran fine). Seeded the private 'Admin - Food Synonyms' list (Salt / Peppers / Pepper groups), two food areas and a meal plan on the Pro boat, then generated the MPA Shopping List at 390px and 1920px. The 'Salt and pepper' sub badge lists Sea Salt x2 areas, Table Salt, Rock Salt and Ground Black Pepper with +4, and Chilli pickle is NOT in it. 'Pepper' only suggests Ground Black Pepper, with no +N and no popover. The 'Sea Salt' on-board badge shows +1 and its popover lists both cupboards. Single-place badges are plain spans. Tapping a badge or a popover option never ticks the row. Tapping the row text still ticks and unticks it. Escape closes the popover. At 390px there is no horizontal overflow (scrollWidth 390) and the popover fits (x 72, width 318). One bug: keyboard Enter or Space on a focused badge ticks the row instead of opening the popover.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MpaBadges.jsx PlacesBadge", "issue": "Keyboard activation is broken. The badge is a span with role=button and tabIndex=0 inside the row's toggle <button>. With the badge focused, pressing Enter ticked the row (aria-checked false -> true) and the popover did not open. Pressing Space ticked it again (true -> false), with no popover either. onKeyDown only calls stopPropagation, which does not cancel the parent button's default activation, and the Radix trigger on a span does not open on keys.", "selector": "[data-testid=mpa-sub-{id}], [data-testid=mpa-onboard-{id}]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MPA Shopping List at 390px", "issues": ["The popover's right edge sits exactly on the viewport edge (x 72 + width 318 = 390), so there is no gutter. Add collisionPadding (e.g. 8) to PopoverContent.", "Single-place sub badges are cut off with no way to read the full text on a phone, e.g. 'Ground Black Pepper · Ga...'. The full text is only in the title tooltip, which phones can't show. Consider making single-place truncated badges tappable too, or wrapping the text."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/mpa_bidir_unit.mjs", "/app/tests/yt_mpa_unit.mjs", "/app/tests/mpa_places_seed.py"],
+  "action_items": [
+    "PlacesBadge onKeyDown: for Enter/Space call e.preventDefault() and e.stopPropagation(), then open the popover yourself (controlled open state). Better still, render the badge outside the toggle <button>, because nesting a role=button inside a button is also an a11y problem.",
+    "Optional: add collisionPadding={8} to PopoverContent, and give truncated single-place badges a way to show the full text on mobile."
+  ],
+  "critical_code_review_comments": [
+    "The interactive span is nested in a <button role=checkbox>. Clicks work because of stopPropagation, but keyboard and screen-reader behaviour is broken (see above).",
+    "In PlacesBadge, places.map uses key={p}. Keys are unique today because each entry is 'name · area', but on-board areas with duplicate names would clash."
+  ],
+  "updated_files": ["/app/tests/mpa_places_seed.py (new seed helper)"],
+  "success_rate": {"backend": "N/A", "frontend": "95%"},
+  "seed_data_creation": "python3 /app/tests/mpa_places_seed.py seed creates private list_templates tpl_test62syn 'Admin - Food Synonyms'. On the Pro boat it adds the meal list custom_9000000000062 'TEST_Places Meals' and food areas Galley Cupboard 1 and 2. 'restore' puts the Pro boat back from /tmp/pro_boat_62.json and deletes the template. Everything was restored after testing: /api/mpa/rules is empty again.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run python3 /app/tests/mpa_places_seed.py seed (delete /tmp/pro_boat_62.json first for a fresh backup). Log in with session test_session_pro_1, select custom_9000000000062 in list-selector, then mpa-open-btn -> mpa-make-btn. Expected: Salt and pepper +4 (no Chilli pickle), Pepper single sub, Sea Salt on-board +1. To retest the keyboard fix, focus the mpa-sub-{id} badge, press Enter and check the row's aria-checked does not change. Run 'restore' afterwards."
+}

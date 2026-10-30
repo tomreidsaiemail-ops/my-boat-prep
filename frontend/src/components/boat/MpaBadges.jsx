@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Archive, ChevronDown, Forward } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LinkedText } from "@/components/boat/LinkedText";
@@ -20,31 +21,31 @@ export const ProvBadge = ({ id }) => (
 );
 
 const stop = (e) => e.stopPropagation();
-// Badge showing the first place; with more, tapping it opens the full list (inside the tick button, so taps never tick the row).
+const KEYS = ["Enter", " "];
+// Tapping the badge opens every place in full; it sits inside the tick button, so taps and keys never tick the row.
 const PlacesBadge = ({ testId, title, heading, places, className }) => {
-  const head = (
-    <>
-      <Archive className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">{places[0]}</span>
-    </>
-  );
-  const base = `inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-full px-2 text-[11px] font-bold leading-none text-emerald-800 ${className}`;
-  if (places.length < 2) return <span className={base} title={title} data-testid={testId}>{head}</span>;
+  const [open, setOpen] = useState(false);
+  const onKey = (e) => {
+    if (!KEYS.includes(e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "keydown") setOpen((o) => !o);
+  };
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <span role="button" tabIndex={0} aria-label={`${title}. Show all ${places.length}`} onClick={stop}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
-          className={`${base} cursor-pointer ring-emerald-600 transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2`} data-testid={testId}>
-          {head}
-          <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-700 px-1.5 py-0.5 text-[10px] text-white" data-testid={`${testId}-more`}>+{places.length - 1}<ChevronDown className="h-3 w-3" /></span>
+        <span role="button" tabIndex={0} aria-label={`${title}. Show all`} aria-expanded={open} onClick={stop} onKeyDown={onKey} onKeyUp={onKey}
+          className={`inline-flex h-6 min-w-0 max-w-full cursor-pointer items-center gap-1 rounded-full px-2 text-[11px] font-bold leading-none text-emerald-800 ring-emerald-600 transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2 ${className}`} data-testid={testId}>
+          <Archive className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{places[0]}</span>
+          {places.length > 1 && <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-700 px-1.5 py-0.5 text-[10px] text-white" data-testid={`${testId}-more`}>+{places.length - 1}<ChevronDown className="h-3 w-3" /></span>}
         </span>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto max-w-[85vw] p-3" onClick={stop} data-testid={`${testId}-list`}>
+      <PopoverContent align="start" collisionPadding={8} className="w-auto max-w-[85vw] p-3" onClick={stop} data-testid={`${testId}-list`}>
         <p className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]">{heading}</p>
         <ul className="space-y-1.5">
           {places.map((p, i) => (
-            <li key={p} className="flex items-start gap-2 text-sm font-semibold text-slate-800" data-testid={`${testId}-option-${i}`}>
+            <li key={i} className="flex items-start gap-2 text-sm font-semibold text-slate-800" data-testid={`${testId}-option-${i}`}>
               <Archive className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /><span className="break-words">{p}</span>
             </li>
           ))}
