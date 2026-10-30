@@ -46,10 +46,12 @@ class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
     description: str = Field(default="", max_length=1000)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
+    private: bool = False
 
 
 def _custom_out(d: dict) -> dict:
-    return {"id": d["list_id"], "name": d["name"], "description": d.get("description", ""), "items": d["items"], "created_at": d["created_at"], "updated_at": d["updated_at"]}
+    return {"id": d["list_id"], "name": d["name"], "description": d.get("description", ""), "items": d["items"], "private": bool(d.get("private")),
+            "created_at": d["created_at"], "updated_at": d["updated_at"]}
 
 
 def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[list] = None) -> list:
@@ -90,9 +92,21 @@ async def _check_name(name: str, exclude: Optional[str] = None) -> str:
 
 @router.get("/templates")
 async def get_templates(_: dict = Depends(get_current_user)):
-    docs = await db.list_templates.find({}, {"_id": 0, "updated_by": 0}).to_list(200)
+    # Private admin lists are system lists: they never reach any boat.
+    docs = await db.list_templates.find({"private": {"$ne": True}}, {"_id": 0, "updated_by": 0}).to_list(200)
     return {"templates": {d["list_id"]: {"items": d["items"], "updated_at": d["updated_at"],
                                          **({"custom": True, "name": d["name"], "description": d.get("description", ""), "created_at": d["created_at"]} if d.get("custom") else {})} for d in docs}}
+
+
+MPA_RULE_LISTS = {"synonyms": "admin - food synonyms", "noise": "admin - food noise words"}
+
+
+@router.get("/mpa/rules")
+async def mpa_rules(_: dict = Depends(get_current_user)):
+    """Items of the private admin lists the Provisioning Assistant matches with; empty lists when they don't exist."""
+    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(200)
+    by_name = {d["name"].strip().lower(): d["items"] for d in docs}
+    return {k: [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in by_name.get(n, [])] for k, n in MPA_RULE_LISTS.items()}
 
 
 @router.get("/admin/template-lists")
@@ -106,7 +120,7 @@ async def create_template_list(payload: TemplateListIn, admin: dict = Depends(re
     name = await _check_name(payload.name)
     now = datetime.now(timezone.utc).isoformat()
     doc = {"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "description": payload.description.strip(), "items": _items_from_labels(payload.items),
-           "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
+           "private": payload.private, "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
     await db.list_templates.insert_one({**doc})
     return _custom_out(doc)
 
@@ -119,7 +133,7 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     name = await _check_name(payload.name, exclude=list_id)
     items = _items_from_labels(payload.items, doc["items"])
     changed = items != doc["items"]
-    upd = {"name": name, "description": payload.description.strip(), "items": items, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
+    upd = {"name": name, "description": payload.description.strip(), "items": items, "private": payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
     return _custom_out({**doc, **upd})
 

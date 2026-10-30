@@ -10,6 +10,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [description, setDescription] = useState(initial?.description || "");
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
   const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent));
+  const [priv, setPriv] = useState(!!initial?.private);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const lines = toLines(text);
@@ -22,7 +23,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
     setBusy(true);
     setError("");
     const items = linesToItems(lines, autoIndent, 0).map((i) => ({ label: i.label, indent: !!i.indent }));
-    try { await onSave({ name: name.trim(), description: description.trim(), items }); } catch (err) { setError(errText(err)); setBusy(false); }
+    try { await onSave({ name: name.trim(), description: description.trim(), items, private: priv }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
   return (
@@ -38,11 +39,15 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
       <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} testId="template-list" />
+      <label className="flex items-start gap-2 text-sm font-bold">
+        <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="mt-0.5 h-5 w-5 accent-[var(--navy)]" data-testid="template-list-private-checkbox" />
+        <span>Private to admin user<span className="block text-xs font-normal text-[var(--muted)]">Kept in the Admin panel only, never sent to any boat. Use for system lists like Admin - Food Synonyms and Admin - Food Noise Words.</span></span>
+      </label>
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="template-list-error">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost px-5" onClick={onCancel} disabled={busy} data-testid="template-list-cancel-btn">Cancel</button>
         <button type="submit" className="btn-solid px-5" disabled={busy} data-testid="template-list-save-btn">
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />} {initial ? "Save changes" : "Publish to every boat"}
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} {initial ? "Save changes" : priv ? "Save Admin Use Only" : "Publish to every boat"}
         </button>
       </div>
     </form>

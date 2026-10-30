@@ -103,32 +103,55 @@ export const foodStock = (areas = []) => {
   return stock;
 };
 
-// Synonym groups from the boat's "Food Synonyms" list (from the admin template) and the skipper's own "My Food Synonyms".
-// A heading with items indented under it is one group; a line like "table salt = sea salt" is one too.
-// A word in My Food Synonyms is taken out of the admin groups, so the skipper's list wins.
-const SYN_ADMIN = "food synonyms";
-const SYN_MINE = "my food synonyms";
-const synGroups = (items = []) => groupsOf(items).flatMap((g) => {
-  const words = (g.length > 1 ? g : g[0].label.split(/\s*(?:=|→|->)\s*/)).map((i) => keyOf(tidy(typeof i === "string" ? i : i.label))).filter(Boolean);
+// Wider matching for the food-area check, from the private admin lists "Admin - Food Synonyms" and "Admin - Food Noise Words".
+// Names are split on "and", "&" and commas; noise words and patterns (e.g. fresh, [0-9]g) are removed; synonym groups
+// (a heading with items indented under it, or a line "table salt = sea salt") link names. Groups sharing a word are joined.
+const RE_CHARS = /[[\]\\^$.*+?(){}|]/;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const splitParts = (name) => String(name || "").split(/\s*(?:,|&|\band\b)\s*/i).map((x) => x.trim()).filter(Boolean);
+const noiseRules = (items = []) => items.reduce((acc, i) => {
+  const line = tidy(i.label);
+  if (!line) return acc;
+  if (RE_CHARS.test(line)) {
+    try { acc.patterns.push(new RegExp(line, "i")); } catch { acc.words.push(line.toLowerCase()); }
+  } else acc.words.push(line.toLowerCase());
+  return acc;
+}, { words: [], patterns: [] });
+const stripNoise = (name, noise) => {
+  let x = ` ${String(name).toLowerCase()} `;
+  noise.words.forEach((w) => { x = x.replace(new RegExp(`(^|[^a-z0-9])${escapeRe(w)}(?=$|[^a-z0-9])`, "gi"), "$1 "); });
+  return x.split(/\s+/).filter((t) => t && !noise.patterns.some((re) => re.test(t))).join(" ");
+};
+const normKey = (name, noise) => keyOf(stripNoise(name, noise));
+const synGroups = (items, noise) => groupsOf(items).flatMap((g) => {
+  const words = (g.length > 1 ? g.map((i) => i.label) : g[0].label.split(/\s*(?:=|→|->)\s*/)).map((w) => normKey(tidy(w), noise)).filter(Boolean);
   return words.length > 1 ? [[...new Set(words)]] : [];
 });
-export const foodSynonyms = (registry = [], data = {}) => {
-  const listOf = (name) => registry.filter((l) => l.name.trim().toLowerCase() === name).flatMap((l) => data[l.id] || []);
-  const mine = synGroups(listOf(SYN_MINE));
-  const mineWords = new Set(mine.flat());
+export const matchRules = ({ synonyms = [], noise = [] } = {}) => {
+  const nz = noiseRules(noise);
   const map = new Map();
-  // Admin groups that share a word are joined into one group.
-  synGroups(listOf(SYN_ADMIN)).forEach((g) => {
-    const joined = [...new Set([...g.filter((w) => !mineWords.has(w)), ...g.flatMap((w) => map.get(w) || [])])];
+  synGroups(synonyms, nz).forEach((g) => {
+    const joined = [...new Set([...g, ...g.flatMap((w) => map.get(w) || [])])];
     joined.forEach((w) => map.set(w, joined));
   });
-  mine.forEach((g) => g.forEach((w) => map.set(w, g)));
-  return map;
+  return { noise: nz, synonyms: map };
 };
-// Food-area items that a synonym says could stand in for this one (only when it isn't on board under its own name).
-const subsFor = (k, stock, synonyms) => (stock[k] ? [] : (synonyms?.get(k) || []).filter((w) => w !== k && stock[w]).map((w) => ({ name: stock[w].name, areas: stock[w].areas })));
+const NO_RULES = matchRules();
+const wideKeys = (name, rules) => splitParts(name).flatMap((part) => {
+  const k = normKey(part, rules.noise);
+  return k ? [k, ...(rules.synonyms.get(k) || [])] : [];
+});
+// Food-area items that might do instead (only when the item isn't on board under its own name).
+const subsFor = (k, name, stock, rules) => {
+  if (stock[k]) return [];
+  const r = rules || NO_RULES;
+  const want = new Set(wideKeys(name, r));
+  return Object.entries(stock)
+    .filter(([sk, st]) => sk !== k && splitParts(st.name).some((part) => want.has(normKey(part, r.noise))))
+    .map(([, st]) => ({ name: st.name, areas: st.areas }));
+};
 
-const ingredientRows = (lists, portions, stock, synonyms) => {
+const ingredientRows = (lists, portions, stock, rules) => {
   const rows = new Map();
   let n = 0;
   const meals = [];
@@ -158,7 +181,7 @@ const ingredientRows = (lists, portions, stock, synonyms) => {
     const covered = !!have && Object.keys(r.amounts).length > 0 && Object.keys(amounts).length === 0;
     const amt = Object.entries(amounts).map(([u, q]) => fmtAmount(u, q)).join(" + ");
     const base = `${r.name}${covered ? " – on board already" : amt ? ` – ${amt}` : ""}${covered ? "" : note}`;
-    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), areas: stock[k]?.areas || [], subs: subsFor(k, stock, synonyms), checked: covered };
+    return { base, src: [...r.src], meals: [...r.meals].sort((a, b) => a - b), areas: stock[k]?.areas || [], subs: subsFor(k, r.name, stock, rules), checked: covered };
   });
   return { meals, items };
 };
@@ -226,17 +249,17 @@ export const mpaWarnings = (meals, days) => {
 
 export const itemName = (label) => String(label).split(" – ")[0].trim();
 
-export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], synonyms = null }) => {
+export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], rules = null }) => {
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
-  const { meals, items } = ingredientRows(lists, portions, stock, synonyms);
+  const { meals, items } = ingredientRows(lists, portions, stock, rules);
   const keys = new Set(items.map((i) => keyOf(itemName(i.base))));
   const extra = provisions.filter((p) => !keys.has(keyOf(p)));
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
   const onBoard = (areas = [], subs = []) => ({ ...(areas.length ? { areas } : {}), ...(subs.length ? { subs } : {}) });
   const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals, ...onBoard(i.areas, i.subs) }, i.checked) }));
-  const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas, subsFor(keyOf(p), stock, synonyms)) }, /^none needed/i.test(amounts[p] || "")) }));
+  const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas, subsFor(keyOf(p), p, stock, rules)) }, /^none needed/i.test(amounts[p] || "")) }));
   const mealKey = [{ label: `Meals (${meals.length}) from ${lists.map((l) => l.name).join(", ")}`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
   if (aisleOf) {
     const byAisle = new Map(aisleOrder.map((a) => [a, []]));

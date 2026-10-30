@@ -47,7 +47,7 @@ import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
-import { MPA_KIND, MPA_NAME, foodSynonyms, isMealHead, mealPlanLists } from "@/lib/mpa";
+import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
@@ -517,7 +517,7 @@ export default function BoatPrep({ boatId, boats }) {
         }} />
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
-      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} synonyms={dialog?.type === "mpa" ? foodSynonyms(state.registry, state.data) : null} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
+      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ListPlus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Check, ListPlus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { TemplateListEditor } from "@/components/admin/TemplateListEditor";
 import {
@@ -13,7 +13,10 @@ const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit",
 const Row = ({ t, onEdit, onDelete }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`template-list-row-${t.id}`}>
     <div className="min-w-0">
-      <div className="truncate font-bold" data-testid={`template-list-name-${t.id}`}>{t.name}</div>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="truncate font-bold" data-testid={`template-list-name-${t.id}`}>{t.name}</span>
+        {t.private && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700" data-testid={`template-list-private-${t.id}`}><Check className="h-3 w-3" />Admin use only</span>}
+      </div>
       <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · updated {fmt(t.updated_at)}</div>
     </div>
     <div className="flex shrink-0 gap-1">
@@ -58,6 +61,7 @@ export const TemplateListsAdmin = () => {
     <section className="flex flex-col gap-3" data-testid="template-lists-admin">
       <p className="text-sm leading-relaxed text-[var(--muted)]">
         Create a new list, like "Prep your trip", and it appears on every skipper's boats, Free plan included. Skippers who already have it keep their copy when you edit it, and see an Updated note with "Get latest items".
+        Tick "Private to admin user" for system lists that stay here only: Admin - Food Synonyms and Admin - Food Noise Words drive the Provisioning Assistant's matching.
       </p>
       {editing ? <TemplateListEditor key={editing.id || "new"} initial={editing === "new" ? null : editing} onSave={save} onCancel={() => setEditing(null)} />
         : <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" onClick={() => setEditing("new")} data-testid="template-list-new-btn"><ListPlus className="h-5 w-5" /> New template list</button>}

@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { buildShopping, foodStock, initialsFor, keyOf, mpaWarnings } from "@/lib/mpa";
+import { buildShopping, foodStock, initialsFor, keyOf, matchRules, mpaWarnings } from "@/lib/mpa";
 import { MpaWarningsDialog } from "@/components/boat/MpaWarningsDialog";
 import { AISLE_NAMES, OTHER_AISLE, builtInAisle } from "@/lib/aisles";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
@@ -15,7 +15,19 @@ const Fact = ({ label, value, testId, warn }) => (
   </div>
 );
 
-export const MpaDialog = ({ open, lists, boat, areas, provisions, synonyms, online, onClose, onCreate }) => {
+// Matching rules from the private admin lists; the last copy is kept on the device for offline use.
+const RULES_KEY = "mbp_mpa_rules";
+const useMatchRules = (open, online) => {
+  const [raw, setRaw] = useState(() => { try { return JSON.parse(localStorage.getItem(RULES_KEY)) || {}; } catch { return {}; } });
+  useEffect(() => {
+    if (!open || !online) return;
+    api.get("/mpa/rules").then(({ data }) => { setRaw(data); localStorage.setItem(RULES_KEY, JSON.stringify(data)); }).catch(() => {});
+  }, [open, online]);
+  return useMemo(() => matchRules(raw), [raw]);
+};
+
+export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClose, onCreate }) => {
+  const rules = useMatchRules(open, online);
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
   const [byAisle, setByAisle] = useState(true);
@@ -55,7 +67,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, synonyms, onli
     let aisleOf = null;
     if (byAisle) {
       const all = [];
-      buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, synonyms, aisleOf: (n) => { all.push(n); return OTHER_AISLE; } });
+      buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, rules, aisleOf: (n) => { all.push(n); return OTHER_AISLE; } });
       const ai = {};
       const unknown = all.filter((n) => !builtInAisle(n));
       if (unknown.length && online) {
@@ -64,7 +76,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, synonyms, onli
       }
       aisleOf = (n) => builtInAisle(n) || ai[n] || OTHER_AISLE;
     }
-    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES, synonyms });
+    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES, rules });
     setBusy(false);
     onCreate(items);
   };
