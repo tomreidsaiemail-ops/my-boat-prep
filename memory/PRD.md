@@ -343,3 +343,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Admin synonym groups stay separate (no merging); exact spelling wins over singular/plural, so "Pepper" (black/white) and "Peppers" (bell/chilli) don't cross-match.
 - On-board / "may do instead" badges are tappable (touch + keyboard) and open a popover listing every match with its area; "+N" chip shown when more than one. Taps never tick the row.
 - Existing MPA shopping lists keep old badges until regenerated. Tested iteration_62 + self-test; unit tests /app/tests/mpa_bidir_unit.mjs (37/37).
+- 2026-06: MPA most-specific synonym match (groupsFor scores by matching word count, exact spelling breaks ties): "Red bell pepper" -> Bell Peppers group, never the Pepper (black/white) spice group. User chose no built-in veg list: admin adds Capsicum / Red Pepper / Green Pepper etc. to the "Peppers" group in Admin - Food Synonyms. Unit tests 46/46.

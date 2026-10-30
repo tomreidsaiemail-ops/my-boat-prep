@@ -152,12 +152,14 @@ export const matchRules = ({ synonyms = [], noise = [] } = {}) => {
 const NO_RULES = matchRules();
 const endsWithWord = (s, w) => s === w || s.endsWith(` ${w}`);
 // A name joins a group when it is, or ends with, one of its words ("Sea salt" -> Salt, but "Chilli pickle" is a pickle, not chilli).
-// The exact spelling wins, so "pepper" finds the Pepper group, not "Peppers"; singular/plural is only the fallback.
+// The most specific word wins ("Red bell pepper" -> Bell Peppers, not Pepper); on a tie the exact spelling beats singular/plural,
+// so "pepper" finds the Pepper group and "peppers" the Peppers group.
 const groupsFor = (word, rules) => {
   const key = keyOf(word);
-  const hits = (f) => rules.groups.flatMap((g, i) => (g.some(f) ? [`#${i}`] : []));
-  const exact = hits((w) => endsWithWord(word, w.raw));
-  return exact.length ? exact : hits((w) => endsWithWord(key, w.key));
+  const fit = (w) => (endsWithWord(word, w.raw) ? w.raw.split(" ").length * 2 + 1 : endsWithWord(key, w.key) ? w.key.split(" ").length * 2 : 0);
+  const scores = rules.groups.map((g) => Math.max(0, ...g.map(fit)));
+  const best = Math.max(0, ...scores);
+  return best ? scores.flatMap((sc, i) => (sc === best ? [`#${i}`] : [])) : [];
 };
 // Everything a name stands for: its own key plus its synonym groups. Matching is two-way: names match when these overlap.
 const conceptsOf = (name, rules) => splitParts(rules.noise.spans.reduce((x, re) => x.replace(re, " "), String(name || ""))).flatMap((part) => {

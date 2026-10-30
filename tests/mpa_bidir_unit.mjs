@@ -41,7 +41,7 @@ console.log("\n--- production lists ---");
 const L = (s, indent = false) => ({ label: s, ...(indent ? { indent: true } : {}) });
 const PSYN = [L("1. Salt"), ...["Salt", "Table Salt", "Sea Salt", "Rock Salt", "Garlic Salt"].map((s) => L(s, true)),
   L("2. Tomatoes"), ...["Tinned Plum Tomatoes", "Fresh Cherry Tomatoes", "Tomato"].map((s) => L(s, true)),
-  L("3. Peppers"), ...["Bell Peppers", "Fresh Bell Peppers", "Dried Chilli Flakes", "Chilli Peppers", "Chilli"].map((s) => L(s, true)),
+  L("3. Peppers"), ...["Bell Peppers", "Capsicum", "Fresh Bell Peppers", "Dried Chilli Flakes", "Chilli Peppers", "Chilli"].map((s) => L(s, true)),
   L("4. Pepper"), ...["Black Peppercorns", "Ground Black Pepper", "White Pepper"].map((s) => L(s, true))];
 const PNOISE = ["[0-9]+", "[0-9]/[0-9]", "(.*)", "[0-9]g", "[0-9]grams", "[0-9]grammes", "tbsp", "tsp", "fresh", "frozen", "tinned", "canned", "finely", "sliced", "diced", "dried", "of", "or", "pinch", "salted", "unsalted", "large", "small", ".*", "[a-z]+", "(oops"].map((s) => L(s));
 const P = m.matchRules({ synonyms: PSYN, noise: PNOISE });
@@ -80,4 +80,14 @@ check("P Chilli flakes vs Chilli", ["Chilli flakes"], ["Chilli"], "Chilli", P);
 check("P Red peppers vs Bell peppers", ["Red peppers 2"], ["Bell peppers"], "Bell peppers", P);
 check("P Cherry tomatoes vs Tomato", ["Cherry tomatoes 200g"], ["Tomato"], "Tomato", P);
 check("P Chilli pickle vs Chilli -> none", ["Chilli pickle"], ["Chilli"], null, P);
+// Iteration 63: most specific group word wins.
+check("P Red bell pepper vs Ground black pepper -> none", ["Red bell pepper 1"], ["Ground black pepper"], null, P);
+check("P Ground black pepper vs Red bell pepper -> none", ["Ground black pepper"], ["Red bell pepper"], null, P);
+check("P Salt and pepper vs Red bell pepper -> none", ["Salt and pepper"], ["Red bell pepper"], null, P);
+check("P Red bell pepper vs Bell peppers", ["Red bell pepper 1"], ["Bell peppers"], "Bell peppers", P);
+check("P Red bell pepper vs Capsicum", ["Red bell pepper 1"], ["Capsicum"], "Capsicum", P);
+check("P Capsicum vs White pepper -> none", ["Capsicum 2"], ["White pepper"], null, P);
+check("P Pepper vs Capsicum -> none", ["Pepper"], ["Capsicum"], null, P);
+check("P Black pepper vs White pepper", ["Black pepper 1 tsp"], ["White pepper"], "White pepper", P);
+check("P Cayenne pepper vs Ground black pepper", ["Cayenne pepper"], ["Ground black pepper"], "Ground black pepper", P);
 console.log(`\nTOTAL ${pass} passed, ${fail} failed`);
