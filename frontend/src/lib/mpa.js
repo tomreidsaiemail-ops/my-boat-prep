@@ -106,7 +106,7 @@ export const foodStock = (areas = []) => {
 
 // Wider matching for the food-area check, from the private admin lists "Admin - Food Synonyms" and "Admin - Food Noise Words".
 // Names are split on "and", "&" and commas; noise words and patterns (e.g. fresh, [0-9]g) are removed; synonym groups
-// (a heading with items indented under it, or a line "table salt = sea salt") link names. Groups sharing a word are joined.
+// (a heading with items indented under it, or a line "table salt = sea salt") link names. Each group stays separate.
 const RE_CHARS = /[[\]\\^$.*+?(){}|]/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const splitParts = (name) => String(name || "").split(/\s*(?:,|&|\band\b)\s*/i).map((x) => x.trim()).filter(Boolean);
@@ -137,29 +137,32 @@ const stripNoise = (name, noise) => {
   noise.words.forEach((w) => { x = x.replace(new RegExp(`(^|[^a-z0-9])${escapeRe(w)}(?=$|[^a-z0-9])`, "gi"), "$1 "); });
   return x.split(/\s+/).filter((t) => t && !noise.patterns.some((re) => re.test(t))).join(" ");
 };
-const normKey = (name, noise) => keyOf(stripNoise(name, noise));
+const plain = (s) => String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").trim().split(/\s+/).filter(Boolean).join(" ");
+// The words that name the food: "pepper to taste" -> "pepper".
+const headOf = (s) => s.replace(/\s+(?:to|for|as|if)\s.*$/, "");
+const wordOf = (name, noise) => headOf(plain(stripNoise(name, noise)));
 const synGroups = (items, noise) => groupsOf(items).flatMap((g) => {
-  const words = (g.length > 1 ? g.map((i) => i.label) : g[0].label.split(/\s*(?:=|→|->)\s*/)).map((w) => normKey(tidy(w), noise)).filter(Boolean);
-  return words.length > 1 ? [[...new Set(words)]] : [];
+  const words = (g.length > 1 ? g.map((i) => i.label) : g[0].label.split(/\s*(?:=|→|->)\s*/)).map((w) => wordOf(tidy(w), noise)).filter(Boolean);
+  return words.length > 1 ? [[...new Set(words)].map((raw) => ({ raw, key: keyOf(raw) }))] : [];
 });
 export const matchRules = ({ synonyms = [], noise = [] } = {}) => {
   const nz = noiseRules(noise);
-  const map = new Map();
-  synGroups(synonyms, nz).forEach((g) => {
-    const joined = [...new Set([...g, ...g.flatMap((w) => map.get(w) || [])])];
-    joined.forEach((w) => map.set(w, joined));
-  });
-  return { noise: nz, synonyms: map };
+  return { noise: nz, groups: synGroups(synonyms, nz) };
 };
 const NO_RULES = matchRules();
-// Everything a name stands for: its own key, plus every synonym group whose word it is or contains as whole words
-// (so "Salt", "Sea salt" and "Pinch of salt" all reach the Salt group). Matching is two-way: names match when these overlap.
+const endsWithWord = (s, w) => s === w || s.endsWith(` ${w}`);
+// A name joins a group when it is, or ends with, one of its words ("Sea salt" -> Salt, but "Chilli pickle" is a pickle, not chilli).
+// The exact spelling wins, so "pepper" finds the Pepper group, not "Peppers"; singular/plural is only the fallback.
+const groupsFor = (word, rules) => {
+  const key = keyOf(word);
+  const hits = (f) => rules.groups.flatMap((g, i) => (g.some(f) ? [`#${i}`] : []));
+  const exact = hits((w) => endsWithWord(word, w.raw));
+  return exact.length ? exact : hits((w) => endsWithWord(key, w.key));
+};
+// Everything a name stands for: its own key plus its synonym groups. Matching is two-way: names match when these overlap.
 const conceptsOf = (name, rules) => splitParts(rules.noise.spans.reduce((x, re) => x.replace(re, " "), String(name || ""))).flatMap((part) => {
-  const k = normKey(part, rules.noise);
-  if (!k) return [];
-  const padded = ` ${k} `;
-  const groups = [...rules.synonyms].filter(([w]) => padded.includes(` ${w} `)).map(([, g]) => g);
-  return [k, ...groups];
+  const w = wordOf(part, rules.noise);
+  return w ? [keyOf(w), ...groupsFor(w, rules)] : [];
 });
 // Food-area items that might do instead (only when the item isn't on board under its own name).
 const subsFor = (k, name, stock, rules) => {

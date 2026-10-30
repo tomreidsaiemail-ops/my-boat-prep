@@ -41,13 +41,14 @@ console.log("\n--- production lists ---");
 const L = (s, indent = false) => ({ label: s, ...(indent ? { indent: true } : {}) });
 const PSYN = [L("1. Salt"), ...["Salt", "Table Salt", "Sea Salt", "Rock Salt", "Garlic Salt"].map((s) => L(s, true)),
   L("2. Tomatoes"), ...["Tinned Plum Tomatoes", "Fresh Cherry Tomatoes", "Tomato"].map((s) => L(s, true)),
+  L("3. Peppers"), ...["Bell Peppers", "Fresh Bell Peppers", "Dried Chilli Flakes", "Chilli Peppers", "Chilli"].map((s) => L(s, true)),
   L("4. Pepper"), ...["Black Peppercorns", "Ground Black Pepper", "White Pepper"].map((s) => L(s, true))];
 const PNOISE = ["[0-9]+", "[0-9]/[0-9]", "(.*)", "[0-9]g", "[0-9]grams", "[0-9]grammes", "tbsp", "tsp", "fresh", "frozen", "tinned", "canned", "finely", "sliced", "diced", "dried", "of", "or", "pinch", "salted", "unsalted", "large", "small", ".*", "[a-z]+", "(oops"].map((s) => L(s));
 const P = m.matchRules({ synonyms: PSYN, noise: PNOISE });
 console.log("noise:", JSON.stringify({ words: P.noise.words.length, patterns: P.noise.patterns.map(String), spans: P.noise.spans.map(String) }));
-console.log("synonym keys:", [...P.synonyms.keys()].join(" | "));
+console.log("synonym groups:", P.groups.map((g) => g.map((w) => w.raw).join(",")).join(" | "));
 const t = (ok, name) => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"} ${name}`); };
-t(P.synonyms.size >= 12, "synonym map built (not wiped by '(.*)')");
+t(P.groups.length === 4 && P.groups.flat().length >= 12, "synonym groups built (not wiped by '(.*)')");
 t(P.noise.spans.some((r) => r.source === "\\(.*?\\)"), "'(.*)' compiled to literal-bracket lazy span");
 t(!P.noise.patterns.concat(P.noise.spans).some((r) => r.test("salt") || r.test("")), "no pattern matches '' or 'salt' ('.*','[a-z]+' skipped)");
 check("P Salt 1 tsp vs Sea Salt", ["Salt 1 tsp"], ["Sea Salt"], "Sea Salt", P);
@@ -69,4 +70,14 @@ const nf = rowsNF.find((x) => x.mpa && /Sea salt/.test(x.mpa.base));
 t(!nf.mpa.subs && !nf.mpa.areas, "P non-food area Salt -> no badge");
 // edge: comma inside brackets (splitParts runs before span stripping)
 check("P EDGE Tomatoes (finely chopped, drained) vs Tinned plum tomatoes", ["Tomatoes (finely chopped, drained) 200g"], ["Tinned plum tomatoes"], "Tinned plum tomatoes", P);
+// Iteration 62: main-word matching, separate Peppers / Pepper groups.
+check("P Salt and pepper vs Chilli pickle -> none", ["Salt and pepper"], ["Chilli pickle"], null, P);
+check("P Chilli pickle vs Salt and pepper -> none", ["Chilli pickle"], ["Salt and pepper"], null, P);
+check("P Salt and pepper to taste vs Ground black pepper", ["Salt and pepper to taste"], ["Ground black pepper"], "Ground black pepper", P);
+check("P Pepper vs Bell peppers -> none (separate groups)", ["Pepper 1 tsp"], ["Bell peppers"], null, P);
+check("P Pepper vs Chilli -> none", ["Pepper"], ["Chilli"], null, P);
+check("P Chilli flakes vs Chilli", ["Chilli flakes"], ["Chilli"], "Chilli", P);
+check("P Red peppers vs Bell peppers", ["Red peppers 2"], ["Bell peppers"], "Bell peppers", P);
+check("P Cherry tomatoes vs Tomato", ["Cherry tomatoes 200g"], ["Tomato"], "Tomato", P);
+check("P Chilli pickle vs Chilli -> none", ["Chilli pickle"], ["Chilli"], null, P);
 console.log(`\nTOTAL ${pass} passed, ${fail} failed`);
