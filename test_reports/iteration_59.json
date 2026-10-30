@@ -1,0 +1,21 @@
+{
+  "summary": "Tested two-way synonym matching in the MPA (mpa.js conceptsOf/subsFor) in two ways: a node unit harness that imports the real mpa.js (11/11 pass), and Playwright on the Pro boat across 5 seeded scenarios (all pass). The private admin lists were created through the admin API: 'Admin - Food Synonyms' = '1. Salt' heading with 'Table Salt' and 'Sea salt' indented, and 'Admin - Food Noise Words' = [0-9]g, fresh. GET /api/mpa/rules returned them, and they were cached in localStorage mbp_mpa_rules. Results on the Pro boat: Salt 1 tsp + food 'Sea salt' -> dashed mpa-sub badge 'Sea salt · Galley Cupboard 1'. Sea salt 1 tsp + food 'Salt' -> 'Salt · Galley Cupboard 1'. Table salt + food 'Sea Salt 500g' -> 'Sea Salt 500g · Galley Cupboard 1'. Salt and pepper to taste + Sea salt -> badge. Pinch of salt + Table Salt -> badge. Salted butter 20g + Sea salt -> no badge. Exact matches: '2 Crisps' -> 'Crisps – 5 · 1 on board' and 'Table salt 2' -> 'Table salt – 5 · 1 on board'. Both show the solid mpa-onboard badge with the amount taken off and no sub badge. PROV rows: provision 'Table salt' gets a sub badge with 'Sea salt' on board, and with 'Salt' on board. With no admin lists (rules {synonyms:[],noise:[]}): Salt gets no badge, 'Olive oil and Dijon Mustard' still splits and gets the Olive oil sub badge, and PROV 'Sea salt' (exact) gets the solid on-board badge. No bugs found.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/admin/template-lists", "issue": "Leading spaces in plain string items don't make the item indented. You have to send {label, indent:true}. This is only a note for API users; the editor sends objects."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/tests/mpa_bidir_unit.mjs", "/app/tests/mpa_bidir_seed.py", "/app/tests/mpa_bidir_ui.py"],
+  "action_items": [
+    "Optional/product decision: 'contains as whole words' gives broad possible matches. With the Salt group, recipe 'Garlic salt' matches food 'Sea salt', and recipe 'Salt' matches food 'Salt & vinegar crisps' (because of splitting). These are dashed badges only, so this is acceptable. Mention it to the user if precision matters."
+  ],
+  "critical_code_review_comments": [
+    "mpa.js conceptsOf: group overlap uses Set.has on group array references. This works because matchRules sets the same joined array for every word, and merged groups reassign every word to the merged array. Correct but fragile: if the map ever stores copies, matching quietly breaks. Comparing a group id/index would be safer.",
+    "conceptsOf loops over every synonym word for every part, for each stock item and each row: O(rows x stock x synonyms). Fine for lists of this size. Cache the stock concepts once per buildShopping if the lists get large."
+  ],
+  "updated_files": ["/app/tests/mpa_bidir_unit.mjs (new)", "/app/tests/mpa_bidir_seed.py (new)", "/app/tests/mpa_bidir_ui.py (new, Playwright body)"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "The Pro boat was seeded with mpa_bidir_seed.py (scenarios S1-S5), then restored from /tmp/pro_boat_59.json. The private admin lists were created, then deleted (GET /api/admin/template-lists returns []).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To check the logic quickly, run: node /app/tests/mpa_bidir_unit.mjs (it copies mpa.js to /tmp and imports it). For the UI: python3 /app/tests/mpa_bidir_seed.py seed S1..S5 (restore with 'restore'; delete /tmp/pro_boat_59.json first so a fresh backup is taken). Then run the body of mpa_bidir_ui.py in browser_automation: tick mpa-list-check-custom_9000000000059, untick aisles, mock /api/ai/mpa/provisions, then mpa-warnings-proceed-btn. Admin list items must be sent as {label, indent:true} to be indented."
+}

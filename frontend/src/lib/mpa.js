@@ -109,16 +109,30 @@ export const foodStock = (areas = []) => {
 const RE_CHARS = /[[\]\\^$.*+?(){}|]/;
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export const splitParts = (name) => String(name || "").split(/\s*(?:,|&|\band\b)\s*/i).map((x) => x.trim()).filter(Boolean);
+// Noise patterns must never wipe a whole name: one that matches nothing at all (e.g. "(.*)") is read with literal
+// brackets, so "(.*)" strips "(finely chopped)"; any pattern that still matches an empty or plain word is skipped.
+const SAFE_WORD = "salt";
+const compileNoise = (line) => {
+  let re;
+  try { re = new RegExp(line, "i"); } catch { return null; }
+  if (re.test("") || re.test(SAFE_WORD)) {
+    try { re = new RegExp(line.replace(/\\?([()])/g, "\\$1").replace(/([*+])(?!\?)/g, "$1?"), "i"); } catch { return null; }
+  }
+  return re.test("") || re.test(SAFE_WORD) ? null : re;
+};
 const noiseRules = (items = []) => items.reduce((acc, i) => {
   const line = tidy(i.label);
   if (!line) return acc;
-  if (RE_CHARS.test(line)) {
-    try { acc.patterns.push(new RegExp(line, "i")); } catch { acc.words.push(line.toLowerCase()); }
-  } else acc.words.push(line.toLowerCase());
+  if (!RE_CHARS.test(line)) { acc.words.push(line.toLowerCase()); return acc; }
+  const re = compileNoise(line);
+  // Patterns with literal brackets or spaces cut text spans; the rest drop whole words (e.g. [0-9]g drops "250g").
+  if (re && /\\\(|\s/.test(re.source)) acc.spans.push(new RegExp(re.source, "gi"));
+  else if (re) acc.patterns.push(re);
   return acc;
-}, { words: [], patterns: [] });
+}, { words: [], patterns: [], spans: [] });
 const stripNoise = (name, noise) => {
   let x = ` ${String(name).toLowerCase()} `;
+  noise.spans.forEach((re) => { x = x.replace(re, " "); });
   noise.words.forEach((w) => { x = x.replace(new RegExp(`(^|[^a-z0-9])${escapeRe(w)}(?=$|[^a-z0-9])`, "gi"), "$1 "); });
   return x.split(/\s+/).filter((t) => t && !noise.patterns.some((re) => re.test(t))).join(" ");
 };
