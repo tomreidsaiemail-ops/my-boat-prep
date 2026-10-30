@@ -1,0 +1,26 @@
+{
+  "summary": "Tested private admin template lists, GET /api/mpa/rules and the new MPA wide matching (splitting on and/&/comma, Admin - Food Noise Words, Admin - Food Synonyms). Backend: 24/24 pass (10 new tests plus the template-list regression tests). Frontend: the Admin editor checkbox and button text are right ('Publish to every boat' / 'Save Admin Use Only' / 'Save changes'). The 'Admin use only' badge shows, can be turned off and back on, and is still there after a reload. Private lists don't reach any boat, while the public TEST list does reach the Pro boat. On the Pro boat MPA: Sea salt -> Table Salt, Fresh peas -> Frozen peas 500g, Olive oil and Dijon Mustard -> Olive oil +1 (title also lists Dijon mustard 200grams), Salt & pepper -> Table Salt. All are dashed mpa-sub badges with no deduction and no tick. Exact matches (Olive oil 2 tbsp, 2 Crisps) still get the solid on-board badge and the count deduction (Crisps 6-1=5). The old boat list 'Food Synonyms' (Chips->Crisps) is ignored. Rules are cached in localStorage mbp_mpa_rules and used offline after the private lists were deleted on the server. Once back online with no private lists, only splitting applies (Olive oil badge only). Export Current print text shows 'On board instead: ...'. No bugs found.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "PUT /api/admin/template-lists/{id}", "issue": "'private' defaults to False, so a PUT that leaves out the field quietly makes a private list public and sends it to every boat. The current editor always sends the field, so this is low risk."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [
+    {"screen": "Admin TemplateListEditor", "issues": ["The 'Private to admin user' checkbox is the native browser checkbox and looks smaller than the custom-styled auto-indent toggle just above it. Minor inconsistency."]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_private_template_mpa_rules.py", "/app/backend/tests/test_template_lists_extra.py", "/app/test_reports/pytest/pytest_results_iter58.xml", "/app/tests/mpa_rules_seed.py"],
+  "action_items": [
+    "Optional: on PUT, keep the stored 'private' value when the field is left out (use Optional[bool]=None), so a list can't be made public by accident",
+    "Optional: when a public list is made private, boats that already received it probably keep their copy. Confirm this is the intended behaviour",
+    "Optional: update the stale comment in MpaBadges.jsx SubBadge ('Food Synonyms lists' -> admin list)",
+    "Note: splitParts also splits dish names like 'Mac and cheese' or 'Salt & vinegar crisps'. This only adds possible-match badges, so it is acceptable."
+  ],
+  "critical_code_review_comments": [
+    "templates.py: get_templates filters private with $ne True. mpa_rules only reads custom+private lists and matches names case-insensitively, so public lists with the same names are ignored. Correct.",
+    "mpa.js: subsFor only runs when there is no exact stock key, so exact matches keep priority. The noise patterns are tested per token (unanchored, case-insensitive), so '[0-9]g' also strips tokens like '200grams'. Harmless."
+  ],
+  "updated_files": ["/app/backend/tests/test_private_template_mpa_rules.py (new)", "/app/backend/tests/test_template_lists_extra.py (key-set assertion updated for description/private)", "/app/tests/mpa_rules_seed.py (new)"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Pro boat seeded with /app/tests/mpa_rules_seed.py seed withold, then restored. Test template lists (Admin - Food Synonyms, Admin - Food Noise Words, TEST_Public UI 58) were deleted. The admin template-lists collection is empty again.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run the backend tests with -n 0 (xdist races on the shared rule-list names): pytest -n 0 backend/tests/test_private_template_mpa_rules.py. For the UI: python3 /app/tests/mpa_rules_seed.py seed [withold] (backup /tmp/pro_boat_58.json, restore with 'restore'). Then select_option list-selector custom_9000000000058, click mpa-open-btn, tick only that list, untick the aisles/provisions checks, mock /api/ai/mpa/provisions, click mpa-make-btn and then mpa-warnings-proceed-btn. To call the admin API inside the Pro browser context, use fetch with credentials:'omit' and a Bearer header, because the cookie wins over the header."
+}

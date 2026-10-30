@@ -25,7 +25,7 @@ export const OnBoardBadge = ({ id, areas }) => (
   </span>
 );
 
-// A synonym from the Food Synonyms lists is on board instead, e.g. "Table Salt · Galley Cupboard 1" for a recipe asking for sea salt.
+// A possible match on board, found via the admin food lists, splitting or noise words, e.g. "Table Salt · Galley Cupboard 1" for a recipe asking for sea salt.
 export const SubBadge = ({ id, subs }) => {
   const all = subs.flatMap((x) => x.areas.map((a) => `${x.name} · ${a}`));
   return (

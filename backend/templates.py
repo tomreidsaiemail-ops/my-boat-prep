@@ -46,7 +46,7 @@ class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
     description: str = Field(default="", max_length=1000)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
-    private: bool = False
+    private: Optional[bool] = None
 
 
 def _custom_out(d: dict) -> dict:
@@ -120,7 +120,7 @@ async def create_template_list(payload: TemplateListIn, admin: dict = Depends(re
     name = await _check_name(payload.name)
     now = datetime.now(timezone.utc).isoformat()
     doc = {"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "description": payload.description.strip(), "items": _items_from_labels(payload.items),
-           "private": payload.private, "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
+           "private": bool(payload.private), "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
     await db.list_templates.insert_one({**doc})
     return _custom_out(doc)
 
@@ -133,7 +133,7 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     name = await _check_name(payload.name, exclude=list_id)
     items = _items_from_labels(payload.items, doc["items"])
     changed = items != doc["items"]
-    upd = {"name": name, "description": payload.description.strip(), "items": items, "private": payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
+    upd = {"name": name, "description": payload.description.strip(), "items": items, "private": doc.get("private", False) if payload.private is None else payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
     return _custom_out({**doc, **upd})
 

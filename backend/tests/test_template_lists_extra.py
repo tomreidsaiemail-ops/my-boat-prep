@@ -69,7 +69,7 @@ def test_list_sorted_and_templates_shape(created):
     lst = s(ADMIN).get(f"{BASE_URL}/api/admin/template-lists").json()
     ids = [x["id"] for x in lst]
     assert ids.index(t1["id"]) < ids.index(t2["id"])
-    assert set(lst[0].keys()) == {"id", "name", "items", "created_at", "updated_at"}
+    assert set(lst[0].keys()) == {"id", "name", "description", "items", "private", "created_at", "updated_at"}
     tpls = s(PRO).get(f"{BASE_URL}/api/templates").json()["templates"]
     g = tpls[t1["id"]]
     assert g["custom"] is True and g["name"] == "TEST_Sort1" and g["created_at"] == t1["created_at"] and g["items"] == t1["items"]
