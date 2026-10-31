@@ -342,6 +342,27 @@ async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
     return {"answer": answer, "asks_left": left}
 
 
+class PetKitIn(BaseModel):
+    pets: List[PetIn] = Field(min_length=1, max_length=20)
+    units: str = Field(default="kg", pattern="^(kg|lb)$")
+    days: int = Field(default=0, ge=0, le=365)
+
+
+@router.post("/ai/pet-kit")
+async def pet_kit(body: PetKitIn, user: dict = Depends(require_premium)):
+    pets = [p for p in body.pets if p.type.strip() or p.name.strip()]
+    if not pets:
+        raise HTTPException(status_code=422, detail="Add a pet's type or name first")
+    trip = f" for a {body.days}-day trip" if body.days else ""
+    description = (f"A pet first aid kit to keep on a boat{trip}, for these pets: {'; '.join(pet_text(p, body.units) for p in pets)}. "
+                   "Use one heading per pet (its name and type), plus a 'Shared' heading for items all the pets can use. "
+                   "Size bandages, dressings, muzzles, booties and any doses to each pet's type, breed and weight, and give amounts. "
+                   "Include a vet contact and pet records reminder. Only include medicines that are safe for that animal, and say 'vet-approved' where a vet should prescribe them.")
+    prompt = PROMPT.format(name="First Aid Kit - Pets", description=description)
+    lines, left = await _run(user, "draft", prompt, to_lines, {"name": "First Aid Kit - Pets", "description": description[:300]})
+    return {"lines": lines, "description": description, "drafts_left": left}
+
+
 class AislesIn(BaseModel):
     items: List[str] = Field(min_length=1, max_length=150)
     aisles: List[str] = Field(min_length=1, max_length=20)

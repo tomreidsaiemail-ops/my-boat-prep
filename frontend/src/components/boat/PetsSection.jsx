@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PawPrint, Plus, Trash2 } from "lucide-react";
+import { Loader2, PawPrint, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const PET_TYPES = ["Dog", "Cat", "Bird", "Rabbit", "Fish"];
 const OTHER = "__other";
@@ -56,9 +56,12 @@ const PetCard = ({ pet, n, unit, onChange, onRemove }) => {
 };
 
 // Pets on board, as many as needed; weight follows the boat's units (metres -> kg, feet -> lb).
-export const PetsSection = ({ pets = [], units, onChange }) => {
+export const PetsSection = ({ pets = [], units, onChange, onMakeKit }) => {
   const unit = units === "ft" ? "lb" : "kg";
+  const [busy, setBusy] = useState(false);
+  const named = pets.some((p) => p.type?.trim() || p.name?.trim());
   const update = (i, pet) => onChange(pets.map((p, k) => (k === i ? pet : p)));
+  const makeKit = async () => { setBusy(true); await onMakeKit(); setBusy(false); };
   return (
     <section className="col-span-2 flex flex-col gap-2" data-testid="pets-section">
       <span className="field-label">Pets on board</span>
@@ -66,6 +69,12 @@ export const PetsSection = ({ pets = [], units, onChange }) => {
       {pets.length < 20 && (
         <button type="button" onClick={() => onChange([...pets, newPet()])} className="btn-ghost h-11 justify-center gap-2" data-testid="add-pet-btn">
           <Plus className="h-4 w-4" /> {pets.length ? "Add another pet" : "Add a pet"}
+        </button>
+      )}
+      {onMakeKit && named && (
+        <button type="button" onClick={makeKit} disabled={busy} className="btn-solid h-auto min-h-11 justify-center gap-2 py-2 text-center" data-testid="make-pet-kit-btn">
+          {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Sparkles className="h-4 w-4 shrink-0" />}
+          {busy ? "The Magic Mariner is packing the kit..." : "Make a Pet First Aid Kit list"}
         </button>
       )}
     </section>

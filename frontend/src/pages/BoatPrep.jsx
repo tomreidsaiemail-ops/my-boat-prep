@@ -357,6 +357,27 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     return true;
   };
+  // Magic Mariner builds "First Aid Kit - Pets" sized to the pets; an existing kit list gets its items replaced after asking.
+  const PET_KIT = "First Aid Kit - Pets";
+  const makePetKit = async () => {
+    if (!needPro("Pet First Aid Kit")) return false;
+    if (!online) { toast.error("The Magic Mariner needs a signal to make the Pet First Aid Kit"); return false; }
+    const existing = allLists.find((l) => l.name.toLowerCase() === PET_KIT.toLowerCase());
+    if (existing && !window.confirm(`Replace the items in ${PET_KIT} with a new kit for your pets?`)) return false;
+    try {
+      const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim()).map(({ type, name, breed, weight }) => ({ type, name, breed, weight }));
+      const { data } = await api.post("/ai/pet-kit", { pets, units: boat.units === "ft" ? "lb" : "kg", days: boat.trip_days || 0 }, { timeout: 120000 });
+      if (!existing) return createList(PET_KIT, data.lines, true, data.description) === true;
+      const now = Date.now();
+      mutate((s) => ({ ...s, data: { ...s.data, [existing.id]: linesToItems(data.lines, true, now) } }));
+      setActiveId(existing.id);
+      toast.success(`${PET_KIT} updated for your pets`);
+      return true;
+    } catch (e) {
+      toast.error(apiError(e, "The Magic Mariner couldn't make the Pet First Aid Kit right now. Please try again."));
+      return false;
+    }
+  };
   const NO_CLONE = { myTodo: "My To Do List and Ship's Log cannot be cloned", shipsLog: "My To Do List and Ship's Log cannot be cloned",
     mayDay: "Mayday and Pan-Pan cannot be cloned", panPan: "Mayday and Pan-Pan cannot be cloned", boatInventory: "Boat Inventory cannot be cloned" };
   const askClone = () => {
@@ -457,7 +478,7 @@ export default function BoatPrep({ boatId, boats }) {
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} />}
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}

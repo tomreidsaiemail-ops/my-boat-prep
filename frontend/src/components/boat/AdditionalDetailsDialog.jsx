@@ -75,7 +75,7 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -107,7 +107,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
           <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
           <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />
           <IntField id="trip-days" label="Trip duration (days)" value={boat.trip_days || ""} min={0} max={365} placeholder="Optional" onChange={(n) => onChange("trip_days", n)} />
-          <PetsSection pets={boat.pets || []} units={unit} onChange={(p) => onChange("pets", p)} />
+          <PetsSection pets={boat.pets || []} units={unit} onChange={(p) => onChange("pets", p)} onMakeKit={onMakeKit && (async () => { if (await onMakeKit()) onClose(); })} />
         </div>
         <button type="button" className="btn-solid h-11 justify-center" onClick={onClose} data-testid="additional-details-done-btn">Done</button>
       </DialogContent>

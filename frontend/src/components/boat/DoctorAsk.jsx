@@ -28,7 +28,7 @@ const WhoNeedsHelp = ({ pets, value, onChange }) => (
 
 export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "kg", online, locked, onUpgrade }) => {
   const [question, setQuestion] = useState("");
-  const [who, setWho] = useState("");
+  const [who, setWho] = useState(pets.length && /pet/i.test(kitName) ? "0" : "");
   const [state, setState] = useState({ busy: false, error: "", answer: "", left: null });
   const pet = who === "" ? null : pets[Number(who)];
 
