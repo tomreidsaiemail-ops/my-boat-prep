@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, PawPrint, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { buildShopping, foodStock, initialsFor, keyOf, matchRules, mpaWarnings } from "@/lib/mpa";
@@ -31,8 +31,10 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
   const [byAisle, setByAisle] = useState(true);
+  const [usePets, setUsePets] = useState(true);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setPicked(lists.length === 1 ? [lists[0].id] : []); setUseProv(provisions.length > 0); setByAisle(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim());
+  useEffect(() => { if (open) { setPicked(lists.length === 1 ? [lists[0].id] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tags = useMemo(() => Object.fromEntries(lists.map((l, i) => [l.id, initialsFor(lists.map((x) => x.name))[i]])), [lists]);
   const pob = boat.pob || 1;
   const children = Math.min(boat.children || 0, pob - 1);
@@ -53,14 +55,19 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
     if (!chosen.length) { toast.error("Pick at least one meal plan list"); return; }
     setBusy(true);
     let amounts = {};
+    let petItems = [];
     const prov = useProv ? provisions : [];
-    if (prov.length) {
-      if (!online) toast.warning("No signal, so provisions are added without amounts");
+    const forPets = usePets ? pets : [];
+    if (prov.length || forPets.length) {
+      if (!online) toast.warning(`No signal, so ${[prov.length && "provisions are added without amounts", forPets.length && "pet food and supplies are left out"].filter(Boolean).join(" and ")}`);
       else {
         try {
           const onBoard = Object.fromEntries(prov.map((p) => [p, stock[keyOf(p)]?.qty]).filter(([, q]) => q));
-          amounts = (await api.post("/ai/mpa/provisions", { items: prov, on_board: onBoard, adults, children, days: days || 1 }, { timeout: 90000 })).data.amounts;
-        } catch (e) { toast.warning(apiError(e, "The Magic Mariner couldn't size the provisions, so they're added without amounts")); }
+          const { data } = await api.post("/ai/mpa/provisions", { items: prov, on_board: onBoard, adults, children, days: days || 1,
+            pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg" }, { timeout: 90000 });
+          amounts = data.amounts;
+          petItems = data.pets || [];
+        } catch (e) { toast.warning(apiError(e, "The Magic Mariner couldn't size the provisions and pet supplies, so provisions are added without amounts")); }
       }
     }
     const lists4 = chosen.map((l) => ({ ...l, tag: tags[l.id] }));
@@ -76,7 +83,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
       }
       aisleOf = (n) => builtInAisle(n) || ai[n] || OTHER_AISLE;
     }
-    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES, rules });
+    const items = buildShopping({ lists: lists4, adults, children, days: days || 1, stock, provisions: prov, amounts, aisleOf, aisleOrder: AISLE_NAMES, rules, petItems });
     setBusy(false);
     onCreate(items);
   };
@@ -112,6 +119,12 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
           <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold" data-testid="mpa-provisions">
             <input type="checkbox" className="h-5 w-5 accent-[var(--navy)]" checked={useProv} onChange={(e) => setUseProv(e.target.checked)} data-testid="mpa-provisions-check" />
             Add my Provisions list ({provisions.length}) with suggested amounts
+          </label>
+        )}
+        {pets.length > 0 && (
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold" data-testid="mpa-pets">
+            <input type="checkbox" className="h-5 w-5 accent-[var(--navy)]" checked={usePets} onChange={(e) => setUsePets(e.target.checked)} data-testid="mpa-pets-check" />
+            <PawPrint className="h-4 w-4 shrink-0" /> Add food and supplies for {pets.length === 1 ? pets[0].name?.trim() || "your pet" : `${pets.length} pets`}
           </label>
         )}
         <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm font-bold" data-testid="mpa-aisles">

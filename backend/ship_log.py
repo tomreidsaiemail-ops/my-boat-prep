@@ -26,13 +26,23 @@ def log_title(log: dict) -> str:
 MMSI_LABEL = "or MMSI Number (Optional, skipper to delete or add one)"
 
 
+def _pet_words(pets: list) -> str:
+    named = [p for p in pets or [] if (p.get("type") or "").strip() or (p.get("name") or "").strip()]
+    if not named:
+        return ""
+    kinds = [f"{'an' if t[:1] in 'aeiou' else 'a'} {t}" for t in ((p.get("type") or "pet").strip().lower() for p in named)]
+    joined = f"{', '.join(kinds[:-1])} and {kinds[-1]}" if len(kinds) > 1 else kinds[0]
+    return f" Also {'1 pet' if len(named) == 1 else f'{len(named)} pets'} on board: {joined}."
+
+
 def _pob_words(ctx: dict) -> str:
     pob = ctx.get("pob") or 1
     kids = min(ctx.get("children") or 0, pob)
+    pets = _pet_words(ctx.get("pets"))
     if not kids:
-        return f"{pob} persons on board POB."
+        return f"{pob} persons on board POB.{pets}"
     n = lambda k, one, many: f"{k} {one if k == 1 else many}"  # noqa: E731
-    return f"{pob} persons on board POB, {n(pob - kids, 'adult', 'adults')} and {n(kids, 'child', 'children')}."
+    return f"{pob} persons on board POB, {n(pob - kids, 'adult', 'adults')} and {n(kids, 'child', 'children')}.{pets}"
 
 
 def _label(it: dict, ctx: dict) -> str:

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
@@ -208,49 +208,83 @@ PROVISIONER = ("You are the Marine Magic Provisioning Assistant in the My Boat P
                "Allow sensible safety margins for drinking water. Children eat and drink about half as much as adults. Reply with JSON only, no prose and no code fences.")
 
 
+class PetIn(BaseModel):
+    type: str = Field(default="", max_length=40)
+    name: str = Field(default="", max_length=60)
+    breed: str = Field(default="", max_length=60)
+    weight: str = Field(default="", max_length=8)
+
+
 class ProvisionsIn(BaseModel):
-    items: List[str] = Field(min_length=1, max_length=120)
+    items: List[str] = Field(default_factory=list, max_length=120)
     on_board: dict = Field(default_factory=dict)
     adults: int = Field(ge=0, le=999)
     children: int = Field(ge=0, le=999)
     days: int = Field(ge=1, le=365)
+    pets: List[PetIn] = Field(default_factory=list, max_length=20)
+    units: str = Field(default="kg", pattern="^(kg|lb)$")
 
     @field_validator("items")
     @classmethod
     def trim_items(cls, v: list) -> list:
-        items = [s for s in dict.fromkeys(str(x).strip()[:80] for x in v) if s]
-        if not items:
+        return [s for s in dict.fromkeys(str(x).strip()[:80] for x in v) if s]
+
+    @model_validator(mode="after")
+    def need_something(self):
+        self.pets = [p for p in self.pets if p.type.strip() or p.name.strip()]
+        if not self.items and not self.pets:
             raise ValueError("Add at least one provision")
-        return items
+        return self
 
 
-def parse_provisions(text: str, names: list) -> dict:
+def pet_text(p: PetIn, units: str) -> str:
+    bits = [p.type.strip() or "pet", p.breed.strip(), f"{p.weight} {units}" if p.weight.strip() else ""]
+    return f"{p.name.strip() or 'Unnamed'} ({', '.join(b for b in bits if b)})"
+
+
+def parse_provisions(text: str, names: list, pets: list) -> dict:
     match = re.search(r"\{.*\}", text, re.S)
     if not match:
         raise ValueError("no JSON")
-    rows = json.loads(match.group(0)).get("items", [])
+    data = json.loads(match.group(0))
+    rows = data.get("items", [])
     wanted = {n.lower(): n for n in names}
     out = {}
     for r in rows if isinstance(rows, list) else []:
         name = wanted.get(str((r or {}).get("name", "")).strip().lower())
         if name:
             out[name] = str(r.get("amount", "")).strip()[:40]
-    if not out:
+    pet_names = {p.lower(): p for p in pets}
+    pet_rows = []
+    for r in data.get("pets", []) if isinstance(data.get("pets"), list) else []:
+        item = str((r or {}).get("name", "")).strip()[:80]
+        if item:
+            who = str(r.get("for", "")).strip()
+            pet_rows.append({"name": item, "amount": str(r.get("amount", "")).strip()[:40], "for": pet_names.get(who.lower(), who[:60])})
+    if (names and not out) or (pets and not pet_rows):
         raise ValueError("no amounts")
-    return out
+    return {"amounts": out, "pets": pet_rows[:60]}
 
 
 @router.post("/ai/mpa/provisions")
 async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premium)):
     stock = {str(k)[:80]: v for k, v in list(body.on_board.items())[:120] if isinstance(v, (int, float))}
+    pet_names = [p.name.strip() or "Unnamed" for p in body.pets]
     prompt = (f"Trip: {body.days} days, {body.adults} adults and {body.children} children on board.\n"
               f"Provisions to buy: {json.dumps(body.items)}\n"
               f"Already on board (count of each): {json.dumps(stock)}\n"
               "For each provision, give the amount still to buy for the whole trip after what is already on board, "
-              "in shop-friendly units (e.g. '42 L', '3 dozen', '2 loaves', '6 x 250 g packs'). Use 'None needed' if what's on board is enough. "
-              'Return exactly: {"items": [{"name": "<provision exactly as given>", "amount": "..."}]}')
-    amounts, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
-    return {"amounts": amounts, "drafts_left": left}
+              "in shop-friendly units (e.g. '42 L', '3 dozen', '2 loaves', '6 x 250 g packs'). Use 'None needed' if what's on board is enough. ")
+    shape = '{"items": [{"name": "<provision exactly as given>", "amount": "..."}]'
+    if body.pets:
+        prompt += (f"\nPets on board: {'; '.join(pet_text(p, body.units) for p in body.pets)}.\n"
+                   "Also list the food and essential supplies each pet needs for the whole trip on a boat, sized by its type and weight "
+                   "(e.g. dry food, wet food, treats, drinking water, poo bags or litter, a lifejacket for dogs, any regular medication reminder). "
+                   "Up to 6 items per pet, with shop-friendly amounts. ")
+        shape += ', "pets": [{"name": "<item>", "amount": "...", "for": "<pet name exactly as given>"}]'
+    prompt += f"Return exactly: {shape}}}"
+    result, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items, pet_names), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
+    return {"amounts": result["amounts"], "pets": result["pets"], "drafts_left": left}
 
 
 DOCTOR = ("You are the Magic Marine Doctor in the My Boat Prep app: a calm, practical offshore first-aid adviser helping a boat skipper. "

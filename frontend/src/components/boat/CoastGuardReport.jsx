@@ -9,12 +9,16 @@ export const coastGuardReport = (boat, start, dest, result) => {
   const kids = Math.min(boat.children || 0, pob);
   const via = (result.waypoints || []).slice(1, -1).map((w) => w.name).filter(Boolean);
   const size = boat.loa ? `, LOA ${boat.loa} ${boat.units === "ft" ? "ft" : "m"}` : "";
+  const wt = boat.units === "ft" ? "lb" : "kg";
+  const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())
+    .map((p) => `${p.name?.trim() || "Unnamed"} (${[p.type?.trim() || "pet", p.breed?.trim(), p.weight && `${p.weight} ${wt}`].filter(Boolean).join(", ")})`);
   return [
     `Vessel: ${boat.vessel || FILL("VESSEL NAME")}`,
     `Callsign: ${boat.callsign || FILL("CALLSIGN")}${/^\d{9}$/.test(boat.mmsi || "") ? ` · MMSI ${boat.mmsi}` : ""}`,
     `Boat: ${boat.boat_type || FILL("BOAT TYPE AND COLOUR")}${size}`,
     `Skipper: ${boat.skipper || FILL("SKIPPER NAME")}`,
     `Persons on board: ${pob}${kids ? ` (${count(pob - kids, "adult", "adults")}, ${count(kids, "child", "children")})` : ""}`,
+    ...(pets.length ? [`Pets on board: ${pets.join("; ")}`] : []),
     `Departing: ${start} at ${FILL("DEPARTURE TIME")}`,
     `Destination: ${dest}`,
     ...(via.length ? [`Route: via ${via.join(", ")}`] : []),

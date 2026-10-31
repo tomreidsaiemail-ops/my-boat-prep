@@ -274,7 +274,7 @@ export const mpaWarnings = (meals, days) => {
 
 export const itemName = (label) => String(label).split(" – ")[0].trim();
 
-export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], rules = null }) => {
+export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], rules = null, petItems = [] }) => {
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
   const { meals, items } = ingredientRows(lists, portions, stock, rules);
@@ -285,16 +285,21 @@ export const buildShopping = ({ lists, adults, children, days, stock, provisions
   const onBoard = (areas = [], subs = []) => ({ ...(areas.length ? { areas } : {}), ...(subs.length ? { subs } : {}) });
   const ingredientRowsOut = items.map((i) => ({ name: itemName(i.base), item: row({ base: i.base, src: multi ? i.src : [], meals: i.meals, ...onBoard(i.areas, i.subs) }, i.checked) }));
   const provRows = extra.map((p) => ({ name: p, item: row({ base: amounts[p] ? `${p} – ${amounts[p]}` : p, prov: true, ...onBoard(stock[keyOf(p)]?.areas, subsFor(keyOf(p), p, stock, rules)) }, /^none needed/i.test(amounts[p] || "")) }));
+  // Pet food and supplies from the Magic Mariner always get their own section at the end, e.g. "Dry dog food – 3 kg · Biscuit".
+  const petNames = [...new Set(petItems.map((p) => p.for).filter(Boolean))];
+  const petRows = petItems.length ? [{ label: `For the pets${petNames.length ? ` (${petNames.join(", ")})` : ""}`, checked: false },
+    ...petItems.map((p) => row({ base: `${p.name}${p.amount ? ` – ${p.amount}` : ""}${p.for ? ` · ${p.for}` : ""}`, pet: true, ...onBoard(stock[keyOf(p.name)]?.areas, subsFor(keyOf(p.name), p.name, stock, rules)) }, /^none needed/i.test(p.amount || "")))] : [];
   const mealKey = [{ label: `Meals (${meals.length}) from ${lists.map((l) => l.name).join(", ")}`, checked: false }, ...meals.map((m) => row({ base: m.name, src: multi ? [m.src] : [], meals: [m.n] }))];
   if (aisleOf) {
     const byAisle = new Map(aisleOrder.map((a) => [a, []]));
     [...ingredientRowsOut, ...provRows].forEach((r) => { const a = aisleOf(r.name); byAisle.set(a, [...(byAisle.get(a) || []), r.item]); });
-    return [...mealKey, ...[...byAisle.entries()].filter(([, rs]) => rs.length).flatMap(([a, rs]) => [{ label: a, checked: false }, ...rs])];
+    return [...mealKey, ...[...byAisle.entries()].filter(([, rs]) => rs.length).flatMap(([a, rs]) => [{ label: a, checked: false }, ...rs]), ...petRows];
   }
   return [
     ...mealKey,
     { label: `Ingredients for ${people}`, checked: false },
     ...ingredientRowsOut.map((r) => r.item),
     ...(provRows.length ? [{ label: `Provisions for ${days} ${days === 1 ? "day" : "days"}`, checked: false }, ...provRows.map((r) => r.item)] : []),
+    ...petRows,
   ];
 };

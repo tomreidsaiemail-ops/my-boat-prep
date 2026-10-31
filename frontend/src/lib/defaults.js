@@ -221,11 +221,20 @@ export const migrateState = (s) => s && addMissingLists({
     : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Route Planning" } : l))),
 });
 
+const petWords = (pets = []) => {
+  const named = pets.filter((p) => p.type?.trim() || p.name?.trim());
+  if (!named.length) return "";
+  const kinds = named.map((p) => { const t = (p.type || "pet").trim().toLowerCase(); return `${/^[aeiou]/.test(t) ? "an" : "a"} ${t}`; });
+  const list = kinds.length > 1 ? `${kinds.slice(0, -1).join(", ")} and ${kinds[kinds.length - 1]}` : kinds[0];
+  return ` Also ${named.length === 1 ? "1 pet" : `${named.length} pets`} on board: ${list}.`;
+};
+
 const pobWords = (ctx) => {
   const pob = ctx.pob || 1;
   const kids = Math.min(ctx.children || 0, pob);
   const n = (k, one, many) => `${k} ${k === 1 ? one : many}`;
-  return kids ? `${pob} persons on board POB, ${n(pob - kids, "adult", "adults")} and ${n(kids, "child", "children")}.` : `${pob} persons on board POB.`;
+  const people = kids ? `${pob} persons on board POB, ${n(pob - kids, "adult", "adults")} and ${n(kids, "child", "children")}.` : `${pob} persons on board POB.`;
+  return `${people}${petWords(ctx.pets)}`;
 };
 
 export const displayLabel = (item, ctx) => {
