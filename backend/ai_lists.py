@@ -4,7 +4,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
@@ -242,7 +242,7 @@ def pet_text(p: PetIn, units: str) -> str:
     return f"{p.name.strip() or 'Unnamed'} ({', '.join(b for b in bits if b)})"
 
 
-def parse_provisions(text: str, names: list, pets: list) -> dict:
+def parse_provisions(text: str, names: list, pets: tuple = ()) -> dict:
     match = re.search(r"\{.*\}", text, re.S)
     if not match:
         raise ValueError("no JSON")
@@ -293,6 +293,14 @@ DOCTOR = ("You are the Magic Marine Doctor in the My Boat Prep app: a calm, prac
           "You are not a doctor and must not diagnose; always finish with exactly this line: "
           "'This is first-aid guidance only. In an emergency call Mayday on VHF channel 16 or the coastguard, and get medical help as soon as you can.'")
 DOCTOR_FOOTER = "This is first-aid guidance only. In an emergency call Mayday on VHF channel 16 or the coastguard, and get medical help as soon as you can."
+PET_DOCTOR = ("You are the Magic Marine Doctor in the My Boat Prep app, helping a boat skipper give first aid to a pet on board. "
+              "Give clear pet first-aid steps in plain English as a short numbered list, suited to the animal's type, breed and weight, "
+              "using items from the boat's first aid kit only where they are safe for that animal. Start with any danger signs that need a vet urgently. "
+              "Never suggest human painkillers or medicines (e.g. paracetamol, ibuprofen, aspirin) unless they are known to be safe for that animal, and warn against them where relevant. "
+              "Keep it under 250 words. Plain text only: no markdown, headings or asterisks. "
+              "You are not a vet and must not diagnose; always finish with exactly this line: "
+              "'This is pet first-aid guidance only. Contact a vet by phone or radio as soon as you can, and in a human emergency call Mayday on VHF channel 16.'")
+PET_DOCTOR_FOOTER = "This is pet first-aid guidance only. Contact a vet by phone or radio as soon as you can, and in a human emergency call Mayday on VHF channel 16."
 
 
 class DoctorAskIn(BaseModel):
@@ -301,6 +309,8 @@ class DoctorAskIn(BaseModel):
     kit: List[str] = Field(default_factory=list, max_length=150)
     adults: int = Field(default=1, ge=0, le=999)
     children: int = Field(default=0, ge=0, le=999)
+    pet: Optional[PetIn] = None
+    units: str = Field(default="kg", pattern="^(kg|lb)$")
 
     @field_validator("question")
     @classmethod
@@ -310,19 +320,24 @@ class DoctorAskIn(BaseModel):
         return v.strip()
 
 
-def parse_doctor(text: str) -> str:
-    lines = [ln for ln in parse_answer(text).splitlines() if "in an emergency call mayday" not in ln.lower() and "first-aid guidance only" not in ln.lower()]
+def parse_doctor(text: str, footer: str = DOCTOR_FOOTER) -> str:
+    lines = [ln for ln in parse_answer(text).splitlines() if not any(k in ln.lower() for k in ("in an emergency call mayday", "first-aid guidance only", "in a human emergency call mayday"))]
     answer = "\n".join(lines).strip()
     if not answer:
         raise ValueError("empty answer")
-    return f"{answer}\n\n{DOCTOR_FOOTER}"
+    return f"{answer}\n\n{footer}"
 
 
 @router.post("/ai/doctor-ask")
 async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
     kit = ", ".join(str(k).strip()[:120] for k in body.kit if str(k).strip()) or "(not listed)"
+    question = f'"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""'
+    if body.pet:
+        prompt = f"First aid kit ({body.kit_name.strip()}): {kit}\nThe patient is a pet: {pet_text(body.pet, body.units)}\nThe skipper asks:\n{question}"
+        answer, left = await _run(user, "doctor", prompt, lambda t: parse_doctor(t, PET_DOCTOR_FOOTER), {"question": body.question[:200], "pet": body.pet.type[:40]}, PET_DOCTOR, "Magic Marine Doctor pet answer")
+        return {"answer": answer, "asks_left": left}
     prompt = (f"First aid kit ({body.kit_name.strip()}): {kit}\nOn board: {body.adults} adults, {body.children} children\n"
-              f'The skipper asks:\n"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""')
+              f"The skipper asks:\n{question}")
     answer, left = await _run(user, "doctor", prompt, parse_doctor, {"question": body.question[:200]}, DOCTOR, "Magic Marine Doctor answer")
     return {"answer": answer, "asks_left": left}
 
@@ -342,7 +357,7 @@ async def mpa_aisles(body: AislesIn, user: dict = Depends(require_premium)):
               'Put each item in the best aisle. Return exactly: {"items": [{"name": "<item exactly as given>", "amount": "<aisle exactly as given>"}]}')
 
     def parse(t: str) -> dict:
-        got = parse_provisions(t, items)
+        got = parse_provisions(t, items)["amounts"]
         return {k: v for k, v in got.items() if v in aisles}
     mapping, left = await _run(user, "mpa", prompt, parse, {"name": "MPA aisles"}, PROVISIONER, "Magic Provisioning")
     return {"aisles": mapping, "drafts_left": left}

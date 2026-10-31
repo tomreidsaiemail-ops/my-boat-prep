@@ -522,7 +522,8 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {/^first aid kit/i.test(active.name || "") && (
             <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
-              children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")} />
+              children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} pets={(boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())} units={boat.units === "ft" ? "lb" : "kg"}
+              online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")} />
           )}
         </>
       )}
