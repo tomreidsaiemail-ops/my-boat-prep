@@ -32,7 +32,7 @@ export const serverToState = (data) => {
   const m = migrateState(data);
   return { boat: data.boat, registry: m.registry, data: m.data, updated_at: data.updated_at, log_sent: data.log_sent || null, engine_log: data.engine_log || [], electrical_log: data.electrical_log || [],
     deleted_lists: m.deleted_lists, emergency_checked: data.emergency_checked || {}, template_versions: data.template_versions || {},
-    sec_ts: data.sec_ts || {}, list_ts: data.list_ts || {}, areas: data.areas || [] };
+    sec_ts: data.sec_ts || {}, list_ts: data.list_ts || {}, areas: data.areas || [], list_hidden: data.list_hidden || [] };
 };
 
 const POLL_MS = 20000;

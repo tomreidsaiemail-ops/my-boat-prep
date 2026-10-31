@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Ship, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Ship, Sparkles, Wand2 } from "lucide-react";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 
@@ -42,7 +42,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -55,10 +55,16 @@ export const BoatDetails = ({ boat, onChange, onBatchScan }) => {
     focused.current = false;
     if (complete) setOpen(false);
   };
-  const batchBtn = onBatchScan && (
-    <button type="button" onClick={onBatchScan} className="btn-ghost h-auto min-h-11 w-full !justify-start gap-3 px-4 py-2.5 !text-left text-sm font-semibold leading-snug" data-testid="boat-details-batch-scan-btn">
-      <Sparkles className="h-4 w-4 shrink-0" /> <span>On the boat? Want you and your crew to find absolutely anything on it instantly? Take a Boat Inventory using Batch Magic Scan... you take the photos, and Magic Scan tells you what is in them. "Easy as" Just click here!</span>
-    </button>
+  const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-2 px-3 py-2 !text-left text-[13px] font-bold leading-tight";
+  const batchBtn = (onBatchScan || onOrganise) && (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2" data-testid="boat-details-magic-row">
+      {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
+        <Sparkles className="h-4 w-4 shrink-0" /> Batch Magic Scan...
+      </button>}
+      {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
+        <Wand2 className="h-4 w-4 shrink-0" /> Magically Organise Your Lists...
+      </button>}
+    </div>
   );
 
   if (complete && !open) return <><div className="flex flex-col gap-2"><Summary boat={boat} onExpand={() => setOpen(true)} />{batchBtn}</div>{dialog}</>;

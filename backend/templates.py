@@ -109,6 +109,14 @@ async def mpa_rules(_: dict = Depends(get_current_user)):
     return {k: [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in by_name.get(n, [])] for k, n in MPA_RULE_LISTS.items()}
 
 
+@router.get("/list-categories")
+async def list_categories(_: dict = Depends(get_current_user)):
+    """Items of the private admin list "Admin - List Categories" (category heading, *Colour* line, then list names)."""
+    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(200)
+    items = next((d["items"] for d in docs if d["name"].strip().lower() == "admin - list categories"), [])
+    return {"items": [{"label": i["label"]} for i in items]}
+
+
 @router.get("/admin/template-lists")
 async def list_template_lists(_: dict = Depends(require_admin)):
     docs = await db.list_templates.find({"custom": True}, {"_id": 0}).sort("created_at", 1).to_list(200)

@@ -37,6 +37,9 @@ import { BoatDetails } from "@/components/boat/BoatDetails";
 import { ActionBar } from "@/components/boat/ActionBar";
 import { SyncBanner } from "@/components/boat/SyncBanner";
 import { ListSelector } from "@/components/boat/ListSelector";
+import { OrganiseDialog } from "@/components/boat/OrganiseDialog";
+import useListCategories from "@/hooks/useListCategories";
+import { dropdownSections, organiseLists } from "@/lib/listCategories";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
@@ -146,6 +149,17 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${MPA_NAME} ${old ? "updated" : "created"}. Tick, export or email it like any list.`);
   };
   const active = allLists.find((l) => l.id === activeId) || registry[0];
+  const listCats = useListCategories(online);
+  const menuLists = [INVENTORY_LIST, ...allLists.filter((l) => l !== INVENTORY_LIST)];
+  const org = organiseLists(menuLists, listCats);
+  const hiddenLists = state.list_hidden || [];
+  const showLists = (ids, show) => mutate((s) => ({ ...s, list_hidden: show ? (s.list_hidden || []).filter((id) => !ids.includes(id)) : [...new Set([...(s.list_hidden || []), ...ids])] }));
+  const linkList = (id, category) => mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, category } : l)) }));
+  const pickList = (id) => {
+    setActiveId(id);
+    setDialog(null);
+    setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
@@ -356,7 +370,9 @@ export default function BoatPrep({ boatId, boats }) {
     if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
     const id = `custom_${Date.now()}`;
     const { kind, items: copied } = cloneSource(source);
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(kind ? { kind } : {}) }], data: { ...s.data, [id]: copied } }));
+    const cat = org.byId[source.id]?.cat;
+    const category = cat >= 0 ? listCats[cat].name : null;
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}) }], data: { ...s.data, [id]: copied } }));
     setActiveId(id);
     setDialog(null);
     toast.success(`${name} created from ${source.name}`);
@@ -428,9 +444,9 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><VoyageCard boat={boats.current} online={online} /></> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} />}
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><VoyageCard boat={boats.current} online={online} /></> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
-      <ListSelector registry={[INVENTORY_LIST, ...allLists.filter((l) => l !== INVENTORY_LIST)]} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
+      <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
@@ -502,6 +518,8 @@ export default function BoatPrep({ boatId, boats }) {
       <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
+      <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}
+        readOnly={crew} admin={!!user.is_admin} onPick={pickList} onShow={showLists} onLink={linkList} />
       <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}${dialog.list.isMedia || MEDIA_KINDS.includes(dialog.list.kind) ? " that you can add to, edit and reorder." : ", with every item unticked."}` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}

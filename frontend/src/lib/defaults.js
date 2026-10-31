@@ -245,7 +245,7 @@ export const displayLabel = (item, ctx) => {
   }
 };
 
-const SECTIONS = ["boat", "registry", "engine_log", "electrical_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas"];
+const SECTIONS = ["boat", "registry", "engine_log", "electrical_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas", "list_hidden"];
 
 // Time-stamp what changed so the cloud can merge edits from several phones item by item.
 export const stamp = (prev, next, now) => {
