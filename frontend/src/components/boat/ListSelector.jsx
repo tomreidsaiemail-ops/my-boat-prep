@@ -41,7 +41,7 @@ export const ListSelector = ({ sections, activeId, activeColours, onChange, onCr
     <button type="button" data-testid="clone-list-btn" onClick={onClone} title="Clone List" aria-label="Clone List" className={BTN}>
       <Copy className="h-6 w-6" strokeWidth={2.5} />
     </button>
-    <button type="button" data-testid="rename-list-btn" onClick={onRename} title="Rename List" aria-label="Rename List" className={BTN}>
+    <button type="button" data-testid="rename-list-btn" onClick={onRename} title="Edit List" aria-label="Edit List" className={BTN}>
       <Pencil className="h-5 w-5" strokeWidth={2.5} />
     </button>
   </div>

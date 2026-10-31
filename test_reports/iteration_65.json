@@ -1,0 +1,25 @@
+{
+  "summary": "Tested MLG YouTube link validation (backend + UI fix panel) and the Edit List Panel move-to-area tool at mobile 390px. Everything requested passed. Backend: 6/6 pytest passed, using 2 real list-draft calls. A request without YouTube returns exactly {lines, drafts_left}. A YouTube request returns youtube:{checked, bad}, and every bad URL was confirmed as 400/404 on oEmbed while every good one exists. check_links unit: real dQw4w9WgXcQ ok, fake id bad, fake @channel bad. The node units yt_fix_unit (5/5), mpa_bidir_unit (46/46) and yt_mpa_unit (exit 0, no FAIL) all passed. Frontend: the Create New List and admin template editor fix panels were tested with a mocked list-draft (page.route). Items stay empty, the summary reads '2 of 3 YouTube links couldn't be found', the bad lines are listed, and remove/search/drop each produce the correct textarea output (drop removes empty headings and renumbers). With no bad links the items fill straight away. Search, @channel and youtu.be links render as red YouTube pills and open in a new tab. Edit List Panel: the title is 'EDIT LIST PANEL'. The move section appears on Rigging and custom lists and is absent for Boat Inventory, Skipper's Tips, FAQ and the YouTube/movies media lists. Initial ticks are correct (no-area items ticked; an item in another area is unticked with its area chip; an item already in the chosen area is disabled with 'Already here'). Unticking everything and saving shows rename-list-error. Cancel moves nothing. Saving shows the toast '2 items moved to TEST_Port Locker', the area filter updates, and the change persisted in the DB. Renaming alone works. The area filter still works and area-apply-btn is absent.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MoveToAreaSection", "issue": "When every item is already in the chosen area, the Select All checkbox stays enabled and unchecked but does nothing when clicked. Saving then shows 'Nothing is ticked to move'. It could be disabled, or show a 'All items are already here' message.", "selector": "[data-testid='move-area-all']", "priority": "LOW"},
+      {"component": "ListSelector", "issue": "The pencil button's title and aria-label still say 'Rename List', but the dialog is now called 'Edit List Panel'.", "selector": "[data-testid='rename-list-btn']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_youtube_links.py", "/app/test_reports/pytest/pytest_yt.xml", "/app/tests/yt_fix_unit.mjs", "/app/tests/yt_mpa_unit.mjs", "/app/tests/mpa_bidir_unit.mjs"],
+  "action_items": ["Optional: disable Select All or explain when every item is already in the chosen area", "Optional: change the rename-list-btn title/aria-label to 'Edit List Panel'"],
+  "critical_code_review_comments": [
+    "MoveToAreaSection lists group headings (e.g. '1. Deck (outside)') as movable items, and they start ticked, so headings get an area too. Check this is intended.",
+    "renameList: if guard() fails (boat details incomplete), the dialog closes and the move is silently dropped apart from the guard warning.",
+    "AiDraftButton: the pending YouTube fix panel stays open if the description is edited afterwards (only the note resets). This is harmless."
+  ],
+  "updated_files": ["/app/backend/tests/test_youtube_links.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporarily added the area TEST_Galley Locker plus item areas on the pro boat's list custom_1793042165499, and created the list TEST_YT Pills. The whole pro boat doc was then restored from a backup (/tmp/pro_boat_backup.json) with timestamps bumped. Areas are back to [TEST_Port Locker], the list items have no area, and TEST_YT Pills is gone.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The pro boat (test-user-pro, boat_id main) has a single area, TEST_Port Locker. To test 'items in another area', seed a second area in user_boats.areas with sec_ts.areas and list_ts bumped. 2 real list-draft calls were used today. Crew access was not exercised in the UI; it is covered in code by tagging = premium && !crew plus ownerOnly."
+}

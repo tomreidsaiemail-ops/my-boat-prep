@@ -16,8 +16,9 @@ export const MoveToAreaSection = ({ areas, items, labelFor, areaOf, move, onChan
       </select>
       {move.area && (
         <div className="max-h-[40vh] overflow-y-auto rounded-md border-[1.5px] border-[var(--line)]" data-testid="move-area-items">
-          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 border-b-[1.5px] border-[var(--line)] bg-slate-50 px-3 text-sm font-bold">
-            <input type="checkbox" checked={all} onChange={(e) => onChange({ ...move, ids: e.target.checked ? open.map((i) => i.id) : [] })} className="h-5 w-5 accent-[var(--navy)]" data-testid="move-area-all" /> Select All
+          <label className={`flex min-h-[44px] items-center gap-3 border-b-[1.5px] border-[var(--line)] bg-slate-50 px-3 text-sm font-bold ${open.length ? "cursor-pointer" : "text-[var(--muted)]"}`}>
+            <input type="checkbox" checked={all} disabled={!open.length} onChange={(e) => onChange({ ...move, ids: e.target.checked ? open.map((i) => i.id) : [] })} className="h-5 w-5 accent-[var(--navy)]" data-testid="move-area-all" />
+            {open.length ? "Select All" : "Every item is already in this area"}
           </label>
           {items.map((i) => {
             const here = placed(i);

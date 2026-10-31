@@ -399,12 +399,13 @@ export default function BoatPrep({ boatId, boats }) {
     const { id, name: old } = dialog.list;
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
+    if (move && !ready) return "Fill in your boat details at the top first, then you can move items to an area.";
     const descChanged = description !== (dialog.list.description || "");
     if (name !== old || descChanged) {
       mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, DESCRIPTION_MAX) } : {}) } : l)) }));
       toast.success(name !== old ? `${old} renamed to ${name}` : `${name} description saved`);
     }
-    if (move && guard()) {
+    if (move) {
       setItems((list) => list.map((i) => (move.ids.includes(i.id) ? { ...i, area: move.area } : i)));
       toast.success(`${move.ids.length} ${move.ids.length === 1 ? "item" : "items"} moved to ${areas.find((a) => a.id === move.area)?.name}`);
     }

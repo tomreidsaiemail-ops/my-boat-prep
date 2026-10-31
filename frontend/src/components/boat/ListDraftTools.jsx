@@ -83,7 +83,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(null);
-  useEffect(() => setNote(""), [description]);
+  useEffect(() => { setNote(""); setPending(null); }, [description]);
   const ready = (left) => setNote(`Items ready, edit them before you confirm. ${left} Magic generations left (free today + bought).`);
   const fix = (mode) => {
     onDraft(fixYouTube(pending.lines, pending.bad, mode).join("\n"));
