@@ -306,7 +306,7 @@ export default function BoatPrep({ boatId, boats }) {
     mutate((s) => {
       const data = { ...s.data };
       delete data[id];
-      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, deleted_lists: isSystem ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
+      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, list_hidden: (s.list_hidden || []).filter((h) => h !== id), deleted_lists: isSystem ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
     });
     setActiveId(next.id);
     setDialog(null);

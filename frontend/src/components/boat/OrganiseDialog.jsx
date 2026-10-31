@@ -9,11 +9,13 @@ const ShowBox = ({ checked, mixed, onChange, disabled, label, testId }) => (
 );
 
 const Bubble = ({ row, hidden, readOnly, onPick, onShow }) => (
-  <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full border-2 py-1 pl-2 pr-1 shadow-sm [transition:opacity_.15s,transform_.1s] ${hidden ? "opacity-60" : ""}`}
-    style={{ backgroundColor: row.colours.bg, color: row.colours.fg, borderColor: row.colours.bg === "#FFFFFF" ? "var(--line)" : row.colours.bg }} data-testid={`organise-bubble-${row.list.id}`}>
+  <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full border-2 py-1 pl-2 pr-1 [transition:background-color_.15s,transform_.1s] ${hidden ? "border-dashed" : "shadow-sm"}`}
+    style={hidden ? { backgroundColor: "#FFFFFF", color: "#4B5563", borderColor: row.colours.bg === "#FFFFFF" ? "#9CA3AF" : row.colours.bg }
+      : { backgroundColor: row.colours.bg, color: row.colours.fg, borderColor: row.colours.bg === "#FFFFFF" ? "var(--line)" : row.colours.bg }}
+    data-hidden={hidden ? "true" : "false"} data-testid={`organise-bubble-${row.list.id}`}>
     <ShowBox checked={!hidden} disabled={readOnly} onChange={(v) => onShow([row.list.id], v)} label={`Show ${row.list.name} in the list menu`} testId={`organise-show-${row.list.id}`} />
     <button type="button" onClick={() => onPick(row.list.id)} data-testid={`organise-pick-${row.list.id}`}
-      className={`flex min-h-9 min-w-0 items-center gap-1.5 rounded-full px-2 text-left text-sm font-bold hover:bg-black/10 active:scale-95 ${hidden ? "line-through" : ""}`}>
+      className={`flex min-h-9 min-w-0 items-center gap-1.5 rounded-full px-2 text-left text-sm font-bold hover:bg-black/10 active:scale-95 ${hidden ? "italic" : ""}`}>
       {row.user && <User className="h-4 w-4 shrink-0" aria-label="Your list" />}
       <span className="break-words">{row.list.name}</span>
     </button>
@@ -57,12 +59,12 @@ export const OrganiseDialog = ({ open, onClose, org, cats, lists, hidden, readOn
   const mineAll = lists.filter(isUserList);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto" data-testid="organise-dialog">
+      <DialogContent className="max-h-[90vh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-lg" data-testid="organise-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl text-[var(--navy)]"><Wand2 className="h-5 w-5" />Magical Organisation</DialogTitle>
           <DialogDescription>Tap a list to open it. Untick a box to hide that list, or a whole category, from the list menu.</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           {org.groups.filter((g) => g.rows.length).map((g, i) => <Group key={g.name} id={i} name={g.name} colours={g.colours} rows={g.rows} {...groupProps} />)}
           {org.loose.length > 0 && <Group id="loose" name="Not categorised" colours={org.loose[0].colours} rows={org.loose} {...groupProps} />}
           {org.mine.length > 0 && <Group id="mine" name="Your lists" colours={org.mine[0].colours} rows={org.mine} {...groupProps} />}

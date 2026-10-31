@@ -1,0 +1,31 @@
+{
+  "summary": "Tested the 'Magically Organise Your Lists' feature (backend + frontend, Pro session, 390px mobile + 1920 desktop). Backend: GET /api/list-categories returns the seeded Admin - List Categories items for free, pro and admin, and gives 401 without auth. list_hidden persists, is kept when omitted, and an older sec_ts loses the merge. The registry 'category' field persists. 8/8 pytest pass. Frontend: the two magic buttons sit side by side with no overflow at 390px. The organise dialog shows the category groups in the right colours (brown/blue/yellow), loose lists in white and user lists in light purple with a user icon. Picking a bubble closes the dialog and selects that list, and the trigger takes the category shade. Bubble and category checkboxes hide/show lists in the dropdown, a partly hidden category shows indeterminate, the active list stays visible, and the setting persists after reload and syncs to the server. Dropdown order and sections are correct. A cloned Engine Service inherits Boat Maintenance (blue, user icon). A new list goes to the bottom under Your lists in purple. Linking to Safety moves the list in both the dialog and the dropdown, and 'No category' moves it back. Regression: switching lists (Tips, FAQ, YouTube, Movies, Rigging, Meal Plan, sample template, user list), Mayday/Pan-Pan and Batch Magic Scan (switches to Boat Inventory and opens the batch-scan dialog) all work, with no JS errors. One HIGH bug found and fixed: the dropdown menu could open partly off-screen.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ListSelector SelectContent", "issue": "FIXED BY TESTER: className max-h-[65vh] overrode shadcn's max-h-[--radix-select-content-available-height] (tailwind-merge). At 390x844 on first load the menu opened upward with top=-118px, so Boat Inventory and the first rows were off-screen and could not be reached (body scroll is locked while the menu is open). On desktop 1920x1080 the menu bottom was at 1179px, below the window. Changed to max-h-[min(65vh,var(--radix-select-content-available-height))]. Verified: mobile menu now top=6, desktop bottom=1074.", "selector": "[data-testid=list-selector-menu]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Organise dialog", "issues": ["Hidden bubbles use opacity-60 plus line-through with white text on a coloured background (e.g. blue becomes about #799FCE), so contrast is low (about 2.6:1). Consider a greyed or outlined style instead.", "At 390px the dialog is full width with no side margin (shadcn default w-full max-w-lg). Consider w-[calc(100%-1.5rem)] rounded-lg."]},
+      {"screen": "List dropdown (mobile)", "issues": ["The menu is only as wide as the trigger (about 246px at 390px), and the trigger is only 190px because of the 3 icon buttons, so long names (e.g. 'First Aid Kit - basic for cruising', 'TEST_New Org') get truncated. Consider a wider menu (e.g. min-w-[calc(100vw-2rem)] on mobile).", "Uncategorised (white) rows get border-left #FFFFFF, which is invisible. Fine, but they look different from the other rows."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_list_categories.py", "/app/test_reports/pytest/pytest_list_categories.xml"],
+  "action_items": [
+    "Review the tester's 1-line fix in ListSelector.jsx (SelectContent max-h). Keep it so the menu never renders off-screen.",
+    "Optional: improve hidden-bubble contrast and widen the mobile dropdown menu.",
+    "Optional: drop list_hidden ids of deleted lists when a list is deleted (stale ids build up; harmless)."
+  ],
+  "critical_code_review_comments": [
+    "listCategories.organiseLists: a user list without a 'category' field whose name matches a configured name (e.g. a user creates 'Provisions') is auto-placed in that category instead of purple 'Your lists'. This is intended for MPA Shopping List, but could surprise users. Only lists created after this change get explicit categories when cloned.",
+    "GET /api/auth/me returns 401 once on initial load even with a valid cookie session (seen in network, no UI impact). Probably existing behaviour; worth checking.",
+    "OrganiseDialog readOnly (crew) is effectively unreachable, because BoatDetails (and therefore the organise button) is not rendered for crew. Fine, but crew can't hide lists for themselves."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/ListSelector.jsx", "/app/backend/tests/test_list_categories.py"],
+  "success_rate": {"backend": "100%", "frontend": "95% (1 HIGH bug fixed by tester)"},
+  "seed_data_creation": "Created TEST_Clone Eng and TEST_New Org on the pro boat. Both removed via the API (registry/data plus deleted_lists). list_hidden restored to [].",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat (test_session_pro_1) lists: no Safety, Trip Planning or MPA lists, so those groups only appear when a user list is linked. The dropdown is a Radix Select: click list-selector, then list-option-{id}. Options in the scrolled viewport may need a mouse wheel over the menu before clicking. Delete-list-btn only shows on empty lists, so clean up test lists via a PUT /api/me/boat registry edit."
+}
