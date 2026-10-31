@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RolePicker } from "@/components/boat/RolePicker";
 
-export const EditRolesDialog = ({ member, options, onSave, onClose }) => {
+export const EditRolesDialog = ({ member, groups, options, onSave, onClose }) => {
   const [roles, setRoles] = useState([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (member) setRoles(member.roles || []); }, [member]);
@@ -15,7 +15,7 @@ export const EditRolesDialog = ({ member, options, onSave, onClose }) => {
           <DialogTitle className="font-display text-xl font-extrabold">Roles for {member?.name || member?.email}</DialogTitle>
           <DialogDescription className="text-left text-sm">Tap to add or remove a role, or type a new one.</DialogDescription>
         </DialogHeader>
-        <RolePicker options={options} selected={roles} onChange={setRoles} />
+        <RolePicker groups={groups} options={options} selected={roles} onChange={setRoles} />
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="edit-roles-cancel-btn">Cancel</button>
           <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" disabled={busy} onClick={save} data-testid="edit-roles-save-btn">

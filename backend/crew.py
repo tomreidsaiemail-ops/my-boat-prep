@@ -38,14 +38,23 @@ def email_key(email: str) -> str:
     return f"{local}@{domain}"
 
 
-def clean_roles(roles: List[str]) -> List[str]:
+def clean_roles(roles: List[str], limit: int = 12) -> List[str]:
     out, seen = [], set()
     for r in roles:
         r = re.sub(r"\s+", " ", r).strip()[:40]
         if r and r.lower() not in seen:
             seen.add(r.lower())
             out.append(r)
-    return out[:12]
+    return out[:limit]
+
+
+def list_roles(items: list) -> List[str]:
+    """Roles from a Crew Roles list: headings (a line with indented lines under it) and '*' default marks left out; ticked roles only, if any are ticked."""
+    rows = [(i, not i.get("indent") and k + 1 < len(items) and bool(items[k + 1].get("indent"))) for k, i in enumerate(items)]
+    roles = [i for i, head in rows if not head]
+    if any(i.get("checked") for i in roles):
+        roles = [i for i in roles if i.get("checked")]
+    return [re.sub(r"^\s*\*\s*", "", str(i.get("label", ""))) for i in roles]
 
 
 class InviteIn(BaseModel):
@@ -62,7 +71,7 @@ class NotesIn(BaseModel):
 def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str) -> str:
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
     if notes.strip():
-        extra += f'<p><b>Planned voyage:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
+        extra += f'<p><b>Planned voyage or race:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
     return (
         '<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
         f'<h2 style="margin:0 0 12px">You\'re invited aboard {escape(vessel)}</h2>'
@@ -84,9 +93,29 @@ async def role_options(owner_id: str, boat_id: str, doc: dict, invites: list) ->
         items = ((data or {}).get("data") or {}).get(lid) or []
     if not items:
         tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": "^crew roles$", "$options": "i"}}, {"_id": 0, "items": 1})
-        items = (tpl or {}).get("items") or []
+        items = [{**i, "checked": str(i.get("label", "")).lstrip().startswith("*")} for i in (tpl or {}).get("items") or []]
     used = [r for roles in (doc.get("crew_roles") or {}).values() for r in roles] + [r for i in invites for r in i.get("roles") or []]
-    return clean_roles([str(i.get("label", "")) for i in items] + used)[:100] if items or used else []
+    return clean_roles(list_roles(items) + used, 100) if items or used else []
+
+
+RACING = ["Port Trim", "Starboard Trim", "Mainsheet", "Helm", "Foredeck (headsail/spinnaker)"]
+
+
+async def add_racing_roles():
+    """Runs once: adds a 'Racing Roles' group after 'Safety & Emergency' in the admin Crew Roles list, if it isn't there already."""
+    if await db.migrations.find_one({"_id": "crew_racing_roles"}):
+        return
+    tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": "^crew roles$", "$options": "i"}}, {"_id": 1, "items": 1})
+    items = (tpl or {}).get("items") or []
+    if tpl and not any("racing roles" in str(i.get("label", "")).lower() for i in items):
+        safety = next((k for k, i in enumerate(items) if "safety" in str(i.get("label", "")).lower() and not i.get("indent")), None)
+        end = len(items) if safety is None else next((k for k in range(safety + 1, len(items)) if not items[k].get("indent")), len(items))
+        numbered = [m.group(1) for i in items if not i.get("indent") and (m := re.match(r"^\s*(\d+)[.)]", str(i.get("label", ""))))]
+        head = f"{int(numbered[-1]) + 1}. Racing Roles" if numbered else "Racing Roles"
+        nid = max([int(i.get("id", 0)) for i in items if str(i.get("id", "")).isdigit()] + [0]) + 1
+        group = [{"id": nid, "label": head}] + [{"id": nid + k + 1, "label": r, "indent": True} for k, r in enumerate(RACING)]
+        await db.list_templates.update_one({"_id": tpl["_id"]}, {"$set": {"items": items[:end] + group + items[end:], "updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.migrations.insert_one({"_id": "crew_racing_roles", "at": datetime.now(timezone.utc).isoformat()})
 
 
 @router.post("/boats/{boat_id}/invites")

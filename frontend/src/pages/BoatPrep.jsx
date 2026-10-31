@@ -41,6 +41,8 @@ import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
+import { CREW_ROLES, crewRolesList } from "@/lib/crewRoles";
+import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
@@ -359,6 +361,18 @@ export default function BoatPrep({ boatId, boats }) {
   };
   // Magic Mariner builds "First Aid Kit - Pets" sized to the pets; an existing kit list gets its items replaced after asking.
   const showMpa = !crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id));
+  const [backToInvite, setBackToInvite] = useState(false);
+  useEffect(() => {
+    const openRoles = () => {
+      const list = crewRolesList(state);
+      if (!list) { toast.error("This boat has no Crew Roles list. Add one to choose the roles offered to crew."); window.dispatchEvent(new Event("mbp:open-invite")); return; }
+      setActiveId(list.id);
+      setBackToInvite(true);
+      setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    };
+    window.addEventListener("mbp:crew-roles", openRoles);
+    return () => window.removeEventListener("mbp:crew-roles", openRoles);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
   const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"));
   const PET_KIT = "First Aid Kit - Pets";
   const makePetKit = async () => {
@@ -536,10 +550,14 @@ export default function BoatPrep({ boatId, boats }) {
             </div>
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
-          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
+          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
+          {backToInvite && CREW_ROLES.test(active.name.trim()) && (
+            <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
+              onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem("mbp_invite_draft"); }} />
+          )}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}

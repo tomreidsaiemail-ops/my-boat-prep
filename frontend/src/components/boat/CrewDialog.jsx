@@ -8,6 +8,7 @@ import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
 import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
 import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
+import { INVITE_DRAFT } from "@/lib/crewRoles";
 
 const Row = ({ title, sub, roles = [], rsvp, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
@@ -32,9 +33,10 @@ const Row = ({ title, sub, roles = [], rsvp, onRemove, onEdit, label, testId }) 
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPhoto, onClose }) => {
+export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
+  useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
   const [editing, setEditing] = useState(null);
   const [rota, setRota] = useState(false);
   const openRota = () => {
@@ -89,9 +91,15 @@ export const CrewDialog = ({ open, boat, name, online, premium, onUpgrade, onPho
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
-        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} online={online} premium={premium} onUpgrade={onUpgrade}
-          onInvited={load} onClose={() => setInviting(false)} />
-        <EditRolesDialog member={editing} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
+        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} online={online} premium={premium} onUpgrade={onUpgrade}
+          onInvited={load} onClose={() => setInviting(false)}
+          onChangeAvailable={(draft) => {
+            sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));
+            setInviting(false);
+            onClose();
+            window.dispatchEvent(new Event("mbp:crew-roles"));
+          }} />
+        <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>

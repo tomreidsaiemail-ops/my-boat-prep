@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Plus, Trash2, Users } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { BoatPhoto } from "@/components/boat/BoatPhoto";
 import { CrewDialog } from "@/components/boat/CrewDialog";
 import { apiError } from "@/lib/api";
+import { roleGroups } from "@/lib/crewRoles";
 
 export const nameOf = (b) => b.vessel?.trim() || "Unnamed boat";
 const BTN = "flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white active:scale-95 [transition:background-color_.15s,color_.15s,transform_.1s]";
@@ -26,6 +27,13 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [crewOpen, setCrewOpen] = useState(false);
+  const [startInvite, setStartInvite] = useState(false);
+  // "Back to Invite crew" after changing the available roles reopens the invite where the skipper left it.
+  useEffect(() => {
+    const reopen = () => { setStartInvite(true); setCrewOpen(true); };
+    window.addEventListener("mbp:open-invite", reopen);
+    return () => window.removeEventListener("mbp:open-invite", reopen);
+  }, []);
   const cur = boats.current;
   const currentName = nameOf(cur);
   const own = boats.boats.filter((b) => !b.crew);
@@ -73,8 +81,8 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         description={`Starts with a copy of ${currentName}'s lists, all unticked. Ship's Log, My To Do List, engine hours and callsign start empty.`}
         onConfirm={confirmAdd} onClose={() => setAdding(false)} />
       {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} name={currentName} online={online} premium={premium} onUpgrade={onInviteUpgrade}
-          onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => setCrewOpen(false)} />
+        <CrewDialog open={crewOpen} boat={cur} name={currentName} roleGroups={roleGroups(state)} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+          onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
       )}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>
         <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="delete-boat-dialog">

@@ -56,6 +56,8 @@ body {
 .is-checked .tick-box { background: var(--green); border-color: var(--green); transform: scale(1.05); }
 .item-text { font-size: 16px; font-weight: 500; line-height: 1.4; word-break: break-word; max-width: 100%; }
 .is-checked .item-text { text-decoration: line-through; color: #64748b; }
+.is-pick.is-checked .tick-box { background: #1d4ed8; border-color: #1d4ed8; }
+.is-pick.is-checked .item-text { text-decoration: none; color: #1d4ed8; font-weight: 700; }
 .icon-btn { width: 44px; height: 48px; display: flex; align-items: center; justify-content: center; color: #64748b; border-radius: 6px; transition: color .15s, background-color .15s; }
 .icon-btn:hover { color: var(--navy); background: #f1f5f9; }
 .icon-btn:disabled { opacity: .3; pointer-events: none; }

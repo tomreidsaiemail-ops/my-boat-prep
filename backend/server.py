@@ -34,7 +34,7 @@ from templates import router as templates_router  # noqa: E402
 from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
-from crew import router as crew_router, backfill_invite_keys  # noqa: E402
+from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import auth as auth_module  # noqa: E402
@@ -481,6 +481,7 @@ async def create_indexes():
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.password_reset_tokens.create_index("token_hash", unique=True)
     await _upgrade_pob_lines()
+    await add_racing_roles()
 
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]

@@ -1,5 +1,6 @@
 import { MEAL_PLAN_BASE_LEN, MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
 import { autoTypeData } from "@/lib/mpa";
+import { CREW_ROLES } from "@/lib/crewRoles";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -119,9 +120,12 @@ export const customTemplateLists = (templates) => Object.entries(templates || {}
   .sort(([, a], [, b]) => (a.created_at < b.created_at ? -1 : 1)).map(([id, t]) => ({ id, name: t.name, isSystem: true }));
 export const templateIds = (templates) => [...TEMPLATE_IDS, ...customTemplateLists(templates).map((l) => l.id)];
 
-// Admin-published master template items, falling back to the built-in items.
-export const templateItems = (id, templates) =>
-  JSON.parse(JSON.stringify(templates?.[id]?.items || DEFAULT_DATA[id])).map((i) => ({ ...i, checked: false }));
+// Admin-published master template items, falling back to the built-in items. In Crew Roles, a "*" in front marks a role ticked by default.
+export const templateItems = (id, templates) => {
+  const flags = CREW_ROLES.test(String(templates?.[id]?.name || "").trim());
+  return JSON.parse(JSON.stringify(templates?.[id]?.items || DEFAULT_DATA[id]))
+    .map((i) => (flags && /^\s*\*/.test(i.label) ? { ...i, label: i.label.replace(/^\s*\*\s*/, ""), checked: true } : { ...i, checked: false }));
+};
 
 const insertDefaultList = (registry, data, id, templates) => {
   const def = DEFAULT_REGISTRY.find((l) => l.id === id) || customTemplateLists(templates).find((l) => l.id === id);

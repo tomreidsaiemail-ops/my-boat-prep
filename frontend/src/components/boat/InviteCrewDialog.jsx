@@ -7,6 +7,7 @@ import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
+import { INVITE_DRAFT } from "@/lib/crewRoles";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -14,14 +15,14 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email }) => [
   `*You're invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
-  notes.trim() ? `\n*Planned voyage*\n${notes.trim()}` : null,
+  notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
   `\nJoin on My Boat Prep: ${APP_URL}`,
   `Sign up or log in with ${email || "your email"} and the app will ask you to join ${vessel}.`,
 ].filter(Boolean).join("\n");
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUpgrade, onInvited, onClose }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState([]);
@@ -30,7 +31,12 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
   const [error, setError] = useState("");
   const [qrFor, setQrFor] = useState("");
   const [askClear, setAskClear] = useState("");
-  useEffect(() => { if (open) { setEmail(""); setRoles([]); setError(""); setQrFor(""); setAskClear(""); setNotes(info.voyage_notes || ""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return;
+    const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
+    sessionStorage.removeItem(INVITE_DRAFT);
+    setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim() });
   const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
@@ -80,9 +86,10 @@ export const InviteCrewDialog = ({ open, boat, name, info, online, premium, onUp
             </div>
           )}
         </div>
-        <RolePicker options={info.role_options || []} selected={roles} onChange={setRoles} />
+        <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={setRoles}
+          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ email, roles, notes }); })} />
         <div className="flex flex-col gap-1.5">
-          <label className="field-label" htmlFor="voyage-notes">Planned voyage notes</label>
+          <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
           <textarea id="voyage-notes" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={3}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
             className="field-input h-auto resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
