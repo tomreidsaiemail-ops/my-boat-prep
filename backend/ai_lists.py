@@ -12,6 +12,7 @@ from db import db
 from auth import require_premium
 import quota
 from usage import KIND_FEATURE, record_usage
+from youtube_links import check_links, wants_youtube
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
@@ -89,11 +90,23 @@ async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: st
     return result, await quota.left(user["user_id"])
 
 
+YOUTUBE_RULE = (
+    "\nThe user asked for YouTube links. Put each link in the item text as a full address of a real, existing YouTube video or channel "
+    "(https://www.youtube.com/watch?v=..., https://youtu.be/... or https://www.youtube.com/@channel). Copy any links the user gave exactly. "
+    "Never invent or guess a video ID; if you don't know a real link for an item, leave the link out of that item."
+)
+
+
 @router.post("/ai/list-draft")
 async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
     prompt = PROMPT.format(name=body.name.strip().replace('"', "'") or "New list", description=body.description.replace('"""', "'''"))
+    youtube = wants_youtube(body.name, body.description)
+    if youtube:
+        prompt += YOUTUBE_RULE
     lines, left = await _run(user, "draft", prompt, to_lines, {"name": body.name.strip(), "description": body.description})
-    return {"lines": lines, "drafts_left": left}
+    if not youtube:
+        return {"lines": lines, "drafts_left": left}
+    return {"lines": lines, "drafts_left": left, "youtube": await check_links(lines)}
 
 
 TOPUP_PROMPT = (

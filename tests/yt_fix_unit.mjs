@@ -1,0 +1,14 @@
+import { fixYouTube, splitYouTube } from "../frontend/src/lib/youtube.js";
+let pass = 0, fail = 0;
+const t = (ok, msg) => { ok ? pass++ : fail++; console.log(ok ? "PASS" : "FAIL", msg); };
+const lines = ["1. Knots", "Bowline - https://www.youtube.com/watch?v=fake1", "Cleat hitch https://youtu.be/dQw4w9WgXcQ", "2. Anchoring", "Set the anchor (https://www.youtube.com/watch?v=fake2)", "3. Docking", "Spring lines"];
+const bad = [{ line: 1, url: "https://www.youtube.com/watch?v=fake1" }, { line: 4, url: "https://www.youtube.com/watch?v=fake2" }];
+const r = fixYouTube(lines, bad, "remove");
+t(JSON.stringify(r) === JSON.stringify(["1. Knots", "Bowline", "Cleat hitch https://youtu.be/dQw4w9WgXcQ", "2. Anchoring", "Set the anchor", "3. Docking", "Spring lines"]), "remove " + JSON.stringify(r));
+const s = fixYouTube(lines, bad, "search");
+t(s[1] === "Bowline https://www.youtube.com/results?search_query=Bowline" && s[4].endsWith("search_query=Set%20the%20anchor"), "search " + JSON.stringify([s[1], s[4]]));
+t(splitYouTube(s[1]).some((p) => typeof p !== "string"), "search link renders as YouTube pill");
+const d = fixYouTube(lines, bad, "drop");
+t(JSON.stringify(d) === JSON.stringify(["1. Knots", "Cleat hitch https://youtu.be/dQw4w9WgXcQ", "2. Docking", "Spring lines"]), "drop + empty heading removed + renumbered " + JSON.stringify(d));
+t(splitYouTube("Watch https://www.youtube.com/@SailingLaVagabonde now").length === 3, "channel link split");
+console.log(`TOTAL ${pass} passed, ${fail} failed`);

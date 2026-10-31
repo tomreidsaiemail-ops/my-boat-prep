@@ -23,7 +23,6 @@ import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
-import { ApplyAreaDialog } from "@/components/boat/ApplyAreaDialog";
 import useInventoryShared from "@/hooks/useInventoryShared";
 import useListOrdering, { useListSetting } from "@/hooks/useListOrdering";
 import useFolds from "@/hooks/useFolds";
@@ -173,6 +172,7 @@ export default function BoatPrep({ boatId, boats }) {
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const tagging = premium && !crew && areas.length > 0;
+  const movable = tagging && !isTips && active.id !== FAQ_ID && !active.isMedia && !MEDIA_KINDS.includes(active.kind) && !active.isInventory;
   const areaName = (item) => areas.find((a) => a.id === item.area)?.name || null;
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
   const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
@@ -395,7 +395,7 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(`${picks.length} ${picks.length === 1 ? "item" : "items"} added to ${active.name}`);
   };
-  const renameList = (name, description = "") => {
+  const renameList = (name, description = "", move = null) => {
     const { id, name: old } = dialog.list;
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
@@ -403,6 +403,10 @@ export default function BoatPrep({ boatId, boats }) {
     if (name !== old || descChanged) {
       mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, DESCRIPTION_MAX) } : {}) } : l)) }));
       toast.success(name !== old ? `${old} renamed to ${name}` : `${name} description saved`);
+    }
+    if (move && guard()) {
+      setItems((list) => list.map((i) => (move.ids.includes(i.id) ? { ...i, area: move.area } : i)));
+      toast.success(`${move.ids.length} ${move.ids.length === 1 ? "item" : "items"} moved to ${areas.find((a) => a.id === move.area)?.name}`);
     }
     setDialog(null);
     return true;
@@ -494,7 +498,7 @@ export default function BoatPrep({ boatId, boats }) {
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
           {premium && (tagging || filterAreas.length > 0) && (
-            <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} onApply={tagging ? () => setDialog({ type: "applyArea" }) : undefined} />
+            <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
           )}
           {!areaFilter && <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
@@ -531,16 +535,8 @@ export default function BoatPrep({ boatId, boats }) {
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}${dialog.list.isMedia || MEDIA_KINDS.includes(dialog.list.kind) ? " that you can add to, edit and reorder." : ", with every item unticked."}` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
-      <ApplyAreaDialog open={dialog?.type === "applyArea"} area={areas.find((a) => a.id === areaFilter)} items={items.filter((i) => !areaName(i))} labelFor={labelFor}
-        onClose={() => setDialog(null)}
-        onApply={(ids) => {
-          if (!guard()) { setDialog(null); return; }
-          const name = areas.find((a) => a.id === areaFilter)?.name;
-          setItems((list) => list.map((i) => (ids.includes(i.id) ? { ...i, area: areaFilter } : i)));
-          setDialog(null);
-          toast.success(`${ids.length} ${ids.length === 1 ? "item" : "items"} added to ${name}`);
-        }} />
-      <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)} />
+      <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
+        areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
