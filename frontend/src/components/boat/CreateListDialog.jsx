@@ -55,6 +55,14 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
     localStorage.setItem(HELP_SEEN, "1");
   }, [open]);
 
+  // Only ask before replacing a description the user typed or changed themselves.
+  const pickTemplate = (t) => {
+    const prev = templates.find((x) => x.name === template);
+    const own = description.trim() && description !== (prev ? templateText(prev) : "");
+    if (own && !window.confirm(`Replace your List description with the ${stripPrefix(t.name, TEMPLATE_PREFIX)} template?`)) return;
+    setTemplate(t.name);
+    setDescription(templateText(t));
+  };
   const create = () => {
     const res = onConfirm(name.trim(), lines, autoIndent, description.trim());
     if (typeof res === "string") { setError(res); setAskEmpty(false); }
@@ -75,7 +83,7 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
         <form onSubmit={submit} className="flex flex-col gap-3">
           <input autoFocus aria-label="List name" value={name} maxLength={60} placeholder="Enter new list name (e.g., Engine)" onChange={(e) => setName(e.target.value)}
             className="field-input" data-testid="create-list-input" />
-          <TemplatePicker templates={templates} value={template} onPick={(t) => { setTemplate(t.name); setDescription(templateText(t)); }} />
+          <TemplatePicker templates={templates} value={template} onPick={pickTemplate} />
           <ListDescriptionField value={description} onChange={setDescription} />
           <ItemsHelp open={help} onToggle={() => setHelp((h) => !h)} />
           <AiDraftButton name={name} description={description} online={online} hasText={!!lines.length} onDraft={(t) => { setText(t); setAskEmpty(false); }} />

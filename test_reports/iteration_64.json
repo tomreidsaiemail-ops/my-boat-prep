@@ -1,0 +1,27 @@
+{
+  "summary": "Tested Category Icons, Crew Hide Lists, the Batch Magic Scan help icon, Create List templates, placeholder validation and the 4000-char description limit (backend + frontend, 390px and 1920px). Backend: 11/11 pytest pass. GET /api/admin-lists works with and without the trailing space and with extra spaces. Unknown prefix gives 400, missing prefix 422, no auth 401. ai/list-draft and list-topup reject descriptions over 4000 chars (422). An admin template list takes a 4000-char description and rejects 4001. Owner registry description (4000) and list_hidden persist. Frontend: the magic row at 390 has batch, help icon and organise buttons. Gaps are 2px (batch to help) and 8px (help to organise), so the icon sits closer to batch. No horizontal overflow (scrollWidth 390). Tapping the help icon (touch context) opens a white panel with all 7 admin help lines. Escape and an outside tap close it, and mouse hover opens it at 1920. Organise dialog icons are right: basket/brown, wrench/blue, cross/red, info/yellow, dashed circle/white for loose, user/purple for mine. The dropdown section icons list-section-icon-cat-* and list-section-icon-mine match. Create list: the template select starts on the disabled placeholder 'Choose a template (optional)'. Options are 'Meal Plan Template' and 'Night Passage' with the prefix stripped. Picking one fills the description and switching replaces it. The counter shows /4000 and typing 4100 chars stops at 4000. With <Your Favorite TV Celebrities> unchanged, the AI button shows a role=alert note 'Please enter <Your Favorite TV Celebrities> in List description first...' and no /api/ai/list-draft request is sent. After replacing it, one real call returned 93 lines with 12 headings. Creating a list with a 4000-char description sent PUT /me/boat 200 and the DB kept all 4000 chars. The Rename dialog shows 4000/4000 and has no AI button. Crew: I added test-user-beta to test-user-pro/main crew in the DB. Crew sees crew-organise-btn. The dialog says choices are saved on this phone only, checkboxes are enabled, there is no link section, and the group is named \"Skipper's own lists\". The owner's hidden Rigging Checks still shows for crew. Crew hiding Engine Service removes it from the crew dropdown, survives reload (localStorage mbp_crew_hidden_c_test-user-pro_main), sends no PUT/POST, and leaves the owner's list_hidden (['riggingChecks'] in the DB) and the owner's dropdown unchanged. Owner hide/show still saves to the boat, and the link section still shows for the owner. All test data cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "HelpPanelIcon (desktop mouse)", "issue": "Hovering opens the panel after 120ms. Clicking the icon while hovered then toggles it closed, because Radix flips the open state. Desktop users who hover and then click see the panel vanish. Suggest making a mouse click only open (e.g. onClick open=true / ignore toggle-close when opened by hover).", "selector": "[data-testid='batch-scan-help']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_admin_lists_templates.py", "/app/test_reports/pytest/it64.xml"],
+  "action_items": [
+    "Optional: on desktop, a click after a hover should keep the help panel open",
+    "Optional: picking a List template silently overwrites a description the user already typed. Consider a confirm step, or only prefill when the description is empty or still matches the previous template"
+  ],
+  "critical_code_review_comments": [
+    "ListDraftTools unfilledPlaceholders regex /<[^<>\\n]+>/ also blocks normal text like 'wind < 15 knots and > 5' (it matches '< 15 knots and >'). This is an edge case, but the error would confuse users. Consider requiring no space after '<' / before '>'.",
+    "The TemplateListEditor (admin) reuses AiDraftButton, so an admin writing a template description that contains <placeholders> can't run Magic List Generation on it. This may be intended.",
+    "useCrewHidden: when boatId changes, the first render still uses the previous boat's hidden array until the effect re-reads it, so one frame shows the wrong state. Harmless."
+  ],
+  "updated_files": ["/app/backend/tests/test_admin_lists_templates.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (1 low UX issue)"},
+  "seed_data_creation": "Temporary only, all removed: crew relationship test-user-beta on test-user-pro/main (removed via DELETE /api/boats/main/crew/test-user-beta), list 'TEST_it64 Long' (removed via registry PUT), template list 'TEST_it64 desc' (deleted), owner Rigging Checks hide (reverted; list_hidden=[]). The admin lists created by the user and tpl_test64tplB were not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat now has Safety (Mayday/Pan-Pan). Beta user's last_boat is c_test-user-pro_main. Add crew with db.user_boats.updateOne({owner_id:'test-user-pro',boat_id:'main'},{$addToSet:{crew:'test-user-beta'}}). When checking the owner's boat from inside a beta browser context, don't use page.request with a Bearer header: the beta cookie wins and you get beta's own boat. Use curl/requests instead. Playwright locator.tap needs a has_touch context. One real list-draft call was used (19 generations left for pro)."
+}

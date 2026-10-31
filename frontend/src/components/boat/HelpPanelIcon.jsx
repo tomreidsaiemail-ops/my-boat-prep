@@ -7,16 +7,24 @@ import { LinkedText } from "@/components/boat/LinkedText";
 export const HelpPanelIcon = ({ title, items, testId }) => {
   const [open, setOpen] = useState(false);
   const timer = useRef(null);
+  const pointer = useRef("");
   const hover = (o) => (e) => {
     if (e.pointerType !== "mouse") return;
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setOpen(o), o ? 120 : 250);
   };
+  // With a mouse the panel is already open from hovering, so a click keeps it open instead of toggling it shut.
+  const click = (e) => {
+    if (pointer.current !== "mouse") return;
+    e.preventDefault();
+    clearTimeout(timer.current);
+    setOpen(true);
+  };
   if (!items?.length) return null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" aria-label={`Help: ${title}`} onPointerEnter={hover(true)} onPointerLeave={hover(false)} data-testid={testId}
+        <button type="button" aria-label={`Help: ${title}`} onPointerDown={(e) => { pointer.current = e.pointerType; }} onClick={click} onPointerEnter={hover(true)} onPointerLeave={hover(false)} data-testid={testId}
           className="flex h-11 w-9 shrink-0 items-center justify-center rounded-full text-[var(--navy)] hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--blue)] [transition:background-color_.15s]">
           <HelpCircle className="h-5 w-5" strokeWidth={2.5} />
         </button>

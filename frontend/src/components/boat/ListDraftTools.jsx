@@ -21,7 +21,7 @@ export const toLines = (text) => {
 };
 export const DESCRIPTION_MAX = 4000;
 // Template placeholders like <Your Celebrities Favorite TV> that are still in the text.
-export const unfilledPlaceholders = (text) => [...new Set(String(text).match(/<[^<>\n]+>/g) || [])];
+export const unfilledPlaceholders = (text) => [...new Set(String(text).match(/<[^<>\s](?:[^<>\n]*[^<>\s])?>/g) || [])];
 
 export const ListDescriptionField = ({ value, onChange, testId = "create-list" }) => (
   <label className="flex flex-col gap-1 text-sm font-bold">List description
