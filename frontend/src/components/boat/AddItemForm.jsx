@@ -10,7 +10,7 @@ export const SettingToggle = ({ checked, onChange, label, testId }) => (
 );
 const Toggle = SettingToggle;
 
-export const AddItemForm = ({ placeholder, onAdd, ordering, onOrderingChange, promptDelete, onPromptDeleteChange }) => {
+export const AddItemForm = ({ placeholder, onAdd, ordering, onOrderingChange, promptDelete, onPromptDeleteChange, hideArea, onHideAreaChange }) => {
   const [text, setText] = useState("");
   const [alert, setAlert] = useState("");
 
@@ -29,6 +29,7 @@ export const AddItemForm = ({ placeholder, onAdd, ordering, onOrderingChange, pr
       {onOrderingChange && (
         <div className="flex flex-wrap items-center gap-x-6">
           <Toggle checked={!!ordering} onChange={onOrderingChange} label="Show List Ordering Icons" testId="ordering-toggle" />
+          {onHideAreaChange && <Toggle checked={!!hideArea} onChange={onHideAreaChange} label="Hide Area filter" testId="hide-area-toggle" />}
           {onPromptDeleteChange && <Toggle checked={!!promptDelete} onChange={onPromptDeleteChange} label="Prompt on delete" testId="prompt-delete-toggle" />}
         </div>
       )}

@@ -169,6 +169,7 @@ export default function BoatPrep({ boatId, boats }) {
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
   const [promptDelete, setPromptDelete] = useListSetting("mbp_prompt_delete", active.id, true);
+  const [hideArea, setHideArea] = useListSetting("mbp_hide_area", active.id, true);
   const isTips = active.id === TIPS_ID;
   const items = data[active.id] || [];
   const tagging = premium && !crew && areas.length > 0;
@@ -498,7 +499,7 @@ export default function BoatPrep({ boatId, boats }) {
               batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
         <>
-          {premium && (tagging || filterAreas.length > 0) && (
+          {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
           )}
           {!areaFilter && <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />}
@@ -508,6 +509,7 @@ export default function BoatPrep({ boatId, boats }) {
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
+            hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
           {!crew && active.id === "routeHazards" && (
