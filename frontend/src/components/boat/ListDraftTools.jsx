@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { fixYouTube } from "@/lib/youtube";
+import { swapBadYouTube } from "@/lib/youtube";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
 export const toLines = (text) => {
@@ -57,50 +57,23 @@ export const ListDescriptionField = ({ value, onChange, testId = "create-list" }
   </label>
 );
 
-const FIXES = [
-  { mode: "remove", label: "Remove the links, keep the items" },
-  { mode: "search", label: "Swap in YouTube search links" },
-  { mode: "drop", label: "Drop those items" },
-];
-
-// Shown when Magic List Generation gave YouTube links that don't exist; the items wait until the skipper picks what to do.
-const YouTubeFixPanel = ({ pending, onFix, testId }) => (
-  <div role="alert" className="flex flex-col gap-2 rounded-md border-2 border-amber-400 bg-amber-50 p-3 text-sm" data-testid={`${testId}-yt-fix`}>
-    <p className="font-bold text-[var(--navy)]" data-testid={`${testId}-yt-fix-summary`}>
-      {pending.bad.length} of {pending.checked} YouTube {pending.checked === 1 ? "link" : "links"} couldn't be found on YouTube:
-    </p>
-    <ul className="max-h-32 list-disc overflow-y-auto pl-5 text-xs">
-      {pending.bad.map((b, i) => <li key={i} className="break-all" data-testid={`${testId}-yt-fix-bad-${i}`}>{pending.lines[b.line]}</li>)}
-    </ul>
-    <div className="flex flex-col gap-1.5">
-      {FIXES.map((f) => <button key={f.mode} type="button" className="btn-ghost h-auto min-h-10 justify-center py-2 text-center text-sm" onClick={() => onFix(f.mode)} data-testid={`${testId}-yt-fix-${f.mode}`}>{f.label}</button>)}
-    </div>
-    <p className="text-xs text-[var(--muted)]">Or paste real YouTube links into List description and generate again.</p>
-  </div>
-);
-
 export const AiDraftButton = ({ name, description, online = true, hasText, onDraft, testId = "create-list" }) => {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
-  const [pending, setPending] = useState(null);
-  useEffect(() => { setNote(""); setPending(null); }, [description]);
-  const ready = (left) => setNote(`Items ready, edit them before you confirm. ${left} Magic generations left (free today + bought).`);
-  const fix = (mode) => {
-    onDraft(fixYouTube(pending.lines, pending.bad, mode).join("\n"));
-    ready(pending.left);
-    setPending(null);
-  };
+  useEffect(() => setNote(""), [description]);
   const draft = async () => {
     if (!description.trim()) { setNote("Describe the list in List Description first, then Magic List Generation can create the items"); return; }
     const blanks = unfilledPlaceholders(description);
     if (blanks.length) { setNote(`Please enter ${blanks.join(", ")} in List description first. Replace each part in < > with your own words.`); return; }
     setBusy(true);
     setNote("");
-    setPending(null);
     try {
       const { data } = await api.post("/ai/list-draft", { name: name.trim(), description: description.trim() }, { timeout: 120000 });
-      if (data.youtube?.bad?.length) setPending({ lines: data.lines, left: data.drafts_left, ...data.youtube });
-      else { onDraft(data.lines.join("\n")); ready(data.drafts_left); }
+      // Only lists asking for YouTube links come back with a youtube check.
+      const bad = data.youtube?.bad || [];
+      onDraft((bad.length ? swapBadYouTube(data.lines, bad) : data.lines).join("\n"));
+      const swapped = bad.length ? ` ${bad.length} YouTube ${bad.length === 1 ? "link wasn't" : "links weren't"} found, so ${bad.length === 1 ? "it's" : "they're"} a YouTube search instead.` : "";
+      setNote(`Items ready, edit them before you confirm.${swapped} ${data.drafts_left} Magic generations left (free today + bought).`);
     } catch (e) { setNote(apiError(e, "Magic List Generation couldn't create that list right now. Please try again.")); }
     setBusy(false);
   };
@@ -111,7 +84,6 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
         {busy ? "Magic List Generation is working..." : hasText ? "Replace items using Magic List Generation" : "Create items using Magic List Generation"}
       </button>
       {!online && <p className="text-xs text-[var(--muted)]" data-testid={`${testId}-ai-offline`}>Magic List Generation needs a signal.</p>}
-      {pending && <YouTubeFixPanel pending={pending} onFix={fix} testId={testId} />}
       {note && <p role={note.startsWith("Please enter") ? "alert" : undefined} className={`text-xs font-semibold ${note.startsWith("Please enter") ? "rounded-md bg-red-50 px-2 py-1.5 text-[var(--red)]" : ""}`} data-testid={`${testId}-ai-note`}>{note}</p>}
     </div>
   );

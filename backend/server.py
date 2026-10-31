@@ -67,6 +67,14 @@ class BaseDocument(BaseModel):
         return data
 
 
+class Pet(BaseModel):
+    id: str = Field(default="", max_length=40)
+    type: str = Field(default="", max_length=40)
+    name: str = Field(default="", max_length=60)
+    breed: str = Field(default="", max_length=60)
+    weight: str = Field(default="", max_length=8)
+
+
 class BoatDetails(BaseModel):
     vessel: str = ""
     skipper: str = ""
@@ -86,6 +94,7 @@ class BoatDetails(BaseModel):
     trip_days: int = 0
     route_start: str = Field(default="", max_length=80)
     route_dest: str = Field(default="", max_length=80)
+    pets: List[Pet] = Field(default_factory=list, max_length=20)
 
     @field_validator("children", "trip_days", mode="before")
     @classmethod

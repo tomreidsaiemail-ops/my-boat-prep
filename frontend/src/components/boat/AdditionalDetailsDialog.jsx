@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PetsSection } from "@/components/boat/PetsSection";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -106,6 +107,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
           <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
           <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />
           <IntField id="trip-days" label="Trip duration (days)" value={boat.trip_days || ""} min={0} max={365} placeholder="Optional" onChange={(n) => onChange("trip_days", n)} />
+          <PetsSection pets={boat.pets || []} units={unit} onChange={(p) => onChange("pets", p)} />
         </div>
         <button type="button" className="btn-solid h-11 justify-center" onClick={onClose} data-testid="additional-details-done-btn">Done</button>
       </DialogContent>

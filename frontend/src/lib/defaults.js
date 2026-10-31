@@ -101,7 +101,7 @@ export const DEFAULT_DATA = {
 };
 
 export const freshState = () => ({
-  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0, route_start: "", route_dest: "" },
+  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0, route_start: "", route_dest: "", pets: [] },
   log_sent: null,
   engine_log: [],
   electrical_log: [],

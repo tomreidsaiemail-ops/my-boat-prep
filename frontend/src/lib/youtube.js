@@ -23,23 +23,14 @@ export const splitYouTube = (text) => {
 // The same text with YouTube addresses taken out, for matching food names.
 export const withoutYouTube = (text) => splitYouTube(text).filter((p) => typeof p === "string").join(" ").replace(/\s+/g, " ").trim();
 
-const HEADING = /^\d+\.\s/;
 const tidyLine = (s) => s.replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+/g, " ").replace(/[\s:–—|-]+$/, "").trim();
-// What to do with generated lines whose YouTube links don't exist: remove the links, swap in a YouTube search, or drop the lines.
-export const fixYouTube = (lines, bad, mode) => {
+// Generated lines whose YouTube links don't exist get a YouTube search for the item instead.
+export const swapBadYouTube = (lines, bad) => {
   const byLine = bad.reduce((m, b) => ({ ...m, [b.line]: [...(m[b.line] || []), b.url] }), {});
-  const strip = (line, urls) => tidyLine(urls.reduce((s, u) => s.split(u).join(" "), line));
-  const out = lines.flatMap((line, i) => {
+  return lines.flatMap((line, i) => {
     const urls = byLine[i];
     if (!urls) return [line];
-    if (mode === "drop") return [];
-    const text = strip(line, urls);
-    if (mode === "remove") return text ? [text] : [];
-    const search = `https://www.youtube.com/results?search_query=${encodeURIComponent(withoutYouTube(text) || text)}`;
-    return [`${text} ${search}`.trim()];
+    const text = tidyLine(urls.reduce((s, u) => s.split(u).join(" "), line));
+    return text ? [`${text} https://www.youtube.com/results?search_query=${encodeURIComponent(withoutYouTube(text) || text)}`] : [];
   });
-  // Headings left with nothing under them go, and the rest are renumbered.
-  let n = 0;
-  return out.filter((l, i) => !HEADING.test(l) || (out[i + 1] !== undefined && !HEADING.test(out[i + 1])))
-    .map((l) => (HEADING.test(l) ? l.replace(/^\d+\./, `${(n += 1)}.`) : l));
 };
