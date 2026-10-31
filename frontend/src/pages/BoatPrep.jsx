@@ -41,7 +41,7 @@ import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
-import { CREW_ROLES, crewRolesList } from "@/lib/crewRoles";
+import { CREW_ROLES, crewRolesList, INVITE_DRAFT } from "@/lib/crewRoles";
 import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
@@ -556,7 +556,7 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (
             <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
-              onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem("mbp_invite_draft"); }} />
+              onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem(INVITE_DRAFT); }} />
           )}
           {!crew && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}

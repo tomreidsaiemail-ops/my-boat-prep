@@ -31,10 +31,10 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
   const [error, setError] = useState("");
   const [qrFor, setQrFor] = useState("");
   const [askClear, setAskClear] = useState("");
+  // The draft from "Change available" stays until the invite is sent or closed, so a second run of this effect still finds it.
   useEffect(() => {
     if (!open) return;
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    sessionStorage.removeItem(INVITE_DRAFT);
     setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -50,6 +50,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
     try {
       await api.post(`/boats/${boat.boat_id}/invites`, { email: email.trim(), roles, notes, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
+      sessionStorage.removeItem(INVITE_DRAFT);
       if (mode === "qr") setQrFor(who);
       else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
       else if (copied) toast.success(mode === "link" ? `Link copied. ${who} logs in with that email to join.` : "Message copied. Paste it into WhatsApp or any messaging app.");
@@ -66,7 +67,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
   );
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { sessionStorage.removeItem(INVITE_DRAFT); onClose(); } }}>
       <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="invite-crew-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Invite crew to {name}</DialogTitle>

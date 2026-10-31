@@ -54,7 +54,7 @@ def list_roles(items: list) -> List[str]:
     roles = [i for i, head in rows if not head]
     if any(i.get("checked") for i in roles):
         roles = [i for i in roles if i.get("checked")]
-    return [re.sub(r"^\s*\*\s*", "", str(i.get("label", ""))) for i in roles]
+    return [re.sub(r"^\s*\*\s*", "", re.sub(r"^\s*\d+[.)]\s*", "", str(i.get("label", "")))) for i in roles]
 
 
 class InviteIn(BaseModel):

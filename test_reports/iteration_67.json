@@ -1,0 +1,35 @@
+{
+  "summary": "Tested Crew Roles picks feature (backend + mobile 390px UI) as Pro test_session_pro_1. Backend: 6/6 pytest pass (Racing Roles migration placed after Safety & Emergency, idempotent after backend restart: still 13 items/1 Racing group; role_options ticked-only, no headings/'*', all roles when none ticked, not capped at 12; invite with roles create+cancel). UI: Crew Roles template list auto-added; '*' stripped; Skipper/Navigator/First Aider ticked by default; ticked rows have is-pick is-checked, blue (#1d4ed8) text, no line-through. Invite picker groups by heading with only ticked roles; label 'Planned voyage or race notes'; WhatsApp preview uses '*Planned voyage or race*'. Change available closes dialogs, opens Crew Roles with back-to-invite-bar; ticking Helm / unticking Navigator is reflected in reopened picker (Racing Roles: Helm, no Navigator). Dismiss hides bar and clears draft. EditRolesDialog shows grouped roles + 'Other roles' for assigned-but-unavailable roles. None ticked -> all 13 roles offered. Regression: normal list ticked item still line-through. ONE BUG: after Back to Invite crew, the email and picked roles are NOT restored (empty email, no chip selected); notes only come back because they were saved to the server.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/boats/{boat_id}/crew", "issue": "role_options = ticked roles + roles already used by crew/invites (used roles appended), so it isn't strictly 'ticked-only'. Probably intended; frontend uses local roleGroups anyway."},
+      {"endpoint": "crew.list_roles", "issue": "Backend strips only '*' but frontend clean() also strips leading '1.'/'1)' numbering, so a numbered non-heading role would show differently in role_options vs the picker."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InviteCrewDialog draft restore (Change available -> Back to Invite crew)", "issue": "Email and picked roles are lost on return. Instrumented sessionStorage: the open effect reads mbp_invite_draft and removes it, then runs a SECOND time on reopen (InviteCrewDialog remounts inside the re-mounted CrewDialog DialogContent; React.StrictMode double-invokes effects on mount), and the second run finds null and resets email='' and roles=[]. Notes show up only because saveNotes() PUT them to voyage_notes first.", "selector": "[data-testid='crew-invite-email-input'], [data-testid^='crew-role-chip-']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew Roles list", "issues": ["Heading rows (1. Sailing, etc.) still have tick boxes. Ticking one does nothing for the roles offered, which may confuse users (minor)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_roles_picks.py", "/app/test_reports/pytest/pytest_crew_roles_picks.xml"],
+  "action_items": [
+    "Fix the invite draft restore in InviteCrewDialog.jsx: don't remove mbp_invite_draft inside the open effect, which can run more than once. For example: read the draft into a ref/state once and only remove it after it has been applied (guard with a useRef flag), remove it on send/close, or keep the draft in CrewDialog state and pass it as a prop. Then check that email, picked roles and notes all come back after Back to Invite crew."
+  ],
+  "critical_code_review_comments": [
+    "InviteCrewDialog open effect is not idempotent (it reads and deletes sessionStorage), so it breaks under StrictMode/remounts. This is the root cause of the bug above.",
+    "BoatPrep BackToInviteBar onDismiss hardcodes 'mbp_invite_draft' instead of importing INVITE_DRAFT.",
+    "roleGroups(state) is recomputed on every BoatSwitcher render (cheap, but could be memoised)."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_roles_picks.py"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "~90% (all checks pass except draft email/roles restore)"},
+  "seed_data_creation": "Temporarily added test-user-free as crew on pro boat 'main' with roles [Navigator, Cook, Fish Whisperer] for the EditRolesDialog test, then removed. No invites left (qa-crew@example.com invites cancelled). The pro boat's Crew Roles picks are now Skipper, First Aider, Helm (Navigator unticked by the test flow).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login: cookie session_token=test_session_pro_1. Crew Roles list id tpl_test67crew (item ids: 1 head, 2 Skipper, 3 Navigator, 4 Cook, 5 head, 6 First Aider, 7 MOB, 8 Racing head, 9-13 racing roles). Open invite: boat-crew-btn -> crew-invite-open-btn. To retest the draft fix: fill email, click a chip, click crew-roles-change-available-btn, then back-to-invite-btn, and check the email input value and chip aria-pressed.",
+  "rca of the issue": "Repro: open Invite crew, type qa-crew@example.com, pick Skipper, type notes, click Change available, then Back to Invite crew. The email is empty and no role is selected. Console instrumentation showed 'DRAFT get -> {...}', 'DRAFT remove', then 'DRAFT get -> null', 'DRAFT remove': the effect ran twice on reopen. Mitigation: make the draft read idempotent (ref guard, or delete the draft only after a successful restore/send)."
+}
