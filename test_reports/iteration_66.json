@@ -1,0 +1,27 @@
+{
+  "summary": "Tested Pets in Provisioning and Pets in Mayday/Pan-Pan/Coast Guard report at mobile 390px, backend + UI. Everything requested passed. Backend: test_pets.py 10/10 passed plus 1 real LLM call (skipped by default). Pets PUT/GET persisted; >20 pets and weight >8 chars gave 422; provisions with items [] and no pets (or blank pets) gave 422; bad units gave 422. The real call with items+pets returned exactly {amounts, pets, drafts_left}, with pets rows 'for' Biscuit/Mog. parse_provisions unit tests passed: pets name matched case-insensitively and the provisions-only output is unchanged apart from pets: []. _pob_words wording passed: 2 pets / 1 pet / with children / 'an iguana'. Node units yt_fix_unit 6/6, mpa_bidir_unit 46/46 and yt_mpa_unit (exit 0) all passed. UI: added Dog Biscuit Labrador 28.5 and Cat Mog 4; letters were blocked in weight; the Other type input showed; remove worked; kg switched to lb for Feet and back. After Done and reload the summary read 'Gaff Cutter TEST · 3 POB · 2 pets' and the server boat.pets was correct. The Mayday and Pan-Pan pobDescription read '... 3 persons on board POB. Also 2 pets on board: a dog and a cat. The boat is ...' and was unchanged without pets. MPA (provisions and aisles mocked): mpa-pets showed 'Add food and supplies for 2 pets', ticked by default. Exactly 1 provisions call was made with pets [{type,name,breed,weight}] and units kg. The list ended with 'For the pets (Biscuit, Mog)' followed by indented 'Dry dog food – 3 kg · Biscuit' etc. The pets section was last both with aisles on and off. Unticking pets (no provisions) gave 0 calls and no pet section. Offline gave 0 calls and the toast 'No signal, so pet food and supplies are left out'. With a provision plus pets, ONE call carried both and the pets section came after 'Provisions for 1 day'. Without pets, mpa-pets was hidden, no call was made, and the list had no pet section. Coast guard report (navigator-ask mocked): 'Pets on board: Biscuit (Dog, Labrador, 28.5 kg); Mog (Cat, 4 kg)' came right after 'Persons on board: 3'. The line was absent without pets.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "BoatDetails additional-details-summary", "issues": ["Counts boat.pets.length including blank pet cards (no type and no name), so it can say '1 pet' while Mayday, MPA and the CG report ignore that pet. Use the same filter (type or name)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_pets.py", "/app/test_reports/pytest/pytest_pets.xml", "/app/tests/pets_mpa_ui.py", "/app/tests/pets_inspect.py", "/app/tests/route_list_seed.py"],
+  "action_items": [
+    "Optional: additional-details-summary pet count should only count pets with a type or name.",
+    "Optional: when only pets are requested and /ai/mpa/provisions fails, the catch toast says 'provisions are added without amounts', which is misleading. Say pet supplies were left out."
+  ],
+  "critical_code_review_comments": [
+    "MpaDialog catch toast wording is provisions-centric even when only pets were sent.",
+    "parse_provisions raises 'no amounts' if pets were requested but the LLM returns no pets rows, so the whole request fails (including provision amounts). That is acceptable but strict; consider tolerating an empty pets array.",
+    "Type '__other' with empty text: the pet is kept only if it has a name; the type becomes 'pet' in the wording. Fine."
+  ],
+  "updated_files": ["/app/backend/tests/test_pets.py", "/app/tests/pets_mpa_ui.py", "/app/tests/pets_inspect.py", "/app/tests/route_list_seed.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporarily added pets, the Route Planning list (routeHazards was missing from the pro boat registry), a data.provisions row and an MPA Shopping List on the pro boat. All were removed: pets [], units m, MPA list deleted, routeHazards removed, route_start/dest cleared. The TEST_bt_pets boat was deleted by the fixture teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The pro boat has no Route Planning (routeHazards) list. Use python3 /app/tests/route_list_seed.py add/remove to test the Navigator. 'Meal Plan - Sample' is tpl_b1aef01b43. data.provisions seeded straight into the DB without a registry entry is pruned on the next save, so add provisions via the UI or the registry. A FIRST200 launch promo makes the free user premium, so 403 checks for free users are not valid right now. Real LLM calls today: 2 mpa/provisions calls (one accidentally through the free user). PETS_REAL_AI=1 enables the real pytest call."
+}

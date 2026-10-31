@@ -67,7 +67,9 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
             pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg" }, { timeout: 90000 });
           amounts = data.amounts;
           petItems = data.pets || [];
-        } catch (e) { toast.warning(apiError(e, "The Magic Mariner couldn't size the provisions and pet supplies, so provisions are added without amounts")); }
+        } catch (e) {
+          toast.warning(apiError(e, `The Magic Mariner couldn't help just now, so ${[prov.length && "provisions are added without amounts", forPets.length && "pet food and supplies are left out"].filter(Boolean).join(" and ")}`));
+        }
       }
     }
     const lists4 = chosen.map((l) => ({ ...l, tag: tags[l.id] }));

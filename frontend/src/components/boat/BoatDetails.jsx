@@ -4,12 +4,14 @@ import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 
+const petCount = (boat) => (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim()).length;
+
 const MoreButton = ({ boat, onClick, btnRef }) => (
   <button type="button" ref={btnRef} onClick={onClick} data-testid="additional-details-btn"
     className="col-span-2 flex min-h-[44px] w-full items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 text-left [transition:border-color_.15s] hover:border-[var(--navy)]">
     <span className="min-w-0 flex-1">
       <span className="block text-sm font-bold">Additional boat details...</span>
-      <span className="block truncate text-xs text-[var(--muted)]" data-testid="additional-details-summary">{[boat.boat_type, pobText(boat), boat.mmsi?.length === 9 && `MMSI ${boat.mmsi}`, boat.pets?.length && `${boat.pets.length} ${boat.pets.length === 1 ? "pet" : "pets"}`].filter(Boolean).join(" · ")}</span>
+      <span className="block truncate text-xs text-[var(--muted)]" data-testid="additional-details-summary">{[boat.boat_type, pobText(boat), boat.mmsi?.length === 9 && `MMSI ${boat.mmsi}`, petCount(boat) && `${petCount(boat)} ${petCount(boat) === 1 ? "pet" : "pets"}`].filter(Boolean).join(" · ")}</span>
     </span>
     <ChevronRight className="h-5 w-5 shrink-0 text-[var(--muted)]" />
   </button>

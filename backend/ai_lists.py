@@ -261,7 +261,7 @@ def parse_provisions(text: str, names: list, pets: list) -> dict:
         if item:
             who = str(r.get("for", "")).strip()
             pet_rows.append({"name": item, "amount": str(r.get("amount", "")).strip()[:40], "for": pet_names.get(who.lower(), who[:60])})
-    if (names and not out) or (pets and not pet_rows):
+    if (names and not out) or (not names and not pet_rows):
         raise ValueError("no amounts")
     return {"amounts": out, "pets": pet_rows[:60]}
 
