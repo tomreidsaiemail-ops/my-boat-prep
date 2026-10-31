@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { swapBadYouTube } from "@/lib/youtube";
+import { amazonSearchLinks, swapBadYouTube } from "@/lib/youtube";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
 export const toLines = (text) => {
@@ -71,9 +71,12 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
       const { data } = await api.post("/ai/list-draft", { name: name.trim(), description: description.trim() }, { timeout: 120000 });
       // Only lists asking for YouTube links come back with a youtube check.
       const bad = data.youtube?.bad || [];
-      onDraft((bad.length ? swapBadYouTube(data.lines, bad) : data.lines).join("\n"));
+      const before = bad.length ? swapBadYouTube(data.lines, bad) : data.lines;
+      const lines = amazonSearchLinks(before);
+      onDraft(lines.join("\n"));
       const swapped = bad.length ? ` ${bad.length} YouTube ${bad.length === 1 ? "link wasn't" : "links weren't"} found, so ${bad.length === 1 ? "it's" : "they're"} a YouTube search instead.` : "";
-      setNote(`Items ready, edit them before you confirm.${swapped} ${data.drafts_left} Magic generations left (free today + bought).`);
+      const amazon = lines.some((l, i) => l !== before[i]) ? " Amazon links search Amazon for each item." : "";
+      setNote(`Items ready, edit them before you confirm.${swapped}${amazon} ${data.drafts_left} Magic generations left (free today + bought).`);
     } catch (e) { setNote(apiError(e, "Magic List Generation couldn't create that list right now. Please try again.")); }
     setBusy(false);
   };

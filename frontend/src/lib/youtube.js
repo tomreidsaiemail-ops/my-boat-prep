@@ -25,6 +25,18 @@ export const splitYouTube = (text) => {
 export const withoutYouTube = (text) => splitYouTube(text).filter((p) => typeof p === "string").join(" ").replace(/\s+/g, " ").trim();
 
 const tidyLine = (s) => s.replace(/\(\s*\)|\[\s*\]/g, "").replace(/\s+/g, " ").replace(/[\s:–—|-]+$/, "").trim();
+// Generated Amazon product links can't be checked (Amazon blocks it), so each becomes an Amazon search for the item on the same country site.
+export const amazonSearchLinks = (lines) => lines.map((line) => {
+  const parts = splitYouTube(line);
+  if (!parts.some((p) => p.kind === "amazon" && !/\/s\?k=/.test(p.url))) return line;
+  const q = encodeURIComponent(tidyLine(withoutYouTube(line)) || "boat");
+  return parts.map((p) => {
+    if (typeof p === "string" || p.kind !== "amazon" || /\/s\?k=/.test(p.url)) return typeof p === "string" ? p : p.url;
+    const host = p.url.match(/^https?:\/\/(?:www\.|smile\.)?(amazon\.[a-z.]+)\//i)?.[1] || "amazon.com";
+    return `https://www.${host}/s?k=${q}`;
+  }).join("");
+});
+
 // Generated lines whose YouTube links don't exist get a YouTube search for the item instead.
 export const swapBadYouTube = (lines, bad) => {
   const byLine = bad.reduce((m, b) => ({ ...m, [b.line]: [...(m[b.line] || []), b.url] }), {});

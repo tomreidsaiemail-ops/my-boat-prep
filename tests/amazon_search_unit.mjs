@@ -1,0 +1,11 @@
+import { amazonSearchLinks, splitYouTube } from "../frontend/src/lib/youtube.js";
+let pass = 0, fail = 0;
+const t = (ok, msg) => { ok ? pass++ : fail++; console.log(ok ? "PASS" : "FAIL", msg); };
+const lines = ["1. Safety", "Dog lifejacket size L https://www.amazon.co.uk/dp/B0FAKE123", "Flares (amzn.to/3abc)", "Already a search https://www.amazon.com/s?k=bilge%20pump", "Plain item", "Video https://youtu.be/dQw4w9WgXcQ"];
+const r = amazonSearchLinks(lines);
+t(r[0] === lines[0] && r[4] === lines[4] && r[5] === lines[5] && r[3] === lines[3], "untouched lines kept");
+t(r[1] === "Dog lifejacket size L https://www.amazon.co.uk/s?k=Dog%20lifejacket%20size%20L", "uk product -> uk search: " + r[1]);
+t(r[2] === "Flares (https://www.amazon.com/s?k=Flares)", "short link -> .com search: " + r[2]);
+t(splitYouTube(r[1]).some((p) => p.kind === "amazon"), "search renders as Amazon pill");
+t(JSON.stringify(amazonSearchLinks(r)) === JSON.stringify(r), "idempotent");
+console.log(`TOTAL ${pass} passed, ${fail} failed`);
