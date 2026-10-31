@@ -1,10 +1,24 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { isHeadingLine } from "@/lib/outline";
-import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
+import { AiDraftButton, AutoIndentToggle, DESCRIPTION_MAX, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import useAdminLists, { stripPrefix } from "@/hooks/useAdminLists";
 
 const HELP_SEEN = "mbp_newlist_help_seen";
+const TEMPLATE_PREFIX = "Admin - List Template - ";
+const templateText = (t) => t.items.map((i) => `${i.indent ? "  " : ""}${i.label}`).join("\n").slice(0, DESCRIPTION_MAX);
+
+// Admin "Admin - List Template - ..." lists; picking one fills List description with its items.
+const TemplatePicker = ({ templates, value, onPick }) => (
+  <label className="flex flex-col gap-1 text-sm font-bold">List templates
+    <select value={value} onChange={(e) => onPick(templates.find((t) => t.name === e.target.value))} disabled={!templates.length}
+      className="field-input font-normal disabled:opacity-60" data-testid="create-list-template-select">
+      <option value="" disabled>{templates.length ? "Choose a template (optional)" : "No templates yet"}</option>
+      {templates.map((t) => <option key={t.name} value={t.name} data-testid={`create-list-template-option-${stripPrefix(t.name, TEMPLATE_PREFIX)}`}>{stripPrefix(t.name, TEMPLATE_PREFIX)}</option>)}
+    </select>
+  </label>
+);
 
 const ItemsHelp = ({ open, onToggle }) => (
   <div className="rounded-md border border-[var(--navy)]/30 bg-sky-50" data-testid="create-list-help">
@@ -24,6 +38,8 @@ const ItemsHelp = ({ open, onToggle }) => (
 export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [template, setTemplate] = useState("");
+  const templates = useAdminLists(TEMPLATE_PREFIX, online && open);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [askEmpty, setAskEmpty] = useState(false);
@@ -34,7 +50,7 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
 
   useEffect(() => {
     if (!open) return;
-    setName(""); setDescription(""); setText(""); setError(""); setAskEmpty(false); setAutoIndent(true);
+    setName(""); setDescription(""); setTemplate(""); setText(""); setError(""); setAskEmpty(false); setAutoIndent(true);
     setHelp(localStorage.getItem(HELP_SEEN) !== "1");
     localStorage.setItem(HELP_SEEN, "1");
   }, [open]);
@@ -59,6 +75,7 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
         <form onSubmit={submit} className="flex flex-col gap-3">
           <input autoFocus aria-label="List name" value={name} maxLength={60} placeholder="Enter new list name (e.g., Engine)" onChange={(e) => setName(e.target.value)}
             className="field-input" data-testid="create-list-input" />
+          <TemplatePicker templates={templates} value={template} onPick={(t) => { setTemplate(t.name); setDescription(templateText(t)); }} />
           <ListDescriptionField value={description} onChange={setDescription} />
           <ItemsHelp open={help} onToggle={() => setHelp((h) => !h)} />
           <AiDraftButton name={name} description={description} online={online} hasText={!!lines.length} onDraft={(t) => { setText(t); setAskEmpty(false); }} />

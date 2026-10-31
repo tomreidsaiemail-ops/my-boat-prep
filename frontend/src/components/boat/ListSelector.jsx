@@ -1,4 +1,5 @@
 import { Copy, Pencil, Plus, User } from "lucide-react";
+import { CategoryIcon } from "@/components/boat/CategoryIcon";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const BTN = "flex h-14 w-12 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white active:scale-95 [transition:background-color_.15s,color_.15s,transform_.1s]";
@@ -25,7 +26,9 @@ export const ListSelector = ({ sections, activeId, activeColours, onChange, onCr
           {sections.map((s, i) => (
             <SelectGroup key={s.key} data-testid={`list-section-${s.key}`}>
               {i > 0 && <SelectSeparator />}
-              {s.label && <SelectLabel className="pt-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">{s.label}</SelectLabel>}
+              {s.label && <SelectLabel className="flex items-center gap-1.5 pt-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                <CategoryIcon name={s.label} kind={s.kind} colours={s.colours} size="sm" testId={`list-section-icon-${s.key}`} />{s.label}
+              </SelectLabel>}
               {s.rows.map((r) => <Row key={r.list.id} row={r} updated={updatedIds.includes(r.list.id)} />)}
             </SelectGroup>
           ))}

@@ -44,7 +44,7 @@ class TemplateLine(BaseModel):
 
 class TemplateListIn(BaseModel):
     name: str = Field(max_length=60)
-    description: str = Field(default="", max_length=1000)
+    description: str = Field(default="", max_length=4000)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
     private: Optional[bool] = None
 
@@ -115,6 +115,20 @@ async def list_categories(_: dict = Depends(get_current_user)):
     docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(200)
     items = next((d["items"] for d in docs if d["name"].strip().lower() == "admin - list categories"), [])
     return {"items": [{"label": i["label"]} for i in items]}
+
+
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ")
+
+
+@router.get("/admin-lists")
+async def admin_lists(prefix: str, _: dict = Depends(get_current_user)):
+    """Admin template lists whose name starts with a known prefix (help panels, list templates), in creation order."""
+    p = " ".join(prefix.lower().split()) + " "
+    if p not in ADMIN_LIST_PREFIXES:
+        raise HTTPException(status_code=400, detail="Unknown admin list prefix")
+    docs = await db.list_templates.find({"custom": True}, {"_id": 0, "name": 1, "items": 1}).sort("created_at", 1).to_list(200)
+    return {"lists": [{"name": d["name"].strip(), "items": [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in d["items"]]}
+                      for d in docs if " ".join(d["name"].lower().split()).startswith(p)]}
 
 
 @router.get("/admin/template-lists")

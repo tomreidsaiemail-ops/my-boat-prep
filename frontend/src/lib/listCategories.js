@@ -64,8 +64,8 @@ export const dropdownSections = (org, firstId, hidden, activeId) => {
   const first = org.byId[firstId];
   return [
     ...(first && visible(first) ? [{ key: "first", label: "", rows: [first] }] : []),
-    ...org.groups.map((g) => ({ key: `cat-${g.name}`, label: g.name, rows: g.rows.filter(show) })),
+    ...org.groups.map((g) => ({ key: `cat-${g.name}`, label: g.name, colours: g.colours, rows: g.rows.filter(show) })),
     { key: "loose", label: "", rows: org.loose.filter(show) },
-    { key: "mine", label: "Your lists", rows: org.mine.filter(show) },
+    { key: "mine", label: "Your lists", kind: "mine", colours: USER_PURPLE, rows: org.mine.filter(show) },
   ].filter((s) => s.rows.length);
 };

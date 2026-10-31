@@ -19,7 +19,9 @@ export const toLines = (text) => {
   });
   return out;
 };
-export const DESCRIPTION_MAX = 1000;
+export const DESCRIPTION_MAX = 4000;
+// Template placeholders like <Your Celebrities Favorite TV> that are still in the text.
+export const unfilledPlaceholders = (text) => [...new Set(String(text).match(/<[^<>\n]+>/g) || [])];
 
 export const ListDescriptionField = ({ value, onChange, testId = "create-list" }) => (
   <label className="flex flex-col gap-1 text-sm font-bold">List description
@@ -36,6 +38,8 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   useEffect(() => setNote(""), [description]);
   const draft = async () => {
     if (!description.trim()) { setNote("Describe the list in List Description first, then Magic List Generation can create the items"); return; }
+    const blanks = unfilledPlaceholders(description);
+    if (blanks.length) { setNote(`Please enter ${blanks.join(", ")} in List description first. Replace each part in < > with your own words.`); return; }
     setBusy(true);
     setNote("");
     try {
@@ -52,7 +56,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
         {busy ? "Magic List Generation is working..." : hasText ? "Replace items using Magic List Generation" : "Create items using Magic List Generation"}
       </button>
       {!online && <p className="text-xs text-[var(--muted)]" data-testid={`${testId}-ai-offline`}>Magic List Generation needs a signal.</p>}
-      {note && <p className="text-xs font-semibold" data-testid={`${testId}-ai-note`}>{note}</p>}
+      {note && <p role={note.startsWith("Please enter") ? "alert" : undefined} className={`text-xs font-semibold ${note.startsWith("Please enter") ? "rounded-md bg-red-50 px-2 py-1.5 text-[var(--red)]" : ""}`} data-testid={`${testId}-ai-note`}>{note}</p>}
     </div>
   );
 };

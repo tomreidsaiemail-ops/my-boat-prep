@@ -37,8 +37,10 @@ import { BoatDetails } from "@/components/boat/BoatDetails";
 import { ActionBar } from "@/components/boat/ActionBar";
 import { SyncBanner } from "@/components/boat/SyncBanner";
 import { ListSelector } from "@/components/boat/ListSelector";
-import { OrganiseDialog } from "@/components/boat/OrganiseDialog";
+import { CrewOrganiseButton, OrganiseDialog } from "@/components/boat/OrganiseDialog";
 import useListCategories from "@/hooks/useListCategories";
+import useAdminLists from "@/hooks/useAdminLists";
+import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
@@ -152,8 +154,12 @@ export default function BoatPrep({ boatId, boats }) {
   const listCats = useListCategories(online);
   const menuLists = [INVENTORY_LIST, ...allLists.filter((l) => l !== INVENTORY_LIST)];
   const org = organiseLists(menuLists, listCats);
-  const hiddenLists = state.list_hidden || [];
-  const showLists = (ids, show) => mutate((s) => ({ ...s, list_hidden: show ? (s.list_hidden || []).filter((id) => !ids.includes(id)) : [...new Set([...(s.list_hidden || []), ...ids])] }));
+  const [crewHidden, showCrewLists] = useCrewHidden(boatId);
+  const helpPanels = useAdminLists("Admin - Help Panel - ", online);
+  const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
+  const hiddenLists = crew ? crewHidden : state.list_hidden || [];
+  const showOwnerLists = (ids, show) => mutate((s) => ({ ...s, list_hidden: show ? (s.list_hidden || []).filter((id) => !ids.includes(id)) : [...new Set([...(s.list_hidden || []), ...ids])] }));
+  const showLists = crew ? showCrewLists : showOwnerLists;
   const linkList = (id, category) => mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, category } : l)) }));
   const pickList = (id) => {
     setActiveId(id);
@@ -444,7 +450,8 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><VoyageCard boat={boats.current} online={online} /></> : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} />}
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
@@ -519,7 +526,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}
-        readOnly={crew} admin={!!user.is_admin} onPick={pickList} onShow={showLists} onLink={linkList} />
+        crew={crew} admin={!!user.is_admin} onPick={pickList} onShow={showLists} onLink={linkList} />
       <TextDialog open={dialog?.type === "clone"} title="Clone List" confirmLabel="Clone" testId="clone-list"
         description={dialog?.type === "clone" ? `Make a separate copy of ${dialog.list.name}${dialog.list.isMedia || MEDIA_KINDS.includes(dialog.list.kind) ? " that you can add to, edit and reorder." : ", with every item unticked."}` : ""}
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}

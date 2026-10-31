@@ -30,7 +30,7 @@ MAX_LINES = 300
 
 class DraftIn(BaseModel):
     name: str = Field(default="", max_length=60)
-    description: str = Field(default="", max_length=1000, validate_default=True)
+    description: str = Field(default="", max_length=4000, validate_default=True)
 
     @field_validator("description")
     @classmethod
@@ -112,7 +112,7 @@ class TopUpLine(BaseModel):
 
 class TopUpIn(BaseModel):
     name: str = Field(default="", max_length=60)
-    description: str = Field(default="", max_length=1000)
+    description: str = Field(default="", max_length=4000)
     items: List[TopUpLine] = Field(default_factory=list, max_length=400)
 
 
