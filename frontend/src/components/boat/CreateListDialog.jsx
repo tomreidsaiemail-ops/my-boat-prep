@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { isHeadingLine } from "@/lib/outline";
-import { AiDraftButton, AutoIndentToggle, DESCRIPTION_MAX, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
+import { AiDraftButton, AutoIndentToggle, DESCRIPTION_MAX, fillPlaceholders, ListDescriptionField, PlaceholderBoxes, toLines } from "@/components/boat/ListDraftTools";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import useAdminLists, { stripPrefix } from "@/hooks/useAdminLists";
 
@@ -37,7 +37,11 @@ const ItemsHelp = ({ open, onToggle }) => (
 
 export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [base, setBase] = useState("");
+  const [fills, setFills] = useState({});
+  // The boxes fill each <placeholder> as they type; typing in List description itself keeps the text as it is now.
+  const description = fillPlaceholders(base, fills).slice(0, DESCRIPTION_MAX);
+  const setDescription = (v) => { setBase(v); setFills({}); };
   const [template, setTemplate] = useState("");
   const templates = useAdminLists(TEMPLATE_PREFIX, online && open);
   const [text, setText] = useState("");
@@ -85,6 +89,7 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
             className="field-input" data-testid="create-list-input" />
           <TemplatePicker templates={templates} value={template} onPick={pickTemplate} />
           <ListDescriptionField value={description} onChange={setDescription} />
+          <PlaceholderBoxes text={base} fills={fills} onChange={(k, v) => setFills((f) => ({ ...f, [k]: v }))} />
           <ItemsHelp open={help} onToggle={() => setHelp((h) => !h)} />
           <AiDraftButton name={name} description={description} online={online} hasText={!!lines.length} onDraft={(t) => { setText(t); setAskEmpty(false); }} />
           <label className="flex flex-col gap-1 text-sm font-bold">Items, one per line

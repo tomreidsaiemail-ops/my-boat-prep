@@ -62,6 +62,13 @@ def to_user_out(u: dict) -> UserOut:
     )
 
 
+async def mark_seen(user: dict) -> None:
+    """Record when someone last used the app (at most every 5 minutes), for Users today in Analytics."""
+    now = datetime.now(timezone.utc)
+    if user.get("last_seen", "") < (now - timedelta(minutes=5)).isoformat():
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_seen": now.isoformat()}})
+
+
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("session_token")
     if not token:
@@ -82,6 +89,7 @@ async def get_current_user(request: Request) -> dict:
     user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    await mark_seen(user)
     await first200_running()
     return await refresh_if_lapsed(user)
 

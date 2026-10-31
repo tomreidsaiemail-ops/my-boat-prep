@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
@@ -21,7 +21,31 @@ export const toLines = (text) => {
 };
 export const DESCRIPTION_MAX = 4000;
 // Template placeholders like <Your Celebrities Favorite TV> that are still in the text.
-export const unfilledPlaceholders = (text) => [...new Set(String(text).match(/<[^<>\s](?:[^<>\n]*[^<>\s])?>/g) || [])];
+const PLACEHOLDER = /<[^<>\s](?:[^<>\n]*[^<>\s])?>/g;
+export const unfilledPlaceholders = (text) => [...new Set(String(text).match(PLACEHOLDER) || [])];
+export const fillPlaceholders = (text, fills) => String(text).replace(PLACEHOLDER, (m) => (fills[m]?.trim() ? fills[m] : m));
+
+// One small box per <placeholder> in the description; what's typed replaces it in the text.
+export const PlaceholderBoxes = ({ text, fills, onChange, testId = "create-list" }) => {
+  const keys = unfilledPlaceholders(text);
+  if (!keys.length) return null;
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-md border-2 border-dashed border-amber-400 bg-amber-50 p-3" data-testid={`${testId}-placeholders`}>
+      <legend className="px-1 text-sm font-bold">Fill in the blanks</legend>
+      {keys.map((k, i) => {
+        const label = k.slice(1, -1);
+        const done = !!fills[k]?.trim();
+        return (
+          <label key={k} className="flex flex-col gap-1 text-xs font-bold text-[var(--navy)]">
+            <span className="flex items-center gap-1">{done && <Check className="h-3.5 w-3.5 text-emerald-700" data-testid={`${testId}-placeholder-done-${i}`} />}{label}</span>
+            <input value={fills[k] || ""} onChange={(e) => onChange(k, e.target.value)} maxLength={200} placeholder={`Type ${label}`} aria-label={label}
+              className={`field-input h-10 font-normal ${done ? "!border-emerald-600" : ""}`} data-testid={`${testId}-placeholder-input-${i}`} />
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+};
 
 export const ListDescriptionField = ({ value, onChange, testId = "create-list" }) => (
   <label className="flex flex-col gap-1 text-sm font-bold">List description

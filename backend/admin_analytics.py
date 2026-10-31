@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from db import db
@@ -37,8 +38,22 @@ async def token_totals(match: dict, by: str = None) -> list:
     ]).to_list(200)
 
 
+def day_start(since: Optional[str]) -> str:
+    """Start of the admin's day as UTC ISO (the browser sends its local midnight); UTC midnight if missing or bad."""
+    try:
+        return datetime.fromisoformat(since.replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+    except (AttributeError, ValueError):
+        return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+
+@router.get("/admin/users-today")
+async def users_today(since: Optional[str] = None, _: dict = Depends(require_admin)):
+    docs = await db.users.find({"last_seen": {"$gte": day_start(since)}}, {"_id": 0, "name": 1, "email": 1, "last_seen": 1, "role": 1}).sort("last_seen", -1).to_list(1000)
+    return {"users": [{"name": d.get("name") or "", "email": d.get("email", ""), "role": d.get("role", "free"), "last_seen": d["last_seen"]} for d in docs]}
+
+
 @router.get("/admin/analytics")
-async def analytics(_: dict = Depends(require_admin)):
+async def analytics(since: Optional[str] = None, _: dict = Depends(require_admin)):
     p, ms = await pricing(), month_start()
     ms_iso = ms.isoformat()
     users = await db.users.count_documents({})
@@ -52,6 +67,7 @@ async def analytics(_: dict = Depends(require_admin)):
     return {
         "pricing": p, "month_start": ms_iso, "generated_at": datetime.now(timezone.utc).isoformat(),
         "growth": {"users": users, "users_month": await db.users.count_documents({"created_at": {"$gte": ms_iso}}),
+                   "users_today": await db.users.count_documents({"last_seen": {"$gte": day_start(since)}}),
                    "pro": await db.users.count_documents({"role": "pro"}),
                    "pro_month": await db.users.count_documents({"role": "pro", "pro_since": {"$gte": ms_iso}})},
         "compute": {"all": total, "month": compute(month_t[0]), "ai_users": len(all_t[0].get("users", [])),
