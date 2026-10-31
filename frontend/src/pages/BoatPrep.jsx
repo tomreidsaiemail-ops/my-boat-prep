@@ -358,6 +358,8 @@ export default function BoatPrep({ boatId, boats }) {
     return true;
   };
   // Magic Mariner builds "First Aid Kit - Pets" sized to the pets; an existing kit list gets its items replaced after asking.
+  const showMpa = !crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id));
+  const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"));
   const PET_KIT = "First Aid Kit - Pets";
   const makePetKit = async () => {
     if (!needPro("Pet First Aid Kit")) return false;
@@ -523,7 +525,16 @@ export default function BoatPrep({ boatId, boats }) {
           {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
           )}
-          {!areaFilter && <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />}
+          {!areaFilter && (
+            <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
+              {showMpa && (
+                <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Marine Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
+                  <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning
+                </button>
+              )}
+              <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />
+            </div>
+          )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined}
             onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
@@ -536,8 +547,8 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && active.id === "routeHazards" && (
             <NavigatorAsk key={boatId} boat={boat} gps={gps} onChange={updateBoat} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
-          {!crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id)) && (
-            <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"))} data-testid="mpa-open-btn">
+          {showMpa && (
+            <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Marine Magic Provisioning Assistant
             </button>
           )}

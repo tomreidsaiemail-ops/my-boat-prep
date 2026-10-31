@@ -1,9 +1,10 @@
 // Raw YouTube addresses (youtube.com watch/shorts/live/embed links and youtu.be short links), with or without https://
 // The leading group keeps "notyoutube.com" from matching without a lookbehind (older iPhones can't parse those).
-const YT = /(^|[^\w.])((?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?\S+|shorts\/\S+|live\/\S+|embed\/\S+|playlist\?\S+|results\?\S+|channel\/\S+|c\/\S+|@\S+)|youtu\.be\/\S+))/gi;
+const YT = /(^|[^\w.])((?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?\S+|shorts\/\S+|live\/\S+|embed\/\S+|playlist\?\S+|results\?\S+|channel\/\S+|c\/\S+|@\S+)|youtu\.be\/\S+)|(?:https?:\/\/)?(?:www\.|smile\.)?(?:amazon\.(?:com|ca|com\.au|co\.uk|de|fr|es|it|nl|ie|in|co\.jp|com\.mx|com\.br|se|pl|sg|ae)\/\S+|amzn\.(?:to|eu|asia)\/\S+|a\.co\/\S+))/gi;
 const TRAIL = /[.,;:!?)\]'"]+$/;
+const AMAZON = /^(?:https?:\/\/)?(?:www\.|smile\.)?(?:amazon\.|amzn\.|a\.co\/)/i;
 
-// Text and link parts, e.g. ["Watch ", { url: "https://youtu.be/x" }, " first"].
+// Text and link parts, e.g. ["Watch ", { url: "https://youtu.be/x", kind: "youtube" }, " first"]; Amazon links get kind "amazon".
 export const splitYouTube = (text) => {
   const s = String(text ?? "");
   const out = [];
@@ -12,7 +13,7 @@ export const splitYouTube = (text) => {
     const url = raw.replace(TRAIL, "");
     const start = at + pre.length;
     if (start > last) out.push(s.slice(last, start));
-    out.push({ url: /^https?:\/\//i.test(url) ? url : `https://${url}` });
+    out.push({ url: /^https?:\/\//i.test(url) ? url : `https://${url}`, kind: AMAZON.test(url) ? "amazon" : "youtube" });
     last = start + url.length;
     return match;
   });
