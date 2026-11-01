@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Check, Martini, X, Youtube } from "lucide-react";
+import { Check, Martini, ShoppingBasket, X, Youtube } from "lucide-react";
+import { missingIngredients } from "@/lib/bartender";
+import { MissingToProvisionsDialog } from "@/components/boat/bartender/MissingToProvisionsDialog";
 
 const Photo = ({ src, name }) => {
   const [bad, setBad] = useState(false);
@@ -16,7 +18,10 @@ const CocktailRow = ({ item, readOnly, onToggle, onDelete }) => (
     </button>
     <Photo src={item.photo} name={item.label} />
     <div className="min-w-0 flex-1">
-      <p className={`font-bold ${item.checked ? "text-[var(--muted)] line-through" : ""}`} data-testid={`cocktail-name-${item.id}`}>{item.label}</p>
+      <p className={`font-bold ${item.checked ? "text-[var(--muted)] line-through" : ""}`} data-testid={`cocktail-name-${item.id}`}>
+        {item.label}
+        {item.mocktail && <span className="ml-1.5 inline-block rounded-full bg-sky-100 px-2 py-0.5 align-middle text-[10px] font-extrabold uppercase text-sky-800 no-underline" data-testid={`cocktail-mocktail-${item.id}`}>Alcohol-free</span>}
+      </p>
       {item.uses?.length > 0 && <p className="text-xs text-[var(--muted)]">With: {item.uses.join(", ")}</p>}
       {item.missing?.length ? <p className="text-xs font-bold text-[var(--amber)]" data-testid={`cocktail-missing-${item.id}`}>Buy: {item.missing.join(", ")}</p>
         : <p className="text-xs font-bold text-emerald-700" data-testid={`cocktail-ready-${item.id}`}>You have everything on board</p>}
@@ -33,14 +38,25 @@ const CocktailRow = ({ item, readOnly, onToggle, onDelete }) => (
   </li>
 );
 
-export const CocktailList = ({ items, readOnly, onToggle, onDelete, onRemix }) => (
-  <div className="flex flex-col gap-3" data-testid="cocktail-list">
-    <ul className="flex flex-col gap-2">
-      {items.map((i) => <CocktailRow key={i.id} item={i} readOnly={readOnly} onToggle={onToggle} onDelete={onDelete} />)}
-      {!items.length && <li className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="cocktail-empty">No cocktails yet.</li>}
-    </ul>
-    {!readOnly && (
-      <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={onRemix} data-testid="cocktail-remix-btn"><Martini className="h-4 w-4" /> Ask the Magic Bartender again</button>
-    )}
-  </div>
-);
+export const CocktailList = ({ items, readOnly, onToggle, onDelete, onRemix, provisions = [], onAddProvisions }) => {
+  const [shopping, setShopping] = useState(false);
+  const missing = missingIngredients(items);
+  return (
+    <div className="flex flex-col gap-3" data-testid="cocktail-list">
+      {!readOnly && missing.length > 0 && (
+        <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => setShopping(true)} data-testid="cocktail-shopping-btn">
+          <ShoppingBasket className="h-4 w-4" /> Add missing ingredients to Provisions ({missing.length})
+        </button>
+      )}
+      <ul className="flex flex-col gap-2">
+        {items.map((i) => <CocktailRow key={i.id} item={i} readOnly={readOnly} onToggle={onToggle} onDelete={onDelete} />)}
+        {!items.length && <li className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="cocktail-empty">No cocktails yet.</li>}
+      </ul>
+      {!readOnly && (
+        <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={onRemix} data-testid="cocktail-remix-btn"><Martini className="h-4 w-4" /> Ask the Magic Bartender again</button>
+      )}
+      <MissingToProvisionsDialog open={shopping} missing={missing} provisions={provisions} onClose={() => setShopping(false)}
+        onConfirm={(names) => { if (onAddProvisions(names)) setShopping(false); }} />
+    </div>
+  );
+};

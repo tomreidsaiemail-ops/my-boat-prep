@@ -17,11 +17,15 @@ BARTENDER = ("You are the Magic Bartender in the My Boat Prep app: a fun, practi
              "then ones missing only 1 or 2 ingredients, and say exactly what is missing. Never suggest one missing more than 2 ingredients. "
              "Use the standard, well-known name of each cocktail (e.g. 'Mojito', 'Moscow Mule') so it can be looked up. "
              "Assume water, ice, sugar and salt are available. "
-             'Reply with JSON only, no code fences: {"cocktails": [{"name": "<cocktail>", "uses": ["<ingredient on board>"], "missing": ["<ingredient to buy>"]}]}')
+             'Reply with JSON only, no code fences: {"cocktails": [{"name": "<cocktail>", "uses": ["<ingredient on board>"], "missing": ["<ingredient to buy>"], "mocktail": false}]}')
+KIDS_RULE = ("\nChildren are on board: after the cocktails, also add 3 alcohol-free mocktails children can enjoy (from the same ingredients where possible, "
+             "never using any alcohol), each with \"mocktail\": true.")
+MAX_MOCKTAILS = 3
 
 
 class BartenderIn(BaseModel):
     ingredients: List[str] = Field(min_length=1, max_length=300)
+    children: int = Field(default=0, ge=0, le=999)
 
 
 def _names(raw, limit: int) -> List[str]:
@@ -44,10 +48,11 @@ def parse_cocktails(text: str) -> list:
         if not name or name.lower() in seen or len(missing) > 2:
             continue
         seen.add(name.lower())
-        out.append({"name": name, "uses": _names(c.get("uses"), 12), "missing": missing})
-    if not out:
+        out.append({"name": name, "uses": _names(c.get("uses"), 12), "missing": missing, "mocktail": c.get("mocktail") is True})
+    drinks = [c for c in out if not c["mocktail"]][:MAX_COCKTAILS] + [c for c in out if c["mocktail"]][:MAX_MOCKTAILS]
+    if not drinks:
         raise ValueError("no cocktails")
-    return out[:MAX_COCKTAILS]
+    return drinks
 
 
 def _key(s: str) -> str:
@@ -66,15 +71,16 @@ async def cocktail_photo(client: httpx.AsyncClient, name: str) -> str:
     return f"{thumb}/medium" if thumb.startswith("https://") else ""
 
 
-def youtube_search(name: str) -> str:
-    return f"https://www.youtube.com/results?search_query={quote_plus(f'how to make a {name} cocktail')}"
+def youtube_search(name: str, mocktail: bool = False) -> str:
+    kind = "mocktail" if mocktail else "cocktail"
+    return f"https://www.youtube.com/results?search_query={quote_plus(f'how to make a {name} {kind}')}"
 
 
 @router.post("/ai/bartender")
 async def bartender(body: BartenderIn, user: dict = Depends(require_premium)):
     ingredients = _names(body.ingredients, 300)
-    prompt = "Ingredients on board:\n" + "\n".join(f"- {i}" for i in ingredients)
+    prompt = "Ingredients on board:\n" + "\n".join(f"- {i}" for i in ingredients) + (KIDS_RULE if body.children else "")
     cocktails, left = await _run(user, "bartender", prompt, parse_cocktails, {"name": "Magic Bartender", "count": len(ingredients)}, BARTENDER, "The Magic Bartender")
     async with httpx.AsyncClient(timeout=6) as client:
         photos = await asyncio.gather(*(cocktail_photo(client, c["name"]) for c in cocktails))
-    return {"cocktails": [{**c, "photo": p, "youtube": youtube_search(c["name"])} for c, p in zip(cocktails, photos)], "asks_left": left}
+    return {"cocktails": [{**c, "photo": p, "youtube": youtube_search(c["name"], c["mocktail"])} for c, p in zip(cocktails, photos)], "asks_left": left}

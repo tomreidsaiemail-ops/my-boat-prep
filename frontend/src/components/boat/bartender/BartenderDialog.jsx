@@ -8,7 +8,7 @@ import { BartenderHelp } from "@/components/boat/bartender/BartenderHelp";
 import { BartenderPhoto } from "@/components/boat/bartender/BartenderPhoto";
 import { BarAreas } from "@/components/boat/bartender/BarAreas";
 
-export const BartenderDialog = ({ open, boatId, areas, online, onFlag, onBatchScan, onCreate, onClose }) => {
+export const BartenderDialog = ({ open, boatId, areas, kids = 0, online, onFlag, onBatchScan, onCreate, onClose }) => {
   const [photo, setPhoto] = useState(null);
   const [usePhoto, setUsePhoto] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -21,7 +21,7 @@ export const BartenderDialog = ({ open, boatId, areas, online, onFlag, onBatchSc
     if (!online) { toast.error("The Magic Bartender needs a signal to mix your cocktails"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/ai/bartender", { ingredients: ingredients.slice(0, 300) }, { timeout: 120000 });
+      const { data } = await api.post("/ai/bartender", { ingredients: ingredients.slice(0, 300), children: kids }, { timeout: 120000 });
       setBusy(false);
       if (photo?.preview) URL.revokeObjectURL(photo.preview);
       setPhoto(null);
@@ -52,6 +52,7 @@ export const BartenderDialog = ({ open, boatId, areas, online, onFlag, onBatchSc
         </div>
         <p className="rounded-md bg-[var(--panel)] px-3 py-2 text-sm font-bold" data-testid="bartender-summary">
           {ingredients.length} {ingredients.length === 1 ? "ingredient" : "ingredients"} from {flagged.length} flagged {flagged.length === 1 ? "area" : "areas"}{usePhoto && photoItems.length ? " and the Bartender Photo" : ""}
+          {kids > 0 && <span className="block text-xs font-semibold text-[var(--muted)]" data-testid="bartender-kids-note">Children on board, so alcohol-free mocktails are added too.</span>}
         </p>
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-12 flex-1" onClick={close} disabled={busy} data-testid="bartender-cancel-btn">Cancel</button>
