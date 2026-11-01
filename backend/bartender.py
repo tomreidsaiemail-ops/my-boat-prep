@@ -81,6 +81,8 @@ async def bartender(body: BartenderIn, user: dict = Depends(require_premium)):
     ingredients = _names(body.ingredients, 300)
     prompt = "Ingredients on board:\n" + "\n".join(f"- {i}" for i in ingredients) + (KIDS_RULE if body.children else "")
     cocktails, left = await _run(user, "bartender", prompt, parse_cocktails, {"name": "Magic Bartender", "count": len(ingredients)}, BARTENDER, "The Magic Bartender")
+    if not body.children:
+        cocktails = [c for c in cocktails if not c["mocktail"]] or [{**c, "mocktail": False} for c in cocktails]
     async with httpx.AsyncClient(timeout=6) as client:
         photos = await asyncio.gather(*(cocktail_photo(client, c["name"]) for c in cocktails))
     return {"cocktails": [{**c, "photo": p, "youtube": youtube_search(c["name"], c["mocktail"])} for c, p in zip(cocktails, photos)], "asks_left": left}

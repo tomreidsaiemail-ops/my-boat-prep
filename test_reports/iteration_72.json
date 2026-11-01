@@ -1,0 +1,45 @@
+{
+  "summary": "Tested Magic Bartender follow-ups: Mocktails (backend + UI), Cocktail Shopping (missing ingredients to Provisions), Sundowner card (no-GPS 18:00 fallback and Auckland GPS sunset with Playwright clock, timezone and geolocation), plus regression checks on Bartender mix, Boat Budget and MPA, at desktop and 390x844. Everything works except one backend bug: with children=0 the AI still returns items flagged mocktail:true (Shirley Temple, Virgin Mojito). This happened in 4 of 4 runs where the ingredients included mixers like grenadine and juices.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/ai/bartender", "issue": "With children=0 the response still contains items with mocktail:true (Virgin Mojito, Shirley Temple, each with a youtube '...mocktail' link). This breaks the rule that no items are mocktail:true when there are no kids. Reproduced 4/4 times with ingredients [Vodka, White rum, Limes, Fresh mint, Ginger beer, Soda water, Cola, Lemons, Orange juice, Pineapple juice, Grenadine]. Root cause: the BARTENDER system prompt always includes '\"mocktail\": false' in the JSON schema, and the LLM sets it to true for drinks with no alcohol. parse_cocktails trusts c.get('mocktail') and never checks body.children. Fix: in bartender(), when body.children == 0, force mocktail False or drop mocktail items, e.g. pass children into parse_cocktails or post-filter `cocktails = [c for c in cocktails if not c['mocktail']]` when not body.children. Optionally add 'Do not include mocktails' to the prompt when there are no kids.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Cocktail shopping with no Provisions list", "issue": "When Provisions is not in the registry (the pro boat had no 'provisions' entry), confirming shows the toast 'Bring back the Provisions list with Reset All... first' and the dialog stays open. This works as coded and is only noted for context.", "affected_selectors": ["missing-confirm-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Magic Bartender Cocktails list", "issues": ["cocktail-shopping-btn always shows the total unique missing count, e.g. (11), even when most are already on Provisions. After adding 8, the button still said (11) while the dialog offered only 'Add 2'. Consider showing the number still to buy, or hiding the button when everything is already on Provisions (the confirm button is then disabled)."]},
+      {"screen": "Sundowner card at 390px", "issues": ["Layout OK. The 'Share with the crew' label nearly fills its button at 390px width, which is acceptable."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_bartender_mocktails.py", "/app/backend/tests/test_bartender.py", "/app/test_reports/pytest/pytest_bartender_iter72.xml"],
+  "action_items": [
+    "Backend: in /app/backend/bartender.py, ignore or strip mocktail:true items when body.children == 0 (the LLM returns them anyway). Then rerun tests/test_bartender_mocktails.py::test_bartender_no_children_no_mocktails.",
+    "Optional UX: make the cocktail-shopping-btn count show only ingredients not already on Provisions."
+  ],
+  "critical_code_review_comments": [
+    "bartender.py parse_cocktails: the mocktail flag comes straight from the LLM and is never checked against children. That is the root cause of the bug above.",
+    "CocktailList: the missing count passed to the button does not exclude names already on Provisions. The dialog does exclude them (the 'fresh' list), so the button and the confirm button can show different numbers.",
+    "Provisions matching is exact, case-insensitive only. 'Lime' vs 'Limes' vs 'Lime Juice' are treated as different items, which is acceptable.",
+    "SundownerCard: dismiss, day key, sunset and the minute ticker all work. The pick changes when the list is remixed, which is expected because the items change."
+  ],
+  "updated_files": ["/app/backend/tests/test_bartender_mocktails.py"],
+  "success_rate": {"backend": "92% (11/12; only the no-children mocktail check fails)", "frontend": "100% of tested flows"},
+  "verified_passing": [
+    "POST /api/ai/bartender children=1: 12 cocktails plus 3 mocktail:true items at the end, youtube query contains 'mocktail'; children=-1 returns 422; parse_cocktails caps at 12+3 (unit test)",
+    "UI: after setting POB 3 and Children 1 in the Additional details dialog, the request sent children:1, bartender-kids-note was shown, 15 items were saved with 3 cocktail-mocktail-* 'Alcohol-free' badges (still there after reload), and the Export Current print view shows '(alcohol-free)'",
+    "Cocktail shopping: button '(11)', all items ticked with 'For <cocktails>', 'cream' already on Provisions shown as Cream disabled with 'Already on Provisions', confirm went 10 to 8 after unticking 2, toast '8 ingredients added to Provisions', DB has 8 new unchecked items with no duplicates, reopening offers 'Add 2', Cancel closes",
+    "Sundowner: hidden at 17:00 with no GPS; at 18:05 shows 'SUNDOWNER TIME · 6:00 PM' above the Reset/Export ActionBar; the pick stays the same after reload; navigator.share was called with the name and YouTube link; without navigator.share the wa.me link opens with an encoded text and a toast; All cocktails opens cocktail-list; dismiss sets mbp_sundowner_dismissed=YYYY-MM-DD and stays hidden after reload",
+    "Sundowner with GPS (Auckland -36.85,174.76, Pacific/Auckland, 21 Jan): hidden at 20:30, appears after fast_forward 20 minutes, title 8:39 PM; sundowner-pick-kids shows 'For the kids, alcohol-free' when children are aboard",
+    "Regression: Boat Budget table and total, MPA top button and dialog (2 adults, 1 child), Magic Bartender mix (~20s)"
+  ],
+  "seed_data_creation": "Pro boat 'main' (test-user-pro): added a 'provisions' registry entry with data.provisions [cream, TEST_Bread plus 8 cocktail ingredients]; added drinks-flagged area TEST_Gantry (id test_gantry1, 10 bar items); the Magic Bartender Cocktails list was remixed with kids (15 items incl. 3 mocktails); boat.pob=3 with children reset to 0. magic_quota daily_used for test-user-pro reset to 0. Backup of the original doc: /tmp/pro_boat_backup.json",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use browser.new_context(timezone_id=..., geolocation=..., permissions=['geolocation']) plus page.clock.install(time=...) for Sundowner tests. Use clock.fast_forward, not run_for: run_for over 40 minutes hangs because of the app's timers. Add the session_token cookie test_session_pro_1 to each new context. Real server date is about 1 Nov 2026. The pro AI quota (20/day) runs out quickly: reset it with db.magic_quota.updateOne({user_id:'test-user-pro'},{$set:{daily_used:0}}). Set children via the Additional details dialog (#pob, #children) or boat.children in the DB.",
+  "rca of the issue": "Repro: POST /api/ai/bartender {ingredients:[...grenadine, juices, mint...], children:0}. The response includes Shirley Temple and Virgin Mojito with mocktail:true. Cause: the schema in the system prompt invites a mocktail flag and the LLM fills it in on its own; the server does not enforce children==0. Fix: filter or force False on the server side when children==0."
+}

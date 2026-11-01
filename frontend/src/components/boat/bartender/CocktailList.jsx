@@ -41,11 +41,13 @@ const CocktailRow = ({ item, readOnly, onToggle, onDelete }) => (
 export const CocktailList = ({ items, readOnly, onToggle, onDelete, onRemix, provisions = [], onAddProvisions }) => {
   const [shopping, setShopping] = useState(false);
   const missing = missingIngredients(items);
+  const have = new Set(provisions.map((p) => p.toLowerCase()));
+  const toBuy = missing.filter((m) => !have.has(m.name.toLowerCase())).length;
   return (
     <div className="flex flex-col gap-3" data-testid="cocktail-list">
-      {!readOnly && missing.length > 0 && (
+      {!readOnly && toBuy > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => setShopping(true)} data-testid="cocktail-shopping-btn">
-          <ShoppingBasket className="h-4 w-4" /> Add missing ingredients to Provisions ({missing.length})
+          <ShoppingBasket className="h-4 w-4" /> Add missing ingredients to Provisions ({toBuy})
         </button>
       )}
       <ul className="flex flex-col gap-2">

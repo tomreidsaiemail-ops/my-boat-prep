@@ -376,3 +376,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - MAGIC BARTENDER dialog: help text + cheers icon, optional Bartender Photo (POST /boats/{id}/scan?bartender=true), ingredient chips, minimised thumb, "Using the Bartender Photo" checkbox, F/D area toggles, Batch Scan shortcut
 - POST /api/ai/bartender (backend/bartender.py): up to 12 cocktails (missing <=2), TheCocktailDB photos (exact/startswith match, else martini icon), YouTube search link; saved as list "Magic Bartender Cocktails" (kind bartender, replaced each run)
 - Tests: iteration_71 passed; backend/tests/test_bartender.py
+
+## 2026-06 Bartender follow-ups
+- Mocktails: /api/ai/bartender children>0 adds up to 3 mocktail:true items (Alcohol-free badge, youtube "mocktail"); children=0 strips them server-side
+- Cocktail shopping: button with count still to buy -> checklist dialog (all ticked, already-on-Provisions disabled) -> adds to Provisions
+- Sundowner card (SundownerCard.jsx, lib/sun.js NOAA sunset from GPS, 6pm fallback): daily stable pick (+ kids mocktail), Share (navigator.share / WhatsApp), open list, dismiss for the day
+- Tests: iteration_72 (+ mocktail fix re-verified via tests/test_bartender_mocktails.py)
