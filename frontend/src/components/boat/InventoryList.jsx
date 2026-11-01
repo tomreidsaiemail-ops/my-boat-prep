@@ -263,7 +263,8 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
             onDeleteItem={(i) => deleteItem(a, i)}
             onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)}
-            onToggleFood={() => { setArea(a.id, (x) => ({ ...x, food: !x.food })); toast.success(a.food ? `${a.name} is no longer a Food area` : `${a.name} is now a Food area. Its items count as stock for the MPA.`); }} />
+            onToggleFood={() => { setArea(a.id, (x) => ({ ...x, food: !x.food })); toast.success(a.food ? `${a.name} is no longer a Food area` : `${a.name} is now a Food area. Its items count as stock for the MPA.`); }}
+            onToggleDrinks={() => { setArea(a.id, (x) => ({ ...x, drinks: !x.drinks })); toast.success(a.drinks ? `${a.name} is no longer a Drinks area` : `${a.name} is now a Drinks area for the Magic Bartender.`); }} />
         ))}
       </ul>
       {!readOnly && !q && <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Ship, Sparkles, Wand2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Martini, Ship, Sparkles } from "lucide-react";
+import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
@@ -45,7 +46,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onBartender, batchHelp, onMakeKit }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -59,14 +60,17 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp
     if (complete) setOpen(false);
   };
   const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-2 px-3 py-2 !text-left text-[13px] font-bold leading-tight";
-  const batchBtn = (onBatchScan || onOrganise) && (
-    <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-0.5" data-testid="boat-details-magic-row">
+  const batchBtn = (onBatchScan || onOrganise || onBartender) && (
+    <div className="flex flex-wrap items-center gap-1" data-testid="boat-details-magic-row">
       {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
         <Sparkles className="h-4 w-4 shrink-0" /> Batch Magic Scan...
       </button>}
-      <span className="mr-1.5">{onBatchScan && <HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>
+      {onBatchScan && <span className="mr-1">{<HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
-        <Wand2 className="h-4 w-4 shrink-0" /> Magically Organise Your Lists...
+        <ArrangeIcon /> Arrange Lists
+      </button>}
+      {onBartender && <button type="button" onClick={onBartender} className={pill} data-testid="boat-details-bartender-btn">
+        <Martini className="h-4 w-4 shrink-0" /> Magic Bartender
       </button>}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { FoodBadge } from "@/components/boat/MpaBadges";
+import { DrinksBadge, FoodBadge } from "@/components/boat/MpaBadges";
 import { Check, ChevronDown, Link2, Loader2, MapPin, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
@@ -61,7 +61,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -77,7 +77,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
           <span className="flex flex-1 flex-col py-2">
             <span className="flex items-center gap-1.5 font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>
-              {area.food && <FoodBadge testId={`inventory-area-food-badge-${area.id}`} />}<Highlight text={area.name} query={query} />
+              {area.food && <FoodBadge testId={`inventory-area-food-badge-${area.id}`} />}{area.drinks && <DrinksBadge testId={`inventory-area-drinks-badge-${area.id}`} />}<Highlight text={area.name} query={query} />
             </span>
             <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{total} {total === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
@@ -87,6 +87,10 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             <button type="button" className={`icon-btn ${area.food ? "text-emerald-800" : "text-[var(--muted)]"}`} onClick={onToggleFood} aria-pressed={!!area.food}
               aria-label={area.food ? "Unflag as Food area" : "Flag as Food area"} title={area.food ? "Food area (tap to unflag)" : "Flag as Food area"} data-testid={`inventory-area-food-${area.id}`}>
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.food ? "border-emerald-700 bg-emerald-700 text-white" : "border-current"}`}>F</span>
+            </button>
+            <button type="button" className={`icon-btn ${area.drinks ? "text-purple-800" : "text-[var(--muted)]"}`} onClick={onToggleDrinks} aria-pressed={!!area.drinks}
+              aria-label={area.drinks ? "Unflag as Drinks area" : "Flag as Drinks area"} title={area.drinks ? "Drinks area (tap to unflag)" : "Flag as Drinks area"} data-testid={`inventory-area-drinks-${area.id}`}>
+              <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.drinks ? "border-purple-700 bg-purple-700 text-white" : "border-current"}`}>D</span>
             </button>
             <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn" aria-label="Rename cupboard" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>

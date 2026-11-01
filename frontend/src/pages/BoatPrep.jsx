@@ -69,6 +69,9 @@ import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_NAME, BUDGET_PREFIX, budgetCurrency, budgetItems } from "@/lib/budget";
+import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
+import { CocktailList } from "@/components/boat/bartender/CocktailList";
+import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 
 const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log" };
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -386,6 +389,18 @@ export default function BoatPrep({ boatId, boats }) {
     return () => window.removeEventListener("mbp:crew-roles", openRoles);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
   const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
+  const openBartender = () => needPro("Magic Bartender") && guard() && setDialog({ type: "bartender" });
+  const flagArea = (id, key) => mutate((s) => ({ ...s, areas: (s.areas || []).map((a) => (a.id === id ? { ...a, [key]: !a[key] } : a)) }));
+  const saveCocktails = (cocktails) => {
+    const now = Date.now();
+    const old = registry.find((l) => l.kind === BARTENDER_KIND);
+    const id = old?.id || `custom_${now}`;
+    mutate((s) => ({ ...s, registry: old ? s.registry : [...s.registry, { id, name: BARTENDER_NAME, isSystem: false, kind: BARTENDER_KIND }],
+      data: { ...s.data, [id]: cocktailItems(cocktails, now) } }));
+    setActiveId(id);
+    setDialog(null);
+    toast.success(`${BARTENDER_NAME} ${old ? "updated" : "created"} with ${cocktails.length} ${cocktails.length === 1 ? "cocktail" : "cocktails"}. Cheers!`);
+  };
   const PET_KIT = "First Aid Kit - Pets";
   const makePetKit = async () => {
     if (!needPro("Pet First Aid Kit")) return false;
@@ -506,7 +521,7 @@ export default function BoatPrep({ boatId, boats }) {
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit} />}
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onBartender={openBartender} batchHelp={batchHelp} onMakeKit={makePetKit} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
@@ -548,7 +563,8 @@ export default function BoatPrep({ boatId, boats }) {
               batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
-            onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} /> : (
+            onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
+        : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} /> : (
         <>
           {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
@@ -606,6 +622,8 @@ export default function BoatPrep({ boatId, boats }) {
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
         areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
+      {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} online={online} onFlag={flagArea}
+        onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}

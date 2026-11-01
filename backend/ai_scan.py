@@ -30,6 +30,12 @@ PROMPT = (
     "Count how many of each you can see; use 1 if unsure. Ignore the cupboard itself, shelves and fittings. "
     'Return exactly: {"items": [{"name": "...", "qty": 1}]}. If you cannot see any items, return {"items": []}.'
 )
+BAR_PROMPT = (
+    "List every drink ingredient you can see in this photo: spirits, liqueurs, wines, beers, mixers, soft drinks, juices, fruit, herbs, "
+    "syrups, bitters and garnishes. Use short plain names with the type (e.g. 'Vodka', 'Gin', 'Tonic water', 'Lemons', 'Fresh mint'). "
+    "Count how many of each you can see; use 1 if unsure. Ignore glasses, tools and furniture. "
+    'Return exactly: {"items": [{"name": "...", "qty": 1}]}. If you cannot see any, return {"items": []}.'
+)
 
 
 def parse_items(text: str) -> list:
@@ -52,7 +58,8 @@ def parse_items(text: str) -> list:
 
 
 @router.post("/boats/{boat_id}/scan")
-async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), user: dict = Depends(require_premium)):
+async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), bartender: bool = Query(default=False), user: dict = Depends(require_premium)):
+    feature = "MBT" if bartender else "BMMS" if batch else "MMS"
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:
@@ -71,7 +78,7 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
     text = ""
     usage = None
     try:
-        msg = UserMessage(text=PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
+        msg = UserMessage(text=BAR_PROMPT if bartender else PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
         async for ev in chat.stream_message(msg):
             if isinstance(ev, TextDelta):
                 text += ev.content
@@ -84,7 +91,7 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
         await db.ai_scans.delete_one({"scan_id": scan_id})
         await quota.refund(user["user_id"], source)
         if usage:
-            await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
+            await record_usage(user["user_id"], feature, usage)
         raise HTTPException(status_code=503, detail="The AI couldn't read that photo. Please try again or add items by hand.")
-    await record_usage(user["user_id"], "BMMS" if batch else "MMS", usage)
+    await record_usage(user["user_id"], feature, usage)
     return {"items": items, "scans_left": await quota.left(user["user_id"])}

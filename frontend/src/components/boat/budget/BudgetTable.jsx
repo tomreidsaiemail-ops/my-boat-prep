@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { ChevronsUpDown, Plus } from "lucide-react";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { BudgetRow } from "@/components/boat/budget/BudgetRow";
 import { BudgetTotals } from "@/components/boat/budget/BudgetTotals";
 import { OpeningStore } from "@/components/boat/budget/OpeningStore";
 import { money, newBudgetItem, storeUrl, sumAll } from "@/lib/budget";
 
-const HEAD = ["Description", "Product", "Store", "Date Paid", "Cost", ""];
-
 export const BudgetTable = ({ items, setItems, currency, guard }) => {
   const [linkFor, setLinkFor] = useState(null);
   const [opening, setOpening] = useState(null);
   const [draft, setDraft] = useState("");
+  const [openIds, setOpenIds] = useState([]);
+  const allOpen = items.length > 0 && items.every((i) => openIds.includes(i.id));
+  const toggleRow = (id) => setOpenIds((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
   const update = (id, patch) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   const remove = (item) => {
     if (!guard()) return;
@@ -37,23 +38,32 @@ export const BudgetTable = ({ items, setItems, currency, guard }) => {
   return (
     <div className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="budget-table-wrap">
-        <table className="w-full min-w-[720px] table-fixed border-collapse text-sm" data-testid="budget-table">
-          <colgroup><col className="w-[200px]" /><col className="w-[170px]" /><col className="w-[56px]" /><col className="w-[150px]" /><col className="w-[108px]" /><col className="w-[36px]" /></colgroup>
+        <table className="w-full min-w-[320px] table-fixed border-collapse text-sm" data-testid="budget-table">
+          <colgroup><col /><col className="w-[84px]" /><col className="w-[92px]" /><col className="w-[30px]" /></colgroup>
           <thead className="bg-slate-50">
-            <tr>{HEAD.map((h, n) => <th key={h || n} className={`field-label px-2 py-2 ${n === 0 ? "sticky left-0 z-10 bg-slate-50" : ""} ${h === "Cost" ? "text-right" : h === "Store" ? "text-center" : "text-left"}`}>{h}</th>)}</tr>
+            <tr>
+              <th className="px-1 py-1.5 text-left">
+                <button type="button" onClick={() => setOpenIds(allOpen ? [] : items.map((i) => i.id))} aria-expanded={allOpen} data-testid="budget-expand-all-btn"
+                  className="field-label inline-flex h-8 items-center gap-1 rounded px-1 hover:text-[var(--navy)]" title={allOpen ? "Hide product and store on every row" : "Show product and store on every row"}>
+                  <ChevronsUpDown className="h-4 w-4" /> Description
+                </button>
+              </th>
+              <th className="field-label px-1 py-1.5 text-left">Date Paid</th>
+              <th className="field-label px-1 py-1.5 text-right">Cost</th>
+              <th />
+            </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <BudgetRow key={item.id} item={item} onChange={(p) => update(item.id, p)} onDelete={() => remove(item)}
+              <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => remove(item)}
                 onLink={() => (item.url ? setOpening(item) : guard() && setLinkFor(item))} />
             ))}
-            {!items.length && <tr><td colSpan={6} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items yet. Add one below.</td></tr>}
+            {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items yet. Add one below.</td></tr>}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-[var(--navy)] bg-slate-50">
-              <td className="sticky left-0 z-10 bg-slate-50 px-2 py-2 text-sm font-extrabold">Total (all dates)</td>
-              <td colSpan={3} />
-              <td className="px-2 py-2 text-right font-mono text-sm font-extrabold" data-testid="budget-total-all">{money(sumAll(items), currency)}</td>
+              <td colSpan={2} className="px-2 py-2 text-right text-sm font-extrabold">Total (all dates)</td>
+              <td className="px-1 py-2 text-right font-mono text-sm font-extrabold" data-testid="budget-total-all">{money(sumAll(items), currency)}</td>
               <td />
             </tr>
           </tfoot>

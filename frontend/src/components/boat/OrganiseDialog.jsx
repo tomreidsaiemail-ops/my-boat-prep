@@ -2,6 +2,7 @@ import { User, Wand2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isUserList } from "@/lib/listCategories";
 import { CategoryIcon } from "@/components/boat/CategoryIcon";
+import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 
 const ShowBox = ({ checked, mixed, onChange, disabled, label, testId }) => (
   <input type="checkbox" checked={checked} disabled={disabled} aria-label={label} title={label} data-testid={testId}
@@ -84,6 +85,6 @@ export const OrganiseDialog = ({ open, onClose, org, cats, lists, hidden, crew, 
 
 export const CrewOrganiseButton = ({ onClick }) => (
   <button type="button" onClick={onClick} className="btn-ghost h-auto min-h-11 gap-2 self-start px-3 py-2 text-[13px] font-bold leading-tight" data-testid="crew-organise-btn">
-    <Wand2 className="h-4 w-4 shrink-0" /> Magically Organise Your Lists...
+    <ArrangeIcon /> Arrange Lists
   </button>
 );

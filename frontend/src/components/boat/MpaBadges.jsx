@@ -16,6 +16,10 @@ export const FoodBadge = ({ className = "", testId }) => (
   <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-emerald-700 text-[11px] font-extrabold leading-none text-emerald-800 ${className}`} title="Food area" aria-label="Food area" data-testid={testId}>F</span>
 );
 
+export const DrinksBadge = ({ className = "", testId }) => (
+  <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-purple-700 text-[11px] font-extrabold leading-none text-purple-800 ${className}`} title="Drinks area" aria-label="Drinks area" data-testid={testId}>D</span>
+);
+
 export const ProvBadge = ({ id }) => (
   <span className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full bg-sky-100 px-2 text-[10px] font-extrabold leading-none text-sky-800" title="From your Provisions list" data-testid={`mpa-prov-${id}`}><Forward className="h-3.5 w-3.5" />PROV</span>
 );
