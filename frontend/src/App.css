@@ -29,6 +29,10 @@ body {
   transition: border-color .15s, box-shadow .15s;
 }
 .field-input:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 4px rgb(2 132 199 / .2); }
+.budget-cell { height: 38px; width: 100%; min-width: 0; border-radius: 4px; border: 1.5px solid transparent; background: transparent; padding: 0 6px; font-size: 16px; font-weight: 600; color: var(--navy); }
+.budget-cell:hover { border-color: var(--line); }
+.budget-cell:focus { outline: none; border-color: var(--navy); background: #fff; }
+.budget-cell::placeholder { color: #94a3b8; font-weight: 500; }
 .field-input::placeholder { color: #94a3b8; font-weight: 500; }
 
 .btn-solid, .btn-ghost {

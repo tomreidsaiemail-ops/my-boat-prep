@@ -51,6 +51,13 @@ const IntField = ({ id, label, value, min, max, onChange, placeholder }) => {
   );
 };
 
+const TextField = ({ id, label, value, placeholder, onChange }) => (
+  <label htmlFor={id} className="flex min-w-0 flex-col gap-1">
+    <span className="field-label">{label}</span>
+    <input id={id} type="text" value={value || ""} maxLength={60} placeholder={placeholder} data-testid={`${id}-input`} className="field-input" onChange={(e) => onChange(e.target.value)} />
+  </label>
+);
+
 const DIM_RE = /^\d{0,4}([.,]\d{0,2})?$/;
 const DimField = ({ id, label, value, unit, onChange }) => (
   <label htmlFor={id} className="flex min-w-0 flex-col gap-1">
@@ -85,15 +92,21 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
         onCloseAutoFocus={(e) => { if (returnFocus?.current) { e.preventDefault(); returnFocus.current.focus(); } }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat details - Additional details</DialogTitle>
-          <DialogDescription className="text-left text-sm">All optional. Boat type and people on board fill in your Mayday and Pan-Pan calls.</DialogDescription>
+          <DialogDescription className="text-left text-sm">All optional. Boat type and people on board fill in your Mayday and Pan-Pan calls. Make and model help the Magic Mariner with your Boat Budget.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2.5">
-          <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
-          <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={setPob} />
-          <IntField id="children" label="Children" value={children || ""} min={0} max={Math.max(0, pob - 1)} placeholder="None" onChange={(n) => onChange("children", n)} />
-          <div className="flex min-w-0 flex-col justify-end gap-1 pb-2" data-testid="pob-split">
-            <span className="text-sm"><b data-testid="pob-adults">{adults}</b> {adults === 1 ? "adult" : "adults"}</span>
-            <span className="text-sm text-[var(--muted)]"><b data-testid="pob-children">{children}</b> {children === 1 ? "child" : "children"}</span>
+          <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-identity-row">
+            <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
+            <TextField id="boat-make" label="Make" value={boat.make} placeholder="e.g. Beneteau" onChange={(v) => onChange("make", v)} />
+            <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
+          </div>
+          <div className="col-span-2 grid grid-cols-3 items-end gap-2.5" data-testid="pob-row">
+            <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={setPob} />
+            <IntField id="children" label="Children" value={children || ""} min={0} max={Math.max(0, pob - 1)} placeholder="None" onChange={(n) => onChange("children", n)} />
+            <div className="flex min-w-0 flex-col justify-end gap-1 pb-2" data-testid="pob-split">
+              <span className="text-sm"><b data-testid="pob-adults">{adults}</b> {adults === 1 ? "adult" : "adults"}</span>
+              <span className="text-sm text-[var(--muted)]"><b data-testid="pob-children">{children}</b> {children === 1 ? "child" : "children"}</span>
+            </div>
           </div>
           <label htmlFor="mmsi" className="col-span-2 flex min-w-0 flex-col gap-1">
             <span className="field-label">MMSI number</span>

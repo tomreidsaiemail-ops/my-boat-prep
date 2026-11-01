@@ -35,6 +35,7 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
+from templates import seed_budget_template  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import auth as auth_module  # noqa: E402
@@ -95,6 +96,26 @@ class BoatDetails(BaseModel):
     route_start: str = Field(default="", max_length=80)
     route_dest: str = Field(default="", max_length=80)
     pets: List[Pet] = Field(default_factory=list, max_length=20)
+    make: str = ""
+    model: str = ""
+    budget_currency: str = ""
+    budget_notes: str = ""
+
+    @field_validator("make", "model", mode="before")
+    @classmethod
+    def trim_make(cls, v):
+        return str(v or "")[:60]
+
+    @field_validator("budget_currency", mode="before")
+    @classmethod
+    def currency_code(cls, v):
+        v = str(v or "").upper()
+        return v if re.fullmatch(r"[A-Z]{3}", v) else ""
+
+    @field_validator("budget_notes", mode="before")
+    @classmethod
+    def trim_notes(cls, v):
+        return str(v or "")[:4000]
 
     @field_validator("children", "trip_days", mode="before")
     @classmethod
@@ -208,7 +229,10 @@ STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_lo
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
     out = BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
     if role == "crew":
-        out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_enabled": False})
+        out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_enabled": False, "budget_notes": ""})
+        hidden = {l.get("id") for l in out.registry if l.get("kind") == "budget"}
+        out.registry = [l for l in out.registry if l.get("id") not in hidden]
+        out.data = {k: v for k, v in out.data.items() if k not in hidden}
     return out
 
 
@@ -482,6 +506,7 @@ async def create_indexes():
     await db.password_reset_tokens.create_index("token_hash", unique=True)
     await _upgrade_pob_lines()
     await add_racing_roles()
+    await seed_budget_template()
 
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]

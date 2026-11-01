@@ -471,3 +471,39 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
     result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
     return {**result, "asks_left": left}
+
+
+BUDGETER = ("You are the Magic Mariner in the My Boat Prep app: an experienced boat owner helping a skipper budget for owning their boat. "
+            "Answer with a realistic yearly running-cost estimate for the boat described: a likely total range per year, then the main costs "
+            "(berth or mooring, insurance, haul out and antifouling, engine and rigging servicing, safety gear, fuel, sundries) with rough amounts. "
+            "Use the currency given. Keep it under 120 words, plain text only: no markdown, headings or asterisks, one cost per line. "
+            "End with one short tip for keeping costs down.")
+
+
+class BudgetIn(BaseModel):
+    make: str = Field(default="", max_length=60)
+    model: str = Field(default="", max_length=60)
+    boat_type: str = Field(default="", max_length=60)
+    currency: str = Field(default="", max_length=3)
+    loa: str = Field(default="", max_length=8)
+    units: str = Field(default="m", pattern="^(m|ft)$")
+
+
+def parse_budget(text: str) -> str:
+    answer = re.sub(r"[*#`]+", "", parse_answer(text)).strip()
+    if not answer:
+        raise ValueError("empty answer")
+    return answer[:3000]
+
+
+@router.post("/ai/budget")
+async def budget_comments(body: BudgetIn, user: dict = Depends(require_premium)):
+    boat = " ".join(x.strip() for x in (body.make, body.model, body.boat_type) if x.strip())
+    if not (body.make.strip() or body.model.strip()):
+        raise HTTPException(status_code=422, detail="Add your boat's make and model first")
+    prompt = f"How much a year should I budget for {boat} per year?"
+    if body.loa.strip():
+        prompt += f"\nLength overall: {body.loa.strip()} {body.units}"
+    prompt += f"\nCurrency: {body.currency.strip().upper() or 'the local currency, named'}"
+    answer, left = await _run(user, "budget", prompt, parse_budget, {"name": "Boat budget", "boat": boat[:120]}, BUDGETER, "Magic Mariner budgeting")
+    return {"answer": answer, "asks_left": left}

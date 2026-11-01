@@ -67,6 +67,8 @@ import { First5000Banner } from "@/components/boat/First5000Banner";
 import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
+import { BudgetList } from "@/components/boat/budget/BudgetList";
+import { BUDGET_ID, BUDGET_KIND, BUDGET_NAME, BUDGET_PREFIX, budgetItems } from "@/lib/budget";
 
 const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log" };
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -124,6 +126,16 @@ export default function BoatPrep({ boatId, boats }) {
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
   useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
+  const budgetTpl = useAdminLists(BUDGET_PREFIX, online)[0];
+  const hasBudget = (s) => s.registry.some((l) => l.kind === BUDGET_KIND || l.id === BUDGET_ID);
+  const needBudget = loaded && !crew && !!budgetTpl && !hasBudget(state) && !(state.deleted_lists || []).includes(BUDGET_ID);
+  useEffect(() => {
+    if (!needBudget) return;
+    mutate((s) => (hasBudget(s) ? s : {
+      ...s, registry: [...s.registry, { id: BUDGET_ID, name: s.registry.some((l) => l.name.toLowerCase() === BUDGET_NAME.toLowerCase()) ? `My ${BUDGET_NAME}` : BUDGET_NAME, isSystem: false, kind: BUDGET_KIND }],
+      data: { ...s.data, [BUDGET_ID]: budgetItems(budgetTpl.items) },
+    }), { count: false });
+  }, [needBudget]); // eslint-disable-line react-hooks/exhaustive-deps
   const { setVessel } = boats;
   useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
@@ -180,7 +192,7 @@ export default function BoatPrep({ boatId, boats }) {
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
   const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
   useEffect(() => { setAreaFilter(""); }, [active.id]);
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [] }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: boat.budget_currency || "" }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -315,7 +327,7 @@ export default function BoatPrep({ boatId, boats }) {
     mutate((s) => {
       const data = { ...s.data };
       delete data[id];
-      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, list_hidden: (s.list_hidden || []).filter((h) => h !== id), deleted_lists: isSystem ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
+      return { ...s, registry: s.registry.filter((l) => l.id !== id), data, list_hidden: (s.list_hidden || []).filter((h) => h !== id), deleted_lists: isSystem || id === BUDGET_ID ? [...(s.deleted_lists || []), id] : s.deleted_lists || [] };
     });
     setActiveId(next.id);
     setDialog(null);
@@ -534,7 +546,9 @@ export default function BoatPrep({ boatId, boats }) {
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
               batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
-          : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />) : (
+          : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
+        : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
+            onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} /> : (
         <>
           {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />

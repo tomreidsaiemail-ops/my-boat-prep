@@ -117,7 +117,7 @@ async def list_categories(_: dict = Depends(get_current_user)):
     return {"items": [{"label": i["label"]} for i in items]}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ")
 
 
 @router.get("/admin-lists")
@@ -128,7 +128,7 @@ async def admin_lists(prefix: str, _: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Unknown admin list prefix")
     docs = await db.list_templates.find({"custom": True}, {"_id": 0, "name": 1, "items": 1}).sort("created_at", 1).to_list(200)
     return {"lists": [{"name": d["name"].strip(), "items": [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in d["items"]]}
-                      for d in docs if " ".join(d["name"].lower().split()).startswith(p)]}
+                      for d in docs if (n := " ".join(d["name"].lower().split())) == p.strip() or n.startswith(p)]}
 
 
 @router.get("/admin/template-lists")
@@ -191,3 +191,20 @@ async def publish_template(list_id: str, payload: TemplateIn, admin: dict = Depe
     await db.list_templates.update_one(
         {"list_id": list_id}, {"$set": {"list_id": list_id, "items": items, "updated_at": now, "updated_by": admin["user_id"]}}, upsert=True)
     return {"list_id": list_id, "items": items, "updated_at": now}
+
+
+BUDGET_LINES = ["Marina berth or mooring fees", "Insurance | Hull and third party policy", "Haul out and hardstand", "Antifouling | Antifouling paint",
+                "Engine service | Oil, filters and impeller", "Sails and rigging check", "Safety gear | Flares and lifejacket servicing",
+                "Registration and licences", "Fuel | Diesel", "Batteries", "Electronics and chart updates | Chart subscription", "Cleaning and maintenance | Cleaning products"]
+
+
+async def seed_budget_template():
+    """Runs once: adds the private 'Admin - Boat Budget' list that seeds every boat's Boat Budget, if it isn't there already."""
+    if await db.migrations.find_one({"_id": "boat_budget_template"}):
+        return
+    if not await db.list_templates.find_one({"custom": True, "name": {"$regex": r"^\s*admin\s*-\s*boat budget\s*$", "$options": "i"}}, {"_id": 1}):
+        now = datetime.now(timezone.utc).isoformat()
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": "Admin - Boat Budget", "private": True,
+                                            "description": "Seeds each boat's Boat Budget. Write 'Description | Product'; a line without | is just a Description.",
+                                            "items": [{"id": n + 1, "label": t} for n, t in enumerate(BUDGET_LINES)], "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": "boat_budget_template", "at": datetime.now(timezone.utc).isoformat()})

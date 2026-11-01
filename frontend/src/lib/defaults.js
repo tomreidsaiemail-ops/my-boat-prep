@@ -1,6 +1,7 @@
 import { MEAL_PLAN_BASE_LEN, MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
 import { autoTypeData } from "@/lib/mpa";
 import { CREW_ROLES } from "@/lib/crewRoles";
+import { budgetLabel } from "@/lib/budget";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -102,7 +103,7 @@ export const DEFAULT_DATA = {
 };
 
 export const freshState = () => ({
-  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0, route_start: "", route_dest: "", pets: [] },
+  boat: { vessel: "", skipper: "", callsign: "", log_email: "", shore_email: "", boat_type: "", pob: 1, children: 0, mmsi: "", units: "m", loa: "", beam: "", draft: "", mast_height: "", trip_days: 0, route_start: "", route_dest: "", pets: [], make: "", model: "", budget_currency: "", budget_notes: "" },
   log_sent: null,
   engine_log: [],
   electrical_log: [],
@@ -242,6 +243,7 @@ const pobWords = (ctx) => {
 };
 
 export const displayLabel = (item, ctx) => {
+  if (item.budget) return budgetLabel(item, ctx.currency);
   const v = ctx.vessel || "Vessel Name";
   const c = ctx.callsign || "Callsign";
   switch (item.dynamic) {
