@@ -8,6 +8,12 @@ import { HelpPanel } from "@/components/boat/HelpPanel";
 import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
+import { LinkedText } from "@/components/boat/LinkedText";
+import useAdminLists from "@/hooks/useAdminLists";
+
+const HELP_PREFIX = "Admin - Help Panel - ";
+const HELP_NAME = "admin - help panel - zone map help";
+const DEFAULT_HELP = "Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 20;
@@ -74,6 +80,7 @@ const AdminTools = ({ has, online, onChanged }) => {
 };
 
 export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff }) => {
+  const help = useAdminLists(HELP_PREFIX, online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -116,7 +123,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       {expanded && <>
       {canEdit && (
         <HelpPanel storageKey="mbp_zone_map_help_seen" title="How to make a zone map" testId="zone-map-help">
-          <p>Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.</p>
+          {help?.length ? help.map((i, k) => (
+            <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""} data-testid={`zone-map-help-line-${k}`}>
+              <LinkedText text={i.label} testId={`zone-map-help-link-${k}`} />
+            </p>
+          )) : <p data-testid="zone-map-help-default">{DEFAULT_HELP}</p>}
         </HelpPanel>
       )}
       {steps.length > 0 && (

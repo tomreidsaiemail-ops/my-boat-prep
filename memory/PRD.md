@@ -382,3 +382,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Cocktail shopping: button with count still to buy -> checklist dialog (all ticked, already-on-Provisions disabled) -> adds to Provisions
 - Sundowner card (SundownerCard.jsx, lib/sun.js NOAA sunset from GPS, 6pm fallback): daily stable pick (+ kids mocktail), Share (navigator.share / WhatsApp), open list, dismiss for the day
 - Tests: iteration_72 (+ mocktail fix re-verified via tests/test_bartender_mocktails.py)
+
+## 2026-06 Zone Map help from admin list
+- ZoneMap "How to make a zone map" panel reads "Admin - Help Panel - Zone Map help" (items, indented = bullets, links clickable); falls back to the built-in text when missing. Verified both cases in preview.
