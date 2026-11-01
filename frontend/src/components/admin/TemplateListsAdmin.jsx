@@ -39,7 +39,7 @@ export const TemplateListsAdmin = () => {
     if (editing === "new") {
       const { data } = await api.post("/admin/template-lists", body);
       setLists((l) => [...l, data]);
-      toast.success(`${data.name} published: it now appears on every boat`);
+      toast.success(data.private ? `${data.name} saved for Admin use only` : `${data.name} published: it now appears on every boat`);
     } else {
       const { data } = await api.put(`/admin/template-lists/${editing.id}`, body);
       setLists((l) => l.map((x) => (x.id === data.id ? data : x)));

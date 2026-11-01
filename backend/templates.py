@@ -21,9 +21,12 @@ REQUIRED_DYNAMIC = {
 Dynamic = Literal["maydayVessel", "maydayCallsign", "maydayVesselCallsign", "maydayGps", "panPanGps", "pobDescription", "panPanPosition", "panPanVessel"]
 
 
+TEMPLATE_LINE_MAX = 4000
+
+
 class TemplateItem(BaseModel):
     id: Union[int, str]
-    label: str = Field(max_length=1000)
+    label: str = Field(max_length=TEMPLATE_LINE_MAX)
     dynamic: Optional[Dynamic] = None
     indent: Optional[bool] = None
     meal_type: Optional[Literal["breakfast", "lunch", "dinner", "dessert", "snack"]] = None
@@ -38,7 +41,7 @@ RESERVED_NAMES = {n.lower() for n in TEMPLATE_LISTS.values()} | {
 
 
 class TemplateLine(BaseModel):
-    label: str = Field(max_length=1000)
+    label: str = Field(max_length=TEMPLATE_LINE_MAX)
     indent: bool = False
 
 
@@ -60,7 +63,7 @@ def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[lis
     out, seen, group, used = [], set(), set(), set()
     for raw in labels:
         line = raw if isinstance(raw, TemplateLine) else TemplateLine(label=raw)
-        label = line.label.strip()[:1000]
+        label = line.label.strip()[:TEMPLATE_LINE_MAX]
         sub = line.indent and out
         # Sub-items may repeat under different headings (e.g. Salt in several meals).
         if not label or label.lower() in (group if sub else seen):

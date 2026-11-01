@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { isHeadingLine, linesToItems } from "@/lib/outline";
 import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
+const LINE_MAX = 4000;
+// Grows with the text so the end of a long help paragraph is never hidden.
+const fit = (el) => { if (el) { el.style.height = "auto"; el.style.height = `${Math.min(el.scrollHeight + 4, window.innerHeight * 0.7)}px`; } };
 
 export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [name, setName] = useState(initial?.name || "");
@@ -15,14 +18,18 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [busy, setBusy] = useState(false);
   const lines = toLines(text);
   const headings = lines.filter(isHeadingLine).length;
+  const area = useRef(null);
+  useEffect(() => fit(area.current), [text]);
 
   const save = async (e) => {
     e.preventDefault();
     if (!name.trim()) { setError("Please enter a list name"); return; }
     if (!lines.length) { setError("Add at least one item"); return; }
+    const long = lines.findIndex((l) => l.length > LINE_MAX);
+    if (long >= 0) { setError(`Line ${long + 1} has ${lines[long].length} characters. Please keep each line under ${LINE_MAX}, or split it into two lines.`); return; }
     setBusy(true);
     setError("");
-    const items = linesToItems(lines, autoIndent, 0).map((i) => ({ label: i.label, indent: !!i.indent }));
+    const items = linesToItems(lines, autoIndent, 0, LINE_MAX).map((i) => ({ label: i.label, indent: !!i.indent }));
     try { await onSave({ name: name.trim(), description: description.trim(), items, private: priv }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
@@ -34,7 +41,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       <ListDescriptionField value={description} onChange={setDescription} testId="template-list" />
       <AiDraftButton name={name} description={description} hasText={!!lines.length} onDraft={setText} testId="template-list" />
       <label className="flex flex-col gap-1 text-sm font-bold">Items, one per line
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={"1. Before leaving (dock)\nCheck the marine forecast\nFuel and water topped up"}
+        <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={8} placeholder={"1. Before leaving (dock)\nCheck the marine forecast\nFuel and water topped up"}
           className="field-input min-h-[180px] py-2 font-normal leading-relaxed" data-testid="template-list-items-input" />
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>

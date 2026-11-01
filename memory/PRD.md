@@ -385,3 +385,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-06 Zone Map help from admin list
 - ZoneMap "How to make a zone map" panel reads "Admin - Help Panel - Zone Map help" (items, indented = bullets, links clickable); falls back to the built-in text when missing. Verified both cases in preview.
+
+## 2026-06 Admin template long lines
+- Bug: admin template editor silently cut each line at 1000 chars (linesToItems ITEM_MAX), so long help paragraphs lost their end. Now template lines allow 4000 (backend TEMPLATE_LINE_MAX), editor shows an error instead of cutting, textarea grows to fit the text. Private-list create toast fixed. Verified 1268-char line round-trips.
