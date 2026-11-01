@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from db import db
 
-FEATURES = {"MMD": "Magic Marine Doctor", "MPA": "Marine Magic Provisioning Assistant", "MME": "Magic Marine Engineer",
+FEATURES = {"MMD": "Magic Marine Doctor", "MPA": "Magic Provisioning Assistant", "MME": "Magic Marine Engineer",
             "MMN": "Magic Marine Navigator", "MLG": "Magic List Generation", "BMMS": "Batch Magic Marine Scan", "MMS": "Magic Marine Scan"}
 KIND_FEATURE = {"doctor": "MMD", "mpa": "MPA", "engine": "MME", "navigator": "MMN", "draft": "MLG", "topup": "MLG"}
 

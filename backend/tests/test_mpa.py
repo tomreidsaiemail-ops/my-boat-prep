@@ -1,4 +1,4 @@
-# MPA (Marine Magic Provisioning Assistant) backend: POST /api/ai/mpa/provisions
+# MPA (Magic Provisioning Assistant) backend: POST /api/ai/mpa/provisions
 import os
 import pytest
 import requests

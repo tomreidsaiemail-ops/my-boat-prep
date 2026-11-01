@@ -26,7 +26,7 @@ const useMatchRules = (open, online) => {
   return useMemo(() => matchRules(raw), [raw]);
 };
 
-export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClose, onCreate }) => {
+export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate }) => {
   const rules = useMatchRules(open, online);
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
@@ -34,7 +34,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
   const [usePets, setUsePets] = useState(true);
   const [busy, setBusy] = useState(false);
   const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim());
-  useEffect(() => { if (open) { setPicked(lists.length === 1 ? [lists[0].id] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setPicked(lists.some((l) => l.id === activeId) ? [activeId] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tags = useMemo(() => Object.fromEntries(lists.map((l, i) => [l.id, initialsFor(lists.map((x) => x.name))[i]])), [lists]);
   const pob = boat.pob || 1;
   const children = Math.min(boat.children || 0, pob - 1);
@@ -94,7 +94,7 @@ export const MpaDialog = ({ open, lists, boat, areas, provisions, online, onClos
     <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="mpa-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> Marine Magic Provisioning</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> Magic Provisioning Assistant</DialogTitle>
           <DialogDescription>Pick your meal plans. The MPA works out one shopping list for everyone on board, takes off what's already in your Food areas and adds your Provisions.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">

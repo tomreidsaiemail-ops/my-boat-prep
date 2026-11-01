@@ -1,4 +1,4 @@
-// Marine Magic Provisioning Assistant: meal plan parsing and the unified shopping list.
+// Magic Provisioning Assistant: meal plan parsing and the unified shopping list.
 import { withoutYouTube } from "@/lib/youtube";
 const BRACKET = /^\s*\[.*\]\s*$/s;
 const UNITS = {

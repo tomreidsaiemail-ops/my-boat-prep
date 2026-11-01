@@ -204,7 +204,7 @@ async def engine_ask(body: EngineAskIn, user: dict = Depends(require_premium)):
     return {"answer": answer, "asks_left": left}
 
 
-PROVISIONER = ("You are the Marine Magic Provisioning Assistant in the My Boat Prep app. You suggest practical shopping amounts for a boat trip. "
+PROVISIONER = ("You are the Magic Provisioning Assistant in the My Boat Prep app. You suggest practical shopping amounts for a boat trip. "
                "Allow sensible safety margins for drinking water. Children eat and drink about half as much as adults. Reply with JSON only, no prose and no code fences.")
 
 

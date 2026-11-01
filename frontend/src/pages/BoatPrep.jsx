@@ -373,7 +373,7 @@ export default function BoatPrep({ boatId, boats }) {
     window.addEventListener("mbp:crew-roles", openRoles);
     return () => window.removeEventListener("mbp:crew-roles", openRoles);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
-  const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Marine Magic Provisioning"));
+  const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
   const PET_KIT = "First Aid Kit - Pets";
   const makePetKit = async () => {
     if (!needPro("Pet First Aid Kit")) return false;
@@ -542,8 +542,8 @@ export default function BoatPrep({ boatId, boats }) {
           {!areaFilter && (
             <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
               {showMpa && (
-                <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Marine Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
-                  <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning
+                <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
+                  <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
                 </button>
               )}
               <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />
@@ -567,7 +567,7 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {showMpa && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
-              <Sparkles className="h-4 w-4 shrink-0" /> Marine Magic Provisioning Assistant
+              <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>
           )}
           {/^first aid kit/i.test(active.name || "") && (
@@ -592,7 +592,7 @@ export default function BoatPrep({ boatId, boats }) {
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
         areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
-      <MpaDialog open={dialog?.type === "mpa"} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
+      <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
       <TextDialog open={dialog?.type === "edit"} title="Edit Item" confirmLabel="Save" testId="edit-item" maxLength={ITEM_MAX}
         initial={dialog?.type === "edit" ? labelFor(dialog.item) : ""}
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
