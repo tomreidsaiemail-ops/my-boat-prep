@@ -1,0 +1,42 @@
+{
+  "summary": "Tested the Boat Budget feature end to end (backend pytest 13/13 plus Playwright on desktop 1920 and mobile 390). Working: the admin template is seeded (12 lines, private, admin-lists prefix works); owner boats get the boatBudget list with Description | Product split; header facts, currency select (NZ$ to $ formatting), totals (foot and card: all dates, 2026, 2025, 2024), orange and red row tones, edits persisting after reload, add row, delete with Undo, Opening Store (progress bar, popup after about 2.16s, Cancel, Edit link), Export Current format, free-user upgrade prompt with the textarea still typeable, Delete list staying deleted after reload, crew privacy (GET strips registry, data and notes; crew PUT keeps the owner's budget), the Additional details dialog layout (identity row and pob row) and the summary showing make and model, mobile sticky Description column with no page overflow, and the MPA and checklist regression. Two real bugs: (1) the AI auto-fill fires on the FIRST keystroke of Make inside the dialog, so the comments are generated for make 'B' ('For your B Gaff Cutter...'); (2) the store URL dialog uses <input type=url> inside a form, so native browser validation blocks 'www.store.com/product', which is the format its own placeholder suggests. The custom budget-url-error never shows for such input.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/me/boat (BoatDetails.make/model)", "issue": "The validator trim_make does not strip whitespace: '  TEST_Make  ' is stored as-is (it is only cut to 60 chars). Use str(v or '').strip()[:60]."},
+      {"endpoint": "POST /api/ai/budget", "issue": "With no currency picked, the prompt says 'the local currency, named' and the model answered in GBP (Pounds Sterling) twice for an NZ-oriented app. Consider defaulting to NZD or asking the user to pick a currency first."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BudgetComments auto-fill (BudgetComments.jsx useEffect)", "issue": "The effect depends on key = make|model|type|currency and fires as soon as has=true. Typing 'Beneteau' in the Additional details dialog (opened from budget-edit-details-btn) sent POST /api/ai/budget with {make:'B', model:''} on the first keystroke. The saved comments then describe a 'B Gaff Cutter'. Because notes are no longer empty, they never regenerate after the real make/model are entered. The spec says the comments fill after the dialog is closed. Fix: in BudgetHeader, trigger the ask from the dialog's onClose (or debounce, or skip while the dialog is open) instead of on every key change.", "selector": "[data-testid=budget-comments-input]", "priority": "HIGH"},
+      {"component": "Store URL dialog (TextDialog inputType='url')", "issue": "Native HTML5 url validation ('Please enter a URL.') blocks submit for 'www.example.com/insurance' and 'not a url', so onConfirm/storeUrl never runs. Users must type https://. The custom budget-url-error only appears for values the browser accepts (e.g. 'http://x'). Fix: add noValidate on the form, or use inputType 'text' with inputMode 'url' for this dialog.", "selector": "[data-testid=budget-url-confirm-btn]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Budget table (desktop 1920)", "issues": ["The app column is about 444px wide even on desktop, so the 720px table needs horizontal scrolling there too. The Cost column and the tfoot total are hidden at first; only the 'Total (all dates)' label shows."]},
+      {"screen": "Budget table Date Paid", "issues": ["Uses the native <input type=date> (shows mm/dd/yyyy in en-US) instead of the shadcn calendar. Export prints dd/mm/yyyy, which is inconsistent with the display."]},
+      {"screen": "Additional details dialog", "issues": ["The 'PERSONS ON BOARD' label wraps to 2 lines, so pob-input sits about 5px lower than children-input. Minor misalignment."]},
+      {"screen": "Export Current (budget)", "issues": ["Optional: the export has no total-cost line and no AI comments."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_boat_budget.py", "/app/test_reports/pytest/pytest_budget.xml"],
+  "action_items": [
+    "Fix BudgetComments auto-fill firing on the first keystroke of Make or Model while the Additional details dialog is open: only auto-ask after the dialog closes (or debounce).",
+    "Fix the store URL dialog: add noValidate on the TextDialog form, or don't use type=url, so 'www.store.com/product' saves and budget-url-error shows for invalid text.",
+    "Trim make and model in the BoatDetails validator.",
+    "Consider a default or required currency for the AI budget (it answered in GBP when no currency was picked)."
+  ],
+  "critical_code_review_comments": [
+    "BudgetComments.ask(): if the user edits the textarea while the AI request is in flight, the reply overwrites the user's text without warning.",
+    "BudgetComments: comments are never regenerated after make/model change once notes exist (only Refresh does it). That is acceptable, but combined with the keystroke bug it leaves wrong comments.",
+    "Crew privacy is good: to_out strips the registry, data and notes, and merge_crew_ticks keeps the owner's budget intact."
+  ],
+  "updated_files": ["/app/backend/tests/test_boat_budget.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "about 85% (2 HIGH bugs: AI keystroke trigger, URL native validation)"},
+  "seed_data_creation": "Pro boat (test-user-pro/main) now has make Beneteau, model Oceanis 38, currency USD, budget_notes from the AI, and modified budget rows (row 1793569647972 renamed 'TEST_Berth fees'/'TEST_Marina X' cost 100.50 paid 2026-03-01; ...973 cost 200 paid 2025-06-15 url https://example.com/insurance; ...974 cost 50 paid 2024-01-10; added a 'TEST_New item' row). Free boat (test-user-free/main): the Boat Budget list was deleted (deleted_lists has boatBudget). FIRST200 was briefly turned off for the free-tier tests and restored to running:true.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "FIRST200 launch is running, so ALL users (including test_session_free_1) are premium. To test free gating, set db.app_settings {key:'first200'} running:false, wait 11s (cache TTL), then restore it. test_boat_budget.py does this in a fixture. Auth works with the session_token cookie or the Authorization: Bearer header. Budget row ids on the pro boat: 1793569647972/973/974. To retest the auto-fill bug, clear the pro boat's boat.make, model and budget_notes via mongo, open budget-edit-details-btn, type the make slowly, and watch for POST /api/ai/budget payloads.",
+  "rca of the issue": "Auto-fill: BudgetComments' useEffect deps [premium, online, has, notes, key] fire on every make keystroke, because the dialog writes through onBoatChange live. On the first character has=true and notes are empty, so ask(true) runs with a partial make. TextDialog renders <input type={inputType}> inside a <form> without noValidate, so the browser's URL constraint validation cancels submit before the onSubmit handler runs."
+}

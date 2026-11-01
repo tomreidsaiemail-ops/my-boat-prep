@@ -3,27 +3,33 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 
-export const BudgetComments = ({ boat, onBoatChange, premium, online, onUpgrade }) => {
+export const BudgetComments = ({ boat, currency, paused, onBoatChange, premium, online, onUpgrade }) => {
   const [busy, setBusy] = useState(false);
   const tried = useRef("");
   const notes = boat.budget_notes || "";
+  const latest = useRef(notes);
+  latest.current = notes;
   const has = !!((boat.make || "").trim() || (boat.model || "").trim());
-  const key = [boat.make, boat.model, boat.boat_type, boat.budget_currency].join("|");
+  const key = [boat.make, boat.model, boat.boat_type, currency].join("|");
   const ask = async (quiet = false) => {
     if (!premium) { onUpgrade(); return; }
     if (!has) { if (!quiet) toast.error("Fill in your boat's make and model first"); return; }
     if (!online) { if (!quiet) toast.error("The Magic Mariner needs a signal to write budgeting comments"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/ai/budget", { make: boat.make || "", model: boat.model || "", boat_type: boat.boat_type || "", currency: boat.budget_currency || "",
+      const { data } = await api.post("/ai/budget", { make: boat.make || "", model: boat.model || "", boat_type: boat.boat_type || "", currency,
         loa: boat.loa || "", units: boat.units === "ft" ? "ft" : "m" }, { timeout: 90000 });
-      onBoatChange("budget_notes", data.answer);
+      // An automatic fill never replaces notes the skipper typed while it was thinking.
+      if (!quiet || !latest.current.trim()) onBoatChange("budget_notes", data.answer);
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't write budgeting comments right now. Please try again.")); }
     setBusy(false);
   };
+  // Waits until the make and model stop changing (and the details dialog is closed) before asking.
   useEffect(() => {
-    if (premium && online && has && !notes.trim() && !busy && tried.current !== key) { tried.current = key; ask(true); }
-  }, [premium, online, has, notes, key]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (paused || !premium || !online || !has || notes.trim() || busy || tried.current === key) return undefined;
+    const t = setTimeout(() => { tried.current = key; ask(true); }, 1500);
+    return () => clearTimeout(t);
+  }, [paused, premium, online, has, notes, key, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="flex flex-col gap-1.5" data-testid="budget-comments">
       <div className="flex items-center justify-between gap-2">

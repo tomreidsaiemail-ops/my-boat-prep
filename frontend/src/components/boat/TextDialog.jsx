@@ -20,7 +20,7 @@ export const TextDialog = ({ open, title, description, initial = "", placeholder
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <form onSubmit={submit} className="flex flex-col gap-3">
+        <form onSubmit={submit} noValidate className="flex flex-col gap-3">
           {inputType ? (
             <input autoFocus aria-label={title} type={inputType} inputMode={inputType} autoComplete={inputType} value={value} placeholder={placeholder}
               onChange={(e) => setValue(e.target.value)} className="field-input" data-testid={`${testId}-input`} />

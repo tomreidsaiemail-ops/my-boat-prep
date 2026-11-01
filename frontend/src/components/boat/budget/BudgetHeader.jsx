@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { AdditionalDetailsDialog } from "@/components/boat/AdditionalDetailsDialog";
 import { CURRENCIES } from "@/lib/budget";
@@ -10,8 +9,7 @@ const Fact = ({ label, value, testId }) => (
   </div>
 );
 
-export const BudgetHeader = ({ boat, onBoatChange }) => {
-  const [open, setOpen] = useState(false);
+export const BudgetHeader = ({ boat, currency, onBoatChange, open, onOpenChange: setOpen }) => {
   const missing = !(boat.make || "").trim() || !(boat.model || "").trim();
   return (
     <div className="flex flex-col gap-2" data-testid="budget-header">
@@ -26,7 +24,7 @@ export const BudgetHeader = ({ boat, onBoatChange }) => {
         </button>
         <label className="flex items-center gap-2" htmlFor="budget-currency">
           <span className="field-label">Currency</span>
-          <select id="budget-currency" value={boat.budget_currency || ""} onChange={(e) => onBoatChange("budget_currency", e.target.value)}
+          <select id="budget-currency" value={currency} onChange={(e) => onBoatChange("budget_currency", e.target.value)}
             className="field-input !h-10 !w-28 py-0 text-sm" data-testid="budget-currency-select">
             <option value="">Pick...</option>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}

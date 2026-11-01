@@ -5,6 +5,17 @@ export const BUDGET_NAME = "Boat Budget";
 export const BUDGET_PREFIX = "Admin - Boat Budget";
 export const CURRENCIES = ["NZD", "AUD", "USD", "CAD", "GBP", "EUR", "CHF", "SEK", "NOK", "DKK", "ZAR", "SGD", "HKD", "JPY", "FJD", "XPF"];
 
+const EURO = ["IE", "FR", "DE", "ES", "PT", "IT", "NL", "BE", "AT", "FI", "GR", "HR", "MT", "CY", "SI", "SK", "EE", "LV", "LT", "LU", "MC"];
+const BY_REGION = { NZ: "NZD", AU: "AUD", US: "USD", CA: "CAD", GB: "GBP", CH: "CHF", SE: "SEK", NO: "NOK", DK: "DKK", ZA: "ZAR", SG: "SGD", HK: "HKD", JP: "JPY", FJ: "FJD", PF: "XPF", NC: "XPF",
+  ...Object.fromEntries(EURO.map((r) => [r, "EUR"])) };
+// The skipper's pick, else a guess from the phone's region (e.g. en-NZ -> NZD), else none.
+export const budgetCurrency = (boat) => {
+  if (boat.budget_currency) return boat.budget_currency;
+  const langs = typeof navigator === "undefined" ? [] : navigator.languages || [navigator.language];
+  const region = langs.map((l) => String(l || "").split("-")[1]?.toUpperCase()).find((r) => BY_REGION[r]);
+  return region ? BY_REGION[region] : "";
+};
+
 export const newBudgetItem = (id, label = "", product = "") => ({ id, label, product, url: "", paid: "", cost: "", checked: false, budget: true });
 
 // "Description | Product" lines; a line without | is just a Description.

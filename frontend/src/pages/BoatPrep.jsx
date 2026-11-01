@@ -68,7 +68,7 @@ import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, ou
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
-import { BUDGET_ID, BUDGET_KIND, BUDGET_NAME, BUDGET_PREFIX, budgetItems } from "@/lib/budget";
+import { BUDGET_ID, BUDGET_KIND, BUDGET_NAME, BUDGET_PREFIX, budgetCurrency, budgetItems } from "@/lib/budget";
 
 const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log" };
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -192,7 +192,7 @@ export default function BoatPrep({ boatId, boats }) {
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
   const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
   useEffect(() => { setAreaFilter(""); }, [active.id]);
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: boat.budget_currency || "" }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat) }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
