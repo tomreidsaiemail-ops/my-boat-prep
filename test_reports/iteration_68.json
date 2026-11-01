@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only test of MPA button/title rename and list pre-selection. All 6 requested checks passed on the live preview URL (mobile 390x844 and desktop 1920x1080).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified": [
+    "mpa-open-top-btn text = 'Magic Provisioning Assistant'",
+    "mpa-open-btn text = 'Magic Provisioning Assistant' (the word 'Marine' is gone)",
+    "mpa-dialog title = 'Magic Provisioning Assistant' (shown uppercase by CSS), no 'Marine'",
+    "Pro boat has 2 meal plans (mealPlan, tpl_b1aef01b43): opening from mealPlan selects only mealPlan; from tpl_b1aef01b43 selects only it; switching back A->B->A works; same result with both buttons",
+    "From the MPA Shopping List (kind mpa) with both buttons: nothing selected, make button disabled",
+    "From the Provisions list (admin boat) with both buttons: nothing selected",
+    "Regression: making a shopping list from the pre-selected tpl_b1aef01b43 (aisles off, so no AI call) showed the warnings dialog, then 'Make it anyway' created the MPA Shopping List and showed a success toast"
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MpaDialog useEffect depends only on [open]. That is fine because the active list can't change while the dialog is open."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Pro boat 'main' now has an 'MPA Shopping List' (kind mpa) made from Meal Plan - Sample. Admin boat vessel/callsign/skipper were filled for a short time (guard needs them) and then cleared.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro session test_session_pro_1 boat has meal plan lists mealPlan and tpl_b1aef01b43 and no Provisions list. The admin boat (test_session_admin_1) has Provisions, but openMpa needs vessel, skipper and callsign filled (the ready guard). Use 'Make it anyway' in mpa-warnings-dialog."
+}
