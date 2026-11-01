@@ -2,6 +2,8 @@
 import os
 import pytest
 import requests
+from tests.test_boat_budget import first200_off  # noqa: F401
+
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 URL = f"{BASE_URL}/api/ai/mpa/provisions"
@@ -23,6 +25,7 @@ def test_pro_provisions_amounts():
 
 
 # Free tier blocked
+@pytest.mark.usefixtures("first200_off")
 def test_free_forbidden():
     r = requests.post(URL, json=BODY, headers=FREE, timeout=30)
     assert r.status_code == 403

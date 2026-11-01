@@ -240,7 +240,7 @@ export default function BoatPrep({ boatId, boats }) {
       restored.splice(Math.min(index, restored.length), 0, item);
       return { ...s, data: { ...s.data, [listId]: restored } };
     });
-    const name = labelFor(item);
+    const name = item.cocktail || item.budget ? item.label || "item" : labelFor(item);
     toast(`Deleted "${name.length > 40 ? `${name.slice(0, 40)}…` : name}"`, { duration: 6000, action: { label: "Undo", onClick: undo } });
   };
   // Category delete: removes the chosen ids; one Undo puts them all back in place.

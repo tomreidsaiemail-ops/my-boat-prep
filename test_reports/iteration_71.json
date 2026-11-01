@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Magic Bartender, the D (Drinks) flag, the Arrange Lists rename and the collapsible Boat Budget rows. Backend: new test_bartender.py (8 tests) plus a re-run of test_boat_budget.py (13 tests): 21/21 pass. The first run had one budget test fail because two first200 fixtures ran at the same time under xdist; it passes when run on its own. AI calls are real. POST /api/ai/bartender with 9 ingredients returned 12 unique cocktails, each missing no more than 2 ingredients, with TheCocktailDB https photos (or '') and YouTube results links built from the name. Validation returns 401 (no auth), 422 (empty list or more than 300 ingredients) and 403 (free user with FIRST200 off). POST /scan?bartender=true read a vodka bottle image as 'Vodka'; a bad file gives 400 and an unknown boat gives 404. Frontend (Playwright, 390x844 plus desktop 1920): all requested flows pass. Toolbar: 'Arrange Lists' has arrange-lists-icon (4 coloured squares plus wand) and 'Magic Bartender' with the martini icon comes after it. At 390px it wraps onto a second row with no horizontal scroll. Dialog: title MAGIC BARTENDER, all 4 help lines match exactly, skipper tip has the cheers icon. Guards: the admin boat with empty vessel details shows 'Please enter vessel details first'; a free user with FIRST200 off gets the plan-dialog 'Magic Bartender is a Pro feature'. D flag: the inventory toggle shows the badge and a toast, and survives reload. The F and D toggles in the dialog change the same flags and update the summary. Bartender Photo (4 bottle/fruit image): the scanning state disables Mix, then the chips show Vodka, Gin, Limes, Ginger beer. The thumbnail is 56px and grows to 160px when tapped. The checkbox is enabled and checked; unchecking takes the summary from 4 to 0. Mix with no ingredients shows the error toast. Mix took about 20s, then created and opened 'Magic Bartender Cocktails' with 12 cocktails (8 photos, 4 martini fallbacks), plus missing/ready labels, tick (line-through), YouTube in a new tab, delete with Undo, and Ask again reopening the dialog. A second run replaced the same list (toast 'updated', still only 1 list in the selector and 1 kind=bartender entry in the registry in Mongo). Export Current prints 'Name (buy: x) - https://www.youtube.com/results?...'. Batch scan button closes the dialog and opens batch-scan-dialog. Budget: headers are Description, Date Paid, Cost; the expand button shows product + Store/Add store; expand-all opens and closes 13 rows. The product saved on Enter/blur and survived reload. The date label shows dd/mm/yy; changing 2024-01-10 to 2026-05-20 changed the tone from red to none and the year totals. budget-total-all is visible with no horizontal scroll at 390px (wrap scrollWidth equals clientWidth, 356). Store opens Opening Store. Regression: checklist ticks work, MPA buttons are present, budget pytest passes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "bartender.cocktail_photo", "issue": "The substring fallback (want in strDrink) can attach a different drink's photo. For example a short name like 'Mule' or 'Gimlet' can match the first drink whose name contains it. Low impact."},
+      {"endpoint": "tests/test_mpa.py::test_free_forbidden", "issue": "Fails (200 instead of 403) while FIRST200 is running. The test needs the first200_off fixture. This is a test problem, not an app bug."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "List selector at 390px", "issues": ["The 'Magic Bartender Cocktails' name wraps onto 3 lines and spills above and below the list-selector trigger box. Use truncate or line-clamp-2 with a smaller font."]},
+      {"screen": "Export Current print view at 390px", "issues": ["Long YouTube URLs do not wrap and run past the right edge of the print card. Add break-all or overflow-wrap:anywhere to the printed line."]},
+      {"screen": "Cocktail delete toast", "issues": ["The toast reads 'Deleted \"Moscow Mule - https://www.youtube.com/re…\"' because it uses the export label. Show only the cocktail name."]},
+      {"screen": "Boat Budget table at 390px", "issues": ["Descriptions are cut off after about 13 characters ('TEST_Berth fe', 'Haul out and h') while the date column has spare room. Consider a narrower date or cost column, or wrapping the description."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_bartender.py", "/app/backend/tests/test_boat_budget.py", "/app/test_reports/pytest/pytest_bartender_71.xml"],
+  "action_items": [
+    "Optional polish: truncate long list names in the list-selector trigger on mobile",
+    "Optional polish: wrap long URLs in the print/export view",
+    "Optional polish: show only the cocktail name in the delete/Undo toast",
+    "Optional: make the TheCocktailDB match stricter (exact match first, then startswith) so the wrong photo is not shown",
+    "Optional: add the first200_off fixture to tests/test_mpa.py::test_free_forbidden"
+  ],
+  "critical_code_review_comments": [
+    "bartender.py: 12 parallel TheCocktailDB requests with a 6s timeout each. This is fine, but each request makes a new lookup with no cache; a small in-memory name->photo cache would cut latency and load.",
+    "ai_scan.py: the bartender scan uses the shared scan quota (quota.consume) and records usage as MBT. This is consistent with the other scans.",
+    "BartenderDialog: the photo state is reset when the dialog closes, which is fine. Ingredients are capped at 300 on both client and server."
+  ],
+  "updated_files": ["/app/backend/tests/test_bartender.py"],
+  "success_rate": {"backend": "100% (21/21 bartender + budget; one xdist-race flake that passes on rerun)", "frontend": "100% of requested flows; 4 minor design notes"},
+  "seed_data_creation": "Pro boat (test-user-pro/main) now has a 'Magic Bartender Cocktails' list (kind bartender, vodka-based cocktails from the second run). TEST_Port Locker (amvr1vpa6f5jn) ends with food and drinks both false. Budget row 1793569647974 product is now 'TEST_Prod Bartender' and its paid date was restored to 2024-01-10. FIRST200 was briefly set to running:false and restored to running:true.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Upload test photos into the hidden bartender-photo-input with set_input_files. /tmp/bar.jpg (vodka, gin, lime and ginger beer images from thecocktaildb.com/images/ingredients/*.png) gives 4 chips. Mix takes about 20s; wait for cocktail-list. After reload, premium users land on Boat Inventory, so open the cocktails list with list-selector and then the list-option that has the text 'Magic Bartender Cocktails'. To test free gating, set app_settings first200 running:false, wait 11s, then restore it. Do not run two first200_off fixtures in parallel under xdist."
+}

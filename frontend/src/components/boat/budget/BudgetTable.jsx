@@ -39,7 +39,7 @@ export const BudgetTable = ({ items, setItems, currency, guard }) => {
     <div className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="budget-table-wrap">
         <table className="w-full min-w-[320px] table-fixed border-collapse text-sm" data-testid="budget-table">
-          <colgroup><col /><col className="w-[84px]" /><col className="w-[92px]" /><col className="w-[30px]" /></colgroup>
+          <colgroup><col /><col className="w-[76px]" /><col className="w-[86px]" /><col className="w-[30px]" /></colgroup>
           <thead className="bg-slate-50">
             <tr>
               <th className="px-1 py-1.5 text-left">

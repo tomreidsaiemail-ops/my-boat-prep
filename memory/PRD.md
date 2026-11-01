@@ -368,3 +368,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - MAGIC MARINER BUDGETING COMMENTS (POST /api/ai/budget, Pro/Beta): auto-fills when empty (waits 1.5s, paused while details dialog open), Refresh button
 - Table: Description, Product, store link (enter/edit dialog; Opening Store 2s bar then new window), Date Paid, Cost; total in cost column; 2025 rows orange, 2024- red; totals for this year / last year / previous year
 - Tests: iteration_69, iteration_70 passed; backend/tests/test_boat_budget.py
+
+## 2026-06 Magic Bartender + budget collapse
+- Boat Budget rows: Product + Store collapse under Description (per-row chevron + expand-all); compact dd/mm/yy date cell; total visible at 390px
+- Toolbar: "Arrange Lists" (4-colour-square icon + wand), new "Magic Bartender" (martini) button
+- Boat areas: D (Drinks) flag beside F (Food), area.drinks
+- MAGIC BARTENDER dialog: help text + cheers icon, optional Bartender Photo (POST /boats/{id}/scan?bartender=true), ingredient chips, minimised thumb, "Using the Bartender Photo" checkbox, F/D area toggles, Batch Scan shortcut
+- POST /api/ai/bartender (backend/bartender.py): up to 12 cocktails (missing <=2), TheCocktailDB photos (exact/startswith match, else martini icon), YouTube search link; saved as list "Magic Bartender Cocktails" (kind bartender, replaced each run)
+- Tests: iteration_71 passed; backend/tests/test_bartender.py

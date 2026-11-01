@@ -61,7 +61,7 @@ async def cocktail_photo(client: httpx.AsyncClient, name: str) -> str:
     except Exception:
         return ""
     want = _key(name)
-    hit = next((d for d in drinks if _key(d.get("strDrink", "")) == want), None) or next((d for d in drinks if want and want in _key(d.get("strDrink", ""))), None)
+    hit = next((d for d in drinks if _key(d.get("strDrink", "")) == want), None) or next((d for d in drinks if want and _key(d.get("strDrink", "")).startswith(want)), None)
     thumb = (hit or {}).get("strDrinkThumb") or ""
     return f"{thumb}/medium" if thumb.startswith("https://") else ""
 

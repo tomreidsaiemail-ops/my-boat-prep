@@ -19,7 +19,7 @@ export const ListSelector = ({ sections, activeId, activeColours, onChange, onCr
     <div className="relative min-w-0 flex-1">
       <Select value={activeId} onValueChange={onChange}>
         <SelectTrigger data-testid="list-selector" aria-label="Choose a list" style={{ backgroundColor: activeColours?.shade, borderLeftColor: activeColours?.bg }}
-          className="h-14 w-full rounded-md border-2 border-l-[6px] border-[var(--navy)] bg-white pl-3 pr-3 text-left font-display text-lg font-bold text-[var(--navy)] shadow-none focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-100">
+          className="h-14 w-full rounded-md border-2 border-l-[6px] border-[var(--navy)] bg-white pl-3 pr-3 text-left font-display text-lg font-bold text-[var(--navy)] shadow-none focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-100 [&>span]:min-w-0 [&>span]:overflow-hidden [&_.break-words]:block [&_.break-words]:truncate">
           <SelectValue />
         </SelectTrigger>
         <SelectContent className="max-h-[min(65vh,var(--radix-select-content-available-height))] w-[min(calc(100vw-2rem),28rem)] border-2 border-[var(--navy)] bg-white" data-testid="list-selector-menu">

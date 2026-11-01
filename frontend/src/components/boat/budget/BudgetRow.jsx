@@ -18,7 +18,7 @@ const Cell = ({ value, onSave, testId, filter, className = "budget-cell", ...res
 // Compact dd/mm/yy text over an invisible native date picker, so the date column stays narrow on a phone.
 const DateCell = ({ value, onChange, testId }) => (
   <span className="relative block">
-    <span className={`budget-cell flex items-center font-mono text-[13px] ${value ? "" : "text-slate-400"}`}>{value ? shortDate(value).replace(/\/(\d{2})(\d{2})$/, "/$2") : "Date"}</span>
+    <span className={`budget-cell flex items-center overflow-hidden !px-1 font-mono !text-[13px] tracking-tight ${value ? "" : "text-slate-400"}`}>{value ? shortDate(value).replace(/\/(\d{2})(\d{2})$/, "/$2") : "Date"}</span>
     <input type="date" value={value || ""} onChange={(e) => onChange(e.target.value)} onClick={(e) => e.currentTarget.showPicker?.()} aria-label="Date paid"
       className="absolute inset-0 h-full w-full cursor-pointer opacity-0" data-testid={testId} />
   </span>
