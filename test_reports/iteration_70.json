@@ -1,0 +1,22 @@
+{
+  "summary": "Retested the 3 Boat Budget fixes plus a short regression, using Playwright on a 390px mobile viewport with locales en-NZ and en-US and the pro session cookie, and re-ran the backend pytest test_boat_budget.py (13/13 pass). FIX 1 PASS: with make, model and notes cleared, typing 'Beneteau' and 'Oceanis 38' slowly in the Additional details dialog sent 0 POST /api/ai/budget requests. Exactly 1 request went out 1.5s after Done, with the full make and model and currency NZD, and the comments filled. If the skipper types in budget-comments-input while an automatic fill is still running, their text ('MY OWN NOTES') is kept. Refresh overwrites it on purpose. FIX 2 PASS: 'not a url' shows budget-url-error ('Enter a web address, e.g. www.store.com/product'). 'www.store.com/product' saves as https://www.store.com/product (data-has-url=yes) and is still there after reload. The email prompt still rejects 'bad-email' with 'Please enter a valid email address'. FIX 3 PASS: with no currency picked, en-NZ gives NZD in the select, the totals and the AI request, and en-US gives USD in the select and the AI request. Picking EUR shows totals in euros (€350.50) and survives reload. Choosing 'Pick...' again goes back to the guess. Regression PASS: total $350.50; 2026 $100.50, 2025 $200.00, 2024 $50.00; row tones none/orange/red/none as expected; Opening Store shows host store.com and opens a popup at https://www.store.com/product after 2s; Cancel closes it with no popup; crew privacy pytest passes.",
+  "backend_issues": {"critical": [], "minor": [{"endpoint": "PUT /api/me/boat", "issue": "Not changed on purpose (per E1): make and model are not trimmed on the server. Not counted as a bug."}]},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_boat_budget.py", "/app/test_reports/pytest/pytest_budget_70.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Optional: BudgetComments sets tried.current = key before the request. If an automatic fill fails (network or 5xx), it does not retry until the make, model, type or currency changes. Refresh still works.",
+    "Optional: the guessed currency is not saved (budget_currency stays ''), so the same boat shows a different currency on phones with other regions. This is expected for a guess, but AI notes already written in NZD would not match a USD display on another device.",
+    "Optional: the user cannot pick 'no currency' explicitly; 'Pick...' falls back to the region guess."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (13/13 regression)", "frontend": "100% (all retest items and regression passed)"},
+  "seed_data_creation": "Pro boat (test-user-pro/main) now has make Beneteau, model Oceanis 38, budget_currency '' (guess), budget_notes from the AI (last written by the pytest run), and row 1793569647974 url https://www.store.com/product. log_email was set to '' briefly for the email-prompt test and restored to delivered@resend.dev.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Make and model inputs are data-testid boat-make-input and boat-model-input inside additional-details-dialog. Close with additional-details-done-btn. Use browser.new_context(locale='en-NZ') plus the session_token cookie to test the currency guess. The OpeningStore popup auto-opens after 2s, so click opening-store-cancel-btn before that. The admin boat (test-admin-1) is not 'ready' (no email at the top), so the ship's log email button does nothing there. Use the pro boat with log_email cleared to open email-prompt-dialog."
+}

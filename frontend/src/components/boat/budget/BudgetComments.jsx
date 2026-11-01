@@ -20,7 +20,10 @@ export const BudgetComments = ({ boat, currency, paused, onBoatChange, premium, 
       const { data } = await api.post("/ai/budget", { make: boat.make || "", model: boat.model || "", boat_type: boat.boat_type || "", currency,
         loa: boat.loa || "", units: boat.units === "ft" ? "ft" : "m" }, { timeout: 90000 });
       // An automatic fill never replaces notes the skipper typed while it was thinking.
-      if (!quiet || !latest.current.trim()) onBoatChange("budget_notes", data.answer);
+      if (!quiet || !latest.current.trim()) {
+        onBoatChange("budget_notes", data.answer);
+        if (!boat.budget_currency && currency) onBoatChange("budget_currency", currency);
+      }
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't write budgeting comments right now. Please try again.")); }
     setBusy(false);
   };

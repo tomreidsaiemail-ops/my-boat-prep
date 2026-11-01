@@ -360,3 +360,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Magic Provisioning Assistant naming + pre-select
 - Buttons and dialog title renamed to "Magic Provisioning Assistant" (no "Marine")
 - Opening MPA from a meal plan list pre-selects that list (even with several meal plans); from a non-meal-plan list nothing is pre-selected (iteration_68 passed)
+
+## 2026-06 Boat Budget
+- Additional details: Make + Model beside Boat Type; POB/Children/split on their own row
+- Boat Budget list (id boatBudget, kind budget, skipper only; backend strips it and budget_notes for crew) seeded from private admin list "Admin - Boat Budget" (auto-seeded at startup; "Description | Product")
+- Header shows Boat Type/Make/Model + fill-in button + currency picker (guess from phone region, pinned when AI writes)
+- MAGIC MARINER BUDGETING COMMENTS (POST /api/ai/budget, Pro/Beta): auto-fills when empty (waits 1.5s, paused while details dialog open), Refresh button
+- Table: Description, Product, store link (enter/edit dialog; Opening Store 2s bar then new window), Date Paid, Cost; total in cost column; 2025 rows orange, 2024- red; totals for this year / last year / previous year
+- Tests: iteration_69, iteration_70 passed; backend/tests/test_boat_budget.py
