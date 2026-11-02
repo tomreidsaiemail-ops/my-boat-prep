@@ -33,7 +33,7 @@ export const BudgetRow = ({ item, open, onOpen, onChange, onLink, onDelete }) =>
       <tr className={`border-t border-[var(--line)] ${TONES[tone] || ""}`} data-testid={`budget-row-${id}`} data-tone={tone || "none"}>
         <td className="p-1">
           <div className="flex items-center">
-            <button type="button" onClick={onOpen} aria-expanded={open} aria-label={open ? "Hide product and store" : "Show product and store"} data-testid={`budget-expand-${id}`}
+            <button type="button" onClick={onOpen} aria-expanded={open} aria-label={open ? "Hide product and web link" : "Show product and web link"} data-testid={`budget-expand-${id}`}
               className={`inline-flex h-9 w-6 shrink-0 items-center justify-center ${extra ? "text-[var(--navy)]" : "text-slate-400"}`}>
               <ChevronRight className={`h-4 w-4 [transition:transform_.15s] ${open ? "rotate-90" : ""}`} />
             </button>
@@ -52,11 +52,11 @@ export const BudgetRow = ({ item, open, onOpen, onChange, onLink, onDelete }) =>
         <tr className={TONES[tone] || ""} data-testid={`budget-details-${id}`}>
           <td colSpan={4} className="px-1 pb-2">
             <div className="flex items-center gap-2 pl-6">
-              <Cell value={item.product} placeholder="Product" maxLength={200} aria-label="Product" testId={`budget-product-${id}`} className="budget-cell !border-[var(--line)] bg-white" onSave={(v) => onChange({ product: v })} />
-              <button type="button" onClick={onLink} aria-label={item.url ? "Open the reorder store" : "Add a reorder store link"} title={item.url || "Add a reorder store link"}
+              <Cell value={item.product} placeholder="Description - Product/Organisation" maxLength={200} aria-label="Product" testId={`budget-product-${id}`} className="budget-cell !border-[var(--line)] bg-white placeholder:text-[12px] placeholder:tracking-tight" onSave={(v) => onChange({ product: v })} />
+              <button type="button" onClick={onLink} aria-label={item.url ? "Open the web link" : "Add a web link"} title={item.url || "Add a web link"}
                 className={`inline-flex h-9 shrink-0 items-center gap-1 rounded-md border-[1.5px] px-2 text-xs font-bold [transition:background-color_.15s] ${item.url ? "border-[#7c4a1e] bg-[#7c4a1e] text-white" : "border-dashed border-[var(--line)] bg-white text-[var(--muted)] hover:bg-slate-100"}`}
                 data-testid={`budget-url-btn-${id}`} data-has-url={item.url ? "yes" : "no"}>
-                <Link2 className="h-4 w-4" /> {item.url ? "Store" : "Add store"}
+                <Link2 className="h-4 w-4" /> {item.url ? "Web link" : "Add web link"}
               </button>
             </div>
           </td>

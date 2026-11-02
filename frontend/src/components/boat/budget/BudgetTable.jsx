@@ -30,7 +30,7 @@ export const BudgetTable = ({ items, setItems, currency, guard }) => {
     setDraft("");
   };
   const saveLink = (raw) => {
-    if (raw && !/^(https?:\/\/)?[^\s/$.?#].[^\s]*\.[^\s]+/i.test(raw)) return "Enter a web address, e.g. www.store.com/product";
+    if (raw && !/^(https?:\/\/)?[^\s/$.?#].[^\s]*\.[^\s]+/i.test(raw)) return "Enter a web address, e.g. www.example.com/product";
     update(linkFor.id, { url: storeUrl(raw) });
     setLinkFor(null);
     return true;
@@ -44,7 +44,7 @@ export const BudgetTable = ({ items, setItems, currency, guard }) => {
             <tr>
               <th className="px-1 py-1.5 text-left">
                 <button type="button" onClick={() => setOpenIds(allOpen ? [] : items.map((i) => i.id))} aria-expanded={allOpen} data-testid="budget-expand-all-btn"
-                  className="field-label inline-flex h-8 items-center gap-1 rounded px-1 hover:text-[var(--navy)]" title={allOpen ? "Hide product and store on every row" : "Show product and store on every row"}>
+                  className="field-label inline-flex h-8 items-center gap-1 rounded px-1 hover:text-[var(--navy)]" title={allOpen ? "Hide product and web link on every row" : "Show product and web link on every row"}>
                   <ChevronsUpDown className="h-4 w-4" /> Description
                 </button>
               </th>
@@ -74,7 +74,7 @@ export const BudgetTable = ({ items, setItems, currency, guard }) => {
         <button type="submit" className="btn-solid shrink-0 gap-1 px-4" data-testid="budget-add-btn"><Plus className="h-4 w-4" /> Add</button>
       </form>
       <BudgetTotals items={items} currency={currency} total={money(sumAll(items), currency)} />
-      <TextDialog open={!!linkFor} title="Reorder store link" testId="budget-url" inputType="url" placeholder="www.store.com/product" confirmLabel="Save"
+      <TextDialog open={!!linkFor} title="Web link" testId="budget-url" inputType="url" placeholder="www.example.com/product" confirmLabel="Save"
         description={`Where do you buy ${linkFor?.product || linkFor?.label || "this"}? Leave it empty to remove the link.`} initial={linkFor?.url || ""}
         onConfirm={saveLink} onClose={() => setLinkFor(null)} />
       <OpeningStore url={opening?.url || ""} onDone={() => setOpening(null)} onEdit={() => { const it = opening; setOpening(null); if (guard()) setLinkFor(it); }} />

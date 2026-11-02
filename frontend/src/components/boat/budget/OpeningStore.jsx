@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } };
 
-// Shows a 2 second "Opening Store" bar, then opens the store in a new window (with a tap-to-open fallback if the browser blocks it).
+// Shows a 2 second "Opening web link" bar, then opens the link in a new window (with a tap-to-open fallback if the browser blocks it).
 export const OpeningStore = ({ url, onDone, onEdit }) => {
   const [go, setGo] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -20,14 +20,14 @@ export const OpeningStore = ({ url, onDone, onEdit }) => {
   if (!url) return null;
   return (
     <div role="status" className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-sm rounded-lg border-2 border-[var(--navy)] bg-white p-4 shadow-xl" data-testid="opening-store">
-      <p className="font-display text-lg font-extrabold">Opening Store</p>
+      <p className="font-display text-lg font-extrabold">Opening web link</p>
       <p className="truncate text-xs text-[var(--muted)]" data-testid="opening-store-host">{hostOf(url)}</p>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
         <div className="h-full rounded-full bg-[var(--navy)] [transition:width_2s_linear]" style={{ width: go ? "100%" : "0%" }} data-testid="opening-store-progress" />
       </div>
       {blocked && (
         <a href={url} target="_blank" rel="noopener noreferrer" onClick={onDone} className="btn-solid mt-3 h-10 min-h-0 justify-center text-sm" data-testid="opening-store-open-link">
-          Tap to open the store
+          Tap to open the web link
         </a>
       )}
       <div className="mt-3 flex justify-end gap-2">

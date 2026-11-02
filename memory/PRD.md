@@ -388,3 +388,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-06 Admin template long lines
 - Bug: admin template editor silently cut each line at 1000 chars (linesToItems ITEM_MAX), so long help paragraphs lost their end. Now template lines allow 4000 (backend TEMPLATE_LINE_MAX), editor shows an error instead of cutting, textarea grows to fit the text. Private-list create toast fixed. Verified 1268-char line round-trips.
+
+## 2026-06 Budget wording
+- Product placeholder "Description - Product/Organisation"; "Store" wording replaced with "Web link" / "Add web link" (row button, toggles, dialog title, Opening web link bar). Verified by screenshot.
