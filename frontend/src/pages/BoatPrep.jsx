@@ -68,7 +68,7 @@ import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, ou
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
-import { BUDGET_ID, BUDGET_KIND, BUDGET_NAME, BUDGET_PREFIX, budgetCurrency, budgetItems } from "@/lib/budget";
+import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
 import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
@@ -131,14 +131,9 @@ export default function BoatPrep({ boatId, boats }) {
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
   useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
   const budgetTpl = useAdminLists(BUDGET_PREFIX, online)[0];
-  const hasBudget = (s) => s.registry.some((l) => l.kind === BUDGET_KIND || l.id === BUDGET_ID);
   const needBudget = loaded && !crew && !!budgetTpl && !hasBudget(state) && !(state.deleted_lists || []).includes(BUDGET_ID);
   useEffect(() => {
-    if (!needBudget) return;
-    mutate((s) => (hasBudget(s) ? s : {
-      ...s, registry: [...s.registry, { id: BUDGET_ID, name: s.registry.some((l) => l.name.toLowerCase() === BUDGET_NAME.toLowerCase()) ? `My ${BUDGET_NAME}` : BUDGET_NAME, isSystem: false, kind: BUDGET_KIND }],
-      data: { ...s.data, [BUDGET_ID]: budgetItems(budgetTpl.items) },
-    }), { count: false });
+    if (needBudget) mutate((s) => withBudget(s, budgetTpl.items), { count: false });
   }, [needBudget]); // eslint-disable-line react-hooks/exhaustive-deps
   const { setVessel } = boats;
   useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
@@ -313,7 +308,11 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const reset = ownerOnly((zone) => guard(zone) && setDialog({ type: "reset" }));
   const confirmReset = (ids) => {
-    mutate((s) => resetLists(s, ids, templates));
+    const rest = ids.filter((id) => id !== BUDGET_ID);
+    mutate((s) => {
+      const next = rest.length ? resetLists(s, rest, templates) : s;
+      return ids.includes(BUDGET_ID) ? withBudget(next, budgetTpl?.items || []) : next;
+    });
     setDialog(null);
     toast.success(ids.length === 1 ? `${resetOptions(state, templates).find((o) => o.id === ids[0])?.name} reset` : `${ids.length} lists reset`);
   };

@@ -391,3 +391,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-06 Budget wording
 - Product placeholder "Description - Product/Organisation"; "Store" wording replaced with "Web link" / "Add web link" (row button, toggles, dialog title, Opening web link bar). Verified by screenshot.
+
+## 2026-06 Boat Budget double delete prompt + Reset All restore
+- Deleting the Boat Budget asks twice: "Delete Boat Budget?" then "Are you absolutely certain?" (delete-list-certain-btn); Keep Budget cancels and the next attempt starts at stage one
+- Reset All lists "Boat Budget (deleted, will be restored)" only after it was deleted; restoring adds the empty template budget (withBudget in lib/budget.js, shared with first seed)
+- Verified end-to-end in preview by screenshot script

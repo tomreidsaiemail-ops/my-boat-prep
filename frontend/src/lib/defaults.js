@@ -1,7 +1,7 @@
 import { MEAL_PLAN_BASE_LEN, MEAL_PLAN_ITEMS } from "@/lib/mealPlan";
 import { autoTypeData } from "@/lib/mpa";
 import { CREW_ROLES } from "@/lib/crewRoles";
-import { budgetLabel } from "@/lib/budget";
+import { budgetLabel, budgetResetOption } from "@/lib/budget";
 import { cocktailLabel } from "@/lib/bartender";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
@@ -188,7 +188,8 @@ export const addTemplateLists = (s, templates) => {
 export const resetOptions = (s, templates) => [...DEFAULT_REGISTRY.filter((l) => TEMPLATE_IDS.includes(l.id)), ...customTemplateLists(templates)]
   .map((l) => { const mine = s.registry.find((r) => r.id === l.id); return { id: l.id, name: mine?.name || l.name, deleted: !mine }; })
   .filter((o) => !o.deleted || (s.deleted_lists || []).includes(o.id))
-  .map((o) => ({ ...o, clash: o.deleted && s.registry.some((r) => r.name.toLowerCase() === o.name.toLowerCase()) }));
+  .map((o) => ({ ...o, clash: o.deleted && s.registry.some((r) => r.name.toLowerCase() === o.name.toLowerCase()) }))
+  .concat(budgetResetOption(s));
 
 export const resetLists = (s, ids, templates) => {
   const registry = [...s.registry];

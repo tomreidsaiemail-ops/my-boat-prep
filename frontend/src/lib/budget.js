@@ -24,6 +24,19 @@ export const budgetItems = (lines = [], start = Date.now()) => lines
   .filter(([d]) => d)
   .map(([d, p], n) => newBudgetItem(start + n, d, p));
 
+export const hasBudget = (s) => s.registry.some((l) => l.kind === BUDGET_KIND || l.id === BUDGET_ID);
+const nameClash = (s) => s.registry.some((l) => l.name.toLowerCase() === BUDGET_NAME.toLowerCase());
+// Adds an empty Boat Budget from the template lines (first seed, or Reset All after a delete).
+export const withBudget = (s, lines) => (hasBudget(s) ? s : {
+  ...s,
+  registry: [...s.registry, { id: BUDGET_ID, name: nameClash(s) ? `My ${BUDGET_NAME}` : BUDGET_NAME, isSystem: false, kind: BUDGET_KIND }],
+  data: { ...s.data, [BUDGET_ID]: budgetItems(lines) },
+  deleted_lists: (s.deleted_lists || []).filter((id) => id !== BUDGET_ID),
+});
+// Reset All offers the Boat Budget only once it has been deleted, so it can never wipe a budget in use.
+export const budgetResetOption = (s) => ((s.deleted_lists || []).includes(BUDGET_ID) && !hasBudget(s)
+  ? [{ id: BUDGET_ID, name: BUDGET_NAME, deleted: true, clash: false }] : []);
+
 export const costOf = (i) => { const n = parseFloat(String(i.cost || "").replace(/,/g, "")); return Number.isFinite(n) ? n : 0; };
 export const yearOf = (i) => (/^\d{4}-\d{2}-\d{2}$/.test(i.paid || "") ? Number(i.paid.slice(0, 4)) : null);
 export const ageTone = (i, now = new Date().getFullYear()) => {
