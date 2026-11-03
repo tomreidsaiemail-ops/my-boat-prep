@@ -10,7 +10,7 @@ const Line = ({ item, kind, note, testId }) => (
 // The top of the merge window: what changed in the master, and what of the skipper's own is kept.
 export const MergeSummary = ({ plan, listName, when }) => {
   const { masterAdded, masterRemoved, mineAdded, mineRemoved, exact } = plan;
-  const offered = new Set([...plan.add, ...plan.remove].map((i) => i.label));
+  const offered = new Set([...plan.add, ...plan.remove].map((i) => i.mkey));
   return (
     <div className="flex flex-col gap-2 rounded-lg border-2 border-[var(--blue)] bg-sky-50 p-3 text-sky-950" data-testid="merge-summary">
       <p className="text-sm font-extrabold" data-testid="merge-summary-title">
@@ -21,8 +21,8 @@ export const MergeSummary = ({ plan, listName, when }) => {
       </p>
       {(masterAdded.length > 0 || masterRemoved.length > 0) && (
         <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto" data-testid="merge-summary-list">
-          {masterAdded.map((i) => <Line key={`a${i.label}`} item={i} kind="add" note={offered.has(i.label) ? "" : "already in yours"} testId="merge-summary-added" />)}
-          {masterRemoved.map((i) => <Line key={`r${i.label}`} item={i} kind="remove" note={offered.has(i.label) ? "" : "already gone from yours"} testId="merge-summary-removed" />)}
+          {masterAdded.map((i) => <Line key={`a${i.mkey}`} item={i} kind="add" note={offered.has(i.mkey) ? "" : "already in yours"} testId="merge-summary-added" />)}
+          {masterRemoved.map((i) => <Line key={`r${i.mkey}`} item={i} kind="remove" note={offered.has(i.mkey) ? "" : "already gone from yours"} testId="merge-summary-removed" />)}
         </ul>
       )}
       <p className="text-xs" data-testid="merge-summary-mine">

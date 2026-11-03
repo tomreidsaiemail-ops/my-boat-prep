@@ -396,3 +396,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Deleting the Boat Budget asks twice: "Delete Boat Budget?" then "Are you absolutely certain?" (delete-list-certain-btn); Keep Budget cancels and the next attempt starts at stage one
 - Reset All lists "Boat Budget (deleted, will be restored)" only after it was deleted; restoring adds the empty template budget (withBudget in lib/budget.js, shared with first seed)
 - Verified end-to-end in preview by screenshot script
+
+## 2026-06 Merge Latest
+- Updated note: "New Master items are available for merge with X. Your X will be kept by default." + "Merge Latest" button (Keep mine stays)
+- Merge window (components/boat/merge/*): summary of master changes at top, your own changes kept, master additions/removals offered UNTICKED, Merge N changes / Keep as is, Throw away the master updates, Throw away my changes (confirm). Any merge choice clears the Updated tag.
+- 3-way merge via base = master version the boat last synced: backend saves previous master versions in db.template_versions (30 per list) on publish/edit; GET /api/templates/{id}/version?at=; identical republish no longer bumps updated_at; deleting a custom list removes its versions. No base (old boats/offline) -> 2-way diff. Sub-items keyed under their heading (lib/merge.js).
+- Tests: iteration_73 + fixes re-verified (pytest 7/7, /app/tests/merge_unit.mjs)

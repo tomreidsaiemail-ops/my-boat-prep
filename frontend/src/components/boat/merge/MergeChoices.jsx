@@ -3,8 +3,8 @@ import { changeKey } from "@/lib/merge";
 const Choice = ({ item, kind, on, onToggle }) => {
   const k = changeKey(kind, item);
   return (
-    <label className="flex cursor-pointer items-start gap-2.5 px-3 py-2.5 text-sm" data-testid={`merge-choice-${kind}-${item.label}`}>
-      <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" checked={on} onChange={(e) => onToggle(k, e.target.checked)} data-testid={`merge-check-${kind}-${item.label}`} />
+    <label className="flex cursor-pointer items-start gap-2.5 px-3 py-2.5 text-sm" data-testid={`merge-choice-${kind}-${item.mkey}`}>
+      <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" checked={on} onChange={(e) => onToggle(k, e.target.checked)} data-testid={`merge-check-${kind}-${item.mkey}`} />
       <span className="min-w-0 break-words">
         <b className={kind === "add" ? "text-emerald-800" : "text-red-700"}>{kind === "add" ? "Bring in: " : "Remove from mine: "}</b>{item.label}
       </span>
@@ -23,8 +23,8 @@ export const MergeChoices = ({ plan, picked, onToggle, allOn, onAll }) => {
         Master changes you can bring in ({count})
       </label>
       <div className="flex max-h-64 flex-col divide-y divide-[var(--line)] overflow-y-auto">
-        {plan.add.map((i) => <Choice key={`a${i.label}`} item={i} kind="add" on={picked.has(changeKey("add", i))} onToggle={onToggle} />)}
-        {plan.remove.map((i) => <Choice key={`r${i.label}`} item={i} kind="remove" on={picked.has(changeKey("remove", i))} onToggle={onToggle} />)}
+        {plan.add.map((i) => <Choice key={`a${i.mkey}`} item={i} kind="add" on={picked.has(changeKey("add", i))} onToggle={onToggle} />)}
+        {plan.remove.map((i) => <Choice key={`r${i.mkey}`} item={i} kind="remove" on={picked.has(changeKey("remove", i))} onToggle={onToggle} />)}
       </div>
     </div>
   );

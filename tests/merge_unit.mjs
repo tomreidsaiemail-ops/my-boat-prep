@@ -11,3 +11,9 @@ const all = applyMerge(local, master, p, new Set([...p.add.map(i=>changeKey("add
 console.log("all", all.map(i=>i.label).join(","), new Set(all.map(i=>i.id)).size === all.length);
 const p2 = mergePlan(null, master, local);
 console.log("2way add", p2.add.map(i=>i.label), "remove", p2.remove.map(i=>i.label));
+const meals = (rows) => rows.map(([label, indent], i) => ({ id: i + 1, label, indent, checked: false }));
+const mb = meals([["Breakfast"], ["Salt", true], ["Lunch"], ["Salt", true]]);
+const mm = meals([["Breakfast"], ["Lunch"], ["Salt", true]]);
+const p3 = mergePlan(mb, mm, mb);
+console.log("dup remove", p3.remove.map((i) => i.mkey));
+console.log("dup applied", applyMerge(mb, mm, p3, new Set(p3.remove.map((i) => changeKey("remove", i)))).map((i) => `${i.indent ? "  " : ""}${i.label}`).join("|"));

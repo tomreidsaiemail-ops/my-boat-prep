@@ -1,0 +1,37 @@
+{
+  "summary": "Merge Latest feature tested end-to-end (backend pytest 7/7 + Playwright desktop & mobile 390x844). Pro boat 'main' did not have Leaving Dock in its registry, so the identical flow was run on the system list Rigging Checks (riggingChecks). Verified: Updated note text 'New Master items are available for merge with Rigging Checks. Your Rigging Checks will be kept by default.', button 'Merge Latest', dropdown '• Updated' marker; merge dialog summary (title with date, '2 added, 1 removed', list lines, 'Your own changes are kept: 1 item you added, 1 you removed, and all your ticks.'); choices all UNTICKED, user-deleted master item not re-offered, own item not offered for removal; select-all ticks/unticks; 'Keep my Rigging Checks as it is' keeps list/ticks, clears note, persists after reload; version C: ticking 1 Bring in + 1 Remove -> 'Merge 2 changes', new item inserted at master position (after 'Shrouds and stays', unticked), removed item gone, own item + tick kept, toast '2 master changes merged into Rigging Checks', note gone after reload; 'Throw away the master updates' keeps list, toast, clears note; 'Throw away my changes' shows confirm dialog, Cancel keeps merge dialog and list, Throw away replaces list with master (15 items all unticked), note gone after reload; fallback when synced version not on file (bogus template_versions value) and when offline -> 'How the master Rigging Checks differs from yours', 'N only in the master, M only in yours', every difference offered, all unticked. Backend: version endpoint returns current & previous versions, 404 unknown, 401 unauth, 422 missing 'at', non-admin publish 403, max 30 versions kept, custom template list edit saves previous version and name-only edit doesn't bump updated_at. Cleanup done: db.list_templates system masters deleted, db.template_versions emptied, pro boat template_versions.riggingChecks unset.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/admin/templates/{list_id}", "issue": "Republishing identical items still bumps updated_at but does NOT save the old version (only saved when items differ). Boats synced to the old updated_at then (a) get a spurious Updated tag and (b) the merge falls back to the 2-way 'differs from yours' mode because GET /version?at=old returns 404 (reproduced). Fix: skip the updated_at bump when items are unchanged (like update_template_list does), or always _keep_version."},
+      {"endpoint": "DELETE /api/admin/template-lists/{list_id}", "issue": "Orphan db.template_versions entries are left behind when a custom template list is deleted (observed after the custom-list test). Delete them with the list."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Merge dialog", "issues": ["'Throw away my changes' (merge-discard-mine-btn) renders navy, not red: btn-ghost colour overrides text-[var(--red)]; the destructive option isn't visually distinct from 'Throw away the master updates'.", "Mobile 390px: dialog is full width (x=0,width=390) with no side margin; fits without overflow but edges touch screen."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_merge_latest_versions.py", "/app/tests/merge_publish.py", "/app/test_reports/pytest/pytest_merge_latest.xml"],
+  "action_items": [
+    "publish_template: don't bump updated_at when items are unchanged (or save the version anyway) so boats keep a resolvable base and no false Updated tag appears",
+    "delete_template_list: also delete db.template_versions for that list_id",
+    "Make 'Throw away my changes' visibly red (e.g. !text-[var(--red)])",
+    "Consider: merge.js keys items by label only; lists that allow repeated sub-item labels (Meal Plan e.g. 'Salt' under several meals) collapse duplicates: a picked 'Remove from mine' drops every same-label line and data-testids collide. Consider keying by label+parent heading.",
+    "UX consideration: after 'Keep my list as it is', declined master additions later count as 'you removed' (and kept master-removed items as 'you added') in merge-summary-mine on the next merge; technically correct 3-way but may confuse"
+  ],
+  "critical_code_review_comments": [
+    "merge.js 3-way logic correct; applyMerge positions new items after nearest preceding master item present locally; ids next = max+1 (safe).",
+    "MergeDialog useBase: when syncedAt missing uses DEFAULT_DATA as base (exact mode) - fine for system lists; for custom tpl lists fallback is null -> 2-way.",
+    "Crew guard unchanged (!crew && updatedIds.includes) - verified by code only; pro boat has no crew so not UI tested."
+  ],
+  "updated_files": ["/app/backend/tests/test_merge_latest_versions.py", "/app/tests/merge_publish.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Temporary masters for head/riggingChecks and TEST_merge_custom list were created and all cleaned up. Pro boat Rigging Checks now equals the built-in default 15 items (all unticked).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat 'main' (test_session_pro_1) registry lacks leavingDock; use riggingChecks. /app/tests/merge_publish.py A|B|C publishes riggingChecks master variants as admin. Always clean db.list_templates (custom != true) and db.template_versions afterwards. Delete item needs item-delete-confirm-btn.",
+  "rca of the issue": "Identical republish: publish_template only calls _keep_version when old.items != items but always $set updated_at=now, so the previous updated_at stops resolving."
+}

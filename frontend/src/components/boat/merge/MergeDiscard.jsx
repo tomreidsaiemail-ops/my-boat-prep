@@ -10,7 +10,7 @@ export const MergeDiscard = ({ listName, onTakeMaster, onKeepMine }) => {
   return (
     <div className="flex flex-col gap-2 border-t-[1.5px] border-[var(--line)] pt-3" data-testid="merge-discard">
       <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={onKeepMine} data-testid="merge-discard-master-btn">Throw away the master updates</button>
-      <button type="button" className="btn-ghost h-11 justify-center text-sm text-[var(--red)]" onClick={() => setConfirm(true)} data-testid="merge-discard-mine-btn">Throw away my changes</button>
+      <button type="button" className="btn-ghost h-11 justify-center text-sm !text-[var(--red)] !border-[var(--red)]" onClick={() => setConfirm(true)} data-testid="merge-discard-mine-btn">Throw away my changes</button>
       <AlertDialog open={confirm} onOpenChange={(o) => !o && setConfirm(false)}>
         <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="merge-discard-mine-dialog">
           <AlertDialogHeader>

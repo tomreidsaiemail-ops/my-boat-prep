@@ -34,7 +34,7 @@ export const MergeDialog = ({ open, list, local, master, masterAt, syncedAt, fal
   const all = [...plan.add.map((i) => changeKey("add", i)), ...plan.remove.map((i) => changeKey("remove", i))];
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="merge-dialog">
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="merge-dialog">
         <DialogHeader>
           <DialogTitle className="text-left font-display text-xl font-extrabold">Merge latest {list?.name}</DialogTitle>
           <DialogDescription className="text-left text-sm text-[var(--muted)]">Your {list?.name} is kept by default. Tick any master change you want to bring in.</DialogDescription>
