@@ -428,3 +428,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Admin template saves push indents to every boat's copy (backend templates.push_indents); ticks/notes/photos kept; boats synced to the old version stay up to date when only grouping changed.
 - Amber warning when auto-indent is ticked but no numbered headings found (admin editor + Create List).
 - Both First Aid templates re-saved with grouping in this DB. Tests: backend/tests/test_template_indent_push.py, iteration_79 (frontend 100%).
+
+## 2026-11 Crew invites, Crew Prep cloning, Role Briefing, Boat Terms Agreement
+- Invite Crew window: required Crew member's name LEFT of email; invite stores name; crew list shows it (crew_names on boat after accept).
+- Clone on Crew Prep opens a crew picker (joined + invited crew) -> "Crew Prep - <name>" lists; no crew -> warning + "Yes, invite crew"; lists for people invited are auto-created when the invite window closes.
+- Crew Roles list: Role Briefing field on roles (item.briefing); included in the invite email.
+- Boat Terms and Conditions Agreement (backend crew_agreement.py): admin private list "Admin - Boat Terms and Conditions" (seeded) + boat_terms (skipper, crew dialog) + role briefings + Zone Map Walk Through stops (must tick all to accept). Crew can choose Not now (joins, not accepted). Skipper sees badge per crew member with stops ticked.
+- Fix: Watch rota and Additional boat details dialogs no longer autofocus the date/boat-type pickers.
+- Tests: backend/tests/test_crew_agreement.py (+ _edges), iteration_80.
+- Backlog: re-ask crew to accept when boat terms or zone map pins change.

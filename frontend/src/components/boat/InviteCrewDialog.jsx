@@ -76,7 +76,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1.5">
-          <div className="grid grid-cols-[2fr_3fr] gap-2" data-testid="crew-invite-who-row">
+          <div className="grid grid-cols-[2fr_3fr] items-end gap-2" data-testid="crew-invite-who-row">
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="field-label">Crew member's name</span>
               <input autoComplete="off" value={crewName} maxLength={60} onChange={(e) => { setCrewName(e.target.value); setError(""); setAskClear(""); }} placeholder="e.g. Tom"

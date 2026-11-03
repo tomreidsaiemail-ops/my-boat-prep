@@ -49,9 +49,10 @@ export const CrewPrepCloneDialog = ({ boat, vessel, roleGroups, online, premium,
   const invite = () => (premium ? setInviting(true) : onUpgrade());
   const closeInvite = () => {
     setInviting(false);
-    const names = [...new Set(invited.current)].map((p) => `${listName} - ${p}`).filter((n) => !exists(n));
+    const fresh = invited.current;
+    const names = [...new Set([...picked, ...fresh])].map((p) => `${listName} - ${p}`).filter((n) => !exists(n));
     invited.current = [];
-    if (names.length) onClone(names);
+    if (fresh.length && names.length) onClone(names);
   };
 
   return (

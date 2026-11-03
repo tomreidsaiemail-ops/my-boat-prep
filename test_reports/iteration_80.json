@@ -1,0 +1,52 @@
+{
+  "summary": "Tested the crew invite name, the Crew Prep clone picker, role briefings, the Boat Terms and Conditions Agreement and the Watch rota / Additional details autofocus fix, end to end on backend and frontend. Backend: 11/11 pytest pass (the existing test_crew_agreement.py has 5 tests, and the new test_crew_agreement_edges.py adds 6). Frontend: every requested flow works at desktop (1920) and mobile (390), checked on a temporary TEST_ui boat that was deleted afterwards. One minor bug: boat terms only save on blur, so pressing Escape while typing loses the edit.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew/agreement", "issue": "Acceptance is never invalidated. If the skipper later changes the boat terms or adds zone map pins, accepted_at stays and stops_total is stale (for example the badge can show 2/2 while the boat now has 3 pins). This is an enhancement and was not part of the request."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatTermsField (CrewDialog)", "issue": "Terms save only in the textarea's onBlur. Typing and then pressing Escape (or tapping X) closes the dialog without a blur event, so the edit is lost with no warning. Reproduced: I typed an extra line, pressed Escape and reopened the dialog, and the line was gone with no 'Boat terms saved' toast.", "selector": "[data-testid='boat-terms-input']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Invite crew dialog at 390px", "issues": ["The label 'Crew member's name' wraps to two lines while 'Crew member's email' fits on one. The name input therefore sits about 16px lower than the email input, so the row is misaligned. Fix with a shorter label ('Name' / 'Email'), items-end on the grid, or a fixed label height."]},
+      {"screen": "Crew Prep clone dialog", "issues": ["If you tick people in the picker, use 'Invite more crew' and then close the invite window, only the newly invited person's list is made and the whole clone dialog closes. The earlier ticks are dropped. Consider keeping the picker open, or cloning the ticked people as well."]}
+    ]
+  },
+  "passed_tests": [
+    "POST invites without a name returns 422, a blank name returns 400, a 61-character name returns 422, and extra whitespace in the name is collapsed",
+    "The invite response and the GET crew invites both include the name. After accepting, the crew member's name is the invite name and agreement is null",
+    "PUT terms works for the owner only (other users get 404), over 4000 characters returns 422, and the value is trimmed and persisted",
+    "GET /crew/agreement returns terms (the 8 seeded admin terms), boat_terms, roles with their briefing, and the agreement",
+    "POST /crew/agreement rejects accept with 400 until every stop is ticked, saves partial ticks, accepts when all are ticked, and accepts straight away when the boat has 0 stops",
+    "Leaving and rejoining the crew resets the agreement",
+    "UI: the name input is LEFT of the email input on desktop and at 390px. Sending without a name shows crew-invite-error. Invited rows show the name as the title",
+    "UI: the clone button on Crew Prep opens crew-clone-dialog, not the generic clone dialog. The picker lists joined crew (Freddie) and invites (Harry, Tom, Dick). Lists that already exist are disabled and marked 'already made'. 'Clone 2 lists' created both lists and selected the last one",
+    "UI: with no crew, crew-clone-empty shows. 'No' closes it. 'Yes' opens the invite dialog; after a Copy-link invite for Harry and closing the window, 'Crew Prep - Harry' was created and selected. 'Invite more crew' plus a QR-code invite for Sally made 'Crew Prep - Sally'",
+    "UI: Crew Roles edit shows the briefing field on a role, not on a group heading. The briefing is saved and persisted in the DB",
+    "UI: boat terms save on blur and show the 'Boat terms saved' toast",
+    "UI crew: the pending-invite dialog lets the user join, then crew-agreement-dialog opens on its own with standard terms, boat terms, the role briefing 'RPNYC VHF channel 77' and 2 walkthrough stops. Accept before all stops are ticked shows an error toast. 'Not now' leaves the bar at 'not accepted yet' and the skipper's badge shows 'Agreement not accepted yet · 1/2'. The tick persisted, the dialog reopened on its own in a new session, and the stop photo expands. Accept updates the bar to accepted and the skipper's badge to 'Read and accepted the agreement Nov 3, 2026 · 2/2'",
+    "Bug fix: when the Watch rota and Additional details dialogs open, document.activeElement is the trigger button, not rota-start-input or boat-type-select, and no native picker opens"
+  ],
+  "test_report_links": ["/app/backend/tests/test_crew_agreement.py", "/app/backend/tests/test_crew_agreement_edges.py", "/app/test_reports/pytest/pytest_results_iter81.xml"],
+  "action_items": [
+    "BoatTermsField: also save when the crew dialog closes (flush on unmount or in onOpenChange), or debounce-save while typing, so Escape or X doesn't lose the terms",
+    "InviteCrewDialog mobile: align the name and email inputs (shorter labels or items-end on the grid)",
+    "Optional: CrewPrepCloneDialog should keep the ticked people when 'Invite more crew' auto-clones on close",
+    "Optional: clear or flag accepted agreements when the boat terms or zone map pins change"
+  ],
+  "critical_code_review_comments": [
+    "crew_agreement.stop_ids counts every pin on every map, and the frontend walkSteps does the same, so they match. Keep them in sync if walkSteps ever filters out unlabelled pins, or accept will fail with 400",
+    "BoatPrep.jsx is 726 lines, over the 700-line guideline. Consider extracting the clone/rename handlers",
+    "accept_invite only sets crew_names when the invite has a name. Legacy invites without a name leave any stale crew_names (they are cleared on leave/remove, so this is low risk)"
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_agreement_edges.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "seed_data_creation": "Created a temporary Pro boat TEST_ui (with Crew Prep, Crew Roles and a zone map with 2 pins) and invites for Harry, Tom, Dick, Sally and Freddie (test.user.free). All were deleted afterwards. invite_sends for test-user-pro was cleared. users.last_boat was unset for test-user-pro (it was already unset) and for test-user-free (it pointed at the stale, deleted TEST_agr boat).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the pytest files with REACT_APP_BACKEND_URL exported. To test the UI on a clean boat, PUT /api/me/boat?boat_id=TEST_x with the registry and data you need, set zone_maps directly in the DB, then PUT /api/me/last-boat {key: 'TEST_x'} so the app opens it. The clone button is clone-list-btn, the edit pencil is checklist-item-edit-<id>, and the Additional details button only shows after clicking boat-details-expand-btn. Do not run test_crew_invites_v2.py."
+}
