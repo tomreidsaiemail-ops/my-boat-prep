@@ -31,7 +31,7 @@ export const PassagePlan = ({ boat, depart, setDepart, onBoatChange, engineType,
   const unit = tankUnit(boat);
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
-  const stale = calc && (calc.start !== start || calc.dest !== dest || calc.speed !== speed || (calc.engine || "") !== engineType);
+  const stale = calc && (calc.start !== start || calc.dest !== dest || calc.speed !== speed || (calc.engine || "") !== engineType || (calc.unit || "L") !== unit);
   const ask = async () => {
     if (!premium) { onUpgrade(); return; }
     if (!start.trim() || !dest.trim()) { toast.error("Add the start and destination first"); return; }
@@ -40,7 +40,7 @@ export const PassagePlan = ({ boat, depart, setDepart, onBoatChange, engineType,
     try {
       const { data } = await api.post("/ai/passage", { start, dest, engine_type: engineType, cruise_kn: speed, boat_type: boat.boat_type || "", make: boat.make || "",
         model: boat.model || "", loa: boat.loa || "", units: boat.units === "ft" ? "ft" : "m", tank_units: unit }, { timeout: 90000 });
-      setDepart({ calc: { distance_nm: data.distance_nm, fuel_rate: data.fuel_rate, notes: data.notes, start, dest, speed, engine: engineType }, rate_reviewed: false, rate_override: "", distance_override: "", ack: false });
+      setDepart({ calc: { distance_nm: data.distance_nm, fuel_rate: data.fuel_rate, notes: data.notes, start, dest, speed, engine: engineType, unit }, rate_reviewed: false, rate_override: "", distance_override: "", ack: false });
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't work out the passage right now. Please try again.")); }
     setBusy(false);
   };
@@ -58,7 +58,7 @@ export const PassagePlan = ({ boat, depart, setDepart, onBoatChange, engineType,
       <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={ask} disabled={busy} data-testid="passage-ask-btn">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {calc ? "Recalculate with the Magic Mariner" : "Work out my range"}
       </button>
-      {stale && <p className="text-xs font-bold text-amber-800" data-testid="passage-stale">The route, speed or engine changed since this was worked out. Recalculate to update it.</p>}
+      {stale && <p className="text-xs font-bold text-amber-800" data-testid="passage-stale">The route, speed, engine or tank units changed since this was worked out. Recalculate to update it.</p>}
       {calc && (
         <>
           <div className="grid grid-cols-2 gap-2">

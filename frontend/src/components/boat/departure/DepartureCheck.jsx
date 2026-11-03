@@ -16,7 +16,9 @@ const logBlock = (boat, depart) => {
   return "";
 };
 
-export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog }) => {
+const stamp = () => new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
+export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog, onRelog }) => {
   const [details, setDetails] = useState(false);
   const depart = boat.depart || {};
   const setDepart = (patch) => onBoatChange("depart", { ...depart, ...patch });
@@ -24,10 +26,13 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
   const setLevel = (k, v) => setDepart({ levels: { ...levels, [k]: v } });
   const u = tankUnit(boat);
   const blocked = logBlock(boat, depart);
+  const sig = departureSummary(boat, depart, passagePlan(boat, depart), "");
+  const outdated = !!depart.log_id && depart.log_sig !== sig;
   const toggleLog = (on) => {
-    if (on) setDepart({ log_id: onLog(departureSummary(boat, depart, passagePlan(boat, depart), new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }))) });
-    else { onUnlog(depart.log_id); setDepart({ log_id: null }); }
+    if (on) setDepart({ log_id: onLog(departureSummary(boat, depart, passagePlan(boat, depart), stamp())), log_sig: sig });
+    else { onUnlog(depart.log_id); setDepart({ log_id: null, log_sig: "" }); }
   };
+  const relog = () => { onRelog(depart.log_id, departureSummary(boat, depart, passagePlan(boat, depart), stamp())); setDepart({ log_sig: sig }); };
   return (
     <section className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="departure-check">
       <div className="flex items-center justify-between gap-2">
@@ -48,7 +53,14 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
         <input type="checkbox" checked={!!depart.log_id} disabled={!!blocked && !depart.log_id} onChange={(e) => toggleLog(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="departure-log-checkbox" />
         <span><b>Copy this departure&apos;s tank and battery status into the Ship&apos;s Log</b>
           {blocked && !depart.log_id && <span className="block text-xs text-[var(--muted)]" data-testid="departure-log-blocked">{blocked}</span>}
-          {depart.log_id && <span className="block text-xs text-emerald-700" data-testid="departure-logged">Copied to the Ship&apos;s Log. Untick to take it out again.</span>}
+          {depart.log_id && !outdated && <span className="block text-xs text-emerald-700" data-testid="departure-logged">Copied to the Ship&apos;s Log. Untick to take it out again.</span>}
+          {outdated && (
+            <span className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-amber-800" data-testid="departure-log-outdated">
+              Changed since it was copied.
+              <button type="button" className="btn-ghost h-8 min-h-0 px-2.5 text-xs" disabled={!!blocked} onClick={(e) => { e.preventDefault(); relog(); }} data-testid="departure-relog-btn">Update the Ship&apos;s Log</button>
+              {blocked && <span className="font-normal text-[var(--muted)]">{blocked}</span>}
+            </span>
+          )}
         </span>
       </label>
       <AdditionalDetailsDialog open={details} boat={boat} onChange={onBoatChange} onClose={() => setDetails(false)} />

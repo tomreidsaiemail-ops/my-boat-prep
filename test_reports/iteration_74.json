@@ -1,0 +1,44 @@
+{
+  "summary": "Tested Request A (What's New note on master updates) and Request B (vessel telemetry, cruise speed, Leaving the Dock status check, Magic Mariner passage plan, Ship's Log copy). Backend: 10 pytest tests, 9 passed, 1 skipped (free-user 403 can't be tested because the FIRST200 launch_free promo makes free users premium). Frontend at mobile 390x844: every requested flow works end to end. PUT note -> GET /templates note -> version notes come back oldest first; the publish dialog note input works; the Merge Latest summary shows notes B and C (not A) after syncing to A, and the offline fallback shows the current master note; the admin custom list editor shows the note input only for non-private lists. Details dialog: the dimensions section starts collapsed, and the telemetry section starts open while not configured, then collapsed with a summary once configured. Fields and batteries, including a portable battery, persist. Cruise speed defaults to 6, changes persist, and the engine type is logged. Leaving Dock: the check sits at the top, has 5 coloured buttons, 1/4 and Empty show red warnings, the 1/3 hint shows, and on-board amounts are correct (jerry cans and spare bottles counted full). Gallons work. The setup button opens the dialog. The passage AI returned 48 nm / 2.5 L/h for Mana to Picton. Overrides, the reviewed checkbox hiding, red/amber fuel and water/gas warnings, the ack text, the stale banner, the log block reasons, logging to the Ship's Log (summary text correct), untick removal and New departure all work. Regression: Merge Latest, Boat Budget and Magic Bartender all open fine. No functional blockers found; only minor issues and suggestions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/passage", "issue": "require_premium lets free users through while launch_free (FIRST200) is active, which is by design. The 'Free user: passage-ask-btn opens upgrade' path can't be checked until the promo ends."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TelemetrySection jerry can / bottle size", "issue": "'Each can' shows placeholder 20 (L) and 'Each bottle' shows 4.5 kg, but a blank value counts as 0. A skipper who enters 2 jerry cans and leaves the size blank (because the placeholder suggests 20) gets 0 L added on board and in the passage plan. Use the placeholder as the default, or require the size when the count > 0.", "selector": "[data-testid=fuel-jerry-size-input], [data-testid=water-jerry-size-input]", "priority": "MEDIUM"},
+      {"component": "DepartureCheck log copy", "issue": "Once the departure is copied to the Ship's Log, changing levels, unticking the ack or recalculating leaves the old log item in place and the checkbox stays ticked. The checkbox ignores the block reasons while logged. Either update or remove the log item when the depart data changes, or show that it's out of date.", "selector": "[data-testid=departure-log-checkbox]", "priority": "LOW"},
+      {"component": "PassagePlan when telemetry not configured", "issue": "With no tanks set up, the results show 'about 32 of 0 L on board', 'Range 0 nm' and red fuel/water/gas warnings. A 'set up your tanks first' message would be clearer than alarm warnings based on zeros.", "selector": "[data-testid=passage-results]", "priority": "LOW"},
+      {"component": "Tank units toggle", "issue": "Switching L to gal doesn't convert the saved tank sizes (120 L becomes 120 gal), and an existing Magic Mariner fuel_rate calculated in L/h is then shown as gal/h with no stale banner. passage-stale doesn't include tank_units.", "selector": "[data-testid=tank-units-gal], [data-testid=passage-stale]", "priority": "LOW"},
+      {"component": "Engine type", "issue": "engine-type-input is only saved when an engine service entry is logged. If you type an engine type without logging, it isn't used by the passage plan ('not recorded yet'). The hint text explains this, but skippers may expect it to save on its own.", "selector": "[data-testid=engine-type-input]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Leaving Dock level buttons", "issues": ["The selected 1/2 button has white text on amber-500 (#f59e0b): contrast about 2.1:1, below WCAG AA. The selected 3/4 (white on lime-600) is about 3:1. Use darker fills (amber-600/700, lime-700) or dark text."]},
+      {"screen": "Passage warnings copy", "issues": ["'Water is short: 1 on board for 1 day' reads oddly; say '1 person on board'.", "The Ship's Log summary includes passage warnings but not the red 1/4 / Empty tank or battery level warnings. Consider adding them."]},
+      {"screen": "Publish dialog", "issues": ["The dialog body still says existing skippers 'get them next time they reset' and doesn't mention Merge Latest, while the bar text does.", "On mobile, the first line of the note textarea looked clipped at the top after typing."]},
+      {"screen": "Battery editor", "issues": ["Voltage and type use native <select> rather than the shadcn Select. This is consistent with the existing boat-type select, so only minor."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_telemetry_passage_notes.py", "/app/test_reports/pytest/pytest_results_iter74.xml", "/app/tests/merge_publish_note.py"],
+  "action_items": [
+    "Count a blank jerry can / gas bottle size as its placeholder default (20 L / 4.5 kg), or validate it when the count > 0",
+    "Improve contrast of the selected 1/2 (amber) and 3/4 (lime) level buttons",
+    "Optional: refresh or flag the Ship's Log departure item when depart data changes after logging",
+    "Optional: when telemetry isn't configured, show a set-up prompt in passage results instead of zero-based warnings; include tank_units in the stale check",
+    "Optional: fix the copy in the water-short warning and the publish dialog"
+  ],
+  "critical_code_review_comments": [
+    "telemetry.js passagePlan: water and gas needs use boat.trip_days || ceil(hours/24), so a 3-week cruise with trip_days set warns for the whole trip, not the passage. Fine if intended.",
+    "templates.py publish: if the items are unchanged, it returns early and silently drops the note. The admin gets no feedback that the note wasn't saved.",
+    "BoatDetails.depart is free-form Dict[str, Any], capped only at 12 KB of JSON. Acceptable, but nothing is validated server side."
+  ],
+  "updated_files": ["/app/backend/tests/test_telemetry_passage_notes.py", "/app/tests/merge_publish_note.py"],
+  "success_rate": {"backend": "100% (9/9 run, 1 skipped)", "frontend": "100% of requested flows working; 5 minor UX issues"},
+  "seed_data_creation": "Temporary only. Published head/riggingChecks masters with notes, a pro boat testtel74 (deleted), and pro main boat changes (telemetry, engine log, Leaving Dock, ship log). Cleanup done: db.list_templates non-custom deleted, template_versions for head/riggingChecks deleted, pro user_boats restored from backup, admin boat route_start/route_dest/depart cleared.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro main boat has no leavingDock. To restore it, add 'leavingDock' to user_boats.deleted_lists (mongo) and then use Reset All -> reset-option-leavingDock, because Reset only offers deleted built-ins listed in deleted_lists. Free users are premium while launch_free is on. Level and depart saves are debounced, so wait ~3s before reload. Use /app/tests/merge_publish_note.py with env NOTE=... to publish riggingChecks variants with a note."
+}

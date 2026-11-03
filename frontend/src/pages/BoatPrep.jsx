@@ -522,6 +522,10 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success("Departure status copied to the Ship's Log");
     return id;
   };
+  const relogDeparture = (id, text) => {
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
+    toast.success("Ship's Log departure entry updated");
+  };
   const unlogDeparture = (id) => mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).filter((i) => i.id !== id) } }));
   const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });
   const emailPrompt = (
@@ -575,7 +579,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
-          onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} />
+          onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} />
       )}
       {!crew && SERVICE_LOGS[active.id] && (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}

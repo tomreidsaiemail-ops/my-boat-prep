@@ -17,9 +17,10 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
     setConfirm(false);
     setBusy(true);
     try {
-      await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })), note.trim());
+      const res = await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })), note.trim());
       setNote("");
-      toast.success(`${list.name} published as the master template`);
+      if (res?.unchanged) toast.info(`${list.name} already matches the master template, so nothing was published`);
+      else toast.success(`${list.name} published as the master template`);
     } catch (e) {
       toast.error(typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't publish, please try again");
     } finally { setBusy(false); }
@@ -45,7 +46,7 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display text-xl font-extrabold">Publish {list.name}?</AlertDialogTitle>
             <AlertDialogDescription className="text-left text-sm text-[var(--navy)]">
-              Your {items.length} {list.name} items (unticked) become the master template. New skippers start with them, and existing skippers get them next time they reset {list.name}. Cloned lists are not changed.
+              Your {items.length} {list.name} items (unticked) become the master template. New skippers start with them, and existing skippers see an Updated note with Merge Latest to bring the changes in. Cloned lists are not changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <label className="flex flex-col gap-1 text-left">

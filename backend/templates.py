@@ -201,7 +201,7 @@ async def publish_template(list_id: str, payload: TemplateIn, admin: dict = Depe
     now = datetime.now(timezone.utc).isoformat()
     old = await db.list_templates.find_one({"list_id": list_id}, {"_id": 0, "list_id": 1, "items": 1, "updated_at": 1, "note": 1})
     if old and old.get("items") == items:
-        return {"list_id": list_id, "items": items, "updated_at": old["updated_at"]}
+        return {"list_id": list_id, "items": items, "updated_at": old["updated_at"], "note": old.get("note", ""), "unchanged": True}
     if old:
         await _keep_version(old)
     await db.list_templates.update_one(

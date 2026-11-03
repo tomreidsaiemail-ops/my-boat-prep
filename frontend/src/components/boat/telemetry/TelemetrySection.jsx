@@ -35,7 +35,7 @@ export const TelemetrySection = ({ boat, onChange }) => {
       <Group title="Fuel" testId="telemetry-fuel">
         <NumField id="fuel-tank" label="Tank size" unit={u} {...f("fuel_tank")} />
         <NumField id="fuel-jerry" label="Extra jerry cans" {...f("fuel_jerry")} />
-        <NumField id="fuel-jerry-size" label="Each can" unit={u} placeholder="20" {...f("fuel_jerry_size")} />
+        <NumField id="fuel-jerry-size" label="Each can" unit={u} placeholder={u === "gal" ? "5" : "20"} {...f("fuel_jerry_size")} />
       </Group>
       <Group title="Gas" testId="telemetry-gas">
         <NumField id="gas-bottles" label="Gas bottles" {...f("gas_bottles")} />
@@ -45,7 +45,7 @@ export const TelemetrySection = ({ boat, onChange }) => {
       <Group title="Water" testId="telemetry-water">
         <NumField id="water-tank" label="Tank size" unit={u} {...f("water_tank")} />
         <NumField id="water-jerry" label="Extra jerry cans" {...f("water_jerry")} />
-        <NumField id="water-jerry-size" label="Each can" unit={u} placeholder="20" {...f("water_jerry_size")} />
+        <NumField id="water-jerry-size" label="Each can" unit={u} placeholder={u === "gal" ? "5" : "20"} {...f("water_jerry_size")} />
       </Group>
       <BatteriesEditor boat={boat} onChange={onChange} />
     </DetailsSection>

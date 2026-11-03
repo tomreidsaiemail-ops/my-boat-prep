@@ -1,13 +1,13 @@
 // Vessel telemetry (tanks and batteries) and the Leaving the Dock status check.
 export const LEVELS = [
   { key: "full", label: "Full", value: 1, on: "bg-emerald-700 border-emerald-700 text-white", off: "border-emerald-700 text-emerald-800" },
-  { key: "3q", label: "3/4", value: 0.75, on: "bg-lime-600 border-lime-600 text-white", off: "border-lime-600 text-lime-800" },
-  { key: "half", label: "1/2", value: 0.5, on: "bg-amber-500 border-amber-500 text-white", off: "border-amber-500 text-amber-800" },
-  { key: "1q", label: "1/4", value: 0.25, on: "bg-orange-600 border-orange-600 text-white", off: "border-orange-600 text-orange-800" },
+  { key: "3q", label: "3/4", value: 0.75, on: "bg-lime-700 border-lime-700 text-white", off: "border-lime-600 text-lime-800" },
+  { key: "half", label: "1/2", value: 0.5, on: "bg-amber-400 border-amber-500 text-[var(--navy)]", off: "border-amber-500 text-amber-800" },
+  { key: "1q", label: "1/4", value: 0.25, on: "bg-orange-700 border-orange-700 text-white", off: "border-orange-600 text-orange-800" },
   { key: "empty", label: "Empty", value: 0, on: "bg-red-700 border-red-700 text-white", off: "border-red-700 text-red-800" },
 ];
 const BY_KEY = Object.fromEntries(LEVELS.map((l) => [l.key, l]));
-export const levelLabel = (k) => BY_KEY[k]?.label || "not checked";
+export const levelLabel = (k) => (BY_KEY[k] ? `${BY_KEY[k].label}${k === "1q" || k === "empty" ? " - LOW" : ""}` : "not checked");
 export const isLow = (k) => k === "1q" || k === "empty";
 export const num = (v) => { const n = parseFloat(String(v ?? "").replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : 0; };
 const round = (n) => Math.round(n * 10) / 10;
@@ -26,10 +26,13 @@ const batterySpec = (b) => [b.volts && `${b.volts}V`, num(b.ah) && `${num(b.ah)}
 export const telemetryConfigured = (boat) => num(boat.fuel_tank) > 0 && num(boat.water_tank) > 0 && num(boat.gas_bottles) > 0 && num(boat.gas_kg) > 0
   && !!boat.batteries?.length && boat.batteries.every((b) => b.volts && num(b.ah) && b.chem);
 
+// A blank can or bottle size means the usual one: 20 L (5 gal) jerry cans, 4.5 kg gas bottles.
+export const canSize = (boat, key) => num(boat[key]) || (tankUnit(boat) === "gal" ? 5 : 20);
+export const bottleKg = (boat) => num(boat.gas_kg) || 4.5;
 // Jerry cans and spare gas bottles are counted as full.
-export const fuelOnBoard = (boat, level) => (BY_KEY[level]?.value ?? 0) * num(boat.fuel_tank) + num(boat.fuel_jerry) * num(boat.fuel_jerry_size);
-export const waterOnBoard = (boat, level) => (BY_KEY[level]?.value ?? 0) * num(boat.water_tank) + num(boat.water_jerry) * num(boat.water_jerry_size);
-export const gasOnBoard = (boat, level) => ((BY_KEY[level]?.value ?? 0) * num(boat.gas_bottles) + num(boat.gas_extra)) * num(boat.gas_kg);
+export const fuelOnBoard = (boat, level) => (BY_KEY[level]?.value ?? 0) * num(boat.fuel_tank) + num(boat.fuel_jerry) * canSize(boat, "fuel_jerry_size");
+export const waterOnBoard = (boat, level) => (BY_KEY[level]?.value ?? 0) * num(boat.water_tank) + num(boat.water_jerry) * canSize(boat, "water_jerry_size");
+export const gasOnBoard = (boat, level) => ((BY_KEY[level]?.value ?? 0) * num(boat.gas_bottles) + num(boat.gas_extra)) * bottleKg(boat);
 
 const WATER_PER_DAY = { L: 4, gal: 1 };
 const GAS_KG_PER_DAY = 0.1;
@@ -54,13 +57,15 @@ export const passagePlan = (boat, depart) => {
   const gas = gasOnBoard(boat, levels.gas);
   const jerry = num(boat.fuel_jerry) ? ` including ${num(boat.fuel_jerry)} jerry ${num(boat.fuel_jerry) === 1 ? "can" : "cans"}` : "";
   const warnings = [];
-  if (distance && rate) {
+  const setUp = { fuel: num(boat.fuel_tank) + num(boat.fuel_jerry) > 0, water: num(boat.water_tank) + num(boat.water_jerry) > 0, gas: num(boat.gas_bottles) + num(boat.gas_extra) > 0 };
+  const missing = Object.keys(setUp).filter((k) => !setUp[k]);
+  if (distance && rate && setUp.fuel) {
     if (fuelNeed > fuel * (2 / 3)) warnings.push({ level: "red", key: "fuel", text: `Not enough fuel with a 1/3 reserve: this passage needs about ${round(fuelNeed)} ${unit} and you have about ${round(fuel)} ${unit}${jerry}. Safe range is about ${round(range * (2 / 3))} nm.` });
     else if (fuelNeed > fuel / 3) warnings.push({ level: "amber", key: "fuel", text: `Beyond the 1/3 rule: about ${round(fuelNeed)} ${unit} of your ${round(fuel)} ${unit}${jerry} gets you there with a reserve, but not back without refuelling.` });
   }
-  if (distance && water < waterNeed) warnings.push({ level: "red", key: "water", text: `Water is short: ${pob} on board for ${days} ${days === 1 ? "day" : "days"} needs about ${round(waterNeed)} ${unit}; you have about ${round(water)} ${unit}${num(boat.water_jerry) ? " including jerry cans" : ""}.` });
-  if (distance && gas < gasNeed) warnings.push({ level: "amber", key: "gas", text: `Gas is low: about ${round(gas)} kg on board${num(boat.gas_extra) ? " including spare bottles" : ""} for an estimated ${round(gasNeed)} kg of cooking.` });
-  return { unit, speed, rate, distance, hours, fuelNeed, fuel, range, water, gas, warnings };
+  if (distance && setUp.water && water < waterNeed) warnings.push({ level: "red", key: "water", text: `Water is short: ${pob} ${pob === 1 ? "person" : "people"} on board for ${days} ${days === 1 ? "day" : "days"} needs about ${round(waterNeed)} ${unit}; you have about ${round(water)} ${unit}${num(boat.water_jerry) ? " including jerry cans" : ""}.` });
+  if (distance && setUp.gas && gas < gasNeed) warnings.push({ level: "amber", key: "gas", text: `Gas is low: about ${round(gas)} kg on board${num(boat.gas_extra) ? " including spare bottles" : ""} for an estimated ${round(gasNeed)} kg of cooking.` });
+  return { unit, speed, rate, distance, hours, fuelNeed, fuel, range, water, gas, warnings, missing };
 };
 
 export const departureSummary = (boat, depart, plan, when) => {
