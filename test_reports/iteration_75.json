@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend E2E (pro user, 390x844 + 1920x1080) of the new Arrival check, the green ticked-row style and a Leaving the Dock regression check. Everything in the request works: arrival-check sits above the list in Arriving at Destination and Returning to Dock and is not on other lists; arrival-no-departure note shows; the five level buttons work for fuel/gas/water and each battery, with red warnings at 1/4 and Empty; 'about X L left' details are correct; arrival-spares inputs default to the full count and are capped at the max. Usage maths checked against the spec example (60 L tank + 2x20 L cans, depart 1/2 -> 70 L; arrive 1/4 with 1 can -> 35 L left, used about 35 L, planned about 15 L, actual 7 L/h vs 3 L/h; water used 50 L; gas used 2.3 kg; a higher fuel level reads 'topped up about 30 L on the way'). The log checkbox stays disabled until every level is picked. Ticking adds 'Arrival check (Arriving at Destination) <date>: ...' to the Ship's Log with the toast; arrival-log-outdated / arrival-relog-btn update the same item; unticking removes it; New arrival clears. boat.arrive survives a reload. Departure regression passed: Magic Mariner calc, overrides, ack, log, outdated, relog, toast. Ticked rows: background #dcfce7, green inset edge, no line-through, Done badge with icon, all removed on untick. Crew Roles picks are still blue with no badge. Cocktail rows turn green. Found 4 minor issues and no critical ones.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ArrivalCheck shared state across lists", "issue": "boat.arrive is shared by Arriving at Destination and Returning to Dock, but log_sig includes listName. After logging from Arriving at Destination, opening Returning to Dock straight away shows 'Changed since it was copied' (arrival-log-outdated) even though nothing changed. Pressing Update there also renames the log entry to '(Returning to Dock)'.", "selector": "[data-testid='arrival-log-outdated']", "priority": "MEDIUM"},
+      {"component": "BoatPrep relogDeparture", "issue": "Updating the arrival entry shows the toast 'Ship's Log departure entry updated'. It should say arrival (pass kind into relog the same way logDeparture gets it).", "selector": "toast", "priority": "LOW"},
+      {"component": "Checklist flagged + ticked row", "issue": ".checklist-row.is-checked:not(.is-pick) (specificity 0,3,0) beats .checklist-row.is-flagged (0,2,0). A ticked row that is also flagged loses its red background and edge: it shows green with red text and the red flag icon. Untick and it looks flagged again. Decide if this is intended.", "selector": "li.checklist-row.is-checked.is-flagged", "priority": "LOW"},
+      {"component": "ArrivalCheck used text", "issue": "When a departure exists but no arrival level has been picked yet (e.g. after New arrival), arrival-used reads 'not known (no departure level)'. The departure level is there; it is the arrival level that is missing.", "selector": "[data-testid='arrival-fuel-used']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Arrival status check", "issues": ["The LevelPicker warning reads 'Top up or charge before you leave.' on the arrival check too, which is wrong after arriving", "The fuel 1/3rd rule hint shows on the arrival fuel row, where it doesn't help", "Before a level is picked, water and gas details already show 'about 20 L left' / 'about 4.5 kg left' from the spare cans alone"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Leave listName out of the arrival log_sig (or keep the sig independent of the list) so the other list doesn't falsely show outdated; consider keeping the original list name when relogging",
+    "Pass kind into relogDeparture so the arrival toast says 'arrival entry updated'",
+    "Optional: make flagged+ticked rows keep a red cue (e.g. .checklist-row.is-checked.is-flagged rule)",
+    "Optional: arrival-specific warning text, hide the 1/3 hint on arrival, and use 'not known (no arrival level)' when only the arrival level is missing"
+  ],
+  "critical_code_review_comments": [
+    "ArrivalCheck stores the full summary text in arrive.log_sig (about 500 chars). That fits under the 12000 limit, but a short hash would be leaner (the same applies to departure)",
+    "Cocktail tick box stays navy while the row turns green: a small visual mismatch with the green tick-box on checklists"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend only; arrive persisted via PUT, checked after reload)", "frontend": "95%"},
+  "seed_data_creation": "Pro main boat temporarily got leavingDock/arrivingDest/returningDock (deleted_lists + Reset All) and telemetry set in mongo (fuel 60 L + 2x20 L cans, water 100 L + 1 can, 2x4.5 kg gas + 1 spare, engine 12V 100Ah AGM, house 12V 200Ah lithium). The whole user_boats doc was then restored from a backup taken before the test (verified: 24 lists, no telemetry, empty depart/arrive, no Departure/Arrival log entries).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat restored to its pre-test state (no leavingDock/arrivingDest/returningDock). To test again: mongo $addToSet those ids into user_boats.deleted_lists for owner test-user-pro/main, then use top-reset-all-btn with reset-option-<id>. Set telemetry directly in mongo boat.* fields. Magic Mariner /ai/passage answered in about 10 s; override passage-distance-input / passage-rate-input for numbers you can predict. Wait about 3-4 s before a reload because saves are debounced."
+}

@@ -62,6 +62,7 @@ body {
 .is-checked .item-text { color: #14532d; }
 .checklist-row.is-checked:not(.is-pick) { background: #dcfce7; box-shadow: inset 5px 0 0 var(--green); }
 .checklist-row.is-checked:not(.is-pick):hover { background: #bbf7d0; }
+.checklist-row.is-checked.is-flagged { background: #fef2f2; box-shadow: inset 5px 0 0 var(--red); }
 .tick-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; background: var(--green); color: #fff; padding: 2px 8px 2px 4px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; animation: tick-pop .25s ease-out; }
 @keyframes tick-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .is-pick.is-checked .tick-box { background: #1d4ed8; border-color: #1d4ed8; }

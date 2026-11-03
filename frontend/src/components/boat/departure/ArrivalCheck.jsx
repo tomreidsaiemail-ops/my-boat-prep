@@ -26,7 +26,7 @@ export const ArrivalCheck = ({ boat, listName, onBoatChange, onLog, onUnlog, onR
   const levels = arrive.levels || {};
   const use = arrivalUsage(boat, depart, arrive);
   const u = use.unit;
-  const summary = (when) => arrivalSummary(boat, depart, arrive, use, when, listName);
+  const summary = (when) => arrivalSummary(boat, depart, arrive, use, when, arrive.log_list || listName);
   const sig = summary("");
   const blocked = allLevelsPicked(boat, levels) ? "" : "Pick a level for every tank and battery first.";
   return (
@@ -37,8 +37,8 @@ export const ArrivalCheck = ({ boat, listName, onBoatChange, onLog, onUnlog, onR
       </div>
       {!depart.levels && <p className="rounded-md bg-sky-50 px-2 py-1.5 text-sm text-sky-900" data-testid="arrival-no-departure">No Leaving the Dock check recorded, so only the arrival levels can be logged.</p>}
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="arrival-setup-btn" />
-      <TankLevels boat={boat} prefix="arrive-" levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
-        details={{ fuel: left(use.fuelNow, u), gas: left(use.gasNow, "kg"), water: left(use.waterNow, u) }} />
+      <TankLevels boat={boat} prefix="arrive-" arrival levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
+        details={{ fuel: levels.fuel ? left(use.fuelNow, u) : "", gas: levels.gas ? left(use.gasNow, "kg") : "", water: levels.water ? left(use.waterNow, u) : "" }} />
       {(num(boat.fuel_jerry) > 0 || num(boat.water_jerry) > 0 || num(boat.gas_extra) > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="arrival-spares">
           {num(boat.fuel_jerry) > 0 && <Count id="arrival-fuel-jerry" label="Fuel cans still full" value={arrive.fuel_jerry_left} max={num(boat.fuel_jerry)} onChange={(v) => setArrive({ fuel_jerry_left: v })} />}
@@ -57,8 +57,8 @@ export const ArrivalCheck = ({ boat, listName, onBoatChange, onLog, onUnlog, onR
       )}
       <LogCopy prefix="arrival" label="Copy this arrival's levels and what was used into the Ship's Log" logged={!!arrive.log_id} blocked={blocked}
         outdated={!!arrive.log_id && arrive.log_sig !== sig}
-        onToggle={(on) => (on ? setArrive({ log_id: onLog(summary(stamp()), "Arrival"), log_sig: sig }) : (onUnlog(arrive.log_id), setArrive({ log_id: null, log_sig: "" })))}
-        onRelog={() => { onRelog(arrive.log_id, summary(stamp())); setArrive({ log_sig: sig }); }} />
+        onToggle={(on) => (on ? setArrive({ log_id: onLog(arrivalSummary(boat, depart, arrive, use, stamp(), listName), "Arrival"), log_sig: arrivalSummary(boat, depart, arrive, use, "", listName), log_list: listName }) : (onUnlog(arrive.log_id), setArrive({ log_id: null, log_sig: "", log_list: "" })))}
+        onRelog={() => { onRelog(arrive.log_id, summary(stamp()), "Arrival"); setArrive({ log_sig: sig }); }} />
     </section>
   );
 };

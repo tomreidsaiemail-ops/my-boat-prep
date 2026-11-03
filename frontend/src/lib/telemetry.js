@@ -104,7 +104,7 @@ export const arrivalUsage = (boat, depart, arrive) => {
     actualRate: fuelUsed > 0 && plan.hours ? fuelUsed / plan.hours : 0,
   };
 };
-export const usedText = (n, u) => (n === null ? "not known (no departure level)" : n < 0 ? `topped up about ${round(-n)} ${u} on the way` : `about ${round(n)} ${u}`);
+export const usedText = (n, u) => (n === null ? "not known yet (pick the arrival level)" : n < 0 ? `topped up about ${round(-n)} ${u} on the way` : `about ${round(n)} ${u}`);
 
 export const arrivalSummary = (boat, depart, arrive, use, when, listName) => {
   const u = use.unit;

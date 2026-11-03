@@ -51,7 +51,7 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
       <LogCopy prefix="departure" label="Copy this departure's tank and battery status into the Ship's Log" logged={!!depart.log_id} blocked={blocked}
         outdated={!!depart.log_id && depart.log_sig !== sig}
         onToggle={(on) => (on ? setDepart({ log_id: onLog(summary(stamp()), "Departure"), log_sig: sig }) : (onUnlog(depart.log_id), setDepart({ log_id: null, log_sig: "" })))}
-        onRelog={() => { onRelog(depart.log_id, summary(stamp())); setDepart({ log_sig: sig }); }} />
+        onRelog={() => { onRelog(depart.log_id, summary(stamp()), "Departure"); setDepart({ log_sig: sig }); }} />
     </section>
   );
 };

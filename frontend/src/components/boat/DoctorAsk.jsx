@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Loader2, PawPrint, Stethoscope, User, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { DoctorPhotoPicker } from "@/components/boat/doctor/DoctorPhotoPicker";
+import { DoctorHistory } from "@/components/boat/doctor/DoctorHistory";
 
 const AnswerCard = ({ answer, left, onClose }) => (
   <div className="flex flex-col gap-2 rounded-md border-l-4 border-[var(--red)] bg-[var(--panel)] px-3 py-2" data-testid="doctor-answer-card">
@@ -30,6 +33,8 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
   const [question, setQuestion] = useState("");
   const [who, setWho] = useState(pets.length && /pet/i.test(kitName) ? "0" : "");
   const [state, setState] = useState({ busy: false, error: "", answer: "", left: null });
+  const [photo, setPhoto] = useState(null);
+  const [version, setVersion] = useState(0);
   const pet = who === "" ? null : pets[Number(who)];
 
   const ask = () => {
@@ -38,8 +43,20 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
     if (!online) { setState((s) => ({ ...s, error: "The Magic Marine Doctor needs a signal. In an emergency call Mayday on VHF 16." })); return; }
     setState({ busy: true, error: "", answer: "", left: null });
     const forPet = pet ? { pet: { type: pet.type || "", name: pet.name || "", breed: pet.breed || "", weight: pet.weight || "" }, units } : {};
-    api.post("/ai/doctor-ask", { question: question.trim(), kit_name: kitName, kit: kit.slice(0, 150), adults, children, ...forPet }, { timeout: 90000 })
-      .then(({ data }) => setState((s) => ({ ...s, busy: false, answer: data.answer, left: data.asks_left })))
+    const body = { question: question.trim(), kit_name: kitName, kit: kit.slice(0, 150), adults, children, ...forPet };
+    let call;
+    if (photo) {
+      const form = new FormData();
+      form.append("payload", JSON.stringify(body));
+      form.append("file", photo.blob, "doctor.jpg");
+      call = api.post("/ai/doctor-ask-photo", form, { timeout: 120000 });
+    } else call = api.post("/ai/doctor-ask", body, { timeout: 90000 });
+    call
+      .then(({ data }) => {
+        setState((s) => ({ ...s, busy: false, answer: data.answer, left: data.asks_left }));
+        setVersion((v) => v + 1);
+        if (photo && data.photo_saved === false) toast.error("The Doctor saw your photo, but it couldn't be saved with the answer");
+      })
       .catch((e) => setState((s) => ({ ...s, busy: false, error: apiError(e, "The Magic Marine Doctor couldn't answer right now. In an emergency call Mayday on VHF 16.") })));
   };
 
@@ -55,9 +72,11 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
           {state.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask..."}
         </button>
       </div>
+      <DoctorPhotoPicker photo={photo} onChange={setPhoto} disabled={state.busy} />
       {state.busy && <p className="flex items-center gap-2 text-sm font-semibold" data-testid="doctor-loading"><Loader2 className="h-4 w-4 animate-spin" /> The Magic Marine Doctor is thinking...</p>}
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="doctor-error">{state.error}</p>}
       {state.answer && <AnswerCard answer={state.answer} left={state.left} onClose={() => setState((s) => ({ ...s, answer: "" }))} />}
+      {!locked && <DoctorHistory version={version} online={online} />}
     </div>
   );
 };

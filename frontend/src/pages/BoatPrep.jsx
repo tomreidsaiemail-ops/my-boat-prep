@@ -523,9 +523,9 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${kind} status copied to the Ship's Log`);
     return id;
   };
-  const relogDeparture = (id, text) => {
+  const relogDeparture = (id, text, kind) => {
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
-    toast.success("Ship's Log departure entry updated");
+    toast.success(`Ship's Log ${kind.toLowerCase()} entry updated`);
   };
   const unlogDeparture = (id) => mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).filter((i) => i.id !== id) } }));
   const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });

@@ -1,3 +1,5 @@
+import asyncio
+import base64
 import json
 import logging
 import os
@@ -5,11 +7,12 @@ import re
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator, model_validator
-from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
-from auth import require_premium
+from auth import get_current_user, require_premium
+from photos import APP_NAME, get_object, put_object
 import quota
 from usage import KIND_FEATURE, record_usage
 from youtube_links import check_links, wants_youtube
@@ -64,7 +67,7 @@ def to_lines(text: str) -> list:
     return lines[:MAX_LINES]
 
 
-async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: str = SYSTEM, label: str = "Magic List Generation"):
+async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: str = SYSTEM, label: str = "Magic List Generation", image: Optional[bytes] = None):
     source = await quota.consume(user["user_id"])
     draft_id = str(uuid.uuid4())
     await db.ai_drafts.insert_one({"draft_id": draft_id, "user_id": user["user_id"], "kind": kind, **meta, "created_at": datetime.now(timezone.utc).isoformat()})
@@ -72,7 +75,8 @@ async def _run(user: dict, kind: str, prompt: str, parse, meta: dict, system: st
     text = ""
     usage = None
     try:
-        async for ev in chat.stream_message(UserMessage(text=prompt)):
+        files = [ImageContent(image_base64=base64.b64encode(image).decode())] if image else None
+        async for ev in chat.stream_message(UserMessage(text=prompt, file_contents=files) if files else UserMessage(text=prompt)):
             if isinstance(ev, TextDelta):
                 text += ev.content
             elif isinstance(ev, StreamDone):
@@ -328,18 +332,93 @@ def parse_doctor(text: str, footer: str = DOCTOR_FOOTER) -> str:
     return f"{answer}\n\n{footer}"
 
 
-@router.post("/ai/doctor-ask")
-async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
+PHOTO_RULE = ("\nA photo is attached. Look at it carefully: describe briefly what you can see that matters (a wound, burn, rash, swelling, bite, "
+              "or a medicine or first-aid item and its label) and use it in your first-aid advice. If the photo is unclear or doesn't show the problem, say so.")
+
+
+async def _doctor(body: DoctorAskIn, user: dict, image: Optional[bytes] = None):
     kit = ", ".join(str(k).strip()[:120] for k in body.kit if str(k).strip()) or "(not listed)"
     question = f'"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""'
+    rule = PHOTO_RULE if image else ""
     if body.pet:
-        prompt = f"First aid kit ({body.kit_name.strip()}): {kit}\nThe patient is a pet: {pet_text(body.pet, body.units)}\nThe skipper asks:\n{question}"
-        answer, left = await _run(user, "doctor", prompt, lambda t: parse_doctor(t, PET_DOCTOR_FOOTER), {"question": body.question[:200], "pet": body.pet.type[:40]}, PET_DOCTOR, "Magic Marine Doctor pet answer")
-        return {"answer": answer, "asks_left": left}
+        prompt = f"First aid kit ({body.kit_name.strip()}): {kit}\nThe patient is a pet: {pet_text(body.pet, body.units)}\nThe skipper asks:\n{question}{rule}"
+        return await _run(user, "doctor", prompt, lambda t: parse_doctor(t, PET_DOCTOR_FOOTER), {"question": body.question[:200], "pet": body.pet.type[:40]}, PET_DOCTOR, "Magic Marine Doctor pet answer", image)
     prompt = (f"First aid kit ({body.kit_name.strip()}): {kit}\nOn board: {body.adults} adults, {body.children} children\n"
-              f"The skipper asks:\n{question}")
-    answer, left = await _run(user, "doctor", prompt, parse_doctor, {"question": body.question[:200]}, DOCTOR, "Magic Marine Doctor answer")
-    return {"answer": answer, "asks_left": left}
+              f"The skipper asks:\n{question}{rule}")
+    return await _run(user, "doctor", prompt, parse_doctor, {"question": body.question[:200]}, DOCTOR, "Magic Marine Doctor answer", image)
+
+
+async def _save_answer(user: dict, body: DoctorAskIn, answer: str, photo: Optional[dict] = None) -> dict:
+    doc = {"answer_id": uuid.uuid4().hex, "user_id": user["user_id"], "question": body.question, "answer": answer, "kit_name": body.kit_name.strip(),
+           "pet": body.pet.name.strip() if body.pet else "", "photo": photo, "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.doctor_answers.insert_one(doc)
+    return _answer_out(doc)
+
+
+def _answer_out(d: dict) -> dict:
+    return {"id": d["answer_id"], "question": d["question"], "answer": d["answer"], "kit_name": d.get("kit_name", ""), "pet": d.get("pet", ""),
+            "has_photo": bool(d.get("photo")), "created_at": d["created_at"]}
+
+
+@router.post("/ai/doctor-ask")
+async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
+    answer, left = await _doctor(body, user)
+    saved = await _save_answer(user, body, answer)
+    return {"answer": answer, "asks_left": left, "saved": saved}
+
+
+DOCTOR_PHOTO_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+DOCTOR_PHOTO_MAX = 5 * 1024 * 1024
+
+
+@router.post("/ai/doctor-ask-photo")
+async def doctor_ask_photo(payload: str = Form(...), file: UploadFile = File(...), user: dict = Depends(require_premium)):
+    """Same as doctor-ask, with a photo the Doctor looks at; the photo is kept with the answer."""
+    try:
+        body = DoctorAskIn.model_validate_json(payload)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors()[0].get("msg", "Check the question").replace("Value error, ", ""))
+    if file.content_type not in DOCTOR_PHOTO_TYPES:
+        raise HTTPException(status_code=400, detail="Please choose a JPEG, PNG or WebP photo")
+    data = await file.read(DOCTOR_PHOTO_MAX + 1)
+    if len(data) > DOCTOR_PHOTO_MAX:
+        raise HTTPException(status_code=400, detail="That photo is too big (max 5 MB)")
+    answer, left = await _doctor(body, user, data)
+    photo = None
+    try:
+        path = f"{APP_NAME}/doctor-photos/{user['user_id']}/{uuid.uuid4()}.{DOCTOR_PHOTO_TYPES[file.content_type]}"
+        result = await asyncio.to_thread(put_object, path, data, file.content_type)
+        photo = {"path": result["path"], "content_type": file.content_type}
+    except Exception as e:
+        log.error(f"Doctor photo save failed: {e}")
+    saved = await _save_answer(user, body, answer, photo)
+    return {"answer": answer, "asks_left": left, "saved": saved, "photo_saved": bool(photo)}
+
+
+@router.get("/ai/doctor-history")
+async def doctor_history(user: dict = Depends(get_current_user)):
+    docs = await db.doctor_answers.find({"user_id": user["user_id"], "is_deleted": False}, {"_id": 0}).sort("created_at", -1).to_list(30)
+    return {"answers": [_answer_out(d) for d in docs]}
+
+
+@router.get("/ai/doctor-history/{answer_id}/photo")
+async def doctor_photo(answer_id: str, user: dict = Depends(get_current_user)):
+    d = await db.doctor_answers.find_one({"answer_id": answer_id, "user_id": user["user_id"], "is_deleted": False}, {"_id": 0, "photo": 1})
+    if not d or not d.get("photo"):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    try:
+        data = await asyncio.to_thread(get_object, d["photo"]["path"])
+    except Exception:
+        raise HTTPException(status_code=502, detail="Couldn't load the photo, please try again")
+    return Response(content=data, media_type=d["photo"]["content_type"], headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.delete("/ai/doctor-history/{answer_id}")
+async def doctor_forget(answer_id: str, user: dict = Depends(get_current_user)):
+    res = await db.doctor_answers.update_one({"answer_id": answer_id, "user_id": user["user_id"]}, {"$set": {"is_deleted": True}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Answer not found")
+    return {"ok": True}
 
 
 class PetKitIn(BaseModel):
