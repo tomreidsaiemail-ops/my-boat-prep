@@ -83,7 +83,7 @@ export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDelet
           <Row key={item.id} item={item} pick={picks} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
-            photo={photos && (item.photo_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}
+            photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}
             number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} onPlace={(n) => onPlace(item.id, n)} />}
             tools={tools && inf && <PriorityTools item={item} info={inf} onFlag={() => onFlag(item.id)} onMove={(d) => onMove(item.id, d)} onIndent={(v) => indent(item.id, v)} />} />
         );

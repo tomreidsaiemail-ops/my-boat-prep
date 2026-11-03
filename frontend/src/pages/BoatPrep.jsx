@@ -18,6 +18,9 @@ import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, res
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
+import { SLOTS } from "@/components/boat/PhotoSlots";
+
+const servicePhotos = (items) => items.flatMap((i) => SLOTS.filter((s) => i[s.id]).map((s) => ({ item: i.label, slot: s.label, photo_id: i[s.id], note: i[s.note] || "" }))).slice(0, 60);
 import { ArrivalCheck } from "@/components/boat/departure/ArrivalCheck";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
@@ -302,7 +305,8 @@ export default function BoatPrep({ boatId, boats }) {
     setExporting(true);
     try {
       const { data } = await api.post("/service-history/pdf", { kind, vessel: boat.vessel, skipper: boat.skipper, callsign: boat.callsign,
-        local_date: new Date().toLocaleDateString("en-NZ"), entries: (state[key] || []).map(({ id, ...e }) => e) }, { responseType: "blob" });
+        local_date: new Date().toLocaleDateString("en-NZ"), entries: (state[key] || []).map(({ id, ...e }) => e),
+        boat_id: boats.current.boat_id, photos: servicePhotos(state.data[kind === "engine" ? "engineService" : "electricalService"] || []) }, { responseType: "blob", timeout: 90000 });
       const url = URL.createObjectURL(data);
       const a = Object.assign(document.createElement("a"), { href: url, download: `${kind === "engine" ? "Engine" : "Electrical"} Service History - ${boat.vessel || "My Boat"}.pdf` });
       document.body.appendChild(a); a.click(); a.remove();
@@ -524,11 +528,9 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${kind} status copied to the Ship's Log`);
     return id;
   };
-  const setPhotoId = (id, photoId) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: (s.data[active.id] || []).map((i) => (i.id === id ? { ...i, photo_id: photoId } : i)) } }));
   const itemPhotos = {
     boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : "", listId: active.id, canEdit: !crew, online,
-    onAdd: (id, photoId) => { setPhotoId(id, photoId); toast.success("Photo added"); },
-    onRemove: (id, photoId) => { setPhotoId(id, undefined); api.delete(`/boats/${boats.current.boat_id}/item-photo/${photoId}`).catch(() => {}); toast.success("Photo deleted"); },
+    onPatch: (id, patch) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: (s.data[active.id] || []).map((i) => (i.id === id ? { ...i, ...patch } : i)) } })),
   };
   const relogDeparture = (id, text, kind) => {
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
