@@ -14,7 +14,8 @@ import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
-import { addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds } from "@/lib/defaults";
+import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
+import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
@@ -487,10 +488,21 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     return true;
   };
-  const getLatest = () => {
+  const takeMaster = () => {
     if (!guard()) return;
     mutate((s) => resetLists(s, [active.id], templates));
+    setDialog(null);
     toast.success(`${active.name} now has the latest master items`);
+  };
+  const keepMineOnly = () => {
+    mutate((s) => keepMine(s, active.id, templates));
+    setDialog(null);
+  };
+  const mergeLatest = (merged, n) => {
+    if (!guard()) return;
+    mutate((s) => ({ ...keepMine(s, active.id, templates), data: { ...s.data, [active.id]: merged } }));
+    setDialog(null);
+    toast.success(n ? `${n} master ${n === 1 ? "change" : "changes"} merged into ${active.name}` : `Kept your ${active.name} as it is`);
   };
   const publishTemplate = async (id, list) => {
     const res = await publish(id, list);
@@ -544,8 +556,8 @@ export default function BoatPrep({ boatId, boats }) {
         </p>
       )}
       {!crew && updatedIds.includes(active.id) && (
-        <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onGetLatest={getLatest}
-          onKeepMine={() => mutate((s) => keepMine(s, active.id, templates))} />
+        <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onMerge={() => guard() && setDialog({ type: "merge" })}
+          onKeepMine={keepMineOnly} />
       )}
       {!crew && active.id === "shipsLog" && (
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
@@ -633,6 +645,9 @@ export default function BoatPrep({ boatId, boats }) {
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
         areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
+      {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
+        syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} online={online}
+        onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
