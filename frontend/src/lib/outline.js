@@ -95,7 +95,8 @@ export const removeOutline = (items, id) => {
   return next.filter((i) => i.id !== id);
 };
 
-export const isHeadingLine = (label) => /^\d+[.)]\s+\S/.test(label);
+// "1. Trauma", "1.Trauma" and "1) Trauma" are headings; "2.5L water" isn't.
+export const isHeadingLine = (label) => /^\d+[.)]\s*\p{L}/u.test(label);
 export const ITEM_MAX = 1000;
 
 // Pasted lines → items; with autoIndent, lines after a numbered heading become its sub-items.

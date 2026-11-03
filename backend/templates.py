@@ -167,7 +167,31 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     if changed:
         await _keep_version(doc)
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
+    if changed and not upd["private"]:
+        await push_indents(list_id, doc, items, upd["updated_at"])
     return _custom_out({**doc, **upd})
+
+
+async def push_indents(list_id: str, old: dict, items: list, now: str):
+    """Copies the master's grouping (indents) onto every boat's copy of the list; ticks, notes and photos stay."""
+    want = {i["id"]: bool(i.get("indent")) for i in items}
+    indent_only = [(i["id"], i["label"]) for i in old.get("items", [])] == [(i["id"], i["label"]) for i in items]
+    async for b in db.user_boats.find({f"data.{list_id}": {"$exists": True}}, {"_id": 1, f"data.{list_id}": 1, "template_versions": 1}):
+        cur = b["data"][list_id] or []
+        nxt = []
+        for n, i in enumerate(cur):
+            ind = want.get(i.get("id"))
+            if ind is None or bool(i.get("indent")) == (ind and n > 0):
+                nxt.append(i)
+                continue
+            fixed = {k: v for k, v in i.items() if k != "indent"}
+            nxt.append({**fixed, **({"indent": True} if ind and n > 0 else {}), "ts": now})
+        upd = {f"data.{list_id}": nxt} if nxt != cur else {}
+        # A boat that was up to date only missed the grouping, so it stays up to date.
+        if indent_only and (b.get("template_versions") or {}).get(list_id) == old.get("updated_at"):
+            upd.update({f"template_versions.{list_id}": now, "sec_ts.template_versions": now})
+        if upd:
+            await db.user_boats.update_one({"_id": b["_id"]}, {"$set": upd})
 
 
 @router.delete("/admin/template-lists/{list_id}")
@@ -206,6 +230,8 @@ async def publish_template(list_id: str, payload: TemplateIn, admin: dict = Depe
         await _keep_version(old)
     await db.list_templates.update_one(
         {"list_id": list_id}, {"$set": {"list_id": list_id, "items": items, "updated_at": now, "updated_by": admin["user_id"], "note": payload.note.strip()}}, upsert=True)
+    if old and not (custom and custom.get("private")):
+        await push_indents(list_id, old, items, now)
     return {"list_id": list_id, "items": items, "updated_at": now, "note": payload.note.strip()}
 
 

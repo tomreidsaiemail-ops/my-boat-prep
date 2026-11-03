@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { amazonSearchLinks, swapBadYouTube } from "@/lib/youtube";
+import { isHeadingLine } from "@/lib/outline";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
 export const toLines = (text) => {
@@ -10,7 +11,7 @@ export const toLines = (text) => {
   const heads = new Set();
   text.split("\n").map((l) => l.trim()).filter(Boolean).forEach((l) => {
     const key = l.toLowerCase();
-    if (/^\d+[.)]\s/.test(l)) {
+    if (isHeadingLine(l)) {
       if (heads.has(key)) return;
       heads.add(key);
       seen = new Set();
@@ -92,9 +93,16 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   );
 };
 
-export const AutoIndentToggle = ({ checked, onChange, testId = "create-list" }) => (
-  <label className="flex items-start gap-2 text-sm font-semibold">
-    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${testId}-auto-indent-checkbox`} />
-    Make numbered lines into group headings and indent the items below them
-  </label>
+export const AutoIndentToggle = ({ checked, onChange, headings, hasLines, testId = "create-list" }) => (
+  <div className="flex flex-col gap-1">
+    <label className="flex items-start gap-2 text-sm font-semibold">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${testId}-auto-indent-checkbox`} />
+      Make numbered lines into group headings and indent the items below them
+    </label>
+    {checked && hasLines && headings === 0 && (
+      <p role="status" className="rounded-md bg-amber-50 px-2 py-1.5 text-xs font-semibold text-amber-800" data-testid={`${testId}-auto-indent-warning`}>
+        Ticked, but no numbered headings found. Start a heading line with a number and a dot, e.g. "1. Trauma" or "1.Trauma", so the lines below it are indented.
+      </p>
+    )}
+  </div>
 );

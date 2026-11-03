@@ -97,7 +97,7 @@ export const CreateListDialog = ({ open, online, onConfirm, onClose }) => {
               className="field-input min-h-[150px] py-2 font-normal leading-relaxed" data-testid="create-list-items-input" />
           </label>
           <p className="text-xs text-[var(--muted)]" data-testid="create-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
-          <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} />
+          <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} headings={headings} hasLines={!!lines.length} />
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="create-list-error">{error}</div>}
           {askEmpty ? (
             <div role="alertdialog" className="flex flex-col gap-3 rounded-md border-2 border-amber-400 bg-amber-50 p-3" data-testid="create-list-empty-warning">
