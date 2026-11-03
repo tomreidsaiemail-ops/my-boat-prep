@@ -6,3 +6,8 @@ const p = passagePlan(boat, depart);
 console.log(p.fuelNeed, p.fuel, Math.round(p.range), p.warnings.map((w) => `${w.level}:${w.key}`), p.missing);
 console.log(departureSummary(boat, depart, p, "now"));
 console.log(passagePlan({ pob: 1 }, { levels: {}, calc: { distance_nm: 30, fuel_rate: 3 } }).missing);
+import { arrivalUsage, arrivalSummary } from "../frontend/src/lib/telemetry.js";
+const arrive = { levels: { fuel: "1q", water: "1q", gas: "3q", bat_engine: "3q", bat_house: "half" }, fuel_jerry_left: "1" };
+const use = arrivalUsage(boat, depart, arrive);
+console.log("used", use.fuelUsed, use.waterUsed, use.gasUsed, use.actualRate);
+console.log(arrivalSummary(boat, depart, arrive, use, "now", "Arriving at Destination"));

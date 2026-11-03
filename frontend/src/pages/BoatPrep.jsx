@@ -17,6 +17,7 @@ import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
+import { ArrivalCheck } from "@/components/boat/departure/ArrivalCheck";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
@@ -516,10 +517,10 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
   const engineType = [...(state.engine_log || [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).find((e) => e.engine_type)?.engine_type || "";
-  const logDeparture = (text) => {
+  const logDeparture = (text, kind) => {
     const id = Date.now();
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id, label: text.slice(0, 2000), checked: false }] } }));
-    toast.success("Departure status copied to the Ship's Log");
+    toast.success(`${kind} status copied to the Ship's Log`);
     return id;
   };
   const relogDeparture = (id, text) => {
@@ -580,6 +581,9 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
           onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} />
+      )}
+      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
+        <ArrivalCheck boat={boat} listName={active.name} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} />
       )}
       {!crew && SERVICE_LOGS[active.id] && (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}

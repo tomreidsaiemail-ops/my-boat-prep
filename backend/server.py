@@ -128,6 +128,7 @@ class BoatDetails(BaseModel):
     cruise_kn: str = "6"
     batteries: List[Battery] = Field(default_factory=list, max_length=12)
     depart: Dict[str, Any] = Field(default_factory=dict)
+    arrive: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator(*TANK_FIELDS, mode="before")
     @classmethod
@@ -135,7 +136,7 @@ class BoatDetails(BaseModel):
         v = str(v if v is not None else "").strip().replace(",", ".")
         return v if re.fullmatch(r"\d{0,5}(\.\d{0,2})?", v) else ""
 
-    @field_validator("depart", mode="before")
+    @field_validator("depart", "arrive", mode="before")
     @classmethod
     def depart_size(cls, v):
         return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 12000 else {}

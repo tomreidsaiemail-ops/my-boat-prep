@@ -11,14 +11,14 @@ const Photo = ({ src, name }) => {
 };
 
 const CocktailRow = ({ item, readOnly, onToggle, onDelete }) => (
-  <li className="flex items-start gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-2.5" data-testid={`cocktail-${item.id}`}>
+  <li className={`flex items-start gap-3 rounded-lg border-[1.5px] p-2.5 [transition:background-color_.15s] ${item.checked ? "border-[var(--green)] bg-[#dcfce7]" : "border-[var(--line)] bg-white"}`} data-testid={`cocktail-${item.id}`}>
     <button type="button" onClick={() => onToggle(item.id)} aria-pressed={!!item.checked} aria-label={`Mark ${item.label} as made`} data-testid={`cocktail-tick-${item.id}`}
       className={`mt-5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 ${item.checked ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)]"}`}>
       {item.checked && <Check className="h-4 w-4" />}
     </button>
     <Photo src={item.photo} name={item.label} />
     <div className="min-w-0 flex-1">
-      <p className={`font-bold ${item.checked ? "text-[var(--muted)] line-through" : ""}`} data-testid={`cocktail-name-${item.id}`}>
+      <p className={`font-bold ${item.checked ? "text-[#14532d]" : ""}`} data-testid={`cocktail-name-${item.id}`}>
         {item.label}
         {item.mocktail && <span className="ml-1.5 inline-block rounded-full bg-sky-100 px-2 py-0.5 align-middle text-[10px] font-extrabold uppercase text-sky-800 no-underline" data-testid={`cocktail-mocktail-${item.id}`}>Alcohol-free</span>}
       </p>

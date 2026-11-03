@@ -85,3 +85,37 @@ export const departureSummary = (boat, depart, plan, when) => {
   }
   return `${parts.join(". ")}.`;
 };
+
+// Arrival: what is left (jerry cans and spare bottles still full can be counted down), so the passage's use can be logged.
+const left = (arrive, key, all) => (arrive[key] === undefined || arrive[key] === "" ? all : Math.min(num(arrive[key]), all));
+export const arrivalUsage = (boat, depart, arrive) => {
+  const d = depart.levels || {};
+  const a = arrive.levels || {};
+  const fuelNow = (BY_KEY[a.fuel]?.value ?? 0) * num(boat.fuel_tank) + left(arrive, "fuel_jerry_left", num(boat.fuel_jerry)) * canSize(boat, "fuel_jerry_size");
+  const waterNow = (BY_KEY[a.water]?.value ?? 0) * num(boat.water_tank) + left(arrive, "water_jerry_left", num(boat.water_jerry)) * canSize(boat, "water_jerry_size");
+  const gasNow = ((BY_KEY[a.gas]?.value ?? 0) * num(boat.gas_bottles) + left(arrive, "gas_extra_left", num(boat.gas_extra))) * bottleKg(boat);
+  const plan = passagePlan(boat, depart);
+  const has = (k) => !!d[k] && !!a[k];
+  const fuelUsed = has("fuel") ? fuelOnBoard(boat, d.fuel) - fuelNow : null;
+  return {
+    unit: tankUnit(boat), plan, fuelNow, waterNow, gasNow, fuelUsed,
+    waterUsed: has("water") ? waterOnBoard(boat, d.water) - waterNow : null,
+    gasUsed: has("gas") ? gasOnBoard(boat, d.gas) - gasNow : null,
+    actualRate: fuelUsed > 0 && plan.hours ? fuelUsed / plan.hours : 0,
+  };
+};
+export const usedText = (n, u) => (n === null ? "not known (no departure level)" : n < 0 ? `topped up about ${round(-n)} ${u} on the way` : `about ${round(n)} ${u}`);
+
+export const arrivalSummary = (boat, depart, arrive, use, when, listName) => {
+  const u = use.unit;
+  const l = arrive.levels || {};
+  const parts = [
+    `Arrival check (${listName}) ${when}: Fuel ${levelLabel(l.fuel)} (about ${round(use.fuelNow)} ${u} left)`,
+    `Water ${levelLabel(l.water)} (about ${round(use.waterNow)} ${u} left)`,
+    `Gas ${levelLabel(l.gas)} (about ${round(use.gasNow)} kg left)`,
+    `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)} ${levelLabel(l[`bat_${b.id}`])}${depart.levels?.[`bat_${b.id}`] ? ` (was ${levelLabel(depart.levels[`bat_${b.id}`])})` : ""}`).join(", ")}`,
+    `Used on the passage${boat.route_start && boat.route_dest ? ` ${boat.route_start} to ${boat.route_dest}` : ""}: fuel ${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${round(use.plan.fuelNeed)} ${u})` : ""}, water ${usedText(use.waterUsed, u)}, gas ${usedText(use.gasUsed, "kg")}`,
+  ];
+  if (use.actualRate) parts.push(`Actual fuel use about ${round(use.actualRate)} ${u}/h against ${round(use.plan.rate)} ${u}/h planned`);
+  return `${parts.join(". ")}.`;
+};

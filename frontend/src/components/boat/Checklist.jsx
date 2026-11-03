@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronRight, Flag, IndentDecrease, IndentIncrease, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, Flag, IndentDecrease, IndentIncrease, MapPin, Pencil, Trash2 } from "lucide-react";
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
 import { MpaText } from "@/components/boat/MpaBadges";
@@ -38,6 +38,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
         <span className={`tick-box ${emergency ? `tick-${emergency}` : ""}`}>{item.checked && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
           <span className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} data-testid={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></span>
+          {item.checked && !pick && <span className="tick-badge" data-testid={`checklist-item-ticked-${item.id}`}><CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Done</span>}
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
           {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
