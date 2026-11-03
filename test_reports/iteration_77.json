@@ -1,0 +1,49 @@
+{
+  "summary": "Tested photos on checklist items (Rigging Checks, Electrical Service, Engine Service) with backend pytest (11/11 passed) and Playwright at 1920x800 and 390x844, as owner and as crew. Everything requested works: the camera shows only on the three lists, upload, thumbnail with red X, 176px hover preview, Open full view, tap to open full view, delete, the photo staying after a reload, crew view-only, and the flagged + ticked hover fix. One minor layout point: the thumbnail and X are about 26px wider than the camera icon. Items whose text is near the wrap point gain an extra line when a photo is added. For example, the 'Shrouds and stays' row grows from 57 to 72px on desktop and from 72 to 94px at 390px. Single-line rows stay at the standard 57px (desktop) / 72px (mobile).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/boats/{boat}/item-photo/{id}", "issue": "Soft delete only; the object stays in storage. Deleting a checklist item, Reset All or deleting the list does not delete its photo, so stored objects pile up with nothing pointing to them."},
+      {"endpoint": "POST /api/boats/{boat}/item-photo", "issue": "The type is checked against the client's content_type only (no magic-byte check). list_id is stored but never checked again on GET."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Delete item photo", "issue": "onRemove clears photo_id at once and calls DELETE with .catch(() => {}). When offline or on error, the stored photo is never removed and no retry is queued. The red X also deletes with no confirm or undo.", "affected_selectors": ["item-photo-delete-<id>"]}
+    ],
+    "design_issues": [
+      {"screen": "Rigging/Electrical/Engine rows", "issues": [
+        "The thumbnail and X (32 + 28 + gap = 62px) take more room than the camera (36px). Text near the wrap point gains a line once a photo is added (desktop text width drops about 26px; at 390px it drops from 174 to 148px).",
+        "At 390px the camera alone already narrows the text column, so these lists wrap more than other lists. Consider an overlay X on the thumbnail corner, or a narrower X (w-5)."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_item_photos.py", "/app/test_reports/pytest/pytest_item_photos.xml"],
+  "action_items": [
+    "Optional: make the photo cluster no wider than the camera (for example, an X overlaid on the thumbnail corner) so rows never gain a line when a photo is added",
+    "Optional: remove stored item photos when the item, the list or Reset All removes them, and queue or retry the DELETE when offline",
+    "Optional: check image magic bytes on item-photo upload"
+  ],
+  "critical_code_review_comments": [
+    "Access checks are correct: upload and delete filter by owner_id = the caller (a crew DELETE does nothing). GET with ?owner= needs the caller in that boat's crew; anyone else gets 404.",
+    "The ItemPhoto blob cache never calls revokeObjectURL. That is fine for a session, but blob URLs build up if many photos are viewed.",
+    "Doctor regression checked by reading the code only: DoctorAsk.jsx line 59 calls setPhoto(null) after a successful ask. No live AI call was made."
+  ],
+  "verified": [
+    "item-photo-add-<id> appears on every row of riggingChecks (15), electricalService (13) and engineService (9); provisions, head and myTodo have 0",
+    "Rows without a photo are 57px on the photo lists and on others (desktop)",
+    "item-photo-input accept=image/*. Upload sends POST /api/boats/main/item-photo?list_id=riggingChecks (200) and shows the 'Photo added' toast. item-photo-thumb is 32x32 and item-photo-delete (rgb(220,38,38)) sits right of it. photo_id is saved in user_boats.data and the thumbnail is still there after a reload",
+    "Hover shows item-photo-preview with a 176x176 image; item-photo-open opens item-photo-full (742px wide on desktop) titled with the item text; Escape closes it; clicking the thumbnail opens the full view (also at 390px)",
+    "Red X: the thumbnail goes, the camera comes back, the 'Photo deleted' toast shows, DELETE returns 200, photo_id is removed from the data, and GET then returns 404 (pytest)",
+    "Crew (beta added to pro crew) at 390px: sees the thumbnails and full view, fetched with ?owner=test-user-pro (200); no camera, no X, no edit buttons. An unrelated user gets 404 and the crew member without ?owner gets 404",
+    "Backend: safety and provisions give 400, list_id over 40 characters gives 422, text/plain gives 400, over 3 MB gives 400 'max 3 MB', unauthenticated gives 401, an unknown boat gives 404, a bad photo_id gives 422, bytes come back identical, and electrical and engine uploads give 200",
+    "Iteration 76 fix: a flagged + ticked row has background rgb(254,242,242) both on hover and without hover"
+  ],
+  "updated_files": ["/app/backend/tests/test_item_photos.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% functional (1 minor layout note)"},
+  "seed_data_creation": "Temporarily added test-user-beta to the pro boat's crew; removed. The pro user_boats doc was restored from /tmp/bk77/pro_boats.json (flagging had moved item 202 to the top). My 6 item_photos records were deleted by photo_id. Record a2b0f12dbc2248e59925f81191ae8e60 (21:48:23, before my run) was left in place.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The pro boat has no Safety list; use provisions or head as the non-photo comparison. The list selector does not keep the chosen list after a reload (it goes back to Boat Inventory). For crew, add test-user-beta to user_boats.crew, then use boat-switcher button and boat-option-c_test-user-pro_main. The flag button needs ordering-toggle on, and flagging moves the item to the top, so back up and restore the doc. Sample image: /tmp/hand.jpg."
+}

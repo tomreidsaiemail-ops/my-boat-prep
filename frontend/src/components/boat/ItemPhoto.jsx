@@ -73,10 +73,10 @@ export const ItemPhoto = ({ item, name, photos }) => {
   };
   if (item.photo_id) {
     return (
-      <span className="flex shrink-0 items-center gap-0.5" data-testid={`item-photo-${item.id}`}>
+      <span className="relative mr-1 flex w-9 shrink-0 items-center" data-testid={`item-photo-${item.id}`}>
         <Thumb url={url} name={name} id={item.id} />
-        {canEdit && <button type="button" className="flex h-8 w-7 items-center justify-center text-[var(--red)] hover:opacity-70" onClick={() => onRemove(item.id, item.photo_id)}
-          aria-label="Delete photo" data-testid={`item-photo-delete-${item.id}`}><X className="h-4 w-4" strokeWidth={3} /></button>}
+        {canEdit && <button type="button" className="absolute -right-1 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--red)] text-white shadow ring-2 ring-white hover:opacity-80"
+          onClick={() => onRemove(item.id, item.photo_id)} aria-label="Delete photo" data-testid={`item-photo-delete-${item.id}`}><X className="h-3 w-3" strokeWidth={3.5} /></button>}
       </span>
     );
   }

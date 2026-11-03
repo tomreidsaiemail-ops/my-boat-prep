@@ -409,3 +409,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Engine Service History: Cruising speed (default 6 kn) beside Engine type (boat.cruise_kn)
 - Leaving Dock list top: DepartureCheck (components/boat/departure): Full..Empty colour buttons for fuel/gas/water/each battery, red warning at 1/4 and Empty, 1/3 rule hint; Magic Mariner passage calc POST /api/ai/passage (distance nm + fuel use/h), skipper reviews or overrides; range + red/amber warnings (1/3 rule incl. jerry cans; water and gas incl. extras); skipper acknowledgment (holding cruise speed / 6 kn default); checkbox copies summary into Ship's Log, flags and updates the entry if things change. Logic in lib/telemetry.js.
 - Tests: iteration_74 + follow-up fixes (pytest 9 passed/1 skipped, /app/tests/telemetry_unit.mjs)
+
+## 2026-06 Arrival check, green ticks, Doctor photos, item photos
+- Arrival status check (ArrivalCheck.jsx) at top of Arriving at Destination + Returning to Dock: levels on arrival, spare cans/bottles still full, fuel/water/gas used vs departure (boat.depart) and planned, actual L/h; copies to Ship's Log (shared LogCopy/TankLevels with departure). boat.arrive persisted.
+- Ticked checklist rows: green background + left edge + "Done" badge (no strike-through); flagged+ticked stays red; cocktails rows green.
+- Magic Marine Doctor: optional photo (attach/take) -> POST /api/ai/doctor-ask-photo (Gemini vision); every answer saved in db.doctor_answers with photo in object storage; "Past answers and photos" history (GET /api/ai/doctor-history, /{id}/photo, DELETE). Disclaimer unchanged.
+- Item photos on riggingChecks/electricalService/engineService: camera icon, 32px thumbnail with red X badge, hover preview + Open full view, tap = full view; skipper adds, crew views (photos.py item-photo endpoints, db.item_photos, item.photo_id). Row height unchanged.
+- Tests: iterations 75-77 passed
