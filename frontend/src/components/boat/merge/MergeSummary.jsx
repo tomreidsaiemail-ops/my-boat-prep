@@ -8,7 +8,7 @@ const Line = ({ item, kind, note, testId }) => (
 );
 
 // The top of the merge window: what changed in the master, and what of the skipper's own is kept.
-export const MergeSummary = ({ plan, listName, when }) => {
+export const MergeSummary = ({ plan, listName, when, notes = [] }) => {
   const { masterAdded, masterRemoved, mineAdded, mineRemoved, exact } = plan;
   const offered = new Set([...plan.add, ...plan.remove].map((i) => i.mkey));
   return (
@@ -16,6 +16,12 @@ export const MergeSummary = ({ plan, listName, when }) => {
       <p className="text-sm font-extrabold" data-testid="merge-summary-title">
         {exact ? `What changed in the master ${listName}${when ? ` (${when})` : ""}` : `How the master ${listName} differs from yours`}
       </p>
+      {notes.length > 0 && (
+        <div className="rounded border-l-4 border-[var(--blue)] bg-white px-2.5 py-1.5" data-testid="merge-summary-notes">
+          <p className="field-label">Why it changed</p>
+          {notes.map((n, k) => <p key={n.at || k} className="text-sm" data-testid={`merge-summary-note-${k}`}>{n.note}</p>)}
+        </div>
+      )}
       <p className="text-xs font-semibold" data-testid="merge-summary-counts">
         {masterAdded.length} {exact ? "added" : "only in the master"}, {masterRemoved.length} {exact ? "removed" : "only in yours"}
       </p>

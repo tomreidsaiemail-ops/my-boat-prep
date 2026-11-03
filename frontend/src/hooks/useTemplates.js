@@ -14,9 +14,9 @@ export default function useTemplates(online) {
     api.get("/templates", { timeout: 10000 }).then(({ data }) => setTemplates(data.templates)).catch(() => {});
   }, [online]);
 
-  const publish = useCallback(async (listId, items) => {
-    const { data } = await api.put(`/admin/templates/${listId}`, { items }, { timeout: 15000 });
-    setTemplates((t) => ({ ...t, [listId]: { items: data.items, updated_at: data.updated_at } }));
+  const publish = useCallback(async (listId, items, note = "") => {
+    const { data } = await api.put(`/admin/templates/${listId}`, { items, note }, { timeout: 15000 });
+    setTemplates((t) => ({ ...t, [listId]: { ...t[listId], items: data.items, updated_at: data.updated_at, note: data.note || "" } }));
     return data;
   }, []);
 

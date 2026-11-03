@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from bson import ObjectId
 import asyncio
+import json
 import os
 import re
 import logging
@@ -77,6 +78,19 @@ class Pet(BaseModel):
     weight: str = Field(default="", max_length=8)
 
 
+class Battery(BaseModel):
+    id: str = Field(default="", max_length=40)
+    role: Literal["engine", "house", "portable"] = "portable"
+    make: str = Field(default="", max_length=60)
+    volts: Literal["", "12", "24", "48"] = ""
+    ah: str = Field(default="", max_length=6)
+    chem: Literal["", "lithium", "flooded", "agm", "gel"] = ""
+    notes: str = Field(default="", max_length=200)
+
+
+TANK_FIELDS = ("fuel_tank", "fuel_jerry", "fuel_jerry_size", "water_tank", "water_jerry", "water_jerry_size", "gas_bottles", "gas_kg", "gas_extra", "cruise_kn")
+
+
 class BoatDetails(BaseModel):
     vessel: str = ""
     skipper: str = ""
@@ -101,6 +115,30 @@ class BoatDetails(BaseModel):
     model: str = ""
     budget_currency: str = ""
     budget_notes: str = ""
+    tank_units: Literal["L", "gal"] = "L"
+    fuel_tank: str = ""
+    fuel_jerry: str = ""
+    fuel_jerry_size: str = ""
+    water_tank: str = ""
+    water_jerry: str = ""
+    water_jerry_size: str = ""
+    gas_bottles: str = ""
+    gas_kg: str = ""
+    gas_extra: str = ""
+    cruise_kn: str = "6"
+    batteries: List[Battery] = Field(default_factory=list, max_length=12)
+    depart: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator(*TANK_FIELDS, mode="before")
+    @classmethod
+    def tank_number(cls, v):
+        v = str(v if v is not None else "").strip().replace(",", ".")
+        return v if re.fullmatch(r"\d{0,5}(\.\d{0,2})?", v) else ""
+
+    @field_validator("depart", mode="before")
+    @classmethod
+    def depart_size(cls, v):
+        return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 12000 else {}
 
     @field_validator("make", "model", mode="before")
     @classmethod

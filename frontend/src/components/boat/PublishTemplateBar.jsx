@@ -11,12 +11,14 @@ const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit",
 export const PublishTemplateBar = ({ list, items, template, online, onPublish }) => {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
 
   const publish = async () => {
     setConfirm(false);
     setBusy(true);
     try {
-      await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })));
+      await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })), note.trim());
+      setNote("");
       toast.success(`${list.name} published as the master template`);
     } catch (e) {
       toast.error(typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't publish, please try again");
@@ -33,7 +35,7 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
       <p className="text-sm leading-relaxed" data-testid="publish-template-status">
         <b>Admin · Master template.</b>{" "}
         {template ? `Last published ${fmt(template.updated_at)} with ${template.items.length} items.` : "Not published yet: skippers get the built-in items."}
-        {" "}New skippers start with it; existing skippers see an Updated note with "Get latest items", or get it when they reset {list.name}.
+        {" "}New skippers start with it; existing skippers see an Updated note with "Merge Latest", or get it when they reset {list.name}.
       </p>
       <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" disabled={busy} onClick={open} data-testid="publish-template-btn">
         {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <UploadCloud className="h-5 w-5" />} Publish as master template
@@ -46,6 +48,12 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
               Your {items.length} {list.name} items (unticked) become the master template. New skippers start with them, and existing skippers get them next time they reset {list.name}. Cloned lists are not changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <label className="flex flex-col gap-1 text-left">
+            <span className="field-label">Why this changed (optional)</span>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={3} placeholder="e.g. Added a VHF radio check before leaving"
+              className="field-input !h-auto py-2 text-sm" data-testid="publish-template-note-input" />
+            <span className="text-xs text-[var(--muted)]">Skippers see this in the Merge Latest summary.</span>
+          </label>
           <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid="publish-template-cancel-btn">Cancel</AlertDialogCancel>
             <AlertDialogAction className="btn-solid px-5" onClick={publish} data-testid="publish-template-confirm-btn">Publish</AlertDialogAction>

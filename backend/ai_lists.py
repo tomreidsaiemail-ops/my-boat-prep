@@ -507,3 +507,45 @@ async def budget_comments(body: BudgetIn, user: dict = Depends(require_premium))
     prompt += f"\nCurrency: {body.currency.strip().upper() or 'the local currency, named'}"
     answer, left = await _run(user, "budget", prompt, parse_budget, {"name": "Boat budget", "boat": boat[:120]}, BUDGETER, "Magic Mariner budgeting")
     return {"answer": answer, "asks_left": left}
+
+
+PASSAGE = ("You are the Magic Mariner in the My Boat Prep app, helping a skipper plan fuel for a motoring passage. "
+           "Estimate the sea-route distance in nautical miles between the start and destination (by water, around headlands, not a straight line), "
+           "and the engine's fuel use per hour at the given cruising speed for this boat and engine. Be realistic and slightly conservative. "
+           'Reply with JSON only, no code fences: {"distance_nm": 0, "fuel_rate": 0, "notes": "one or two short plain sentences on your assumptions"}')
+
+
+class PassageIn(BaseModel):
+    start: str = Field(min_length=1, max_length=80)
+    dest: str = Field(min_length=1, max_length=80)
+    engine_type: str = Field(default="", max_length=80)
+    cruise_kn: float = Field(default=6, gt=0, le=60)
+    boat_type: str = Field(default="", max_length=60)
+    make: str = Field(default="", max_length=60)
+    model: str = Field(default="", max_length=60)
+    loa: str = Field(default="", max_length=8)
+    units: str = Field(default="m", pattern="^(m|ft)$")
+    tank_units: str = Field(default="L", pattern="^(L|gal)$")
+
+
+def parse_passage(text: str) -> dict:
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        raise ValueError("no json")
+    d = json.loads(match.group(0))
+    dist, rate = float(d.get("distance_nm") or 0), float(d.get("fuel_rate") or 0)
+    if not (0 < dist <= 5000 and 0 < rate <= 500):
+        raise ValueError("bad numbers")
+    return {"distance_nm": round(dist, 1), "fuel_rate": round(rate, 1), "notes": re.sub(r"[*#`]+", "", str(d.get("notes") or "")).strip()[:400]}
+
+
+@router.post("/ai/passage")
+async def passage_estimate(body: PassageIn, user: dict = Depends(require_premium)):
+    unit = "US gallons" if body.tank_units == "gal" else "litres"
+    boat = " ".join(x.strip() for x in (body.make, body.model, body.boat_type) if x.strip()) or "a cruising boat"
+    prompt = (f"Start: {body.start.strip()}\nDestination: {body.dest.strip()}\nBoat: {boat}"
+              + (f", LOA {body.loa.strip()} {body.units}" if body.loa.strip() else "")
+              + f"\nEngine: {body.engine_type.strip() or 'not recorded (assume a typical diesel for this boat)'}"
+              + f"\nCruising speed: {body.cruise_kn:g} knots\nGive fuel_rate in {unit} per hour.")
+    est, left = await _run(user, "passage", prompt, parse_passage, {"name": "Passage fuel plan", "route": f"{body.start} to {body.dest}"[:120]}, PASSAGE, "Magic Mariner passage plan")
+    return {**est, "asks_left": left}

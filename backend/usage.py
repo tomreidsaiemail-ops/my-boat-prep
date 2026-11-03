@@ -3,8 +3,8 @@ from typing import Optional
 from db import db
 
 FEATURES = {"MMD": "Magic Marine Doctor", "MPA": "Magic Provisioning Assistant", "MME": "Magic Marine Engineer",
-            "MMN": "Magic Marine Navigator", "MLG": "Magic List Generation", "BMMS": "Batch Magic Marine Scan", "MMS": "Magic Marine Scan", "MMB": "Magic Mariner Budgeting", "MBT": "Magic Bartender"}
-KIND_FEATURE = {"doctor": "MMD", "mpa": "MPA", "engine": "MME", "navigator": "MMN", "draft": "MLG", "topup": "MLG", "budget": "MMB", "bartender": "MBT"}
+            "MMN": "Magic Marine Navigator", "MLG": "Magic List Generation", "BMMS": "Batch Magic Marine Scan", "MMS": "Magic Marine Scan", "MMB": "Magic Mariner Budgeting", "MBT": "Magic Bartender", "MMP": "Magic Mariner Passage"}
+KIND_FEATURE = {"doctor": "MMD", "mpa": "MPA", "engine": "MME", "navigator": "MMN", "draft": "MLG", "topup": "MLG", "budget": "MMB", "bartender": "MBT", "passage": "MMP"}
 
 
 async def record_usage(user_id: str, feature: str, usage: Optional[object]):

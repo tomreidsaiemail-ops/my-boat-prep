@@ -36,7 +36,7 @@ const EngineTypeHead = ({ type }) => (
 
 const NOTES_MAX = 2000;
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
   const [value, setValue] = useState("");
@@ -73,9 +73,18 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
       </div>
       <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} warn={dueWarn} />
       <form onSubmit={submit} className="grid grid-cols-2 gap-2">
-        <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-[1.1fr_0.85fr_1.45fr] items-end" : "grid-cols-2"}`}>
-        {engine && <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
-          <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>}
+        {engine && <div className="col-span-2 grid grid-cols-[1.6fr_1fr] items-end gap-2" data-testid="engine-type-row">
+          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
+            <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>
+          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Cruising speed</span>
+            <span className="relative">
+              <input value={cruise ?? "6"} onChange={(e) => /^\d{0,2}([.,]\d?)?$/.test(e.target.value) && onCruise(e.target.value.replace(",", "."))} inputMode="decimal" placeholder="6"
+                className="field-input w-full min-w-0 px-1.5 pr-9 text-sm" data-testid="cruise-speed-input" />
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">kn</span>
+            </span>
+          </label>
+        </div>}
+        <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-2 items-end" : "grid-cols-2"}`}>
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}
             onChange={(e) => setValue(e.target.value)} placeholder={k.placeholder} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={k.fieldId} /></label>

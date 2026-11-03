@@ -14,6 +14,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
   const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent));
   const [priv, setPriv] = useState(!!initial?.private);
+  const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const lines = toLines(text);
@@ -30,7 +31,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
     setBusy(true);
     setError("");
     const items = linesToItems(lines, autoIndent, 0, LINE_MAX).map((i) => ({ label: i.label, indent: !!i.indent }));
-    try { await onSave({ name: name.trim(), description: description.trim(), items, private: priv }); } catch (err) { setError(errText(err)); setBusy(false); }
+    try { await onSave({ name: name.trim(), description: description.trim(), items, private: priv, note: note.trim() }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
   return (
@@ -46,6 +47,12 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
       <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} testId="template-list" />
+      {initial && !priv && (
+        <label className="flex flex-col gap-1 text-sm font-bold">Why this changed (optional)
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="e.g. Added a VHF radio check" className="field-input font-normal" data-testid="template-list-note-input" />
+          <span className="text-xs font-normal text-[var(--muted)]">Skippers see this in the Merge Latest summary if the items changed.</span>
+        </label>
+      )}
       <label className="flex items-start gap-2 text-sm font-bold">
         <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="mt-0.5 h-5 w-5 accent-[var(--navy)]" data-testid="template-list-private-checkbox" />
         <span>Private to admin user<span className="block text-xs font-normal text-[var(--muted)]">Kept in the Admin panel only, never sent to any boat. Use for system lists like Admin - Food Synonyms and Admin - Food Noise Words.</span></span>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DetailsSection } from "@/components/boat/telemetry/DetailsSection";
+import { TelemetrySection } from "@/components/boat/telemetry/TelemetrySection";
 import { PetsSection } from "@/components/boat/PetsSection";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
@@ -114,11 +116,15 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
               onChange={(e) => onChange("mmsi", e.target.value.replace(/\D/g, "").slice(0, 9))} />
             {boat.mmsi && boat.mmsi.length !== 9 && <span className="text-xs font-bold text-[var(--red)]" data-testid="mmsi-warning">An MMSI number has 9 digits</span>}
           </label>
-          <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => onChange("units", u)} /></div>
-          <DimField id="loa" label="LOA (length)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
-          <DimField id="beam" label="Beam" value={boat.beam} unit={unit} onChange={(v) => onChange("beam", v)} />
-          <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
-          <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />
+          <DetailsSection title="Vessel Telemetry / Vessel Dimensions" testId="dimensions-section"
+            summary={[["LOA", boat.loa], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, beam, draft and mast height"}>
+            <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => onChange("units", u)} /></div>
+            <DimField id="loa" label="LOA (length)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
+            <DimField id="beam" label="Beam" value={boat.beam} unit={unit} onChange={(v) => onChange("beam", v)} />
+            <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
+            <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />
+          </DetailsSection>
+          <TelemetrySection boat={boat} onChange={onChange} />
           <IntField id="trip-days" label="Trip duration (days)" value={boat.trip_days || ""} min={0} max={365} placeholder="Optional" onChange={(n) => onChange("trip_days", n)} />
           <PetsSection pets={boat.pets || []} units={unit} onChange={(p) => onChange("pets", p)} onMakeKit={onMakeKit && (async () => { if (await onMakeKit()) onClose(); })} />
         </div>

@@ -32,8 +32,12 @@ class TemplateItem(BaseModel):
     meal_type: Optional[Literal["breakfast", "lunch", "dinner", "dessert", "snack"]] = None
 
 
+NOTE_MAX = 300
+
+
 class TemplateIn(BaseModel):
     items: List[TemplateItem] = Field(max_length=300)
+    note: str = Field(default="", max_length=NOTE_MAX)
 
 
 RESERVED_NAMES = {n.lower() for n in TEMPLATE_LISTS.values()} | {
@@ -50,6 +54,7 @@ class TemplateListIn(BaseModel):
     description: str = Field(default="", max_length=4000)
     items: List[Union[str, TemplateLine]] = Field(max_length=300)
     private: Optional[bool] = None
+    note: str = Field(default="", max_length=NOTE_MAX)
 
 
 def _custom_out(d: dict) -> dict:
@@ -97,7 +102,7 @@ async def _check_name(name: str, exclude: Optional[str] = None) -> str:
 async def get_templates(_: dict = Depends(get_current_user)):
     # Private admin lists are system lists: they never reach any boat.
     docs = await db.list_templates.find({"private": {"$ne": True}}, {"_id": 0, "updated_by": 0}).to_list(200)
-    return {"templates": {d["list_id"]: {"items": d["items"], "updated_at": d["updated_at"],
+    return {"templates": {d["list_id"]: {"items": d["items"], "updated_at": d["updated_at"], "note": d.get("note", ""),
                                          **({"custom": True, "name": d["name"], "description": d.get("description", ""), "created_at": d["created_at"]} if d.get("custom") else {})} for d in docs}}
 
 
@@ -158,7 +163,7 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     name = await _check_name(payload.name, exclude=list_id)
     items = _items_from_labels(payload.items, doc["items"])
     changed = items != doc["items"]
-    upd = {"name": name, "description": payload.description.strip(), "items": items, "private": doc.get("private", False) if payload.private is None else payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat()} if changed else {})}
+    upd = {"name": name, "description": payload.description.strip(), "items": items, "private": doc.get("private", False) if payload.private is None else payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat(), "note": payload.note.strip()} if changed else {})}
     if changed:
         await _keep_version(doc)
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
@@ -194,14 +199,14 @@ async def publish_template(list_id: str, payload: TemplateIn, admin: dict = Depe
     if missing:
         raise HTTPException(status_code=400, detail=f"The {TEMPLATE_LISTS[list_id]} template must keep its vessel, callsign and GPS lines. Reset your {TEMPLATE_LISTS[list_id]} list to get them back.")
     now = datetime.now(timezone.utc).isoformat()
-    old = await db.list_templates.find_one({"list_id": list_id}, {"_id": 0, "list_id": 1, "items": 1, "updated_at": 1})
+    old = await db.list_templates.find_one({"list_id": list_id}, {"_id": 0, "list_id": 1, "items": 1, "updated_at": 1, "note": 1})
     if old and old.get("items") == items:
         return {"list_id": list_id, "items": items, "updated_at": old["updated_at"]}
     if old:
         await _keep_version(old)
     await db.list_templates.update_one(
-        {"list_id": list_id}, {"$set": {"list_id": list_id, "items": items, "updated_at": now, "updated_by": admin["user_id"]}}, upsert=True)
-    return {"list_id": list_id, "items": items, "updated_at": now}
+        {"list_id": list_id}, {"$set": {"list_id": list_id, "items": items, "updated_at": now, "updated_by": admin["user_id"], "note": payload.note.strip()}}, upsert=True)
+    return {"list_id": list_id, "items": items, "updated_at": now, "note": payload.note.strip()}
 
 
 VERSIONS_KEPT = 30
@@ -212,7 +217,7 @@ async def _keep_version(doc: dict):
     if not doc.get("updated_at"):
         return
     await db.template_versions.update_one({"list_id": doc["list_id"], "updated_at": doc["updated_at"]},
-                                          {"$set": {"list_id": doc["list_id"], "updated_at": doc["updated_at"], "items": doc["items"]}}, upsert=True)
+                                          {"$set": {"list_id": doc["list_id"], "updated_at": doc["updated_at"], "items": doc["items"], "note": doc.get("note", "")}}, upsert=True)
     old = await db.template_versions.find({"list_id": doc["list_id"]}, {"_id": 1}).sort("updated_at", -1).skip(VERSIONS_KEPT).to_list(100)
     if old:
         await db.template_versions.delete_many({"_id": {"$in": [d["_id"] for d in old]}})
@@ -221,11 +226,15 @@ async def _keep_version(doc: dict):
 @router.get("/templates/{list_id}/version")
 async def template_version(list_id: str, at: str, _: dict = Depends(get_current_user)):
     """Master items as they were at `at` (the version a boat last synced); 404 when that version wasn't kept."""
-    doc = await db.list_templates.find_one({"list_id": list_id, "updated_at": at, "private": {"$ne": True}}, {"_id": 0, "items": 1}) \
-        or await db.template_versions.find_one({"list_id": list_id, "updated_at": at}, {"_id": 0, "items": 1})
+    current = await db.list_templates.find_one({"list_id": list_id, "private": {"$ne": True}}, {"_id": 0, "items": 1, "updated_at": 1, "note": 1})
+    doc = current if current and current["updated_at"] == at else await db.template_versions.find_one({"list_id": list_id, "updated_at": at}, {"_id": 0, "items": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="That master version isn't available")
-    return {"items": doc["items"]}
+    # The "why this changed" notes of every master update since that version, oldest first.
+    later = await db.template_versions.find({"list_id": list_id, "updated_at": {"$gt": at}}, {"_id": 0, "updated_at": 1, "note": 1}).sort("updated_at", 1).to_list(VERSIONS_KEPT)
+    if current and current["updated_at"] > at:
+        later.append(current)
+    return {"items": doc["items"], "notes": [{"at": v["updated_at"], "note": v["note"]} for v in later if v.get("note")]}
 
 
 BUDGET_LINES = ["Marina berth or mooring fees", "Insurance | Hull and third party policy", "Haul out and hardstand", "Antifouling | Antifouling paint",

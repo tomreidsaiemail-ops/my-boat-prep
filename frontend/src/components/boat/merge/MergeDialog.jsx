@@ -10,23 +10,24 @@ import { MergeDiscard } from "@/components/boat/merge/MergeDiscard";
 const fmtDay = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "");
 
 // Fetches the master version this boat last synced, so master changes can be told apart from the skipper's own.
-const useBase = (open, listId, syncedAt, online, fallback) => {
-  const [state, setState] = useState({ loading: true, items: null });
+const useBase = (open, listId, syncedAt, online, fallback, masterNote) => {
+  const [state, setState] = useState({ loading: true, items: null, notes: [] });
+  const latest = masterNote ? [{ note: masterNote }] : [];
   useEffect(() => {
     if (!open) return undefined;
     let live = true;
-    setState({ loading: true, items: null });
-    if (!syncedAt || !online) { setState({ loading: false, items: syncedAt ? null : fallback }); return undefined; }
+    setState({ loading: true, items: null, notes: [] });
+    if (!syncedAt || !online) { setState({ loading: false, items: syncedAt ? null : fallback, notes: latest }); return undefined; }
     api.get(`/templates/${listId}/version`, { params: { at: syncedAt } })
-      .then(({ data }) => live && setState({ loading: false, items: data.items }))
-      .catch(() => live && setState({ loading: false, items: null }));
+      .then(({ data }) => live && setState({ loading: false, items: data.items, notes: data.notes || [] }))
+      .catch(() => live && setState({ loading: false, items: null, notes: latest }));
     return () => { live = false; };
   }, [open, listId, syncedAt, online]); // eslint-disable-line react-hooks/exhaustive-deps
   return state;
 };
 
-export const MergeDialog = ({ open, list, local, master, masterAt, syncedAt, fallbackBase, online, onMerge, onTakeMaster, onKeepMine, onClose }) => {
-  const base = useBase(open, list?.id, syncedAt, online, fallbackBase);
+export const MergeDialog = ({ open, list, local, master, masterAt, syncedAt, fallbackBase, masterNote, online, onMerge, onTakeMaster, onKeepMine, onClose }) => {
+  const base = useBase(open, list?.id, syncedAt, online, fallbackBase, masterNote);
   const plan = useMemo(() => mergePlan(base.items, master, local), [base.items, master, local]);
   const [picked, setPicked] = useState(new Set());
   useEffect(() => { setPicked(new Set()); }, [open, base.items]);
@@ -43,7 +44,7 @@ export const MergeDialog = ({ open, list, local, master, masterAt, syncedAt, fal
           <p className="flex items-center gap-2 text-sm" data-testid="merge-loading"><Loader2 className="h-4 w-4 animate-spin" /> Comparing with the master...</p>
         ) : (
           <div className="flex flex-col gap-4">
-            <MergeSummary plan={plan} listName={list?.name} when={fmtDay(masterAt)} />
+            <MergeSummary plan={plan} listName={list?.name} when={fmtDay(masterAt)} notes={base.notes} />
             <MergeChoices plan={plan} picked={picked} onToggle={toggle} allOn={all.length > 0 && all.every((k) => picked.has(k))}
               onAll={(on) => setPicked(new Set(on ? all : []))} />
             <button type="button" className="btn-solid h-12 justify-center" onClick={() => onMerge(applyMerge(local, master, plan, picked), picked.size)} data-testid="merge-confirm-btn">

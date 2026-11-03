@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
+import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
@@ -504,8 +505,8 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(n ? `${n} master ${n === 1 ? "change" : "changes"} merged into ${active.name}` : `Kept your ${active.name} as it is`);
   };
-  const publishTemplate = async (id, list) => {
-    const res = await publish(id, list);
+  const publishTemplate = async (id, list, note) => {
+    const res = await publish(id, list, note);
     mutate((s) => ({ ...s, template_versions: { ...(s.template_versions || {}), [id]: res.updated_at } }));
     return res;
   };
@@ -514,6 +515,14 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  const engineType = [...(state.engine_log || [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).find((e) => e.engine_type)?.engine_type || "";
+  const logDeparture = (text) => {
+    const id = Date.now();
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id, label: text.slice(0, 2000), checked: false }] } }));
+    toast.success("Departure status copied to the Ship's Log");
+    return id;
+  };
+  const unlogDeparture = (id) => mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).filter((i) => i.id !== id) } }));
   const mail = useEmailSender({ savedEmail: boat.log_email, saveEmail: (v) => updateBoat("log_email", v), emailLog, localDate: VERBOSE_DATE, position: gps.text });
   const emailPrompt = (
     <TextDialog open={!!mail.prompt} title="Where should we send it?" description="Enter the email address for your PDFs. It's saved next to Skipper for next time."
@@ -564,12 +573,17 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
+      {!crew && active.id === "leavingDock" && (
+        <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
+          onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} />
+      )}
       {!crew && SERVICE_LOGS[active.id] && (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}
           onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting} online={online} onUpgrade={() => askUpgrade("Magic Marine Engineer")}
+          cruise={boat.cruise_kn} onCruise={(v) => updateBoat("cruise_kn", v)}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
@@ -646,7 +660,7 @@ export default function BoatPrep({ boatId, boats }) {
         areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
-        syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} online={online}
+        syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}
         onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
