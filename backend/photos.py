@@ -85,3 +85,50 @@ async def get_photo(boat_id: BoatPath, owner: Annotated[Optional[str], Query(pat
     except requests.RequestException:
         raise HTTPException(status_code=502, detail="Couldn't load the photo")
     return Response(content=data, media_type=photo["content_type"], headers={"Cache-Control": "private, max-age=604800"})
+
+
+ITEM_PHOTO_LISTS = {"riggingChecks", "electricalService", "engineService"}
+
+
+@router.post("/boats/{boat_id}/item-photo")
+async def upload_item_photo(boat_id: BoatPath, list_id: str = Query(..., max_length=40), file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """Skipper-only photo for a Rigging / Electrical / Engine checklist item; the item keeps the returned photo_id."""
+    if list_id not in ITEM_PHOTO_LISTS:
+        raise HTTPException(status_code=400, detail="Photos are for Rigging Checks, Electrical Service and Engine Service items")
+    if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    if file.content_type not in TYPES:
+        raise HTTPException(status_code=400, detail="Please choose a JPEG, PNG or WebP photo")
+    data = await file.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise HTTPException(status_code=400, detail="That photo is too big (max 3 MB)")
+    photo_id = uuid.uuid4().hex
+    try:
+        result = await asyncio.to_thread(put_object, f"{APP_NAME}/item-photos/{user['user_id']}/{photo_id}.{TYPES[file.content_type]}", data, file.content_type)
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Couldn't save the photo, please try again")
+    await db.item_photos.insert_one({"photo_id": photo_id, "owner_id": user["user_id"], "boat_id": boat_id, "list_id": list_id, "path": result["path"],
+                                     "content_type": file.content_type, "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"photo_id": photo_id}
+
+
+@router.get("/boats/{boat_id}/item-photo/{photo_id}")
+async def get_item_photo(boat_id: BoatPath, photo_id: Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")],
+                         owner: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None, user: dict = Depends(get_current_user)):
+    owner_id = owner or user["user_id"]
+    if owner_id != user["user_id"] and not await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="No photo")
+    photo = await db.item_photos.find_one({"photo_id": photo_id, "owner_id": owner_id, "boat_id": boat_id, "is_deleted": False}, {"_id": 0})
+    if not photo:
+        raise HTTPException(status_code=404, detail="No photo")
+    try:
+        data = await asyncio.to_thread(get_object, photo["path"])
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Couldn't load the photo")
+    return Response(content=data, media_type=photo["content_type"], headers={"Cache-Control": "private, max-age=604800"})
+
+
+@router.delete("/boats/{boat_id}/item-photo/{photo_id}")
+async def remove_item_photo(boat_id: BoatPath, photo_id: Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")], user: dict = Depends(get_current_user)):
+    await db.item_photos.update_one({"photo_id": photo_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"is_deleted": True}})
+    return {"ok": True}

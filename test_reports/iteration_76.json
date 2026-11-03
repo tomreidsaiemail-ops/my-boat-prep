@@ -1,0 +1,49 @@
+{
+  "summary": "Tested the Magic Marine Doctor photo feature end to end (backend pytest, 12/12 passed, plus Playwright at 390x844 and 1920x1080) and re-checked the iteration 75 arrival fixes. Everything requested works, apart from one small CSS problem: a flagged and ticked row turns green while the pointer is over it. On a phone the hover state sticks after a tap, so the row shows green straight after it is ticked. With no hover, the row is red as intended.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/ai/doctor-history/{id}", "issue": "Soft delete only. The photo stays in object storage, so a 'deleted' medical photo is never actually removed. The skipper may expect it to be gone."},
+      {"endpoint": "POST /api/ai/doctor-ask-photo", "issue": "The image type is checked only against the client's content_type. A non-image file sent as image/jpeg goes to Gemini (quota is refunded on failure but the call is wasted). Consider checking the JPEG/PNG/WebP magic bytes."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Checklist row (App.css)", "issue": "The rule .checklist-row.is-checked:not(.is-pick):hover (specificity 0,4,0) beats .checklist-row.is-checked.is-flagged (0,3,0). A flagged and ticked row turns green (#bbf7d0) on hover, keeping the red edge. On touch devices :hover sticks after the tap, so it looks green right after ticking. Fix: add .checklist-row.is-checked.is-flagged:hover { background: #fee2e2 } (or wrap the hover rule in :not(.is-flagged)).", "selector": "li.checklist-row.is-checked.is-flagged", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Doctor panel (390x844)", "issues": [
+        "The photo stays attached after an answer (doctor-photo-preview is still shown). A follow-up question sends and stores the same photo again and uses another generation. Consider clearing it after a successful ask, or saying so in the UI.",
+        "An enlarged history thumbnail (h-48 w-48) squeezes the question text into a narrow column of about 80px on mobile. Consider putting the enlarged photo on its own row."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_doctor_photo.py", "/app/test_reports/pytest/pytest_doctor_photo.xml"],
+  "action_items": [
+    "Fix the flagged + ticked row hover specificity in App.css so the row stays red on hover and on mobile sticky hover",
+    "Optional: clear the attached Doctor photo after a successful answer",
+    "Optional: delete the stored photo object (or set a retention policy) when a history answer is deleted",
+    "Optional: check image magic bytes in /ai/doctor-ask-photo"
+  ],
+  "critical_code_review_comments": [
+    "ai_lists.py is 630 lines, close to the 700-line limit. Consider moving the Doctor endpoints into their own module.",
+    "doctor_history returns at most 30 items and there is no paging, and db.doctor_answers has no index on (user_id, is_deleted, created_at).",
+    "Ownership checks are correct: the photo, history and delete endpoints all filter by user_id, and another user gets 404."
+  ],
+  "verified": [
+    "doctor-ask-panel shows on a list named 'First Aid Kit TEST_'. doctor-caveat text is exactly '(The MMD does not hold an M.D. but can help in an emergency)' and is visible on mobile and desktop",
+    "doctor-photo-btn reads 'Add or take a photo (optional)'. doctor-photo-input has accept=image/*. The preview and remove button work, and removing brings the button back",
+    "Asking with a photo sends a multipart POST to /ai/doctor-ask-photo. The answer describes the photo (stethoscope, thermometer, plasters, tape, pills). Without a photo the ask goes to /ai/doctor-ask",
+    "Pet mode (doctor-who-pet-0) with a photo gives a dog-specific answer about the pills in the photo. The history entry shows '· TEST_Rex'",
+    "History lists answers newest first with date and question. Photo answers show a thumbnail loaded as a blob from /photo, and tapping enlarges it from 56px to 192px. The toggle shows the answer, delete removes the entry with an 'Answer deleted' toast, and the list refreshes after a new answer",
+    "Backend: photo is stored and served back byte-for-byte; beta user gets 404 for the photo and DELETE and does not see it in history; unauthenticated requests get 401; text/plain gets 400; files over 5 MB get 400; an empty question gets 422 on both endpoints; bad payload JSON gets 422",
+    "Iteration 75: arrival logged on Arriving at Destination shows no arrival-log-outdated on Returning to Dock, including after a reload. Changing a level makes it outdated, and the relog toast reads 'Ship's Log arrival entry updated' (departure passes 'Departure' in the code). Low warnings read 'Top up or charge before the next passage.' There is no fuel hint on arrival. The 'about X left' detail shows only once that level is picked (30 L, 25 L, 4.5 kg correct)"
+  ],
+  "updated_files": ["/app/backend/tests/test_doctor_photo.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "seed_data_creation": "Created a temporary 'First Aid Kit TEST_' list, a TEST_Rex pet, tank sizes, restored arrivingDest/returningDock and logged an arrival on the pro boat. The pro user_boats doc was then restored from a mongoexport backup (/tmp/bk/pro_boats.json). TEST_ doctor answers were deleted by id. Answer ba98a6e6d7c74f069bd1f010a685f91b from E1's smoke test was left in place.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat has no First Aid Kit list. Create one via create-list-btn, or add it in mongo and pick it with list-selector then list-option-<id>; new lists are not selected after a reload. Add pets with boat.pets in mongo. Back up first: mongoexport user_boats -q {owner_id:'test-user-pro'}, then mongoimport --mode=upsert. Photo asks take about 10 s. Playwright post_data_buffer is None for multipart, so verify through GET /api/ai/doctor-history. The flag button needs ordering-toggle on."
+}

@@ -17,6 +17,7 @@ import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
+import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { ArrivalCheck } from "@/components/boat/departure/ArrivalCheck";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
@@ -523,6 +524,12 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${kind} status copied to the Ship's Log`);
     return id;
   };
+  const setPhotoId = (id, photoId) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: (s.data[active.id] || []).map((i) => (i.id === id ? { ...i, photo_id: photoId } : i)) } }));
+  const itemPhotos = {
+    boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : "", listId: active.id, canEdit: !crew, online,
+    onAdd: (id, photoId) => { setPhotoId(id, photoId); toast.success("Photo added"); },
+    onRemove: (id, photoId) => { setPhotoId(id, undefined); api.delete(`/boats/${boats.current.boat_id}/item-photo/${photoId}`).catch(() => {}); toast.success("Photo deleted"); },
+  };
   const relogDeparture = (id, text, kind) => {
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
     toast.success(`Ship's Log ${kind.toLowerCase()} entry updated`);
@@ -625,7 +632,7 @@ export default function BoatPrep({ boatId, boats }) {
             </div>
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
-          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
+          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}

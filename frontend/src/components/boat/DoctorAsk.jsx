@@ -56,6 +56,7 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
         setState((s) => ({ ...s, busy: false, answer: data.answer, left: data.asks_left }));
         setVersion((v) => v + 1);
         if (photo && data.photo_saved === false) toast.error("The Doctor saw your photo, but it couldn't be saved with the answer");
+        if (photo) { URL.revokeObjectURL(photo.preview); setPhoto(null); }
       })
       .catch((e) => setState((s) => ({ ...s, busy: false, error: apiError(e, "The Magic Marine Doctor couldn't answer right now. In an emergency call Mayday on VHF 16.") })));
   };
