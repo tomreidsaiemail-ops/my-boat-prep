@@ -115,7 +115,7 @@ def test_role_options_not_capped(saved_items):
 # Invite with roles then cancel
 def test_invite_roles_and_cancel(saved_items):
     r = requests.post(f"{BASE_URL}/api/boats/{BOAT}/invites", headers=H, timeout=30,
-                      json={"email": "qa-crew@example.com", "roles": ["Helm", "Skipper"], "notes": "TEST_ race", "send_email": False})
+                      json={"name": "Test Crew", "email": "qa-crew@example.com", "roles": ["Helm", "Skipper"], "notes": "TEST_ race", "send_email": False})
     assert r.status_code in (200, 201), r.text
     crew = requests.get(f"{BASE_URL}/api/boats/{BOAT}/crew", headers=H, timeout=20).json()
     inv = [i for i in crew["invites"] if i["email"] == "qa-crew@example.com"]

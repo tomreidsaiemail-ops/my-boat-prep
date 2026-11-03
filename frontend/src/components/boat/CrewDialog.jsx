@@ -9,12 +9,15 @@ import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
 import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
+import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
+import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
 
-const Row = ({ title, sub, roles = [], rsvp, onRemove, onEdit, label, testId }) => (
+const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm font-bold">{title}</p>
       <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
+      {badge}
       {(roles.length > 0 || rsvp !== undefined) && (
         <div className="mt-1 flex flex-wrap gap-1" data-testid={`${testId}-roles`}>
           {rsvp !== undefined && <RsvpBadge status={rsvp} testId={`${testId}-rsvp`} />}
@@ -83,14 +86,16 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, onl
           {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
           {info.crew.map((m) => (
             <Row key={m.user_id} title={m.name || m.email} sub={m.email} roles={m.roles} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
+              badge={<AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />}
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
-            <Row key={i.invite_id} title={i.email} sub={i.declined_at ? "Declined the invite" : "Invited, joins when they log in"} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
+        <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
         <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {

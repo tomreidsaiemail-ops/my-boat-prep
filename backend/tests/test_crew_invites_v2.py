@@ -34,7 +34,7 @@ def state(vessel="TEST_InvBoat", registry_extra=None, data_extra=None):
 
 
 def invite(email, roles=None, notes="", tok=PRO, boat=BOAT):
-    return s(tok).post(f"{BASE_URL}/api/boats/{boat}/invites", json={"email": email, "roles": roles or [], "notes": notes, "send_email": False})
+    return s(tok).post(f"{BASE_URL}/api/boats/{boat}/invites", json={"name": "Test Crew", "email": email, "roles": roles or [], "notes": notes, "send_email": False})
 
 
 def crew(boat=BOAT):
@@ -75,7 +75,7 @@ def test_email_key_unit():
 # Create invite: email_key, roles dedupe, notes on boat
 class TestCreateInvite:
     def test_free_403(self):
-        assert s(FREE).post(f"{BASE_URL}/api/boats/main/invites", json={"email": "x@example.com", "send_email": False}).status_code == 403
+        assert s(FREE).post(f"{BASE_URL}/api/boats/main/invites", json={"name": "Test Crew", "email": "x@example.com", "send_email": False}).status_code == 403
 
     def test_create_with_roles_notes(self):
         roles = ["Cook", "cook", "Navigator", "x" * 60] + [f"TEST_r{i}" for i in range(15)]

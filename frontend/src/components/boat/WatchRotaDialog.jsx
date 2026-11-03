@@ -48,7 +48,8 @@ export const WatchRotaDialog = ({ open, boat, info, online, onSaved, onClose }) 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="watch-rota-dialog">
+      <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="watch-rota-dialog"
+        onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Watch rota</DialogTitle>
           <DialogDescription className="text-left text-sm">Traditional ship's watches. The two short dog watches (16:00–18:00 and 18:00–20:00) make everyone's times rotate each day.</DialogDescription>

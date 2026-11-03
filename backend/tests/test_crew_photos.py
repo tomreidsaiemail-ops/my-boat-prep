@@ -73,20 +73,20 @@ def crew_boat(tok=FREE):
 # Invites: plan gate and validation
 class TestInvites:
     def test_free_owner_403(self):
-        assert s(FREE).post(f"{BASE_URL}/api/boats/main/invites", json={"email": "delivered@resend.dev"}).status_code == 403
+        assert s(FREE).post(f"{BASE_URL}/api/boats/main/invites", json={"name": "Test Crew", "email": "delivered@resend.dev"}).status_code == 403
 
     def test_own_email_400(self):
-        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"email": "Test.User.Pro@example.com"})
+        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"name": "Test Crew", "email": "Test.User.Pro@example.com"})
         assert r.status_code == 400 and "own email" in r.json()["detail"]
 
     def test_invalid_email_400(self):
-        assert s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"email": "not-an-email"}).status_code == 400
+        assert s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"name": "Test Crew", "email": "not-an-email"}).status_code == 400
 
     def test_unknown_boat_404(self):
-        assert s(PRO).post(f"{BASE_URL}/api/boats/TEST_nope/invites", json={"email": "delivered@resend.dev"}).status_code == 404
+        assert s(PRO).post(f"{BASE_URL}/api/boats/TEST_nope/invites", json={"name": "Test Crew", "email": "delivered@resend.dev"}).status_code == 404
 
     def test_real_invite_then_cancel(self):
-        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"email": "delivered@resend.dev"})
+        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"name": "Test Crew", "email": "delivered@resend.dev"})
         assert r.status_code == 200, r.text
         inv = r.json()
         doc = DB.crew_invites.find_one({"invite_id": inv["invite_id"]})
@@ -134,7 +134,7 @@ class TestJoin:
         assert own["crew"] is False and own["crew_count"] == 1
 
     def test_already_crew_400(self):
-        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"email": FREE_EMAIL.upper()})
+        r = s(PRO).post(f"{BASE_URL}/api/boats/{BOAT}/invites", json={"name": "Test Crew", "email": FREE_EMAIL.upper()})
         assert r.status_code == 400 and "already crew" in r.json()["detail"]
 
     def test_crew_get_role(self):

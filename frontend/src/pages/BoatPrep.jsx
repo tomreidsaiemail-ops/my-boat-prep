@@ -25,6 +25,9 @@ import { ArrivalCheck } from "@/components/boat/departure/ArrivalCheck";
 import { BoatSwitcher } from "@/components/boat/BoatSwitcher";
 import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
+import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
+import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
+import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { VoyageCard } from "@/components/boat/VoyageCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
@@ -48,7 +51,7 @@ import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
-import { CREW_ROLES, crewRolesList, INVITE_DRAFT } from "@/lib/crewRoles";
+import { CREW_ROLES, crewRolesList, INVITE_DRAFT, roleGroups } from "@/lib/crewRoles";
 import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
@@ -134,6 +137,7 @@ export default function BoatPrep({ boatId, boats }) {
   const [areaFilter, setAreaFilter] = useState("");
   const [editArea, setEditArea] = useState("");
   const [editMeal, setEditMeal] = useState(null);
+  const [editBriefing, setEditBriefing] = useState("");
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
   useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
@@ -356,16 +360,22 @@ export default function BoatPrep({ boatId, boats }) {
     setItems((list) => [...list, { id: Date.now(), label: text, checked: false }]);
     return true;
   };
+  // Roles (not the group headings) in the Crew Roles list carry a Role Briefing.
+  const isRoleItem = (item) => {
+    const k = items.findIndex((i) => i.id === item.id);
+    return CREW_ROLES.test(active.name.trim()) && !(k >= 0 && !items[k].indent && items[k + 1]?.indent);
+  };
   const saveEdit = (item) => (text) => {
     if (!text) return "Item text cannot be empty";
     if (isDup(text, item.id)) return `${text} already exists`;
     const mealHead = isMealHead(items, item.id);
+    const briefing = isRoleItem(item) ? editBriefing.trim() : item.briefing;
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
-      const { dynamic, area, meal_type: mt, meal_type_auto: auto, ...rest } = i;
+      const { dynamic, area, meal_type: mt, meal_type_auto: auto, briefing: _b, ...rest } = i;
       const picked = mealHead && editMeal !== null;
       const meal = picked ? editMeal : mt;
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}) };
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(briefing ? { briefing } : {}) };
     }));
     setDialog(null);
     return true;
@@ -444,7 +454,7 @@ export default function BoatPrep({ boatId, boats }) {
   const askClone = () => {
     if (active.id === FAQ_ID) { toast.warning("FAQ is an admin list and cannot be cloned"); return; }
     if (NO_CLONE[active.id]) { toast.warning(NO_CLONE[active.id]); return; }
-    if (needPro("Clone lists") && guard()) setDialog({ type: "clone", list: active });
+    if (needPro("Clone lists") && guard()) setDialog({ type: active.id === "crewPrep" ? "crewClone" : "clone", list: active });
   };
   const cloneSource = (source) => {
     if (source.isMedia) return { kind: source.kind, items: media[source.id].items.map(toOwnMedia) };
@@ -453,18 +463,25 @@ export default function BoatPrep({ boatId, boats }) {
     return { kind: source.kind, items: own.map((i) => (source.kind && source.kind !== "tips" ? { ...i, checked: false }
       : { id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}) })) };
   };
-  const cloneList = (name) => {
-    const source = dialog.list;
-    if (!name) return "Please enter a list name";
-    if (allLists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
-    const id = `custom_${Date.now()}`;
+  const listExists = (name) => allLists.some((l) => l.name.toLowerCase() === name.toLowerCase());
+  const cloneMany = (source, names) => {
+    const fresh = [...new Set(names)].filter((n) => !listExists(n));
+    if (!fresh.length) return false;
     const { kind, items: copied } = cloneSource(source);
     const cat = org.byId[source.id]?.cat;
     const category = cat >= 0 ? listCats[cat].name : null;
-    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}) }], data: { ...s.data, [id]: copied } }));
-    setActiveId(id);
+    const stampNow = Date.now();
+    const made = fresh.map((name, n) => ({ id: `custom_${stampNow}${n ? `_${n}` : ""}`, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}) }));
+    mutate((s) => ({ ...s, registry: [...s.registry, ...made], data: { ...s.data, ...Object.fromEntries(made.map((l) => [l.id, copied.map((i) => ({ ...i }))])) } }));
+    setActiveId(made[made.length - 1].id);
     setDialog(null);
-    toast.success(`${name} created from ${source.name}`);
+    toast.success(fresh.length === 1 ? `${fresh[0]} created from ${source.name}` : `${fresh.join(", ")} created from ${source.name}`);
+    return true;
+  };
+  const cloneList = (name) => {
+    if (!name) return "Please enter a list name";
+    if (listExists(name)) return `${name} already exists`;
+    cloneMany(dialog.list, [name]);
     return true;
   };
   const askRename = () => {
@@ -565,7 +582,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onBartender={openBartender} batchHelp={batchHelp} onMakeKit={makePetKit} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
@@ -635,7 +652,7 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (
@@ -687,7 +704,10 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
+        {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} roleGroups={roleGroups(state)} online={online} premium={premium}
+        onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "deleteItem" ? { name: labelFor(dialog.item) } : null} testId="item-delete"

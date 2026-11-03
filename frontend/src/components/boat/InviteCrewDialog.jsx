@@ -11,8 +11,8 @@ import { INVITE_DRAFT } from "@/lib/crewRoles";
 
 const APP_URL = "https://myboatprep.com";
 
-export const crewMessage = ({ vessel, skipper, roles, notes, email }) => [
-  `*You're invited to crew on ${vessel}*`,
+export const crewMessage = ({ vessel, skipper, roles, notes, email, name }) => [
+  `*${name ? `Hi ${name}, you're` : "You're"} invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
   notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
@@ -24,6 +24,7 @@ const copy = async (text) => { try { await navigator.clipboard.writeText(text); 
 
 export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
+  const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState([]);
   const [notes, setNotes] = useState("");
@@ -35,20 +36,21 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
   useEffect(() => {
     if (!open) return;
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
+    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim() });
+  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim() });
   const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
 
   const send = async (mode) => {
     if (!premium) { onUpgrade(); return; }
     if (!online) { setError("You're offline. Invite crew when you have signal."); return; }
+    if (!crewName.trim()) { setError("Enter your crew member's name first"); return; }
     if (!email.trim()) { setError("Enter your crew member's email first, so the app knows them when they log in"); return; }
     const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { email: email.trim(), roles, notes, send_email: mode === "email" }, { timeout: 30000 });
+      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
       if (mode === "qr") setQrFor(who);
@@ -56,7 +58,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
       else if (copied) toast.success(mode === "link" ? `Link copied. ${who} logs in with that email to join.` : "Message copied. Paste it into WhatsApp or any messaging app.");
       else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.");
       if (copied) setAskClear(who);
-      onInvited();
+      onInvited({ name: crewName.trim(), email: who });
     } catch (err) { setError(apiError(err, "Couldn't save the invite, please try again")); }
     finally { setBusy(""); }
   };
@@ -74,21 +76,30 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-1.5">
-          <label className="field-label" htmlFor="crew-email">Crew member's email</label>
-          <input id="crew-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); setAskClear(""); }} placeholder="crew@email.com"
-            className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-email-input" />
+          <div className="grid grid-cols-[2fr_3fr] gap-2" data-testid="crew-invite-who-row">
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="field-label">Crew member's name</span>
+              <input autoComplete="off" value={crewName} maxLength={60} onChange={(e) => { setCrewName(e.target.value); setError(""); setAskClear(""); }} placeholder="e.g. Tom"
+                className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-name-input" />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="field-label">Crew member's email</span>
+              <input id="crew-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); setAskClear(""); }} placeholder="crew@email.com"
+                className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-email-input" />
+            </label>
+          </div>
           {askClear && (
             <div role="alertdialog" aria-label="Clear email?" className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-sky-50 p-2.5" data-testid="crew-invite-clear-prompt">
-              <p className="text-sm">Invite saved for <b className="break-all">{askClear}</b>. Clear this email and their roles for your next invite?</p>
+              <p className="text-sm">Invite saved for <b className="break-all">{askClear}</b>. Clear their name, email and roles for your next invite?</p>
               <div className="flex gap-2">
-                <button type="button" className="btn-solid h-10 flex-1 justify-center" onClick={() => { setEmail(""); setRoles([]); setAskClear(""); }} data-testid="crew-invite-clear-yes-btn">Clear</button>
+                <button type="button" className="btn-solid h-10 flex-1 justify-center" onClick={() => { setCrewName(""); setEmail(""); setRoles([]); setAskClear(""); }} data-testid="crew-invite-clear-yes-btn">Clear</button>
                 <button type="button" className="btn-ghost h-10 flex-1 justify-center" onClick={() => setAskClear("")} data-testid="crew-invite-clear-keep-btn">Keep</button>
               </div>
             </div>
           )}
         </div>
         <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={setRoles}
-          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ email, roles, notes }); })} />
+          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes }); })} />
         <div className="flex flex-col gap-1.5">
           <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
           <textarea id="voyage-notes" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={3}

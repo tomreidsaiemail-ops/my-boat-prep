@@ -24,7 +24,7 @@ def _hash(token: str) -> str:
 
 
 async def owned_boat(user: dict, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     return doc
@@ -58,6 +58,7 @@ def list_roles(items: list) -> List[str]:
 
 
 class InviteIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
     email: str = Field(max_length=254)
     roles: List[str] = Field(default_factory=list, max_length=20)
     notes: str = Field(default="", max_length=1000)
@@ -68,13 +69,16 @@ class NotesIn(BaseModel):
     notes: str = Field(default="", max_length=1000)
 
 
-def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str) -> str:
+def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "") -> str:
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
+    for r in roles:
+        if (b := (briefings or {}).get(r.lower())):
+            extra += f'<p><b>Role briefing - {escape(r)}:</b><br/>{escape(b).replace(chr(10), "<br/>")}</p>'
     if notes.strip():
         extra += f'<p><b>Planned voyage or race:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
     return (
         '<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
-        f'<h2 style="margin:0 0 12px">You\'re invited aboard {escape(vessel)}</h2>'
+        f'<h2 style="margin:0 0 12px">{f"Hi {escape(name)}, y" if name else "Y"}ou\'re invited aboard {escape(vessel)}</h2>'
         f'<p>{escape(owner)} has invited you to join the crew of <b>{escape(vessel)}</b> on My Boat Prep. '
         'You\'ll see the boat\'s checklists on your own phone and can tick items as you go.</p>'
         f'{extra}'
@@ -84,13 +88,26 @@ def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str]
     )
 
 
-async def role_options(owner_id: str, boat_id: str, doc: dict, invites: list) -> List[str]:
+async def boat_role_items(owner_id: str, boat_id: str) -> list:
     reg = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, "registry": 1})
     lid = next((l["id"] for l in (reg or {}).get("registry") or [] if str(l.get("name", "")).strip().lower() == "crew roles"), None)
-    items = []
-    if lid:
-        data = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, f"data.{lid}": 1})
-        items = ((data or {}).get("data") or {}).get(lid) or []
+    if not lid:
+        return []
+    data = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, f"data.{lid}": 1})
+    return ((data or {}).get("data") or {}).get(lid) or []
+
+
+def role_label(label: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"^\s*\*\s*", "", re.sub(r"^\s*\d+[.)]\s*", "", str(label)))).strip()[:40]
+
+
+async def role_briefings(owner_id: str, boat_id: str) -> dict:
+    """Role name (lower case) -> the skipper's Role Briefing from the boat's Crew Roles list."""
+    return {role_label(i.get("label", "")).lower(): str(i["briefing"]).strip() for i in await boat_role_items(owner_id, boat_id) if str(i.get("briefing") or "").strip()}
+
+
+async def role_options(owner_id: str, boat_id: str, doc: dict, invites: list) -> List[str]:
+    items = await boat_role_items(owner_id, boat_id)
     if not items:
         tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": "^crew roles$", "$options": "i"}}, {"_id": 0, "items": 1})
         items = [{**i, "checked": str(i.get("label", "")).lstrip().startswith("*")} for i in (tpl or {}).get("items") or []]
@@ -138,16 +155,20 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     now = datetime.now(timezone.utc)
     roles = clean_roles(payload.roles)
     notes = payload.notes.strip()
-    invite = {"invite_id": str(uuid.uuid4()), "token_hash": _hash(token), "owner_id": user["user_id"], "boat_id": boat_id, "email": email, "email_key": key,
+    name = re.sub(r"\s+", " ", payload.name).strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Please enter your crew member's name")
+    invite = {"invite_id": str(uuid.uuid4()), "token_hash": _hash(token), "owner_id": user["user_id"], "boat_id": boat_id, "email": email, "email_key": key, "name": name,
               "roles": roles, "created_at": now.isoformat(), "expires_at": (now + timedelta(days=INVITE_DAYS)).isoformat()}
     if payload.send_email:
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
-                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes))
+                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes,
+                                         await role_briefings(user["user_id"], boat_id), name))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"voyage_notes": notes}})
-    return {"invite_id": invite["invite_id"], "email": email, "roles": roles, "created_at": invite["created_at"]}
+    return {"invite_id": invite["invite_id"], "name": name, "email": email, "roles": roles, "created_at": invite["created_at"]}
 
 
 @router.put("/boats/{boat_id}/voyage-notes")
@@ -164,11 +185,13 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     roles = doc.get("crew_roles") or {}
     now = datetime.now(timezone.utc).isoformat()
     invites = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "expires_at": {"$gt": now}},
-                                         {"_id": 0, "invite_id": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1}).to_list(100)
+                                         {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1}).to_list(100)
     rsvp = doc.get("rsvp") or {}
-    return {"crew": [{**m, "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status")} for m in members], "invites": invites,
+    names, agreements = doc.get("crew_names") or {}, doc.get("agreements") or {}
+    return {"crew": [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
+                      "agreement": agreements.get(m["user_id"])} for m in members], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""),
-            "watch_rota": doc.get("watch_rota")}
+            "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", "")}
 
 
 class RotaPerson(BaseModel):
@@ -273,7 +296,7 @@ async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
 @router.delete("/boats/{boat_id}/crew/{member_id}")
 async def remove_crew(boat_id: BoatPath, member_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,80}$")], user: dict = Depends(get_current_user)):
     await owned_boat(user, boat_id)
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": ""}})
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": "", f"agreements.{member_id}": "", f"crew_names.{member_id}": ""}})
     return {"ok": True}
 
 
@@ -291,7 +314,8 @@ async def accept_invite(inv: dict, user: dict) -> dict:
     if user["user_id"] == inv["owner_id"]:
         raise HTTPException(status_code=400, detail="That's your own boat")
     key = {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}
-    res = await db.user_boats.update_one(key, {"$addToSet": {"crew": user["user_id"]}, "$set": {f"crew_roles.{user['user_id']}": inv.get("roles") or []}})
+    res = await db.user_boats.update_one(key, {"$addToSet": {"crew": user["user_id"]}, "$unset": {f"agreements.{user['user_id']}": ""},
+                                                "$set": {f"crew_roles.{user['user_id']}": inv.get("roles") or [], **({f"crew_names.{user['user_id']}": inv["name"]} if inv.get("name") else {})}})
     await db.crew_invites.delete_one({"invite_id": inv["invite_id"]})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="That boat no longer exists")
@@ -360,5 +384,5 @@ class LeaveIn(BaseModel):
 
 @router.post("/crew/leave")
 async def leave_crew(payload: LeaveIn, user: dict = Depends(get_current_user)):
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": ""}})
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": "", f"agreements.{user['user_id']}": "", f"crew_names.{user['user_id']}": ""}})
     return {"ok": True}

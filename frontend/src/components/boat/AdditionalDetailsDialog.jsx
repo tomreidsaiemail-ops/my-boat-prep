@@ -90,7 +90,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog"
+      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => { if (returnFocus?.current) { e.preventDefault(); returnFocus.current.focus(); } }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat details - Additional details</DialogTitle>
