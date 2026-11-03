@@ -1,0 +1,21 @@
+{
+  "summary": "Frontend testing of the numbered-heading auto-indent fix. All 6 requested flows pass: (1) Admin > Templates > Edit 'First Aid Kit - advanced for long passages' has the auto-indent box ticked and the count shows '26 items, 6 headings'. (2) Unticking, ticking again and saving, then reloading and opening Edit again, leaves the box ticked. (3) The amber warning template-list-auto-indent-warning shows for 'Apples\\nPears' and goes away for '1.Fruit', '1. Fruit' and '1) Fruit' (count shows '1 heading'). Cancel closes the editor without saving. (4) '2.5L water' still shows the warning, so it is not treated as a heading. (5) The skipper Create List dialog behaves the same: create-list-auto-indent-warning shows when ticked with no headings, is hidden when unticked or the textarea is empty, and goes away for '1.Fruit' and '1) Fruit'. (6) On the admin boat, the First Aid advanced list (picked from the list selector, Safety section) shows 26 rows, 20 of them data-indented=true, with 6 group headings that can be folded. Checked at 390px and 1920px.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "TemplateListEditor initialises autoIndent from initial.items.some(i => i.indent). A template whose numbered headings have no items under them yet will open with the box unticked. This is a minor edge case; you could also tick it when any line passes isHeadingLine.",
+    "isHeadingLine regex /^\\d+[.)]\\s*\\p{L}/u handles the agreed cases correctly ('1.Trauma', '1. Trauma', '1) Trauma' are headings; '2.5L water' and '2. 5L' are not)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "None created. Re-saved the First Aid advanced template once with unchanged content as part of test step 2: same 26 items and 20 indents, version bumped. Opening the First Aid advanced list on the test-admin-1 boat through the list selector may have added a copy to that boat.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin templates page is /admin/templates, edit button template-list-edit-tpl_ebf4ced0d2 (advanced) and tpl_a0e0de16a7 (basic). The Create List dialog is blocked for test-admin-1 by the 'Please enter vessel details first' guard because the admin boat has no vessel name, so use test_session_pro_1 for create-list dialog tests. Boat checklist rows expose data-indented='true'/'false'."
+}

@@ -422,3 +422,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Service history PDF (engine/electrical) gets a PHOTOS section after the table: each item Before/After side by side with captions (service_history.py _load_photos owner-only, unreadable images skipped).
 - Dev note: inotify watch limit (12288) can stop hot reload for frontend and backend; restart with "sudo supervisorctl restart backend frontend" after edits if changes do not appear.
 - Tests: iteration_78 + fixes (pytest 26 passed)
+
+## 2026-06 Fix: numbered headings without a space
+- isHeadingLine now accepts "1.Trauma", "1. Trauma", "1) Trauma" (not "2.5L water"); toLines uses it too.
+- Admin template saves push indents to every boat's copy (backend templates.push_indents); ticks/notes/photos kept; boats synced to the old version stay up to date when only grouping changed.
+- Amber warning when auto-indent is ticked but no numbered headings found (admin editor + Create List).
+- Both First Aid templates re-saved with grouping in this DB. Tests: backend/tests/test_template_indent_push.py, iteration_79 (frontend 100%).

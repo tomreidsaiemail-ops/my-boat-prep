@@ -12,7 +12,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [name, setName] = useState(initial?.name || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [text, setText] = useState(initial ? initial.items.map((i) => i.label).join("\n") : "");
-  const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent));
+  const [autoIndent, setAutoIndent] = useState(!initial || initial.items.some((i) => i.indent || isHeadingLine(i.label)));
   const [priv, setPriv] = useState(!!initial?.private);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
