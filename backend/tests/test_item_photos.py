@@ -6,7 +6,7 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 OWNER, CREW, OTHER = "test_session_pro_1", "test_session_beta_1", "test_session_free_1"
-JPG = open("/tmp/hand.jpg", "rb").read()
+JPG = open("/app/tests/fixtures/medical.jpg", "rb").read()
 
 
 def s(tok):

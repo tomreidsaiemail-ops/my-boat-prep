@@ -416,3 +416,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Magic Marine Doctor: optional photo (attach/take) -> POST /api/ai/doctor-ask-photo (Gemini vision); every answer saved in db.doctor_answers with photo in object storage; "Past answers and photos" history (GET /api/ai/doctor-history, /{id}/photo, DELETE). Disclaimer unchanged.
 - Item photos on riggingChecks/electricalService/engineService: camera icon, 32px thumbnail with red X badge, hover preview + Open full view, tap = full view; skipper adds, crew views (photos.py item-photo endpoints, db.item_photos, item.photo_id). Row height unchanged.
 - Tests: iterations 75-77 passed
+
+## 2026-06 Before/After item photos, captions, service PDF photos
+- Items on riggingChecks/electricalService/engineService: Before (photo_id/photo_note) and After (after_id/after_note) photos; split thumbnail + "2" badge; hover preview / full view (PhotoSlots.jsx) to add, caption (80 chars) or delete each.
+- Service history PDF (engine/electrical) gets a PHOTOS section after the table: each item Before/After side by side with captions (service_history.py _load_photos owner-only, unreadable images skipped).
+- Dev note: inotify watch limit (12288) can stop hot reload for frontend and backend; restart with "sudo supervisorctl restart backend frontend" after edits if changes do not appear.
+- Tests: iteration_78 + fixes (pytest 26 passed)

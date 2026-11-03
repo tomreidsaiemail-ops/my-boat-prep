@@ -43,7 +43,7 @@ export const PhotoSlots = ({ item, name, urlFor, canEdit, big, onPick, onNote, o
             <span className="field-label">{s.label}</span>
             {pid ? (
               <div className="relative">
-                <Img url={urlFor(pid)} alt={`${s.label} photo of ${name}`} className={`w-full rounded ${big ? "max-h-[60vh] object-contain" : "h-36"}`} />
+                <Img url={urlFor(pid)} alt={`${s.label} photo of ${name}`} className={`w-full rounded ${big ? "aspect-[4/3] max-h-[60vh] bg-[var(--panel)] !object-contain" : "h-36"}`} />
                 {canEdit && <button type="button" onClick={() => onRemove(s)} aria-label={`Delete the ${s.label.toLowerCase()} photo`} data-testid={`item-photo-delete-${s.key}-${id}`}
                   className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--red)] text-white shadow ring-2 ring-white"><X className="h-3.5 w-3.5" strokeWidth={3.5} /></button>}
               </div>
@@ -55,8 +55,8 @@ export const PhotoSlots = ({ item, name, urlFor, canEdit, big, onPick, onNote, o
             )}
             {pid && (item[s.note] || canEdit) && (
               <button type="button" disabled={!canEdit} onClick={() => onNote(s)} data-testid={`item-photo-note-${s.key}-${id}`}
-                className="flex items-start gap-1 text-left text-xs font-semibold text-[var(--navy)] disabled:cursor-default">
-                {item[s.note] ? <span className="break-words">{item[s.note]}</span> : <span className="text-[var(--muted)]">Add a caption</span>}
+                className="flex min-w-0 items-start gap-1 text-left text-xs font-semibold text-[var(--navy)] disabled:cursor-default">
+                {item[s.note] ? <span className="min-w-0 [overflow-wrap:anywhere]">{item[s.note]}</span> : <span className="text-[var(--muted)]">Add a caption</span>}
                 {canEdit && <Pencil className="mt-0.5 h-3 w-3 shrink-0 text-[var(--muted)]" />}
               </button>
             )}

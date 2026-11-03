@@ -1,0 +1,51 @@
+{
+  "summary": "Tested Photo Notes (captions), Before/After photos on items, and photos in the Service History PDF. Backend: a new pytest file plus the earlier PDF and item-photo tests, 35/37 passed. The 2 failures are 1 real bug (an unreadable stored image gives a 500 for the whole PDF) and 1 outdated test (free users get the PDF while the FIRST200 launch promotion is on). UI was tested with Playwright at 1920x800 and 390x844, as owner and as crew. Every requested flow works. At first, uploads went through (200) but the row never showed the photo. Cause: the frontend file watcher had hit the OS limit (ENOSPC), so the served bundle had the old ItemPhoto.jsx with the new BoatPrep.jsx. Restarting the frontend fixed it. Remaining issues: the PDF 500 on an unreadable image, and a long caption with no spaces overflowing the hover preview.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/service-history/pdf", "issue": "If a stored item photo can't be read as an image (upload only checks the client's content_type, so any bytes sent as image/jpeg are accepted), _photo_cell -> ImageReader raises PIL.UnidentifiedImageError and the whole export returns 500. Unreadable photos should be skipped like deleted ones. Fix: wrap _photo_cell / ImageReader in try/except (in _load_photos or _photo_section) and drop that photo, and/or check image bytes with PIL on upload. Reproduced in test_corrupt_image_does_not_500."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PhotoSlots caption (hover preview)", "issue": "A caption with a long unbroken word (for example a part number or URL, 50+ characters) does not wrap. It runs over the After column's caption and past the 300px preview edge, and pushes the pencil icon out of view. break-words has no effect because the span sits in a flex button with no min-w-0. Fix: add min-w-0 to the button and [overflow-wrap:anywhere] or break-all to the span.", "selector": "[data-testid=item-photo-note-before-<id>]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Dev environment hot reload", "issue": "The frontend Watchpack hit ENOSPC (file watcher limit), so ItemPhoto.jsx changes were not picked up. The served bundle mixed the new BoatPrep (onPatch) with the old ItemPhoto, so uploads returned 200 but the photo never showed on the item, and the toast wrongly said 'No connection. You need signal for this.' (apiError shows that for any non-axios error). After code changes, restart the frontend (sudo supervisorctl restart frontend) as well as the backend. Optional: in ItemPhoto upload, use a separate catch for errors after the POST so a code error isn't shown as 'no connection'.", "affected_selectors": ["item-photo-add-<id>"]}
+    ],
+    "design_issues": [
+      {"screen": "Full view (item-photo-full)", "issues": ["Before and After photos with different aspect ratios have different heights side by side (object-contain without a fixed box), so the captions sit at different heights. A fixed aspect box (for example aspect-[4/3] with object-contain) would line them up."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_service_pdf_photos.py", "/app/backend/tests/test_item_photos.py", "/app/backend/tests/test_service_history_pdf.py", "/app/test_reports/pytest/pytest_service_pdf_photos.xml"],
+  "action_items": [
+    "service_history.py: skip a photo whose bytes can't be read as an image (try/except around ImageReader / _photo_cell) so one bad photo doesn't 500 the whole PDF; optionally check image bytes with PIL on item-photo upload",
+    "PhotoSlots.jsx caption button: add min-w-0 to the button and [overflow-wrap:anywhere] to the span so long words wrap inside the column",
+    "Update tests/test_service_history_pdf.py::test_free_forbidden. It expects 403, but while FIRST200 (first200_cached) is on, free users are premium and get 200 (outdated test, not a bug)",
+    "Optional: give the full-view Before and After photos the same box so the captions line up"
+  ],
+  "critical_code_review_comments": [
+    "Access is correct: _load_photos filters by owner_id = the caller, boat_id and is_deleted:false. Another owner's photo, a wrong boat_id, an unknown id, a deleted photo, or an empty boat_id are all skipped (200, no PHOTOS section). Verified with pytest.",
+    "Item labels and captions are escaped in the PDF (<b>, & come out as plain text) and long words wrap in reportlab.",
+    "remove() clears photo_id and photo_note (or after_id and after_note) together. Verified in the DB that deleting the Before photo also removed photo_note.",
+    "Every photo or caption patch also updates the item's ts (by mutate). That is expected for the merge, but adding a photo marks the item as edited.",
+    "Crew can't export the service PDF (no panel shown). If that ever changes, _load_photos uses the caller's user_id, so the owner's photos would be silently left out.",
+    "Earlier note still applies: DELETE is a soft delete only, and stored objects are never removed."
+  ],
+  "verified": [
+    "Engine Service (owner, 1920x800): the camera upload gives 'Before photo added', item-photo-thumb plus the red X item-photo-delete, and no count badge. Row height stays 57px with 0, 1 and 2 photos (also 57px at 390px)",
+    "Hover preview: item-photo-preview-slots shows the Before/After slots and item-photo-add-after 'Add after photo'. Uploading gives the 'After photo added' toast, the preview stays open, the thumbnail shows 2 half images, the count badge shows '2' in place of the red X, and item-photo-delete-before/after both show",
+    "Captions: the dialog input has maxlength=80 and the dialog opens with the current caption. A saved caption shows in the preview and full view and is still there after a reload (photo_note / after_note in user_boats.data). Saving only spaces removes the key. Deleting the Before photo removes photo_note and shows the 'Before photo deleted' toast and item-photo-add-before",
+    "item-photo-open and a click on the thumbnail open item-photo-full with item-photo-full-slots. At 390x844: tap the thumbnail, add the Before photo inside the full view, caption it; the full view stays open",
+    "Export PDF (engine-export-btn) POSTs boat_id 'main' and photos [{item:'Fuel filter', slot:'Before'/'After', photo_id, note}]. The PDF downloads; its text order is the table/'No services logged yet', then PHOTOS, the item label, Before, After and the caption, with 2 images. Electrical (electrical-export-btn) sends kind electrical with 1 photo and its PDF has a PHOTOS section",
+    "Crew (beta added to the pro crew), 1920 and 390: thumbnail with count badge, preview and full view with captions. Images load with ?owner=test-user-pro (200). There are 0 add or delete controls, the caption button is disabled (no dialog), and there is no service export panel",
+    "Rigging Checks: add, then the single red X deletes (DELETE 200) and the camera comes back",
+    "Backend pytest: Before+After with captions, electrical kind, no photos means no section, other owner / wrong boat / unknown / deleted / empty boat_id all skipped, a mix of kept and deleted photos, 422 for slot 'During', a bad photo_id, a note over 80 characters and 61 photos, HTML escaping, a PNG with alpha"
+  ],
+  "updated_files": ["/app/backend/tests/test_service_pdf_photos.py (new)", "/app/backend/tests/test_item_photos.py (sample image path /tmp/hand.jpg -> /app/tests/fixtures/medical.jpg)"],
+  "success_rate": {"backend": "95% (35/37; 1 real bug, 1 outdated test)", "frontend": "100% of the requested flows (1 low-priority caption overflow)"},
+  "seed_data_creation": "Backed up the pro user_boats doc to /tmp/bk78/pro_boats.json and restored it with mongoimport --mode=upsert afterwards (crew [] again; engineService/electricalService/riggingChecks items as before). Temporarily added test-user-beta to the crew; removed by the restore. Deleted the 22 item_photos records I created (created_at >= 22:38 on 2026-11-03). Soft-deleted pytest records from 22:39 and the main agent's earlier records (21:48, 21:53, 22:37) were left in place.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "IMPORTANT: the frontend file watcher hits ENOSPC (max_user_watches 12288), so after edits run 'sudo supervisorctl restart frontend' and check that the served /static/js/bundle.js has the new code before testing the UI. Pro boat item ids: engineService 129 (Fuel filter), electricalService 300, riggingChecks 200/201. Crew: add test-user-beta to user_boats.crew, then click the boat-switcher button and boat-option-c_test-user-pro_main. Run pytest with -n 0 (pytest.ini sets xdist). The FIRST200 promotion makes free users premium. Wait about 3s after a mutate before closing the page or it may not sync."
+}

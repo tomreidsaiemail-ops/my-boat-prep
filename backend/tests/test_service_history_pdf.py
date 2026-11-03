@@ -2,6 +2,7 @@
 import io
 import os
 import requests
+from tests.test_boat_budget import first200_off  # noqa: F401
 import pytest
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
@@ -43,6 +44,7 @@ def test_premium_gets_pdf(tok):
 
 
 # Free and anonymous are blocked
+@pytest.mark.usefixtures("first200_off")
 def test_free_forbidden():
     r = s(FREE).post(URL, json=ENGINE)
     assert r.status_code == 403

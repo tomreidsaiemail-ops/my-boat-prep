@@ -79,7 +79,14 @@ def _photo_section(photos: list) -> list:
     """Each item's before and after photos side by side, with captions, after the history table."""
     by_item = {}
     for ph, data in photos:
-        by_item.setdefault(ph.item, {})[ph.slot] = _photo_cell(data, ph.slot, ph.note)
+        try:
+            cell = _photo_cell(data, ph.slot, ph.note)
+        except Exception:
+            logging.getLogger(__name__).warning("service pdf photo %s is not a readable image", ph.photo_id)
+            continue
+        by_item.setdefault(ph.item, {})[ph.slot] = cell
+    if not by_item:
+        return []
     out = [Spacer(1, 14), Paragraph("PHOTOS", TITLE), Spacer(1, 4)]
     for item, slots in by_item.items():
         cells = [slots.get("Before", ""), slots.get("After", "")]
