@@ -145,3 +145,23 @@ export const tankChange = (boat, key, amount, added, levels = {}, amounts = {}, 
   const text = `${name} ${added ? "added" : "used"} ${round(amount)} ${unit}${key === "fuel" ? ` (${kind})` : ""}, estimated weight ${added ? "added" : "removed"} ${weight}, ${when}.${tail}`;
   return { text, level, now };
 };
+
+
+// Gas bottles: swap empties for full ones, or bring full spares on board / take spares off. Empty bottle weight is estimated as the gas it holds.
+export const gasChange = (boat, count, mode, levels = {}) => {
+  const kg = bottleKg(boat);
+  const inUse = num(boat.gas_bottles);
+  const spares = num(boat.gas_extra);
+  const w = (k) => (boat.units === "ft" ? `${round(k * 2.20462)} lb` : `${round(k)} kg`);
+  const s = (n) => (n === 1 ? "bottle" : "bottles");
+  const when = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  if (mode === "swap") {
+    if (inUse && count > inUse) return { error: `You have ${inUse} gas ${s(inUse)} in use, so you can swap up to ${inUse}.` };
+    const level = levels.gas && inUse ? nearestLevel(Math.min(1, BY_KEY[levels.gas].value + count / inUse)) : null;
+    return { level, text: `Gas ${s(count)} swapped: ${count} empty for full (${round(kg)} kg each), estimated weight added ${w(count * kg)} of gas, ${when}.${level ? ` Gas in use now ${levelLabel(level)}.` : ""}` };
+  }
+  if (mode === "remove" && count > spares) return { error: spares ? `There ${spares === 1 ? "is" : "are"} only ${spares} spare gas ${s(spares)} on board.` : "There are no spare gas bottles on board to take off." };
+  const extra = mode === "add" ? spares + count : spares - count;
+  const verb = mode === "add" ? "added" : "removed";
+  return { extra, text: `Gas ${s(count)} ${verb}: ${count} full spare ${s(count)} of ${round(kg)} kg ${mode === "add" ? "brought on board" : "taken off"}, estimated weight ${verb} ${w(count * kg * 2)} (gas ${w(count * kg)} plus about ${w(count * kg)} of bottle), ${when}. Spare bottles now ${extra}.` };
+};

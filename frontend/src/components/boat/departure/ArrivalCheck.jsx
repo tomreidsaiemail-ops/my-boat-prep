@@ -40,7 +40,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="arrival-setup-btn" />
       <TankLevels boat={boat} prefix="arrive-" arrival levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
         details={{ fuel: levels.fuel ? left(use.fuelNow, u) : "", gas: levels.gas ? left(use.gasNow, "kg") : "", water: levels.water ? left(use.waterNow, u) : "" }} />
-      <TankChange boat={boat} prefix="arrive-" engineType={engineType} levels={levels} amounts={arrive.amounts} onSet={setArrive} onLog={onTankLog} />
+      <TankChange boat={boat} prefix="arrive-" engineType={engineType} levels={levels} amounts={arrive.amounts} onSet={setArrive} onBoatChange={onBoatChange} onLog={onTankLog} />
       {(num(boat.fuel_jerry) > 0 || num(boat.water_jerry) > 0 || num(boat.gas_extra) > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="arrival-spares">
           {num(boat.fuel_jerry) > 0 && <Count id="arrival-fuel-jerry" label="Fuel cans still full" value={arrive.fuel_jerry_left} max={num(boat.fuel_jerry)} onChange={(v) => setArrive({ fuel_jerry_left: v })} />}

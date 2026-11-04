@@ -48,7 +48,7 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="departure-setup-btn" />
       <TankLevels boat={boat} levels={levels} onLevel={(k, v) => setDepart({ levels: { ...levels, [k]: v } })}
         details={{ fuel: about(fuelOnBoard(boat, levels.fuel), u), gas: about(gasOnBoard(boat, levels.gas), "kg"), water: about(waterOnBoard(boat, levels.water), u) }} />
-      <TankChange boat={boat} engineType={engineType} levels={levels} amounts={depart.amounts} onSet={setDepart} onLog={onTankLog} />
+      <TankChange boat={boat} engineType={engineType} levels={levels} amounts={depart.amounts} onSet={setDepart} onBoatChange={onBoatChange} onLog={onTankLog} />
       <PassagePlan boat={boat} depart={depart} setDepart={setDepart} onBoatChange={onBoatChange} engineType={engineType} premium={premium} online={online} onUpgrade={onUpgrade} />
       <LogCopy prefix="departure" label="Copy this departure's tank and battery status into the Ship's Log" logged={!!depart.log_id} blocked={blocked}
         outdated={!!depart.log_id && depart.log_sig !== sig}
