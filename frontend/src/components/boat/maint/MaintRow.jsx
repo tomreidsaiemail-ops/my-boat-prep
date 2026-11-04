@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, X } from "lucide-react";
 import { AttrField } from "@/components/boat/maint/AttrField";
-import { DUE_KEY, LAST_KEY, dueTone, localDate } from "@/lib/maint";
+import { DUE_KEY, LAST_KEY, attrText, dueTone, localDate } from "@/lib/maint";
 
 const TONES = { orange: "bg-orange-100", red: "bg-red-100" };
 
@@ -32,13 +32,14 @@ const DateCell = ({ value, inherited, onChange, label, testId, readOnly }) => (
   </span>
 );
 
-export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ctx, number, tools }) => {
+export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ctx, number, tools, cols }) => {
   const id = item.id;
   const head = !item.indent;
   const attrs = item.attrs || {};
   const setAttrs = (patch) => onChange({ attrs: { ...attrs, ...patch } });
   const tone = dueTone(due.date);
   const filled = defs.some((d) => attrs[d.key]);
+  const span = 2 + (cols ? cols.length : 2);
   return (
     <>
       <tr className={`border-t border-[var(--line)] ${head ? "bg-slate-100" : TONES[tone] || ""}`} data-testid={`maint-row-${id}`} data-kind={head ? "category" : "item"} data-tone={tone || "none"}>
@@ -54,18 +55,25 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
             <Cell value={item.label} bold={head} flagged={item.flagged} readOnly={ctx.readOnly} testId={`maint-desc-${id}`} onSave={(v) => onChange({ label: v })} />
           </div>
         </td>
-        <td className="p-1">{!head && <DateCell value={attrs[LAST_KEY]} label="Last service date" readOnly={ctx.readOnly} testId={`maint-last-${id}`} onChange={(v) => setAttrs({ [LAST_KEY]: v })} />}</td>
-        <td className="p-1"><DateCell value={due.date} inherited={due.inherited} label={head ? "Category service due date" : "Service due date"} readOnly={ctx.readOnly} testId={`maint-due-${id}`} onChange={(v) => setAttrs({ [DUE_KEY]: v })} /></td>
+        {cols ? cols.map((c) => (
+          <td key={c.key} className="p-1">
+            {!head && <button type="button" onClick={onOpen} title={`${c.name} (tap to edit)`} data-testid={`maint-col-${c.key}-${id}`}
+              className="block w-full break-words px-1 py-1.5 text-left text-[13px] leading-snug">{attrText(c, attrs) || <span className="text-slate-400">-</span>}</button>}
+          </td>
+        )) : <>
+          <td className="p-1">{!head && <DateCell value={attrs[LAST_KEY]} label="Last service date" readOnly={ctx.readOnly} testId={`maint-last-${id}`} onChange={(v) => setAttrs({ [LAST_KEY]: v })} />}</td>
+          <td className="p-1"><DateCell value={due.date} inherited={due.inherited} label={head ? "Category service due date" : "Service due date"} readOnly={ctx.readOnly} testId={`maint-due-${id}`} onChange={(v) => setAttrs({ [DUE_KEY]: v })} /></td>
+        </>}
         <td className="p-0 text-center">
           {!ctx.readOnly && <button type="button" onClick={onDelete} aria-label={`Delete ${item.label}`} className="inline-flex h-9 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--red)]" data-testid={`maint-delete-${id}`}>
             <X className="h-4 w-4" />
           </button>}
         </td>
       </tr>
-      {tools && <tr className={head ? "bg-slate-100" : TONES[tone] || ""} data-testid={`maint-tools-${id}`}><td colSpan={4} className={`px-1 ${head ? "" : "pl-8"}`}>{tools}</td></tr>}
+      {tools && <tr className={head ? "bg-slate-100" : TONES[tone] || ""} data-testid={`maint-tools-${id}`}><td colSpan={span} className={`px-1 ${head ? "" : "pl-8"}`}>{tools}</td></tr>}
       {open && !head && (
         <tr className={TONES[tone] || ""} data-testid={`maint-details-${id}`}>
-          <td colSpan={4} className="px-2 pb-3 pt-1">
+          <td colSpan={span} className="px-2 pb-3 pt-1">
             <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 rounded-md border-[1.5px] border-[var(--line)] bg-white p-2.5">
               {defs.map((d) => <AttrField key={d.key} def={d} attrs={attrs} onChange={setAttrs} ctx={ctx} itemId={id} />)}
               {!defs.length && <p className="col-span-2 text-xs text-[var(--muted)]">No attributes set up for this list yet.</p>}

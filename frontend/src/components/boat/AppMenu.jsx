@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, HelpCircle, Martini, Menu, MessageSquarePlus, QrCode, RefreshCw, ShoppingBasket } from "lucide-react";
+import { FileText, HelpCircle, Martini, Menu, MessageSquarePlus, QrCode, RefreshCw, ShoppingBasket, TableProperties } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
 import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 
-export const AppMenu = ({ onOpenFaq, onBartender, onShopScan, onSyncStores }) => {
+export const AppMenu = ({ onOpenFaq, onBartender, onShopScan, onSyncStores, onBuilder }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -23,6 +23,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onShopScan, onSyncStores }) =>
             <DropdownMenuItem onSelect={onBartender} data-testid="app-menu-bartender-item"><Martini className="mr-2 h-4 w-4" />Magic Bartender</DropdownMenuItem>
             {onShopScan && <DropdownMenuItem onSelect={onShopScan} data-testid="app-menu-shop-scan-item"><ShoppingBasket className="mr-2 h-4 w-4" />Batch Magic Scan My Shopping...</DropdownMenuItem>}
             {onSyncStores && <DropdownMenuItem onSelect={onSyncStores} data-testid="app-menu-sync-stores-item"><RefreshCw className="mr-2 h-4 w-4" />Sync Food &amp; Drink Boat Areas Magically...</DropdownMenuItem>}
+            {onBuilder && <DropdownMenuItem onSelect={onBuilder} data-testid="app-menu-builder-item"><TableProperties className="mr-2 h-4 w-4" />Custom Attribute List Builder...</DropdownMenuItem>}
             <DropdownMenuSeparator data-testid="app-menu-bartender-separator" />
           </>}
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>

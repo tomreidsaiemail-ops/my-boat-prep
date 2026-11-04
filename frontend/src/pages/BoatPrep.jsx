@@ -89,7 +89,8 @@ import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
 import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
 import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
 import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
-import { MAINT_CATEGORY, MAINT_KIND, MAINT_LISTS, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
+import { CustomListBuilder } from "@/components/boat/maint/CustomListBuilder";
+import { CUSTOM, MAINT_CATEGORY, MAINT_KIND, MAINT_LISTS, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
@@ -159,15 +160,22 @@ export default function BoatPrep({ boatId, boats }) {
     if (needBudget) mutate((s) => withBudget(s, budgetTpl.items), { count: false });
   }, [needBudget]); // eslint-disable-line react-hooks/exhaustive-deps
   const maintDefs = masterDefs(useAdminLists(MAINT_PREFIX, online));
-  const hasMaint = registry.some((l) => l.kind === MAINT_KIND);
   const haveMaint = MAINT_LISTS.filter((m) => registry.some((l) => l.kind === MAINT_KIND && l.maint === m.key)).map((m) => m.key);
   const OFFERS = "mbp_maint_offers";
   const offered = () => { try { return JSON.parse(localStorage.getItem(OFFERS)) || []; } catch { return []; } };
   const offerMaint = () => {
-    if (crew || hasMaint || !["make", "model", "boat_type"].every((k) => (boat[k] || "").trim()) || offered().includes(offerKey(boatId, boat))) return;
+    if (crew || haveMaint.length || !["make", "model", "boat_type"].every((k) => (boat[k] || "").trim()) || offered().includes(offerKey(boatId, boat))) return;
     setTimeout(() => setDialog({ type: "maint", auto: true }), 250);
   };
   const dismissMaint = () => { localStorage.setItem(OFFERS, JSON.stringify([...offered(), offerKey(boatId, boat)].slice(-50))); setDialog(null); };
+  const createCustom = ({ name, attrs, columns }) => {
+    const id = `maint_${CUSTOM}_${Date.now()}`;
+    mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, kind: MAINT_KIND, maint: CUSTOM, attrs, columns }],
+      data: { ...s.data, [id]: [{ id: Date.now(), label: "Items", checked: false, maint: true, attrs: {} }] } }));
+    setDialog(null);
+    pickList(id);
+    toast.success(`${name} created. Add your items under Items, or add your own categories.`);
+  };
   const createMaint = (made, due) => {
     const now = Date.now();
     const taken = new Set(registry.map((l) => l.name.toLowerCase()));
@@ -661,6 +669,7 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
         onShopScan={crew ? undefined : () => openStores("shopScan")} onSyncStores={crew ? undefined : () => openStores("syncStores")}
+        onBuilder={crew ? undefined : () => setDialog({ type: "builder" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
@@ -718,7 +727,7 @@ export default function BoatPrep({ boatId, boats }) {
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
-        : active.kind === MAINT_KIND ? <MaintList key={active.id} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
+        : active.kind === MAINT_KIND ? <MaintList key={active.id} list={active} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
             ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
@@ -789,6 +798,8 @@ export default function BoatPrep({ boatId, boats }) {
         onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
       {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} onDone={doneUsed} onClose={() => setDialog(null)} />}
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
+      {dialog?.type === "builder" && <CustomListBuilder master={maintDefs.filter((d, n, a) => a.findIndex((x) => x.key === d.key) === n)} names={registry.map((l) => l.name)}
+        onCreate={createCustom} onClose={() => setDialog(null)} />}
       {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto} have={haveMaint}
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}

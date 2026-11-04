@@ -5,6 +5,7 @@ const normName = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019`]/g
 export const MAINT_KIND = "maint";
 export const MAINT_PREFIX = "Admin - master ";
 export const MAINT_CATEGORY = "Boat Maintenance";
+export const CUSTOM = "custom";
 export const LAST_KEY = "last_service_date";
 export const DUE_KEY = "next_service_date";
 export const MAINT_LISTS = [
@@ -51,7 +52,7 @@ export const masterDefs = (adminLists) => {
   return parseAttributes(find("admin - master attributes"), find("admin - master attribute types"));
 };
 const listName = (list) => normName(MAINT_LISTS.find((m) => m.key === list.maint)?.name || list.name);
-export const attrsForList = (defs, list) => defs.filter((d) => !d.on || d.on.includes(listName(list)) || d.on.includes(normName(list.name)));
+export const attrsForList = (defs, list) => list.maint === CUSTOM ? list.attrs || [] : defs.filter((d) => !d.on || d.on.includes(listName(list)) || d.on.includes(normName(list.name)));
 
 export const defaultUnit = (type, key, units) => {
   const imperial = units === "ft";
@@ -91,6 +92,17 @@ export const markEstimates = (groups, defs, units) => groups.map((g) => ({ ...g,
   });
   return { ...i, attrs };
 }) }));
+// Short read-only text for a table column.
+export const attrText = (def, attrs) => {
+  const v = attrs[def.key];
+  if (!v) return "";
+  if (def.type === "image") return "Photo";
+  if (def.type === "pdf") return attrs[`${def.key}__name`] || "PDF";
+  if (def.type === "date") return localDate(v);
+  if (def.type === "integer age") return `${v} yrs`;
+  const unit = attrs[`${def.key}__unit`];
+  return `${v}${unit ? ` ${unit}` : ""}${attrs[`${def.key}__est`] ? " est." : ""}`;
+};
 const pretty = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const FILE_ID = /^[a-f0-9]{32}$/;
 export const maintLabel = (item) => {

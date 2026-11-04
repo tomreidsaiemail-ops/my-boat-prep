@@ -12,7 +12,7 @@ import { flagOutline, moveOutline, outlineInfo, placeOutline, setIndent } from "
 const NEW_CAT = "__new";
 const groupEnd = (items, n) => { let e = n + 1; while (e < items.length && items[e].indent) e += 1; return e; };
 
-export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrderingChange, promptDelete, onPromptDeleteChange }) => {
+export const MaintTable = ({ items, setItems, defs, cols, ctx, guard, ordering, onOrderingChange, promptDelete, onPromptDeleteChange }) => {
   const [openIds, setOpenIds] = useState([]);
   const [draft, setDraft] = useState("");
   const [doomed, setDoomed] = useState(null);
@@ -69,7 +69,7 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrde
       )}
       <div className="overflow-x-auto rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="maint-table-wrap">
         <table className="w-full min-w-[320px] table-fixed border-collapse text-sm" data-testid="maint-table">
-          <colgroup><col /><col className="w-[80px]" /><col className="w-[80px]" /><col className="w-[28px]" /></colgroup>
+          <colgroup><col />{(cols || [0, 1]).map((c, n) => <col key={c.key || n} className={cols ? "w-[92px]" : "w-[80px]"} />)}<col className="w-[28px]" /></colgroup>
           <thead className="bg-slate-50">
             <tr>
               <th className="px-1 py-1.5 text-left">
@@ -78,8 +78,10 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrde
                   <ChevronsUpDown className="h-4 w-4" /> Description
                 </button>
               </th>
-              <th className="field-label px-1 py-1.5 text-left">Last service</th>
-              <th className="field-label px-1 py-1.5 text-left">Service due</th>
+              {cols ? cols.map((c) => <th key={c.key} className="field-label break-words px-1 py-1.5 text-left" data-testid={`maint-col-head-${c.key}`}>{c.name}</th>) : <>
+                <th className="field-label px-1 py-1.5 text-left">Last service</th>
+                <th className="field-label px-1 py-1.5 text-left">Service due</th>
+              </>}
               <th />
             </tr>
           </thead>
@@ -87,7 +89,7 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrde
             {items.map((item, n) => {
               const inf = info[item.id];
               return (
-                <MaintRow key={item.id} item={item} due={dues[n]} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} defs={defs} ctx={ctx}
+                <MaintRow key={item.id} item={item} due={dues[n]} cols={cols} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} defs={defs} ctx={ctx}
                   onChange={(p) => update(item.id, p)} onDelete={() => askRemove(item)}
                   number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} prefix="maint-item"
                     onPlace={(p) => reorder((list) => placeOutline(list, item.id, p))} />}
@@ -95,7 +97,7 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrde
                     onMove={(d) => reorder((list) => moveOutline(list, item.id, d))} onIndent={(v) => reorder((list) => setIndent(list, item.id, v))} />} />
               );
             })}
-            {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="maint-empty">No items yet. Add a category below.</td></tr>}
+            {!items.length && <tr><td colSpan={2 + (cols ? cols.length : 2)} className="p-4 text-center text-[var(--muted)]" data-testid="maint-empty">No items yet. Add a category below.</td></tr>}
           </tbody>
         </table>
       </div>
