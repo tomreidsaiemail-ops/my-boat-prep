@@ -86,7 +86,7 @@ export const dueTone = (iso, today = new Date()) => {
 export const ESTIMATED = ["decimal weight", "decimal cost"];
 const MEASURED = ["decimal length", "decimal area"];
 // Text attributes the Magic Mariner may fill when it's confident (make, model, colour).
-export const MAGIC_TEXT = /^(brand|make|model|colour|color)$/;
+export const MAGIC_TEXT = /^(make|model|colour|color)$/;
 export const magicAttr = (d) => d.type === "picklist" || ESTIMATED.includes(d.type) || MEASURED.includes(d.type) || (d.type === "char" && MAGIC_TEXT.test(d.key));
 export const markEstimates = (groups, defs, units) => groups.map((g) => ({ ...g, items: g.items.map((i) => {
   const attrs = { ...i.attrs };

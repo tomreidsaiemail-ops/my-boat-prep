@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from json_repair import repair_json
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
@@ -73,7 +74,13 @@ def _json(text: str) -> dict:
     match = re.search(r"\{.*\}", text, re.S)
     if not match:
         raise ValueError("no JSON")
-    return json.loads(match.group(0))
+    try:
+        return json.loads(match.group(0))
+    except json.JSONDecodeError:
+        fixed = repair_json(match.group(0), return_objects=True)
+        if not isinstance(fixed, dict):
+            raise
+        return fixed
 
 
 @router.post("/ai/boat-kind")
@@ -193,7 +200,7 @@ async def maint_lists(body: MaintIn, user: dict = Depends(require_premium)):
                     break
             return parse_maint([k], body.attrs)(text)
         except Exception as e:
-            log.error(f"Magic Mariner maintenance list {k} failed: {e}; reply={text[:300]!r}")
+            log.error(f"Magic Mariner maintenance list {k} failed: {e}; reply={text[:200]!r}...{text[-300:]!r}")
             return await one(k, tries - 1) if tries > 1 else {}
         finally:
             if usage:

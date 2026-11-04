@@ -535,3 +535,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Select All hidden on Ship's Log, Mayday/Pan-Pan (EMERGENCY), any list whose name contains "Crew Roles", and for crew (tick-only) views.
 - TankChange card now "Add or use fuel, water and gas": Gas tab (whole bottles) with Swapped (empty for full, + gas weight; raises the gas level by count/bottles in use when a level is picked), Added / Removed (full spare bottles, updates boat.gas_extra, weight = gas + estimated empty bottle of the same weight). Errors for swapping more than in use / removing more spares than on board; decimal typed -> "counted whole" message. lib/telemetry.js gasChange().
 - Tested iteration_95 (100%); its 3 low polish items fixed after (hint only when bottles in use set, decimal feedback, buttons in a full-width row on the gas tab).
+
+## 2026-06 Spars & Heavy Hardware (6th Boat Maintenance list)
+- MAINT_LISTS/MAINT_KEYS now 6: + sparsHardware "Spars & Heavy Hardware" (mast, spreaders, boom, gooseneck, rigid vang, spinnaker/whisker pole, bowsprit, mast step, arch/davits). STARTER items for free/offline.
+- Master attribute dictionary: migration add_spars_attributes (once, keeps admin edits) puts Spars on Age/Diameter/Length and adds "Spar material | spar material types | Spars & Heavy Hardware" + picklist line. Fresh seeds include them.
+- Magic Mariner: /api/ai/maint-lists now runs one Gemini call per list in parallel (one Magic use per request, one retry per list, json_repair fallback). Sends picklists, weight, cost, length/area (units m/mm or feet/inches, sqm/sq ft) and make/model/colour; length/diameter/area also marked est. Toast names any list that fell back to starter items.
+- Existing boats with the 5 old lists get the "Create Boat Maintenance lists..." button offering only the new one; new sailboats are auto-offered all 6.
+- Tested iteration_96 (backend + frontend 100%); json/brand fixes self-tested by curl. tests/test_maint_spars.py added by tester.

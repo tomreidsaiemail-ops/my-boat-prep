@@ -38,6 +38,8 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [],
       try {
         const lists = (await api.post("/ai/maint-lists", { ...boatBody(boat), currency, lists: chosen.map((l) => l.key), attrs }, { timeout: 180000 })).data.lists;
         tailored = Object.fromEntries(Object.entries(lists).map(([k, groups]) => [k, markEstimates(groups, attrs[k] || [], { weight: boat.units === "ft" ? "lb" : "kg", cost: currency, boat: boat.units })]));
+        const plain = chosen.filter((l) => !tailored[l.key]).map((l) => l.name);
+        if (plain.length) toast.warning(`The Magic Mariner couldn't tailor ${plain.join(", ")}, so starter items were used there.`);
       } catch (err) { toast.error(`${apiError(err, "The Magic Mariner couldn't tailor the lists")} Starter items were used instead.`); }
     }
     onCreate(chosen.map((l) => ({ ...l, groups: tailored[l.key] || STARTER[l.key] })), due);

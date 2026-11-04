@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the 6th Boat Maintenance list, Spars & Heavy Hardware (sparsHardware), on the backend and frontend. Backend: the new test_maint_spars.py gave 5 passed and 1 skipped, and the existing test_maint_lists.py gave 15 passed and 2 skipped. The two free-user 403 tests were skipped because the FIRST200 launch-free promo makes every user premium. Sending 7 lists gives 422 and sending only unknown keys gives 422. No auth gives 401. The admin-lists migration is correct: Age, Diameter and Length include Spars & Heavy Hardware, there is exactly one Spar material line, and the spar material types picklist is there. One real call for sparsHardware plus runningRigging returned 200. It included mast, boom, vang, spinnaker pole and bowsprit, with make/model/colour/weight/cost/diameter/length as numeric strings and a valid spar_material, and runningRigging items had diameter. Frontend, tested with 2 TEST pro users on a Beneteau Oceanis 38 Sloop. On a boat with the 5 old lists, the 'Create Boat Maintenance lists...' button opens the dialog. It shows maint-setup-have-* for the 5 lists and offers only maint-setup-pick-sparsHardware (checked), with the question 'Would you like the missing Spars & Heavy Hardware list created...'. Create lists made a real AI call, and the list appeared, selected, in the Boat Maintenance category. Items included Mast section, spreaders, Mast step, Masthead assembly, Gooseneck, Main boom, Rigid vang, Integrated bowsprit, Spinnaker pole, Whisker pole, Arch and Davits. The expanded Mast section showed Brand, Make (Selden Mast AB), Model C211, Colour, Weight 145 kg, Cost 26500 NZD, Diameter 211 mm, Length 14.85 m, Spar material Aluminium (6 options) and Age. Weight, Cost, Diameter and Length had amber est. tags. Editing Weight to 150 removed its est. tag and kept Cost's, and this was saved to the DB (weight__est removed). The Excel export 'This list' contains all the attribute columns, with '(est.)' in the unit columns, and the edited weight no longer shows est. On a boat with no maintenance lists, the offer opened automatically after Done in Additional details, with all 6 lists checked, including Spars & Heavy Hardware. At 390px the dialog fits with no horizontal overflow (scrollWidth 390). With the app's offline toggle on, the guidance says 'You're offline, so you'll get standard starter items.', no /api/ai calls were made, 6 lists were created, and Spars has exactly the 12 starter items under 4 headings, with no values. A true non-Pro test was not possible because of the launch-free promo; the offline run covers the same code path (magic=false).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/ai/maint-lists", "issue": "Gemini replies often fail JSON parsing on the first attempt with 'Expecting , delimiter' at char ~800-1070. The backend log showed 5 of these in about 4 minutes; 3 were sparsHardware, and one was during my run. The retry usually recovers, but it doubles the latency for that list, and if both tries fail the list is silently dropped and the frontend uses STARTER items with a '6 lists created' toast. I could not reproduce it in 3 direct probe calls, which all parsed. Likely cause: the stream is cut short and the greedy \\{.*\\} regex ends at an inner }, or an unescaped character. The log only keeps the first 300 characters of the reply, so the cause can't be confirmed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "MaintSetupDialog open", "issue": "POST /api/ai/boat-kind is called twice per dialog open (seen 2x before maint-lists). It is cached server-side, so the cost is small, but it is a duplicate request (probably the StrictMode double effect or the offer firing twice).", "affected_selectors": ["[data-testid=maint-setup-dialog]"]}
+    ],
+    "design_issues": [
+      {"screen": "Maint setup dialog", "issues": ["The Service due date uses a native <input type=date> (browser default picker, mm/dd/yyyy) rather than the shadcn calendar used elsewhere; this was already the case before this change."]},
+      {"screen": "Spars item details", "issues": ["The AI fills both Brand ('Selden') and Make ('Selden Mast AB'), which is redundant; consider steering the prompt to fill only one."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_maint_spars.py", "/app/backend/tests/test_maint_lists.py", "/app/backend/tests/manual_it96_seed.py", "/app/backend/tests/manual_spars_json_probe.py", "/app/test_reports/pytest/pytest_it96.xml"],
+  "action_items": [
+    "In maint_ai.one(), log the end of the failed reply (or the part around the JSON error position), not only text[:300], so the frequent 'Expecting , delimiter' failures can be diagnosed. Consider a tolerant JSON repair (e.g. trimming to the last complete item) before retrying.",
+    "Optional: when a list falls back to STARTER after AI failure, say so in the toast for that list (currently it only says when the whole request failed).",
+    "Optional: stop the duplicate /api/ai/boat-kind request on dialog open."
+  ],
+  "critical_code_review_comments": [
+    "maint_ai._json uses a greedy regex up to the last '}'. If the reply is truncated, the extracted text is cut at an inner '}' and gives exactly the 'Expecting , delimiter' errors seen in the logs.",
+    "Up to 6 lists x 2 tries of parallel Gemini streams per request use one Magic allowance, which is good for the user, but the worst-case cost is 12 LLM calls. That is acceptable, but consider a per-day cap for maint-lists like KIND_DAILY.",
+    "The add_spars_attributes migration is idempotent (migration flag) and keeps admin edits. Verified on the live data: 1 Spar material line and Spars added to Age, Diameter and Length."
+  ],
+  "updated_files": ["/app/backend/tests/test_maint_spars.py", "/app/backend/tests/manual_it96_seed.py", "/app/backend/tests/manual_spars_json_probe.py"],
+  "success_rate": {"backend": "100% (20 passed, 4 skipped across the 2 files)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Created TEST_it96_a and TEST_it96_b (pro, sessions test_session_it96_a/b) with boats via backend/tests/manual_it96_seed.py. Deleted afterwards with 'python3 backend/tests/manual_it96_seed.py clean' (users, sessions, user_boats, ai_drafts). The boat_kinds cache entry for 'beneteau oceanis 38 sloop' and the usage records from the AI calls remain (harmless). Pro, Free and Admin seed data was not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Launch-free promo is on, so free-user 403 tests skip. To test the setup dialog, seed with backend/tests/manual_it96_seed.py (A: no maint lists, so the auto-offer opens after Additional details Done; B: 5 old maint lists), then run 'clean' afterwards. To reach the dialog: boat-details-expand-btn -> additional-details-btn -> maint-setup-open-btn. Select lists with list-selector -> list-option-<listId> (force click). Attribute inputs use maint-attr-<key>-<itemId> and est. tags use -est. Use the app's offline toggle (data-testid network-status) for the starter path without AI. Excel: top-export-excel-btn -> excel-export-one-btn; the download can be saved to /tmp and read with openpyxl."
+}
