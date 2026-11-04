@@ -24,7 +24,7 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
     const res = tankChange(boat, tank, n, added, levels, amounts, engineType);
     if (res.error) { setError(res.error); return; }
     setError("");
-    if (!onLog(res.text)) return;
+    if (!onLog(res.text)) { setError("Fill in your vessel name, call sign and skipper at the top first, then try again."); return; }
     setAmount("");
     if (res.level) onSet({ levels: { ...levels, [tank]: res.level }, amounts: { ...amounts, [tank]: res.now } });
   };

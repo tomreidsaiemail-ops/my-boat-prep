@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only Playwright testing at 390px of (1) Checklist Select All, (2) editing Budget web links on a locked past year, (3) the Fuel & Water auto-log card (TankChange) on Leaving Dock, Arriving at Destination and Returning to Dock. All 3 features work as specified. I found no blocking bugs. Tank text formulas were also checked directly in node for petrol/outboard, gal + ft->lb, capacity edges and empty level.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Departure/Arrival TankChange", "issues": ["If the boat is not ready (vessel, callsign or skipper empty), Added/Used gives no feedback at the card. guard() shows the warning in the 'top' zone, which is off-screen when you are scrolled down to the tank card. The amount stays filled and nothing is logged. Seen on the admin boat, which has empty boat details. Consider guard('bottom') or an inline message."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: show inline feedback in TankChange when guard() fails (boat details missing), so the click doesn't look silent.",
+    "Optional: tankChange() uses toLocaleString(undefined, ...) and produces 'Nov 4, 2026, 9:28 AM'. Other Ship's Log entries use en-NZ ('1 Jan 2026, 10:05'), so the log mixes two date formats.",
+    "Optional: on arrival, the 'Used on the passage' figure comes from the departure and arrival levels. A refuel or use logged on the arrival list after docking moves the arrival level, so it changes the passage-use estimate (e.g. a 15 L use after arrival showed as 75 L used on the passage).",
+    "FYI data: the seeded Pro boat (test-user-pro, TEST_Kia Ora) has no leavingDock, arrivingDest or returningDock lists in its registry. They are not in deleted_lists either, so Reset All can't restore them. That is why Pro can't be used to test the departure features."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.tickAll: the Undo restores the exact previous checked map. The departure-dialog trigger uses departureTicked(items) -> departureTicked(next), the same as single toggle. Correct.",
+    "Select All shows on every checklist, including the Ship's Log, Crew Roles pick lists and crew tick-only views. It may not make sense on Ship's Log or Crew Roles; a product decision.",
+    "Select All ticks children hidden inside folded groups too, and the count includes them. Probably intended.",
+    "BudgetTable.saveLink has no locked check (as intended). update() and remove() still block when locked; product, cost and description have readonly and date/delete are disabled when locked. Confirmed in the UI.",
+    "TankChange stores amounts in the current tank unit. Switching tank_units L<->gal later reinterprets the stored amount. Low impact edge case."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "100% of requested flows passed"},
+  "test_credentials": "Pro test_session_pro_1 (Select All on list custom_1793042167417 'TEST_Pre 42162', restored to 0 of 4 ticked). A temporary TEST user (test-user-tank1 / test_session_tank1, role pro, tos accepted) was created for the departure, arrival and budget tests because the Pro boat has no Leaving Dock lists. It was deleted afterwards (users, user_sessions and user_boats rows by its id only).",
+  "seed_data_creation": "Temporary TEST user test-user-tank1 with its own boat, deleted after testing. No seeded data was modified. The Pro list's tick state was restored.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Results: Select All tested on Pro list custom_1793042167417. It ticks all, Undo restores mixed state exactly, a second tap unticks all, unticking a single item clears the master checkbox, and the state persists. Departure log dialog after Select All on Leaving Dock only opens when the list has a non-indented 'Departure...' heading with indented children (isDepartureHead in lib/outline.js); I inserted one via Mongo on the TEST user and confirmed it opens. Escape does not close that dialog; use 'Not now'. TankChange checks: empty amount -> 'Enter how many litres.'; 20 L Added -> 'Fuel added 20 L (diesel), estimated weight added 16.8 kg, <date>.'; with 100 L capacity and level 1/2, +20 -> 'Tank now about 70 L of 100 L (3/4)' and the picker moves to 3q; over capacity and over-use errors show and nothing is logged; arrive- prefix works on arrivingDest and returningDock. Budget locked-year link: uses /tmp/bud/shift.js (Date -> 2027-02-01); add and edit both persist with 'Web link' history entries. New users need tos_accepted_at and tos_version '2026-06' set, otherwise the TOS gate blocks the UI. Boat must have vessel, callsign and skipper filled, or guard() blocks every edit."
+}

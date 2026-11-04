@@ -522,4 +522,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Rows with only blanks and 0 (0, 0.00, -0) are skipped and counted ("N rows with only blanks and 0 skipped"); a tab of only such rows is an empty tab.
 - Move: expanded item in an imported list -> "Move to another list..." (MoveItemDialog, default My To Do List) -> checklists get "Description - Name: value, ..."; maint/custom targets map attributes by name/key and append unmatched to the description; Boat Budget gets Product details + cost. Undo toast.
 - AttrField number filters accept a leading "-" for Whole number, Decimal and Cost.
-- Tested iteration_89/90 (~96%) + zero-row skip self-tested.
+
+
+## 2026-06 Select All, budget links, fuel & water auto-log
+- Checklist Select All (header checkbox checklist-select-all): ticks every shown item, tap again unticks all, no confirm; Undo toast restores the exact previous ticks.
+- Boat Budget: web links stay editable on locked past years (user choice); banner says so. Other fields stay locked.
+- Fuel & water auto-log: TankChange card (Fuel/Water, amount, Added/Used) in Leaving the Dock and Arrival checks (arrive- prefix). Each change goes straight into the Ship's Log with volume, fuel type (diesel 0.84 / petrol 0.74 / water 1 kg/L; lb for ft boats; gal x 3.785) and estimated weight change; with a picked level and tank capacity, it shows "Tank now about X of Y" and moves the level picker. Over-capacity/over-use errors; inline message when boat details are missing. lib/telemetry.js tankChange().
+- Tested iteration_94 (frontend 100%).
+- Backlog: turn ship log notes into tidy log entries (AI); maybe hide Select All on Ship's Log/Crew Roles.
