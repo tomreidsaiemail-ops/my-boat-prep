@@ -34,7 +34,7 @@ from feedback import router as feedback_router  # noqa: E402
 from templates import router as templates_router  # noqa: E402
 from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
-from sync_merge import merge_state, merge_crew_ticks  # noqa: E402
+from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from templates import seed_budget_template  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
@@ -310,6 +310,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         if not prev:
             raise HTTPException(status_code=404, detail="Boat not found")
         merged = merge_crew_ticks(prev, payload.model_dump())
+        have = []
     else:
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
             raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
@@ -318,8 +319,12 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
             if f not in payload.model_fields_set:
                 inc[f] = (prev or {}).get(f, inc[f])
         merged = merge_state(prev, inc) if prev else inc
+        merged, have = keep_pushed(merged, inc, (prev or {}).get("pushed_items"))
     state = BoatState(**key, **{f: merged.get(f) for f in STATE_FIELDS if merged.get(f) is not None}, synced_at=datetime.now(timezone.utc).isoformat())
-    await db.user_boats.update_one(key, {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at, "crew": []}}, upsert=True)
+    update = {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at, "crew": []}}
+    if role != "crew" and have:
+        update["$pull"] = {"pushed_items": {"item.id": {"$in": have}}}
+    await db.user_boats.update_one(key, update, upsert=True)
     return to_out(state, role)
 
 
@@ -336,7 +341,7 @@ async def walkthrough_signoff(payload: SignOffIn, user: dict = Depends(get_curre
     when = re.sub(r"[^\w ,:/.\-]", "", payload.when).strip()
     item = {"id": int(now.timestamp() * 1000), "label": f"Crew Walkthrough signed off by {name} on {when} ({payload.stops} {'stop' if payload.stops == 1 else 'stops'})",
             "checked": False, "ts": now.isoformat()}
-    res = await db.user_boats.update_one(key, {"$push": {"data.shipsLog": item}, "$set": {"updated_at": now.isoformat()}})
+    res = await db.user_boats.update_one(key, {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Boat not found")
     return {"item": item}

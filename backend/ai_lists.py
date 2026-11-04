@@ -385,15 +385,16 @@ async def mmd_asker(user: dict, body: DoctorAskIn) -> Optional[str]:
 
 
 async def log_mmd(user: dict, body: DoctorAskIn, who: str, answer: str) -> dict:
-    """Ship's Log entry for every Doctor question. Crew entries go straight onto the skipper's boat; the skipper's app adds its own."""
+    """Ship's Log entry for every Doctor question, saved on the boat straight away; the skipper's app also adds it locally under the same id."""
     now = datetime.now(timezone.utc)
     when = re.sub(r"[^\w ,:/.\-]", "", body.log_when).strip() or now.strftime("%d %b %Y %H:%M UTC")
     pet = f" about {body.pet.name.strip() or body.pet.type.strip() or 'a pet'}" if body.pet else ""
     item = {"id": int(now.timestamp() * 1000), "label": f"Magic Marine Doctor asked by {who}{pet} on {when}: {body.question}"[:2000],
             "mmd_answer": answer, "checked": False, "ts": now.isoformat()}
-    if body.owner_id and body.owner_id != user["user_id"]:
-        await db.user_boats.update_one({"owner_id": body.owner_id, "boat_id": body.boat_id, "crew": user["user_id"]},
-                                       {"$push": {"data.shipsLog": item}, "$set": {"updated_at": now.isoformat()}})
+    crew = bool(body.owner_id and body.owner_id != user["user_id"])
+    key = {"owner_id": body.owner_id, "boat_id": body.boat_id, "crew": user["user_id"]} if crew else {"owner_id": user["user_id"], "boat_id": body.boat_id}
+    await db.user_boats.update_one({**key, "data.shipsLog": {"$exists": True}},
+                                   {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
     return item
 
 

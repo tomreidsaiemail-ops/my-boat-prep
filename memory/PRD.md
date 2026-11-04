@@ -437,3 +437,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Fix: Watch rota and Additional boat details dialogs no longer autofocus the date/boat-type pickers.
 - Tests: backend/tests/test_crew_agreement.py (+ _edges), iteration_80.
 - Backlog: re-ask crew to accept when boat terms or zone map pins change.
+
+## 2026-11 Crew Prep progress, Agreement PDF, Briefing resend, MMD Ship's Log
+- Crew Prep progress: "Crew Prep - <name>" list shows a progress bar (headings not counted); skipper's crew list shows each member/invite's ticks (backend crew.crew_prep_progress).
+- Agreement PDF: GET /api/crew/agreement/pdf (skipper any member via member_id; crew own only) - agreement_pdf.py.
+- Briefing resend: POST /api/boats/{id}/briefings {member_id?} (manual only, 40/day) - crew_briefings.py; per-member and "all crew" buttons.
+- MMD: must tick "logged in Ship's Log" box (backend log_agree required); every Q&A saved to Ship's Log as "Magic Marine Doctor asked by <crew name|Skipper> on <when>: <question>" with mmd_answer (collapsed/expandable in list; included in Ship's Log PDF/email).
+- Sync fix: server-pushed list items (crew MMD + walkthrough sign-offs) tracked in user_boats.pushed_items and re-added until the skipper's phone sends them back once (sync_merge.keep_pushed).
+- Note: FIRST200 promo makes free users Pro, so old tests expecting free 403s fail (pre-existing).
+- Tests: test_crew_prep_mmd.py, test_mmd_log_race.py, iteration_81.

@@ -40,6 +40,21 @@ def merge_state(prev: dict, inc: dict) -> dict:
     return out
 
 
+def keep_pushed(merged: dict, inc: dict, pending: list) -> tuple:
+    """Entries the server added to a list (e.g. crew Ship's Log entries) stay until the skipper's phone has sent them back once;
+    only after that can it delete them. Returns the merged copy and the ids its phone now has."""
+    have = []
+    for p in pending or []:
+        lid, item = p.get("list"), p.get("item") or {}
+        if any(i.get("id") == item.get("id") for i in (inc.get("data") or {}).get(lid) or []):
+            have.append(item.get("id"))
+            continue
+        lst = (merged.get("data") or {}).get(lid)
+        if lst is not None and not any(i.get("id") == item.get("id") for i in lst):
+            lst.append(deepcopy(item))
+    return merged, have
+
+
 def merge_crew_ticks(prev: dict, inc: dict) -> dict:
     """Crew may only tick and untick existing items; everything else stays as the owner left it."""
     out = deepcopy(prev)

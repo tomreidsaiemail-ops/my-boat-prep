@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 81: re-ran backend tests test_crew_prep_mmd.py + test_crew_agreement.py (11/11 pass). UI tested at 390px on a temp TEST_ui81 Pro boat (Crew Roles w/o briefings, 'Crew Prep - Tom', First Aid Kit, Ship's Log; free user joined as crew 'Tom' + a 2nd pending invite named Tom). Everything requested works: MMD checkbox under the photo picker ('under \"Skipper\"' for owner, 'under my name' for crew); unticked ask shows doctor-error and sends no request; real Gemini answer for skipper and crew; toasts correct; crew entry lands in skipper's Ship's Log and skipper sees it after reload; skipper entry persisted via sync (verified with a stubbed answer). Ship's Log MMD item: one-line preview collapsed, toggle expands/collapses, toggle does NOT tick the item, row tap still ticks. Crew Prep bar 'Tom's progress 1 of 2 ticked' (heading not counted, ticking heading does not change count), goes to 2 of 2 + green. Crew dialog member and invite rows show 'Crew Prep - Tom: 2 of 2 ticked'; Agreement PDF downloads (%PDF, 'Boat Agreement - Tom.pdf'); Resend briefing shows the 'add a Role Briefing' toast error, no email sent; 'Resend role briefings to all crew' correctly hidden with 1 crew. Crew view: crew-agreement-bar + crew-agreement-pdf-btn downloads own PDF. Found 1 real data-loss bug in sync merge (crew MMD/walkthrough log entries dropped by a later skipper sync from a stale copy).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/me/boat (sync_merge._merge_list) + server-side shipsLog push in ai_lists.log_mmd / walkthrough_signoff", "issue": "Crew MMD Ship's Log entries can be silently deleted. log_mmd $pushes the item with ts=now but the skipper's client, if it hasn't polled yet, later PUTs its stale shipsLog with a newer list_ts; _merge_list keeps prev-only items only when item.ts > incoming list stamp, so the crew entry is treated as deleted. Reproduced in /app/backend/tests/test_mmd_log_race.py (FAILS: crew entry lost, ids=[1]). Breaks requirement 'All MMD questions and answers are logged'. Same pre-existing issue for crew walkthrough sign-offs.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/ai/doctor-ask (skipper)", "issue": "Skipper's entry is not written server-side; only returned as log_item and appended by the client (700ms debounced sync). If the tab is closed right after the answer the entry is only in local state; in my first run (browser closed ~immediately after answer) it never reached the DB. Consider writing the skipper's entry server-side too (after fixing the merge)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ship's Log expanded MMD answer (390px)", "issues": ["Expanded answer box is confined to the narrow text column (edit/delete icons column beside it), ~210px wide, so a long answer becomes a very tall narrow column with empty space on the right. Consider letting it span the full row width."]},
+      {"screen": "Crew view agreement PDF", "issues": ["Client sets the download filename to 'Boat Agreement - <vessel>.pdf' (name: vessel) while the skipper download and server header use the crew name; minor inconsistency. PDF can be downloaded before acceptance and says 'Not accepted yet' (fine, just noting)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_prep_mmd.py", "/app/backend/tests/test_crew_agreement.py", "/app/backend/tests/test_mmd_log_race.py", "/app/backend/tests/ui81_setup.py", "/app/test_reports/pytest/pytest_iter81.xml"],
+  "action_items": [
+    "HIGH: Fix sync merge so server-pushed shipsLog items (crew MMD + walkthrough sign-off) are not dropped by a stale skipper PUT. Options: keep prev-only items unless the client explicitly tombstones them (track deleted item ids), or compare against the client's base/last-synced stamp instead of its new list_ts. Make test_mmd_log_race.py pass.",
+    "Optional: also persist the skipper's MMD log entry server-side so it can't be lost if the app closes before sync.",
+    "Optional design: let the expanded MMD answer in the Ship's Log span the full row width on phones."
+  ],
+  "critical_code_review_comments": [
+    "sync_merge._merge_list deletion semantics (newer list stamp wins => absent items deleted) conflicts with any server-side $push into data lists; log_mmd/walkthrough_signoff don't touch list_ts either.",
+    "Two people with the same name ('Tom' crew + 'Tom' invite) both map to the same 'Crew Prep - Tom' list - expected by design but worth knowing."
+  ],
+  "updated_files": ["/app/backend/tests/test_mmd_log_race.py (new)", "/app/backend/tests/ui81_setup.py (new UI setup/teardown helper)"],
+  "success_rate": {"backend": "92% (11/12; the 1 failure is the new race test)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Temp boats TEST_ui81 and TEST_race81 + invites were created and deleted; users.last_boat restored (pro unset, free 'c_test-user-pro_TEST_agr'). Real MMD calls used: 2 by backend test + 2 in UI; their answers remain in the test users' doctor history (Pro/Free).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use `python /app/backend/tests/ui81_setup.py setup|teardown` (export REACT_APP_BACKEND_URL) to build a TEST_ui81 boat with First Aid Kit, Crew Prep - Tom, Crew Roles, Ship's Log and free user joined as crew Tom; it sets last_boat for both users. To avoid AI cost in UI, stub /api/ai/doctor-ask with page.route returning {answer, asks_left, log_item}. Retest test_mmd_log_race.py after the merge fix. Do not run test_crew_invites_v2.py.",
+  "rca of the issue": "Repro: skipper GET boat (stale copy) -> crew POST walkthrough-signoff or doctor-ask (server $push to data.shipsLog with ts=T1, list_ts untouched) -> skipper PUT stale copy + own new log item with list_ts.shipsLog=T2>T1 -> merge_state picks incoming as 'a' (newer stamp); crew item exists only in prev and _ts(item)=T1 < a_s=T2 so it is dropped. Mitigation: tombstone-based deletes or base-stamp comparison."
+}

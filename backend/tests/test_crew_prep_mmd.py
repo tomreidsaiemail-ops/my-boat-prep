@@ -88,8 +88,8 @@ def test_mmd_skipper_log_item():
     item = r.json()["log_item"]
     assert item["label"].startswith("Magic Marine Doctor asked by Skipper on Mon, 1 Jun 2026, 10:00: TEST_ small cut")
     assert item["mmd_answer"] == r.json()["answer"]
-    doc = DB.user_boats.find_one({"owner_id": PRO_ID, "boat_id": BOAT}, {"data.shipsLog": 1})
-    assert doc["data"]["shipsLog"] == []
+    doc = DB.user_boats.find_one({"owner_id": PRO_ID, "boat_id": BOAT}, {"data.shipsLog": 1, "pushed_items": 1})
+    assert [i["id"] for i in doc["data"]["shipsLog"]] == [item["id"]] and doc["pushed_items"][0]["item"]["id"] == item["id"]
 
 
 def test_mmd_crew_logged_on_skippers_boat():
@@ -99,4 +99,5 @@ def test_mmd_crew_logged_on_skippers_boat():
     assert r.status_code == 200, r.text
     assert "asked by Tom" in r.json()["log_item"]["label"]
     log = DB.user_boats.find_one({"owner_id": PRO_ID, "boat_id": BOAT}, {"data.shipsLog": 1})["data"]["shipsLog"]
-    assert len(log) == 1 and log[0]["mmd_answer"] and "asked by Tom" in log[0]["label"]
+    mine = [i for i in log if "asked by Tom" in i["label"]]
+    assert len(mine) == 1 and mine[0]["mmd_answer"]

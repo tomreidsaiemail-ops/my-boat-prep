@@ -6,7 +6,7 @@ export const MmdLogAnswer = ({ id, answer }) => {
   const [open, setOpen] = useState(false);
   const Icon = open ? ChevronDown : ChevronRight;
   return (
-    <div className="pb-2 pl-12 pr-2" data-testid={`mmd-log-${id}`}>
+    <div className="basis-full pb-2 pl-12 pr-3" data-testid={`mmd-log-${id}`}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} data-testid={`mmd-log-toggle-${id}`}
         className="flex items-center gap-1 rounded-md text-xs font-bold text-[var(--navy)] [transition:opacity_.15s] hover:opacity-80">
         <Icon className="h-4 w-4" /><Stethoscope className="h-3.5 w-3.5" /> {open ? "Hide the Doctor's answer" : "Show the Doctor's answer"}

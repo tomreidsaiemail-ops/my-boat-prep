@@ -30,7 +30,7 @@ const FoldButton = ({ id, folded, onFold }) => (
 );
 
 const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo }) => (
-  <li className={`checklist-row ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
+  <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {info?.child && <div className="w-7 shrink-0" aria-hidden="true" />}
     {number && <div className="shrink-0 pl-2 pt-3">{number}</div>}
@@ -46,7 +46,6 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
         </span>
       </button>
-      {item.mmd_answer && <MmdLogAnswer id={item.id} answer={item.mmd_answer} />}
       {tools}
     </div>
     {fold && <div className="flex shrink-0 items-start pt-2"><FoldButton id={item.id} folded={fold.folded} onFold={fold.onFold} /></div>}
@@ -56,6 +55,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
       <button type="button" className="icon-btn" aria-label="Edit item" onClick={onEdit} data-testid={`checklist-item-edit-${item.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
       <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete item" onClick={onDelete} data-testid={`checklist-item-delete-${item.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
     </div>}
+    {item.mmd_answer && <MmdLogAnswer id={item.id} answer={item.mmd_answer} />}
   </li>
 );
 
