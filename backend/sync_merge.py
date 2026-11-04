@@ -7,15 +7,20 @@ def _ts(item: dict, fallback: str) -> str:
     return item.get("ts") or fallback
 
 
+def _id(item: dict):
+    v = item.get("id")
+    return v if isinstance(v, (str, int, float, type(None))) else repr(v)
+
+
 def _merge_list(a_items: list, a_s: str, b_items: list, b_s: str) -> list:
     # `a` has the newer (or equal) list-structure stamp, so its order and deletions win.
-    b_by = {i.get("id"): i for i in b_items}
+    b_by = {_id(i): i for i in b_items}
     out, a_ids = [], set()
     for it in a_items:
-        a_ids.add(it.get("id"))
-        other = b_by.get(it.get("id"))
+        a_ids.add(_id(it))
+        other = b_by.get(_id(it))
         out.append(other if other and _ts(other, b_s) > _ts(it, a_s) else it)
-    out += [i for i in b_items if i.get("id") not in a_ids and _ts(i, b_s) > a_s]
+    out += [i for i in b_items if _id(i) not in a_ids and _ts(i, b_s) > a_s]
     return out
 
 

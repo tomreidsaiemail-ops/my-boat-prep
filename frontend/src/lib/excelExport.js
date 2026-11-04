@@ -45,7 +45,7 @@ const maintRows = (items, defs) => {
       else if (d.type === "date") row[d.name] = asDate(v);
       else if (d.type.startsWith("integer") || d.type.startsWith("decimal")) {
         row[d.name] = asNum(v);
-        if (d.type !== "integer" && d.type !== "decimal") row[`${d.name} unit`] = v ? a[`${d.key}__unit`] || (d.type === "integer age" ? "years old" : "") : "";
+        if (d.type !== "integer" && d.type !== "decimal") row[`${d.name} unit`] = v ? `${a[`${d.key}__unit`] || (d.type === "integer age" ? "years old" : "")}${a[`${d.key}__est`] ? " (est.)" : ""}`.trim() : "";
       } else row[d.name] = v || "";
     });
     return row;

@@ -36,11 +36,24 @@ class AttrDef(BaseModel):
     key: str = Field(max_length=60, pattern=r"^[a-z0-9_]+$")
     name: str = Field(max_length=80)
     options: List[str] = Field(default=[], max_length=60)
+    type: str = Field(default="", max_length=30)
 
 
 class MaintIn(BoatIn):
     lists: List[str] = Field(min_length=1, max_length=5)
     attrs: Dict[str, List[AttrDef]] = {}
+    currency: str = Field(default="", pattern=r"^([A-Z]{3})?$")
+
+
+ESTIMATES = ("decimal weight", "decimal cost")
+
+
+def _number(text: str):
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", text)
+    if not m:
+        return None
+    v = round(float(m.group(0).replace(",", "")), 2)
+    return f"{v:g}" if 0 < v <= 999999.99 else None
 
 
 def _boat(b: BoatIn) -> str:
@@ -86,7 +99,11 @@ def _clean_attrs(raw, defs: List[AttrDef]) -> dict:
         d, text = by_key.get(str(k)), str(v or "").strip()
         if not d or not text:
             continue
-        if d.options:
+        if d.type in ESTIMATES:
+            num = _number(text)
+            if num:
+                out[d.key] = num
+        elif d.options:
             pick = next((o for o in d.options if o.lower() == text.lower()), None)
             if pick:
                 out[d.key] = pick
@@ -122,15 +139,25 @@ async def maint_lists(body: MaintIn, user: dict = Depends(require_premium)):
         raise HTTPException(status_code=422, detail="Add your boat's make and model first")
     boat = _boat(body)
     extra = "".join([f", built {body.year_built}" if body.year_built else "", f", LOA {body.loa} {body.units}" if body.loa.strip() else ""])
+    weight_unit = "lb" if body.units == "ft" else "kg"
+    money = body.currency or "USD"
+
+    def describe(d: AttrDef) -> str:
+        if d.type == "decimal weight":
+            return f"{d.key} (ALWAYS give your estimated weight of the item as a plain number in {weight_unit})"
+        if d.type == "decimal cost":
+            return f"{d.key} (ALWAYS give your estimated replacement cost, bought new today, as a plain number in {money})"
+        return d.key + (f" (one of: {', '.join(d.options)})" if d.options else "")
     spec = []
     for k in lists:
-        attrs = "; ".join(f"{d.key}" + (f" (one of: {', '.join(d.options)})" if d.options else "") for d in body.attrs.get(k, []))
-        spec.append(f'- "{k}" = {MAINT_KEYS[k]}' + (f". Attributes you may fill when you are confident: {attrs}" if attrs else ""))
+        attrs = "; ".join(describe(d) for d in body.attrs.get(k, []))
+        spec.append(f'- "{k}" = {MAINT_KEYS[k]}' + (f". Attributes: {attrs}" if attrs else ""))
     prompt = (f"Boat: {boat}{extra}.\nMake these maintenance lists of the gear this boat most likely has, as fitted from the factory plus common additions:\n"
               + "\n".join(spec) +
               "\nGroup each list into a few categories (headings, e.g. 'Winches', 'Headsails', 'Halyards', 'Shrouds', 'Anchors') with the specific items under each "
               "(e.g. 'Primary winch - port', 'Genoa', 'Main halyard', 'Cap shroud - starboard', 'Primary anchor'). At most 12 headings and 40 items per list. "
-              "Only fill attributes you are confident about; use the exact option text. "
+              "Fill every weight and cost attribute for every item with a realistic estimate for this boat's size; fill the other attributes only when you "
+              "are confident, using the exact option text. "
               'Return exactly: {"lists": {"<key>": [{"heading": "...", "items": [{"label": "...", "attrs": {"<attribute key>": "..."}}]}]}}')
     result, left = await _run(user, "maint", prompt, parse_maint(lists, body.attrs), {"name": "Boat maintenance lists", "boat": boat[:120]}, MAINT_SYSTEM,
                               "Magic Mariner maintenance lists")

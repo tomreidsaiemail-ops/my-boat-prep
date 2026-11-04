@@ -4,7 +4,8 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api, apiError } from "@/lib/api";
-import { MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLikeSailboat } from "@/lib/maint";
+import { ESTIMATED, MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLikeSailboat, markEstimates } from "@/lib/maint";
+import { budgetCurrency } from "@/lib/budget";
 
 const boatBody = (b) => ({ make: (b.make || "").trim(), model: (b.model || "").trim(), boat_type: (b.boat_type || "").trim(), year_built: /^\d{4}$/.test(b.year_built || "") ? b.year_built : "", loa: String(b.loa || "").slice(0, 8), units: b.units === "ft" ? "ft" : "m" });
 
@@ -16,6 +17,7 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [],
   const missing = MAINT_LISTS.filter((l) => !have.includes(l.key));
   const [picked, setPicked] = useState(missing.map((l) => l.key));
   const [due, setDue] = useState("");
+  const currency = budgetCurrency(boat);
   useEffect(() => {
     if (step === "notSail" && auto) onDismiss();
   }, [step, auto]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -31,10 +33,11 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [],
     let tailored = {};
     if (magic) {
       setStep("making");
-      const attrs = Object.fromEntries(chosen.map((l) => [l.key, attrsForList(defs, { maint: l.key, name: l.name }).filter((d) => d.type === "picklist")
-        .map((d) => ({ key: d.key, name: d.name.slice(0, 80), options: d.options.slice(0, 60) }))]));
+      const attrs = Object.fromEntries(chosen.map((l) => [l.key, attrsForList(defs, { maint: l.key, name: l.name }).filter((d) => d.type === "picklist" || ESTIMATED.includes(d.type))
+        .map((d) => ({ key: d.key, name: d.name.slice(0, 80), type: d.type, options: (d.options || []).slice(0, 60) }))]));
       try {
-        tailored = (await api.post("/ai/maint-lists", { ...boatBody(boat), lists: chosen.map((l) => l.key), attrs }, { timeout: 120000 })).data.lists;
+        const lists = (await api.post("/ai/maint-lists", { ...boatBody(boat), currency, lists: chosen.map((l) => l.key), attrs }, { timeout: 120000 })).data.lists;
+        tailored = Object.fromEntries(Object.entries(lists).map(([k, groups]) => [k, markEstimates(groups, attrs[k] || [], { weight: boat.units === "ft" ? "lb" : "kg", cost: currency })]));
       } catch (err) { toast.error(`${apiError(err, "The Magic Mariner couldn't tailor the lists")} Starter items were used instead.`); }
     }
     onCreate(chosen.map((l) => ({ ...l, groups: tailored[l.key] || STARTER[l.key] })), due);

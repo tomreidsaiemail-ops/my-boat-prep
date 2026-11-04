@@ -38,11 +38,12 @@ const Control = ({ def, attrs, onChange, ctx, testId }) => {
     const suffix = def.type === "integer age" ? "years old" : def.type === "decimal cost" ? attrs[unitKey] || ctx.currency : "";
     return (
       <span className="flex items-center gap-1">
-        <BlurInput value={value} onSave={(v) => onChange({ [def.key]: v, ...(def.type === "decimal cost" && ctx.currency ? { [unitKey]: ctx.currency } : units && !attrs[unitKey] ? { [unitKey]: unit } : {}) })} filter={NUM[def.type] || DEC} inputMode={NUM[def.type] ? "numeric" : "decimal"} placeholder="0" disabled={dis} aria-label={def.name} data-testid={testId} />
+        <BlurInput value={value} onSave={(v) => onChange({ [def.key]: v, [`${def.key}__est`]: undefined, ...(def.type === "decimal cost" && ctx.currency ? { [unitKey]: ctx.currency } : units && !attrs[unitKey] ? { [unitKey]: unit } : {}) })} filter={NUM[def.type] || DEC} inputMode={NUM[def.type] ? "numeric" : "decimal"} placeholder="0" disabled={dis} aria-label={def.name} data-testid={testId} />
         {units && <select value={unit} disabled={dis} onChange={(e) => onChange({ [unitKey]: e.target.value })} aria-label={`${def.name} unit`} className="field-input h-10 !w-[70px] shrink-0 !px-1 !text-sm" data-testid={`${testId}-unit`}>
           {units.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>}
         {suffix && <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{suffix}</span>}
+        {value && attrs[`${def.key}__est`] && <span title="Estimated by the Magic Mariner. Change it to your own figure." className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-extrabold uppercase text-amber-900" data-testid={`${testId}-est`}>est.</span>}
       </span>
     );
   }

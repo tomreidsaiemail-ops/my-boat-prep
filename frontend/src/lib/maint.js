@@ -80,12 +80,23 @@ export const dueTone = (iso, today = new Date()) => {
   return days < 0 ? "red" : days <= 30 ? "orange" : "";
 };
 
+// Weight and cost the Magic Mariner estimates; they carry "<key>__est" until the skipper edits them.
+export const ESTIMATED = ["decimal weight", "decimal cost"];
+export const markEstimates = (groups, defs, units) => groups.map((g) => ({ ...g, items: g.items.map((i) => {
+  const attrs = { ...i.attrs };
+  defs.filter((d) => ESTIMATED.includes(d.type) && attrs[d.key]).forEach((d) => {
+    const u = d.type === "decimal cost" ? units.cost : units.weight;
+    if (u) attrs[`${d.key}__unit`] = u;
+    attrs[`${d.key}__est`] = "1";
+  });
+  return { ...i, attrs };
+}) }));
 const pretty = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const FILE_ID = /^[a-f0-9]{32}$/;
 export const maintLabel = (item) => {
   const a = item.attrs || {};
-  const parts = Object.entries(a).filter(([k, v]) => v && !k.endsWith("__unit") && !k.endsWith("__name") && !FILE_ID.test(v) && k !== LAST_KEY && k !== DUE_KEY)
-    .map(([k, v]) => `${pretty(k)}: ${v}${a[`${k}__unit`] ? ` ${a[`${k}__unit`]}` : ""}`);
+  const parts = Object.entries(a).filter(([k, v]) => v && !k.endsWith("__unit") && !k.endsWith("__name") && !k.endsWith("__est") && !FILE_ID.test(v) && k !== LAST_KEY && k !== DUE_KEY)
+    .map(([k, v]) => `${pretty(k)}: ${v}${a[`${k}__unit`] ? ` ${a[`${k}__unit`]}` : ""}${a[`${k}__est`] ? " (est.)" : ""}`);
   const due = a[DUE_KEY] || item.due_from;
   return [item.label, a[LAST_KEY] && `last serviced ${localDate(a[LAST_KEY])}`, due && `due ${localDate(due)}`, ...parts].filter(Boolean).join(" - ");
 };
