@@ -497,3 +497,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Tested iteration_86 (backend 14/14, frontend 100%) + minor fixes (qty<1 dropped, learned area must be F/D, same-name learning order, snapshot stock, boat_maps .get hardening).
 
 - 2026-06: Boat Maintenance lists now have the standard "Show List Ordering Icons" (numbers, flag, up/down, indent/unindent; categories with items cannot be indented) and "Prompt on delete" toggles at the bottom (per-list settings shared with other lists; confirm dialog maint-item-delete-dialog, categories mention their item count). Self-tested by screenshot.
+
+- 2026-06: Deleting a Boat Maintenance list (kind maint) now asks twice like the Boat Budget: "Delete <name>?" then "Are you absolutely certain you want to delete this and all that is contained in it?" (DeleteListDialog). Self-tested.
