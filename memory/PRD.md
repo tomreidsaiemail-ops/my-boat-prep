@@ -561,3 +561,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Indent / Outdent controls
 - Duplicate item check is per group (same label allowed under different parents; clashes only within one parent or at top level).
 - Checklist ordering tools: separate Indent right (ArrowRightToLine) and Outdent left (ArrowLeftToLine) buttons, text labels from sm up. Indent only shows for a top-level item with no sub-items whose item above belongs to a normal group (not a Ship's Log folder); Outdent only on sub-items. Old "merge group into the group above" dialog removed (outline.js canIndent).
+
+## 2026-06 Multi-level lists (up to 4 levels)
+- lib/outline.js is tree-aware: items keep `indent:true` for any sub-item (one-level code still works) plus `level` 2-3 for deeper ones (6 > 6.1 > 6.1.1 > 6.1.1.1). depthsOf/outlineInfo (num path, depth, ancestors, prevSib, canIndent/canOutdent, whole-branch subs), move/place/flag move whole branches among siblings, setIndent moves the branch one level in/out, removeOutline promotes the first sub-item's branch, normalizeLevels + levelShifts/restoreLevels for exact Undo.
+- Every level with sub-items folds; hidden by any folded ancestor. Indent shows only with a previous sibling and if the branch stays within 4 levels; Outdent never at top level. Maintenance lists stay one level.
+- Delete category dialog shows depth and has "Delete only <heading>, keep its items". Order badge widens for 6.1.1.1; dotted position typing per level. Print view / PDF indent per level; template publish keeps level.
+- Tested iteration_100 (95% -> fixes self-verified).

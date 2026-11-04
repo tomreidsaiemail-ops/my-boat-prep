@@ -1,0 +1,4 @@
+Iteration 100 multi-level outline UI test notes.
+TEST list: TEST_multilevel (custom_1793827404582) on test-user-pro boat. Item ids 1793827404582..592.
+W=...587 When leaving mooring, P=...588 If under power, M=...589 Use Motor, S=...590 If under sail, H=...591 Hoist main, F=...592 Stow fenders.
+Reload: active list resets, pick it via list-selector -> list-option-custom_1793827404582. Wait >=2.5s after edits before closing (sync debounce).

@@ -109,6 +109,25 @@ export const setIndent = (items, id, indent) => {
   return items.map((x, k) => (k >= i && k < end ? withDepth(x, d[k] + step) : x));
 };
 
+// Levels an edit changed (id -> old indent/level), so Undo can put them back.
+export const levelShifts = (before, after) => {
+  const was = new Map(before.map((i) => [i.id, i]));
+  return new Map(after.filter((i) => was.get(i.id) && (was.get(i.id).level !== i.level || !!was.get(i.id).indent !== !!i.indent))
+    .map((i) => [i.id, { indent: was.get(i.id).indent, level: was.get(i.id).level }]));
+};
+export const restoreLevels = (list, shifts) => list.map((i) => {
+  if (!shifts.has(i.id)) return i;
+  const { level: _l, indent: _i, ...rest } = i;
+  const was = shifts.get(i.id);
+  return { ...rest, ...(was.indent ? { indent: true } : {}), ...(was.level ? { level: was.level } : {}) };
+});
+
+// Re-levels items after a deletion so stored levels match what's shown (no item more than one level below the one above).
+export const normalizeLevels = (items) => {
+  const d = depthsOf(items);
+  return items.map((x, k) => (rawDepth(x) !== d[k] || (d[k] === 0 && x.indent) ? withDepth(x, d[k]) : x));
+};
+
 // Deleting an item with sub-items promotes its first sub-item (and what's under that) one level so the rest stay grouped.
 export const removeOutline = (items, id) => {
   const i = at(items, id);

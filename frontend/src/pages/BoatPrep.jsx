@@ -83,7 +83,7 @@ import { MealTypePicker } from "@/components/boat/MealTypePicker";
 import { DESCRIPTION_MAX } from "@/components/boat/ListDraftTools";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent, tickDeparture } from "@/lib/outline";
+import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, levelShifts, linesToItems, moveOutline, normalizeLevels, outlineInfo, placeOutline, removeOutline, restoreLevels, setIndent, tickDeparture } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
@@ -354,20 +354,12 @@ export default function BoatPrep({ boatId, boats }) {
     const item = items[index];
     if (!item) return;
     // removeOutline promotes the first sub-item when an item with sub-items goes; undo puts their levels back too.
-    const next = removeOutline(items, id);
-    const before = new Map(items.map((i) => [i.id, i]));
-    const shifted = new Map(next.filter((i) => before.get(i.id).level !== i.level || !!before.get(i.id).indent !== !!i.indent)
-      .map((i) => [i.id, { indent: before.get(i.id).indent, level: before.get(i.id).level }]));
+    const shifted = levelShifts(items, removeOutline(items, id));
     setItems((list) => removeOutline(list, id));
     const undo = () => mutate((s) => {
       const cur = s.data[listId];
       if (!cur || cur.some((i) => i.id === id)) return s;
-      const restored = cur.map((i) => {
-        if (!shifted.has(i.id)) return i;
-        const { level: _l, indent: _i, ...rest } = i;
-        const was = shifted.get(i.id);
-        return { ...rest, ...(was.indent ? { indent: true } : {}), ...(was.level ? { level: was.level } : {}) };
-      });
+      const restored = restoreLevels(cur, shifted);
       restored.splice(Math.min(index, restored.length), 0, item);
       return { ...s, data: { ...s.data, [listId]: restored } };
     });
@@ -379,11 +371,12 @@ export default function BoatPrep({ boatId, boats }) {
     if (!guard()) return;
     const listId = active.id;
     const gone = items.map((item, index) => ({ item, index })).filter((x) => ids.includes(x.item.id));
-    setItems((list) => list.filter((i) => !ids.includes(i.id)));
+    const shifted = levelShifts(items, normalizeLevels(items.filter((i) => !ids.includes(i.id))));
+    setItems((list) => normalizeLevels(list.filter((i) => !ids.includes(i.id))));
     const undo = () => mutate((s) => {
       const cur = s.data[listId];
       if (!cur || cur.some((i) => ids.includes(i.id))) return s;
-      const restored = [...cur];
+      const restored = restoreLevels(cur, shifted);
       gone.forEach(({ item, index }) => restored.splice(Math.min(index, restored.length), 0, item));
       return { ...s, data: { ...s.data, [listId]: restored } };
     });
@@ -395,8 +388,13 @@ export default function BoatPrep({ boatId, boats }) {
   const askRemove = (id) => {
     if (!guard()) return;
     const i = items.findIndex((x) => x.id === id);
-    const info = outlineInfo(items)[id];
-    if (info?.subs) { setDialog({ type: "deleteGroup", group: { head: items[i], subs: items.slice(i + 1, i + 1 + info.subs) } }); return; }
+    const all = outlineInfo(items);
+    const info = all[id];
+    if (info?.subs) {
+      const subs = items.slice(i + 1, i + 1 + info.subs);
+      setDialog({ type: "deleteGroup", group: { head: items[i], subs, depth: Object.fromEntries(subs.map((s) => [s.id, all[s.id].depth - info.depth])) } });
+      return;
+    }
     if (!promptDelete) { remove(id); return; }
     setDialog({ type: "deleteItem", item: items.find((i) => i.id === id) });
   };
@@ -909,7 +907,7 @@ export default function BoatPrep({ boatId, boats }) {
       <ConfirmDelete item={dialog?.type === "deleteItem" ? { name: labelFor(dialog.item) } : null} testId="item-delete"
         note={dialog?.type === "deleteItem" ? `It will be removed from ${active.name}.` : ""}
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
-      <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor}
+      <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor} onHeadOnly={(id) => { remove(id); setDialog(null); }}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>

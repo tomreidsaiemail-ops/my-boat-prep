@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 100: Tested multi-level (4-level) checklist outlines in the frontend only. Used Playwright at 1920 and 390 on a TEST_multilevel list on the Pro 'main' boat, which I deleted at the end. Building 6 > 6.1 > 6.1.1 > 6.1.1.1 works. Indent shows only when there is a previous sibling and the branch stays within 4 levels. Outdent moves one level at a time and never shows at top level. Indenting moves the whole branch. Up/Down, the position badge and Flag all move whole branches among siblings. Fold works per level, with whole-branch counts ('5 sub-items · 1 ticked'). Fold all reads 'Fold all groups (4)' and then 'Unfold all groups'. Indenting under a folded item unfolds it. The delete-group dialog lists the whole branch. Group delete and partial delete Undo restore levels exactly. Levels persist after reload: the DB stores indent:true plus level 2/3. Export Current indents rows at 2, 4 and 6rem. The Excel Group column still works. Maintenance lists stay one level. Indent/outdent on First Aid and numbering on Leaving the Dock behave as before. At 390px there is no horizontal overflow. One requirement can't be reached: you cannot delete just a heading with sub-items, so the 'promote first sub-item' path never runs from the UI.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "OrderNumber badge", "issue": "The 4-level label '6.1.1.1' overflows its badge (scrollWidth 48 > clientWidth 46), so the leading '6' is cut off at 1920 and 390. The !w-12 rule only covers length > 3; it needs to be wider (e.g. w-14 or auto width with px-1) when the label is 6 or more characters.", "selector": "[data-testid^='checklist-item-number-']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Delete just a heading that has sub-items (promote first sub-item)", "issue": "This can't be done from the UI. askRemove always opens DeleteGroupDialog when info.subs > 0. In that dialog, ticking the heading ticks every sub-item, and unticking any sub-item unticks the heading, so the heading can only be deleted together with its whole branch. remove() → removeOutline (promotion plus level-restoring Undo) is only reached for items without sub-items, where nothing gets promoted. The lib logic is correct (node check: removeOutline(P) gives M=1.1, S=1.1.1, M2=1.1.2). Only the UI path is missing.", "affected_selectors": ["group-delete-head-checkbox", "group-delete-item-checkbox-<id>", "group-delete-confirm-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Checklist at 390px with level 2-3 items", "issues": ["Each level adds 1.75rem of indent, and the badge takes about 48px, so a level-3 row's text column is only about 74px wide. 'If under sail' wraps onto two lines. The flag/up/down/outdent tools wrap onto two lines at levels 1-3. There is no overflow, but it is cramped. Consider about 1rem per level on mobile."]},
+      {"screen": "Delete category dialog", "issues": ["The whole branch is listed flat (every sub-item uses the same pl-7). Depth isn't shown, so 6.1.1.1 looks like 6.1."]}
+    ]
+  },
+  "verified": [
+    "Indent on Use Motor twice → 6.1.1 (data-level=2), and If under power gets a fold button. If under sail indented 3 times → 6.1.1.1 (level 3) with no Indent button; W also loses Indent because its branch is 4 deep.",
+    "Outdent from 6.1.1.1 → 6.1.2 → 6.2 → 7, one level per tap; no Outdent at top level.",
+    "Indenting the Hoist main branch (6.2 > 6.2.1) → 6.1.2 > 6.1.2.1; outdent returns it.",
+    "Up/Down swap whole sibling branches; Flag jumps the branch to 6.1; typing 2 on the badge places it at 6.2 (flag kept); unflag works.",
+    "Fold P → 'If under power 2 sub-items · 1 ticked'; fold W hides all 5; Fold all (4) → 'Unfold all groups'; indenting H under folded P unfolds P.",
+    "Group delete of M's branch → Undo restores M at level 2 and S at level 3. Partial delete (untick head and S, delete M only) → Undo restores.",
+    "Reload after a 3.5s wait keeps all levels; DB rows have indent:true with level 2/3, and level is left out at depth 1.",
+    "Print view margins: 0, 2rem, 4rem, 6rem, 2rem, 4rem. xlsx Group/Item/Heading/Ticked columns: sub-levels show the top heading as Group.",
+    "Deck Hardware maintenance: sub-items have only Outdent, no Indent.",
+    "First Aid: 1, 1.1 … numbering; indenting 1.2 → 1.1.1, outdent → 1.2 (restored, no level left in the DB).",
+    "Leaving the Dock (admin): numbers 1-16 unchanged.",
+    "Ship's Log renders without errors.",
+    "390px: documentElement.scrollWidth == 390."
+  ],
+  "not_verified": [
+    "Leaving Dock 'Departure' heading ticking in the UI: the admin account's guard() (boat not 'ready') blocks adding items, and no test account has a Departure heading. I checked tickDeparture with a level-2 sub-item in node instead (/app/tests/it100_outline_check.mjs): ticking the heading ticks all, unticking the level-2 item unticks the heading, and re-ticking it ticks the heading again.",
+    "Backend ship_log render_items and the TemplateItem.level backend were not tested (frontend only)."
+  ],
+  "test_report_links": ["/app/tests/it100_outline_check.mjs", "/app/tests/it100_helpers.txt"],
+  "action_items": [
+    "Decide how a user deletes only a heading with sub-items. Options: a 'Delete heading only, keep its items' option in DeleteGroupDialog that calls remove(id) (removeOutline promotion plus level Undo), or allow head-only selection.",
+    "Widen the OrderNumber badge for labels of 6+ characters (6.1.1.1) so the first digit isn't clipped.",
+    "Optional: reduce the per-level indent on mobile; show depth in the DeleteGroupDialog list.",
+    "Optional: normalize stale levels after removeMany. Deleting a middle parent leaves a child stored at level 3 while it displays at level 2 (depthsOf clamps it). PrintView (raw item.level) and backend render_items then print it one level deeper than the app shows."
+  ],
+  "critical_code_review_comments": [
+    "PrintView and backend ship_log use raw item.level, not depthsOf(), so they can differ from the on-screen depth after a partial group delete (removeMany filters without re-leveling).",
+    "OrderNumber.commit splits the label on '.' and takes only [parent, sub]. Typing a dotted value like '6.2' on a level-2 item (6.1.2) is accepted as position 2 among its 6.1.x siblings, which is misleading. Plain numbers work.",
+    "excelExport Group/Heading only know top-level headings. Sub-headings (If under power) show Heading='' and Group='When leaving mooring', and there is no Level column. Acceptable, but hierarchy is lost in Excel."
+  ],
+  "updated_files": ["/app/tests/it100_outline_check.mjs", "/app/tests/it100_helpers.txt"],
+  "success_rate": {"backend": "N/A (not requested)", "frontend": "95%"},
+  "seed_data_creation": "Created TEST_multilevel (custom_1793827404582) on test-user-pro 'main' and deleted it through the UI; DB confirms the data key and registry entry are gone. First Aid tpl_a0e0de16a7 item 3 was indented and then outdented back (DB shows indent:true, no level, as before). No admin data changed: adding items failed because of the ready guard.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro session test_session_pro_1. After a reload the active list resets to Boat Inventory; reopen a list with list-selector → list-option-<id> (force click). The ordering toggle is per list, so check for checklist-item-flag-* before clicking ordering-toggle. Click Undo with '[data-sonner-toast] button' (get_by_role 'Undo' .first hits another button). Wait 3s or more before closing or reloading so the sync debounce saves. Admin test account can't add items (guard: boat not ready)."
+}

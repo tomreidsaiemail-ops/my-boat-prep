@@ -5,15 +5,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const Pick = ({ id, checked, onChange, children, bold, testId }) => (
-  <label htmlFor={id} className={`flex min-h-[44px] cursor-pointer items-start gap-3 py-2 ${bold ? "font-bold" : "pl-7 font-medium"}`}>
+const Pick = ({ id, checked, onChange, children, bold, testId, level = 1 }) => (
+  <label htmlFor={id} className={`flex min-h-[44px] cursor-pointer items-start gap-3 py-2 ${bold ? "font-bold" : "font-medium"}`} style={bold ? undefined : { paddingLeft: `${1.75 * level}rem` }}>
     <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(!!v)} className="mt-0.5 h-5 w-5" data-testid={testId} />
     <span className="min-w-0 break-words text-[15px] leading-snug">{children}</span>
   </label>
 );
 
 // Ticking the category ticks every item; unticking any item keeps the category. Re-ticking items never re-ticks the category.
-export const DeleteGroupDialog = ({ group, labelFor, onConfirm, onClose }) => {
+export const DeleteGroupDialog = ({ group, labelFor, onConfirm, onClose, onHeadOnly }) => {
   const [head, setHead] = useState(true);
   const [subs, setSubs] = useState([]);
   useEffect(() => { if (group) { setHead(true); setSubs(group.subs.map((s) => s.id)); } }, [group]);
@@ -34,9 +34,14 @@ export const DeleteGroupDialog = ({ group, labelFor, onConfirm, onClose }) => {
         <div className="max-h-[50vh] overflow-y-auto rounded-md border-[1.5px] border-[var(--line)] px-3" data-testid="group-delete-list">
           <Pick id="gd-head" checked={head} onChange={toggleHead} bold testId="group-delete-head-checkbox">{labelFor(group.head)}</Pick>
           {group.subs.map((s) => (
-            <Pick key={s.id} id={`gd-${s.id}`} checked={subs.includes(s.id)} onChange={(v) => toggleSub(s.id, v)} testId={`group-delete-item-checkbox-${s.id}`}>{labelFor(s)}</Pick>
+            <Pick key={s.id} id={`gd-${s.id}`} level={group.depth?.[s.id] || 1} checked={subs.includes(s.id)} onChange={(v) => toggleSub(s.id, v)} testId={`group-delete-item-checkbox-${s.id}`}>{labelFor(s)}</Pick>
           ))}
         </div>
+        {onHeadOnly && (
+          <button type="button" className="btn-ghost w-full text-sm" onClick={() => onHeadOnly(group.head.id)} data-testid="group-delete-head-only-btn">
+            Delete only &quot;{labelFor(group.head).length > 32 ? `${labelFor(group.head).slice(0, 32)}…` : labelFor(group.head)}&quot;, keep its items
+          </button>
+        )}
         <AlertDialogFooter className="flex-row justify-end gap-2">
           <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid="group-delete-cancel-btn">Keep</AlertDialogCancel>
           <button type="button" className="btn-solid !bg-[var(--red)] px-5 disabled:opacity-50" disabled={!ids.length}

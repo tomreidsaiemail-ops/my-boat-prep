@@ -34,7 +34,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {depth > 0 && <div className="shrink-0 border-r-2 border-sky-200" style={{ width: depth * 18 }} aria-hidden="true" data-testid={`checklist-item-depth-${item.id}`} />}
-    {info?.child && <div className="shrink-0" style={{ width: `${1.75 * (info.depth || 1)}rem` }} aria-hidden="true" data-testid={`checklist-item-level-${item.id}`} data-level={info.depth || 1} />}
+    {info?.child && <div className="shrink-0 [width:calc(var(--lvl)*1rem)] sm:[width:calc(var(--lvl)*1.75rem)]" style={{ "--lvl": info.depth || 1 }} aria-hidden="true" data-testid={`checklist-item-level-${item.id}`} data-level={info.depth || 1} />}
     {number && <div className="shrink-0 pl-2 pt-3">{number}</div>}
     <div className="flex min-w-0 flex-1 flex-col">
       <button type="button" role="checkbox" aria-checked={item.checked} onClick={onToggle} data-testid={`checklist-item-toggle-${item.id}`}
