@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api, apiError } from "@/lib/api";
@@ -9,11 +9,12 @@ import { MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLik
 const boatBody = (b) => ({ make: (b.make || "").trim(), model: (b.model || "").trim(), boat_type: (b.boat_type || "").trim(), year_built: /^\d{4}$/.test(b.year_built || "") ? b.year_built : "", loa: String(b.loa || "").slice(0, 8), units: b.units === "ft" ? "ft" : "m" });
 
 // The Magic Mariner checks the boat is a sailboat, then offers the five Boat Maintenance lists (tailored for Pro, starter items otherwise).
-export const MaintSetupDialog = ({ boat, premium, online, defs, auto, onCreate, onDismiss, onClose }) => {
+export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [], onCreate, onDismiss, onClose }) => {
   const magic = premium && online;
   const [step, setStep] = useState(magic ? "checking" : looksLikeSailboat(boat) ? "offer" : "notSail");
   const name = boatTitle(boat);
-  const [picked, setPicked] = useState(MAINT_LISTS.map((l) => l.key));
+  const missing = MAINT_LISTS.filter((l) => !have.includes(l.key));
+  const [picked, setPicked] = useState(missing.map((l) => l.key));
   const [due, setDue] = useState("");
   useEffect(() => {
     if (step === "notSail" && auto) onDismiss();
@@ -39,7 +40,8 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, onCreate, 
     onCreate(chosen.map((l) => ({ ...l, groups: tailored[l.key] || STARTER[l.key] })), due);
   };
   if (step === "notSail" && auto) return null;
-  const listNames = MAINT_LISTS.map((l) => l.name);
+  const listNames = missing.map((l) => l.name);
+  const named = listNames.length > 1 ? `${listNames.slice(0, -1).join(", ")} and ${listNames.at(-1)} lists` : `${listNames[0]} list`;
   return (
     <Dialog open onOpenChange={(o) => !o && step !== "making" && (step === "offer" ? onDismiss() : onClose())}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="maint-setup-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -58,7 +60,7 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, onCreate, 
         {step === "offer" && (
           <div className="flex flex-col gap-3 text-sm" data-testid="maint-setup-offer">
             <p className="font-semibold" data-testid="maint-setup-question">
-              Would you like default {listNames.slice(0, -1).join(", ")} and {listNames.at(-1)} lists created for your {name}?
+              Would you like {have.length ? "the missing" : "default"} {named} created for your {name}?
             </p>
             <p className="rounded-md border-l-4 border-[var(--navy)] bg-slate-50 px-3 py-2 text-[var(--muted)]" data-testid="maint-setup-guidance">
               Recommended: it&apos;s the easiest way to review, correct and configure your boat&apos;s gear. The lists go in the {MAINT_CATEGORY} category.
@@ -66,7 +68,11 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, onCreate, 
               {premium && !online && " You're offline, so you'll get standard starter items."}
             </p>
             <div className="flex flex-col gap-2">
-              {MAINT_LISTS.map((l) => (
+              {MAINT_LISTS.map((l) => have.includes(l.key) ? (
+                <p key={l.key} className="flex min-h-[36px] items-center gap-2 font-semibold text-[var(--muted)]" data-testid={`maint-setup-have-${l.key}`}>
+                  <Check className="h-4 w-4 shrink-0 text-emerald-700" /> {l.name} <span className="text-xs font-medium">(already on your boat)</span>
+                </p>
+              ) : (
                 <label key={l.key} className="flex min-h-[36px] items-center gap-2 font-semibold">
                   <Checkbox checked={picked.includes(l.key)} onCheckedChange={() => toggle(l.key)} data-testid={`maint-setup-pick-${l.key}`} /> {l.name}
                 </label>

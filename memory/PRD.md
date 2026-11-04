@@ -499,3 +499,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Boat Maintenance lists now have the standard "Show List Ordering Icons" (numbers, flag, up/down, indent/unindent; categories with items cannot be indented) and "Prompt on delete" toggles at the bottom (per-list settings shared with other lists; confirm dialog maint-item-delete-dialog, categories mention their item count). Self-tested by screenshot.
 
 - 2026-06: Deleting a Boat Maintenance list (kind maint) now asks twice like the Boat Budget: "Delete <name>?" then "Are you absolutely certain you want to delete this and all that is contained in it?" (DeleteListDialog). Self-tested.
+
+- 2026-06 fix: "Create Boat Maintenance lists..." button in Additional details now shows whenever any of the 5 maintenance lists is missing (was hidden once any existed). Setup dialog marks existing ones "(already on your boat)" and offers only the missing ones; tapping with no Make/Model shows a hint. Auto-offer still only when none exist. Self-tested (delete Ground Tackle -> button back -> recreated).

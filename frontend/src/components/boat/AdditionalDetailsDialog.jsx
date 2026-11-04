@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DetailsSection } from "@/components/boat/telemetry/DetailsSection";
@@ -104,8 +105,9 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
             <TextField id="boat-make" label="Make" value={boat.make} placeholder="e.g. Beneteau" onChange={(v) => onChange("make", v)} />
             <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
-            {onMaintSetup && boat.make?.trim() && boat.model?.trim() && (
-              <button type="button" onClick={onMaintSetup} className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
+            {onMaintSetup && (
+              <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onMaintSetup() : toast.error("Please fill in Make and Model first"))}
+                className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
               </button>
             )}
