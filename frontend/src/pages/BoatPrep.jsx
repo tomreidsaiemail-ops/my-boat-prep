@@ -86,7 +86,7 @@ import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
 import { ExcelExportDialog } from "@/components/boat/ExcelExportDialog";
 import { ShopScanDialog } from "@/components/boat/stores/ShopScanDialog";
-import { bulkMove } from "@/lib/bulkMove";
+import { bulkMove, canTakeItems } from "@/lib/bulkMove";
 import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
 import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
 import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
@@ -102,7 +102,17 @@ import { CocktailList } from "@/components/boat/bartender/CocktailList";
 import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 
-const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log" };
+const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log", riggingChecks: "rigging_log" };
+const SERVICE_META = {
+  engine_log: { kind: "engine", list: "engineService", title: "Engine", who: (e) => `${e.hours} hrs${e.engine_type ? ` (${e.engine_type})` : ""}` },
+  electrical_log: { kind: "electrical", list: "electricalService", title: "Electrical", who: (e) => `by ${e.electrician}` },
+  rigging_log: { kind: "rigging", list: "riggingChecks", title: "Rigging", who: (e) => `by ${e.rigger}` },
+};
+// Every logged service also goes in the Ship's Log.
+const serviceLogLine = (key, e, items) => {
+  const m = SERVICE_META[key];
+  return `${m.title} service logged: ${m.who(e)} on ${e.date.split("-").reverse().join("/")}${items.length ? ` - ${items.join(", ")}` : ""}${e.notes ? ` - Notes: ${e.notes}` : ""}`.slice(0, 2000);
+};
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
 const EMERGENCY = { mayDay: "red", panPan: "amber" };
@@ -195,9 +205,12 @@ export default function BoatPrep({ boatId, boats }) {
     const target = registry.find((l) => l.id === to);
     const from = active.id;
     const before = { [from]: data[from] || [], [to]: data[to] || [] };
-    const moved = bulkMove({ source: active, sourceItems: before[from], target, targetItems: before[to], ids, labelFor,
-      defs: active.kind === MAINT_KIND ? attrsForList(maintDefs, active) : [], targetDefs: target.kind === MAINT_KIND ? attrsForList(maintDefs, target) : [] });
-    mutate((s) => ({ ...s, data: { ...s.data, [from]: moved.source, [to]: moved.target } }));
+    // Built from the latest state so an area move in the same Save is kept.
+    mutate((s) => {
+      const moved = bulkMove({ source: active, sourceItems: s.data[from] || [], target, targetItems: s.data[to] || [], ids, labelFor,
+        defs: active.kind === MAINT_KIND ? attrsForList(maintDefs, active) : [], targetDefs: target.kind === MAINT_KIND ? attrsForList(maintDefs, target) : [] });
+      return { ...s, data: { ...s.data, [from]: moved.source, [to]: moved.target } };
+    });
     toast(`${ids.length} ${ids.length === 1 ? "item" : "items"} moved to ${target.name}`, { duration: 6000, action: { label: "Undo", onClick: () => mutate((s) => ({ ...s, data: { ...s.data, ...before } })) } });
   };
   const createCustom = ({ name, attrs, columns }) => {
@@ -367,15 +380,19 @@ export default function BoatPrep({ boatId, boats }) {
     const parent = items.find((x) => x.id === info[items[i - 1].id].parent);
     setDialog({ type: "mergeGroup", id, name: labelFor(items[i]), subs: info[id].subs, parent: labelFor(parent) });
   };
-  const logService = (key, listId) => (entry) => guard("service") && mutate((s) => ({
-    ...s, [key]: [...(s[key] || []), { ...entry, items: (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label) }],
-    data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)) },
-  }));
+  const logService = (key, listId) => (entry) => guard("service") && mutate((s) => {
+    const done = (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label);
+    const line = { id: Date.now() + 1, label: serviceLogLine(key, entry, done), checked: false };
+    return {
+      ...s, [key]: [...(s[key] || []), { ...entry, items: done }],
+      data: { ...s.data, [listId]: (s.data[listId] || []).map((i) => (i.checked ? { ...i, checked: false } : i)), shipsLog: [...(s.data.shipsLog || []), line] },
+    };
+  });
   const place = (id, pos) => guard() && setItems((list) => placeOutline(list, id, pos));
   const setServiceDue = (listId, date) => {
     if (!registry.some((l) => l.id === "myTodo")) { toast.error("Bring back My To Do List with Reset All... to get service reminders"); return; }
     const id = `due_${listId}`;
-    const label = `${listId === "engineService" ? "Engine" : "Electrical"} service due ${date ? date.split("-").reverse().join("/") : ""}`;
+    const label = `${{ engineService: "Engine service", electricalService: "Electrical service", riggingChecks: "Rigging check" }[listId]} due ${date ? date.split("-").reverse().join("/") : ""}`;
     if (!guard("due")) return;
     mutate((s) => {
       const rest = (s.data.myTodo || []).filter((i) => i.id !== id);
@@ -387,14 +404,14 @@ export default function BoatPrep({ boatId, boats }) {
   const exportService = async (key) => {
     if (!needPro("Service History PDF")) return;
     if (!online) { toast.error("Connect to the internet to export the service history"); return; }
-    const kind = key === "engine_log" ? "engine" : "electrical";
+    const { kind, list, title } = SERVICE_META[key];
     setExporting(true);
     try {
       const { data } = await api.post("/service-history/pdf", { kind, vessel: boat.vessel, skipper: boat.skipper, callsign: boat.callsign,
         local_date: new Date().toLocaleDateString("en-NZ"), entries: (state[key] || []).map(({ id, ...e }) => e),
-        boat_id: boats.current.boat_id, photos: servicePhotos(state.data[kind === "engine" ? "engineService" : "electricalService"] || []) }, { responseType: "blob", timeout: 90000 });
+        boat_id: boats.current.boat_id, photos: servicePhotos(state.data[list] || []) }, { responseType: "blob", timeout: 90000 });
       const url = URL.createObjectURL(data);
-      const a = Object.assign(document.createElement("a"), { href: url, download: `${kind === "engine" ? "Engine" : "Electrical"} Service History - ${boat.vessel || "My Boat"}.pdf` });
+      const a = Object.assign(document.createElement("a"), { href: url, download: `${title} Service History - ${boat.vessel || "My Boat"}.pdf` });
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch { toast.error("Couldn't create the PDF. Please try again."); }
@@ -456,6 +473,7 @@ export default function BoatPrep({ boatId, boats }) {
     const out = [{ name: "Boat details", rows: boatRows(boat) }, ...registry.map(sheet), { name: "Boat inventory", rows: inventoryRows(areas, boats.current) },
       { name: "Engine service history", rows: serviceRows(state.engine_log || [], "engine_log") },
       { name: "Electrical service history", rows: serviceRows(state.electrical_log || [], "electrical_log") },
+      { name: "Rigging service history", rows: serviceRows(state.rigging_log || [], "rigging_log") },
       { name: "Zone maps", rows: zoneRows(boats.current, areas) }];
     if (crew) return out;
     const info = online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
@@ -824,7 +842,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
         areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName}
-        targets={!crew && dialog?.list?.id === active.id && registry.some((l) => l.id === active.id) ? registry.filter((l) => l.id !== active.id && !(state.list_hidden || []).includes(l.id)) : []} />
+        targets={!crew && dialog?.list?.id === active.id && registry.some((l) => l.id === active.id) ? registry.filter((l) => l.id !== active.id && !hiddenLists.includes(l.id) && canTakeItems(l)) : []} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}

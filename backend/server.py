@@ -237,6 +237,7 @@ class BoatStateIn(BaseModel):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     electrical_log: List[Dict[str, Any]] = []
+    rigging_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     list_hidden: List[str] = []
@@ -256,6 +257,7 @@ class BoatState(BaseDocument):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     electrical_log: List[Dict[str, Any]] = []
+    rigging_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     list_hidden: List[str] = []
@@ -276,6 +278,7 @@ class BoatStateOut(BaseModel):
     log_sent: Optional[Dict[str, Any]] = None
     engine_log: List[Dict[str, Any]] = []
     electrical_log: List[Dict[str, Any]] = []
+    rigging_log: List[Dict[str, Any]] = []
     deleted_lists: List[str] = []
     emergency_checked: Dict[str, bool] = {}
     list_hidden: List[str] = []
@@ -290,8 +293,8 @@ class BoatStateOut(BaseModel):
 ID_PATTERN = r"^[A-Za-z0-9_-]{1,40}$"
 BoatId = Annotated[str, Query(pattern=ID_PATTERN)]
 OwnerId = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
-KEEP_IF_OMITTED = ("emergency_checked", "template_versions", "areas", "electrical_log", "list_hidden")
-STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "electrical_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts", "areas", "list_hidden")
+KEEP_IF_OMITTED = ("emergency_checked", "template_versions", "areas", "electrical_log", "rigging_log", "list_hidden")
+STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts", "areas", "list_hidden")
 
 
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:

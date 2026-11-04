@@ -42,7 +42,7 @@ export const planImport = (books, taken) => {
     let name = base;
     for (let n = 2; used.has(name.toLowerCase()); n += 1) name = `${base} (${n})`;
     used.add(name.toLowerCase());
-    return { ...t, file: b.file, name, empty: !t.rows.length, types: guessRoles(t.headers) };
+    return { ...t, file: b.file, name, empty: !t.rows.length, types: guessRoles(t.headers, t.rows) };
   }));
 };
 
@@ -53,7 +53,18 @@ const CAT = /^(category|group)$/i;
 const SKIP = /^(heading|due date from)$/i;
 const DATES = /^(last service|service due|last service date|next service date|date paid|date)$/i;
 const unitOf = (h, headers) => { const m = h.match(/^(.+) unit$/i); return m && headers.some((x) => x.toLowerCase() === m[1].toLowerCase()) ? m[1] : null; };
-export const guessRoles = (headers) => {
+// A value column with a "<name> unit" column gets a number type that fits its units.
+const typeFromUnits = (units) => {
+  const u = units.map((x) => String(x).replace(/\s*\(est\.?\)/i, "").trim().toLowerCase()).filter(Boolean);
+  const all = (re) => u.length > 0 && u.every((x) => re.test(x));
+  if (all(/^(g|kg|lb|lbs|oz)$/)) return "decimal weight";
+  if (all(/^(m|mm|cm|feet|ft|inches|in)$/)) return "decimal length";
+  if (all(/^(sqm|sq ft|m²|ft²|m2|ft2)$/)) return "decimal area";
+  if (all(/^years? old$/)) return "integer age";
+  if (all(/^[a-z]{3}$/)) return "decimal cost";
+  return "decimal";
+};
+export const guessRoles = (headers, rows = []) => {
   const d = Math.max(0, headers.findIndex((h) => DESC.test(h.trim())));
   const c = headers.findIndex((h, n) => n !== d && CAT.test(h.trim()));
   return headers.map((h, n) => {
@@ -63,6 +74,8 @@ export const guessRoles = (headers) => {
     if (SKIP.test(x)) return "@skip";
     if (unitOf(x, headers)) return "@unit";
     if (DATES.test(x)) return "date";
+    const u = headers.findIndex((y) => unitOf(y.trim(), headers)?.toLowerCase() === x.toLowerCase());
+    if (u >= 0) return typeFromUnits(rows.map((r) => r[u] ?? ""));
     if (/^cost(\s*\([A-Z]{3}\))?$/i.test(x)) return "decimal cost";
     return "char";
   });

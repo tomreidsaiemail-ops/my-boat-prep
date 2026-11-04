@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { FileDown, Gauge, Loader2, Lock, Trash2, Zap } from "lucide-react";
+import { FileDown, Gauge, Loader2, Lock, Sailboat, Trash2, Zap } from "lucide-react";
 import { ValidationBar } from "@/components/boat/ActionBar";
 import { ServiceDue } from "@/components/boat/ServiceDue";
 import { EngineerAsk } from "@/components/boat/EngineerAsk";
@@ -16,6 +16,12 @@ const KINDS = {
     title: "Electrical Service History", Icon: Zap, prefix: "electrical", panelId: "electrical-service-panel", fieldId: "electrical-name-input", errorId: "electrical-name-error",
     field: "electrician", fieldLabel: "Electrician's name", placeholder: "e.g. Sam Watts", numeric: false, missing: "Enter the electrician's name", notesHint: "e.g. house battery 12.4V, replaced fuse", dueLabel: "Electrical service",
     summary: (e) => <><b>{e.electrician}</b> · {fmtDate(e.date)}</>,
+  },
+  rigging_log: {
+    title: "Rigging Service History", Icon: Sailboat, prefix: "rigging", panelId: "rigging-service-panel", fieldId: "rigging-name-input", errorId: "rigging-name-error",
+    field: "rigger", fieldLabel: "Rigger's name", placeholder: "e.g. Jo Mast", numeric: false, missing: "Enter the rigger's name", notesHint: "e.g. retensioned cap shrouds",
+    dueLabel: "Rigging check", dateLabel: "Rigging check date",
+    summary: (e) => <><b>{e.rigger}</b> · {fmtDate(e.date)}</>,
   },
 };
 
@@ -68,7 +74,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
       </div>
       <div className="text-sm" data-testid={`${k.prefix}-last-service`}>
         <span className="field-label">Last service </span>
-        {last ? <b>{k.numeric ? `${last.hours} hrs on ${fmtDate(last.date)}` : `by ${last.electrician} on ${fmtDate(last.date)}`}</b>
+        {last ? <b>{k.numeric ? `${last.hours} hrs on ${fmtDate(last.date)}` : `by ${last[k.field]} on ${fmtDate(last.date)}`}</b>
           : <span className="font-semibold text-[var(--muted)]">none logged yet</span>}
       </div>
       <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} warn={dueWarn} />
@@ -89,7 +95,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}
             onChange={(e) => setValue(e.target.value)} placeholder={k.placeholder} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={k.fieldId} /></label>
-        <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Service date</span>
+        <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.dateLabel || "Service date"}</span>
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={`${k.prefix}-date-input`} /></label>
         </div>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />

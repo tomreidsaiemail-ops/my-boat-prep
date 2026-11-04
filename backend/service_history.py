@@ -25,7 +25,8 @@ router = APIRouter(prefix="/api")
 CELL = ParagraphStyle("c", fontName="Helvetica", fontSize=10, leading=13)
 HEAD = ParagraphStyle("h", parent=CELL, fontName="Helvetica-Bold", textColor=colors.white)
 FOOT = ParagraphStyle("f", parent=CELL, fontSize=8, textColor=colors.HexColor("#64748b"))
-KINDS = {"engine": ("Engine Service History", "Engine hours"), "electrical": ("Electrical Service History", "Electrician")}
+KINDS = {"engine": ("Engine Service History", "Engine hours"), "electrical": ("Electrical Service History", "Electrician"),
+         "rigging": ("Rigging Service History", "Rigger")}
 LONG_NOTES = 300
 
 
@@ -33,6 +34,7 @@ class ServiceEntry(BaseModel):
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     hours: Optional[float] = None
     electrician: Optional[str] = Field(default=None, max_length=80)
+    rigger: Optional[str] = Field(default=None, max_length=80)
     notes: str = Field(default="", max_length=2000)
     items: List[str] = Field(default=[], max_length=200)
 
@@ -45,7 +47,7 @@ class ServicePhoto(BaseModel):
 
 
 class ServicePdfIn(BaseModel):
-    kind: Literal["engine", "electrical"]
+    kind: Literal["engine", "electrical", "rigging"]
     vessel: str = Field(default="", max_length=80)
     skipper: str = Field(default="", max_length=80)
     callsign: str = Field(default="", max_length=40)
@@ -63,7 +65,8 @@ def _d(iso: str) -> str:
 def _who(kind: str, e: ServiceEntry, by: bool = False) -> str:
     if kind == "engine":
         return "" if e.hours is None else f"{e.hours:g} hrs"
-    return f"{'by ' if by and e.electrician else ''}{e.electrician or ''}"
+    who = e.rigger if kind == "rigging" else e.electrician
+    return f"{'by ' if by and who else ''}{who or ''}"
 
 
 PHOTO_W = 82 * mm

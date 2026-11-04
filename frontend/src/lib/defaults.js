@@ -109,6 +109,7 @@ export const freshState = () => ({
   log_sent: null,
   engine_log: [],
   electrical_log: [],
+  rigging_log: [],
   deleted_lists: [],
   registry: DEFAULT_REGISTRY.map((r) => ({ ...r })),
   data: JSON.parse(JSON.stringify(DEFAULT_DATA)),
@@ -173,7 +174,7 @@ export const copyBoatState = (s, vessel) => {
   if (data.myTodo) data.myTodo = [];
   return {
     ...JSON.parse(JSON.stringify(s)), data, boat: { ...s.boat, vessel, callsign: "" },
-    log_sent: null, engine_log: [], electrical_log: [], emergency_checked: {}, updated_at: new Date().toISOString(),
+    log_sent: null, engine_log: [], electrical_log: [], rigging_log: [], emergency_checked: {}, updated_at: new Date().toISOString(),
     areas: (s.areas || []).map((a) => ({ ...a, items: [] })),
   };
 };
@@ -265,7 +266,7 @@ export const displayLabel = (item, ctx) => {
   }
 };
 
-const SECTIONS = ["boat", "registry", "engine_log", "electrical_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas", "list_hidden"];
+const SECTIONS = ["boat", "registry", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas", "list_hidden"];
 
 // Time-stamp what changed so the cloud can merge edits from several phones item by item.
 export const stamp = (prev, next, now) => {

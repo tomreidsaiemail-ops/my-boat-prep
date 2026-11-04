@@ -78,6 +78,7 @@ export const inventoryRows = (areas, boat) => {
 
 export const serviceRows = (entries, kind) => [...entries].sort((a, b) => String(a.date).localeCompare(String(b.date))).map((e) => (kind === "engine_log"
   ? { Date: asDate(e.date), "Engine hours": asNum(e.hours), Notes: e.notes || "" }
+  : kind === "rigging_log" ? { Date: asDate(e.date), Rigger: e.rigger || "", "Checked items": (e.items || []).join(", "), Notes: e.notes || "" }
   : { Date: asDate(e.date), Electrician: e.electrician || "", Notes: e.notes || "" }));
 
 export const zoneRows = (boat, areas) => (boat?.zone_maps || []).map((m, n) => ({
