@@ -1,0 +1,35 @@
+{
+  "summary": "Tested the new Rigging Log, the automatic Ship's Log lines for Engine/Electrical/Rigging, the Rigging tab in the master Excel export, and the 4 retests from iteration_91. Backend tested with pytest, UI with Playwright as Pro skipper test_session_pro_1 (TEST_Kia Ora) at 1920 and 390px. Everything requested PASSES. Rigging panel: Rigger's name, 'Rigging check date' and optional notes are shown. 'Will log ...' lists the ticked items. A missing name shows 'Enter the rigger's name'. Log Service saves {rigger, date, notes, items}, unticks the items, updates 'Last service by X on dd/mm/yyyy', and the entry is still there after a reload and in GET /api/me/boat rigging_log. Set reminder adds 'Rigging check due 04/05/2027' to My To Do List, and the clear button removes it. Export PDF downloads 'Rigging Service History - TEST_Kia Ora.pdf' with the Rigger column, items and notes. Backend photo test: before/after rigging photos are in the PDF. Ship's Log got 'Rigging service logged: by TEST_Jo Mast on 04/11/2026 - Shrouds..., Forestay... - Notes: retensioned', 'Engine service logged: 1250 hrs (TEST_Yanmar 3JH) on 04/11/2026 - Notes: TEST oil change' and 'Electrical service logged: by TEST_Sam Watts on 04/11/2026'. The master xlsx has a 'Rigging service history' tab (Date, Rigger, Checked items, Notes) with the right row. RETESTS all pass: (1) Re-importing Ground Tackle keeps weight kg + est and cost USD + est. A custom file gets feet(est)->decimal length, years old->integer age, sqm->decimal area, lb->decimal weight, mixed m/kg->decimal, and all units are kept. (2) An orphan sub-item plus a plain item moved into a maintenance list land as items under the target's last category. A heading + subs + plain item give a category, its items, then 'Moved items' with the plain item. (3) Choosing a boat area and a bulk move in the same Save keeps both. (4) Targets leave out YouTube, Movies, MPA, Bartender, Meal Plan and Ship's Log. A heading is skipped into the Boat Budget (only the sub-item was added) and Undo works. All TEST data was removed through the UI. Registry is back to 34 lists, the logs are empty and My To Do List is as it was.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "sheetImport.typeFromUnits", "issue": "Any 3-letter unit is treated as a currency. A 'Pressure' column with unit 'psi' (also rpm, kph, ...) defaults to 'decimal cost'. The value and unit are still kept, but the attribute is typed as Cost. Consider checking the unit against a list of ISO currency codes.", "selector": "import-type-0-{col}", "priority": "LOW"},
+      {"component": "sheetImport.guessRoles", "issue": "A 'Cost' column whose 'Cost unit' column is empty (e.g. Sail Loft export with no costs) now defaults to plain 'decimal' instead of 'decimal cost', because the unit check runs before the name check. When no unit is given, use the name rule for Cost.", "selector": "import-type-0-{cost col}", "priority": "LOW"},
+      {"component": "bulkMove into Boat Budget", "issue": "A ticked heading is skipped in the target but still removed from the source, so its label is lost. Undo restores it. Consider keeping it in the source or adding it as a note.", "selector": "bulk-move-target-select", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Rigging Checks service panel", "issues": ["The reminder label reads 'NEXT SERVICE DUE' for rigging. The spec says 'Next Rigging Check Due'. Consider a per-kind label (k.dueLabel).", "At 390px the notes placeholder 'Notes (optional) e.g. retensioned cap shrouds' is cut off. Same as electrical."]},
+      {"screen": "Bulk move targets", "issues": ["'Meal Plan - Sample' (template tpl_b1aef01b43, a meal-plan style list) is still offered as a target. Only id 'mealPlan' is excluded. Decide whether template meal plans should also be excluded."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_rigging_log.py", "/app/test_reports/pytest/pytest_rigging.xml"],
+  "action_items": [
+    "LOW: typeFromUnits: only treat 3-letter units that are real currency codes as Cost (psi/rpm currently become 'decimal cost').",
+    "LOW: guessRoles: a column named 'Cost' should stay 'decimal cost' when its unit column is empty.",
+    "LOW: ServiceDue label: show 'Next rigging check due' for the rigging kind.",
+    "LOW (optional): bulk move into the Boat Budget: don't silently drop a ticked heading from the source."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.bulkMoveItems: the Undo snapshot 'before' comes from the render-time data. Undo after an area + bulk move in the same Save also undoes the area change, and it overwrites any other edits made to those two lists since.",
+    "bulkMove: an empty maintenance category (no items under it) is treated as a loose item and arrives as an indented item under 'Moved items'. A moved maintenance category also loses its own attrs (e.g. next_service_date).",
+    "logService appends to data.shipsLog even when the Ship's Log list was deleted from the registry (hidden data). Harmless, because sync_merge drops lists that aren't in the registry.",
+    "Excel: the 'Engine service history' tab doesn't include engine_type or items, and 'Electrical service history' doesn't include items. Rigging includes 'Checked items'. Make them consistent."
+  ],
+  "updated_files": ["/app/backend/tests/test_rigging_log.py"],
+  "success_rate": {"backend": "100% (7/7 new + 26/26 existing service PDF tests)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "None kept. Created through the UI and then deleted: TEST_CL92 checklist, imported lists TEST_Reimp gt, TEST_Reimp sail and 'Imported - TEST_Units', 3 service log entries, 3 Ship's Log lines and the rigging reminder. 2 rigging test photos uploaded by pytest were deleted in teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro skipper test_session_pro_1, boat TEST_Kia Ora (registry 34 lists including riggingChecks). Rigging panel testids: rigging-service-panel, rigging-name-input, rigging-date-input, rigging-notes-input, rigging-ticked-summary, rigging-log-add-btn, rigging-name-error, rigging-log-entry-{id}, rigging-log-delete-{id}, rigging-due-input, rigging-due-set-btn, rigging-due-clear-btn, rigging-due-status, rigging-export-btn. Tick items with checklist-item-toggle-{id} (rigging ids 200-214). Bulk move: rename-list-btn -> bulk-move-open-btn -> bulk-move-target-select (value = list id) -> bulk-move-all / bulk-move-option-{id} -> rename-list-confirm-btn. Import: app-menu-btn -> app-menu-import-item -> set_input_files on import-file-input -> import-columns -> import-preview-btn -> import-confirm-btn. Test file /tmp/imp/TEST_units.xlsx has varied units. /tmp/imp/dump.py prints the TEST_ lists."
+}

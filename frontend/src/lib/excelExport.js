@@ -2,7 +2,7 @@
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { DUE_KEY, LAST_KEY, MAINT_KIND, effectiveDue } from "@/lib/maint";
-import { costOf } from "@/lib/budget";
+import { costOf, ledgerYear } from "@/lib/budget";
 import { areaZones, mapLabel } from "@/lib/zoneColours";
 
 export const stamp = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -27,8 +27,9 @@ const checklistRows = (items, labelFor, areaName) => items.map((i, n) => ({
   "Boat area": areaName?.(i) || "",
 }));
 
-const budgetRows = (items, currency) => items.map((i) => ({
-  Description: i.label || "", Product: i.product || "", "Web link": i.url || "", "Date paid": asDate(i.paid), [`Cost${currency ? ` (${currency})` : ""}`]: String(i.cost || "").trim() ? costOf(i) : "",
+const budgetRows = (items, currency) => [...items].sort((a, b) => ledgerYear(a) - ledgerYear(b)).map((i) => ({
+  Year: ledgerYear(i), Description: i.label || "", Product: i.product || "", "Web link": i.url || "", "Date paid": asDate(i.paid), [`Cost${currency ? ` (${currency})` : ""}`]: String(i.cost || "").trim() ? costOf(i) : "",
+  "Last change": i.history?.length ? `${i.history.at(-1).field}: ${i.history.at(-1).to}`.slice(0, 200) : "",
 }));
 
 const maintRows = (items, defs, custom) => {

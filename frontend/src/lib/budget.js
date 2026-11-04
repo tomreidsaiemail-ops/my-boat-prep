@@ -16,7 +16,26 @@ export const budgetCurrency = (boat) => {
   return region ? BY_REGION[region] : "";
 };
 
-export const newBudgetItem = (id, label = "", product = "") => ({ id, label, product, url: "", paid: "", cost: "", checked: false, budget: true });
+export const newBudgetItem = (id, label = "", product = "", year = new Date().getFullYear()) => ({ id, label, product, url: "", paid: "", cost: "", checked: false, budget: true, year });
+
+// Year ledgers: every row belongs to one calendar year, so past years are never overwritten by this year's budget.
+export const thisYear = () => new Date().getFullYear();
+export const ledgerYear = (i) => Number(i.year) || yearOf(i) || thisYear();
+export const budgetYears = (items) => [...new Set([thisYear(), ...items.map(ledgerYear)])].sort((a, b) => b - a);
+// Rows saved before year ledgers existed get their year from Date Paid (else this year).
+export const withYears = (items) => (items.every((i) => i.year) ? items : items.map((i) => (i.year ? i : { ...i, year: yearOf(i) || thisYear() })));
+const TRACKED = { label: "Description", product: "Product", url: "Web link", paid: "Date paid", cost: "Cost" };
+// Change history kept on the row (newest last, up to 50 entries).
+export const tracked = (item, patch) => {
+  const at = new Date().toISOString();
+  const changes = Object.entries(patch).filter(([k, v]) => TRACKED[k] && String(v || "") !== String(item[k] || "")).map(([k, v]) => ({ at, field: TRACKED[k], from: String(item[k] || ""), to: String(v || "") }));
+  return changes.length ? { ...patch, history: [...(item.history || []), ...changes].slice(-50) } : patch;
+};
+// "Start <year> budget": last year's rows copied as the new year's plan (costs kept as planned amounts, dates cleared).
+export const copyYear = (items, from, to, start = Date.now()) => items.filter((i) => ledgerYear(i) === from).map((i, n) => ({
+  ...newBudgetItem(start + n, i.label, i.product, to), url: i.url || "", cost: i.cost || "",
+  history: [{ at: new Date().toISOString(), field: "Created", from: "", to: `Copied from the ${from} budget` }],
+}));
 
 // "Description | Product" lines; a line without | is just a Description.
 export const budgetItems = (lines = [], start = Date.now()) => lines
@@ -45,7 +64,8 @@ export const ageTone = (i, now = new Date().getFullYear()) => {
   return y === now - 1 ? "orange" : y <= now - 2 ? "red" : "";
 };
 export const sumAll = (items) => items.reduce((t, i) => t + costOf(i), 0);
-export const sumYear = (items, year) => sumAll(items.filter((i) => yearOf(i) === year));
+export const sumYear = (items, year) => sumAll(items.filter((i) => ledgerYear(i) === year));
+export const sumPaid = (items) => sumAll(items.filter((i) => yearOf(i)));
 
 export const money = (n, currency) => {
   try { if (currency) return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(n); } catch { /* unknown code */ }
