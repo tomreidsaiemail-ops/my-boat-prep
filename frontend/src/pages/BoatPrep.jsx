@@ -393,14 +393,6 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog({ type: "deleteItem", item: items.find((i) => i.id === id) });
   };
   // Indenting a group's main item merges the whole group into the one above, so check first.
-  const askIndent = (id, v) => {
-    const info = outlineInfo(items);
-    if (!v || !info[id]?.subs) { indent(id, v); return; }
-    if (!guard()) return;
-    const i = items.findIndex((x) => x.id === id);
-    const parent = items.find((x) => x.id === info[items[i - 1].id].parent);
-    setDialog({ type: "mergeGroup", id, name: labelFor(items[i]), subs: info[id].subs, parent: labelFor(parent) });
-  };
   const logService = (key, listId) => (entry) => guard("service") && mutate((s) => {
     const done = (s.data[listId] || []).filter((i) => i.checked).map((i) => i.label);
     const line = { id: Date.now() + 1, label: serviceLogLine(key, entry, done), checked: false };
@@ -835,7 +827,7 @@ export default function BoatPrep({ boatId, boats }) {
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (
             <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
@@ -911,10 +903,6 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
       <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
-      <ConfirmDelete item={dialog?.type === "mergeGroup" ? dialog : null} testId="merge-group" danger={false} confirmLabel="Move into group" cancelLabel="Cancel"
-        title={dialog?.type === "mergeGroup" ? `Move "${dialog.name}" into the group above?` : ""}
-        note={dialog?.type === "mergeGroup" ? `"${dialog.name}" and its ${dialog.subs} sub-item${dialog.subs === 1 ? "" : "s"} will become sub-items of "${dialog.parent}". Its group will no longer show on its own. To get it back, unindent "${dialog.name}".` : ""}
-        onConfirm={() => { indent(dialog.id, true); setDialog(null); }} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>
     </WeightsContext.Provider>

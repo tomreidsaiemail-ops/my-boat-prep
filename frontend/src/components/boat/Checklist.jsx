@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, Flag, IndentDecrease, IndentIncrease, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, Flag, MapPin, Pencil, Trash2 } from "lucide-react";
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
 import { MpaText } from "@/components/boat/MpaBadges";
@@ -16,10 +16,10 @@ export const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
     </button>
     <button type="button" className="prio-btn" onClick={() => onMove(-1)} disabled={!info.upOk} aria-label="Move up" data-testid={`checklist-item-up-${item.id}`}><ArrowUp className="h-5 w-5" /></button>
     <button type="button" className="prio-btn" onClick={() => onMove(1)} disabled={!info.downOk} aria-label="Move down" data-testid={`checklist-item-down-${item.id}`}><ArrowDown className="h-5 w-5" /></button>
-    {info.canIndent && <button type="button" className="prio-btn" onClick={() => onIndent(true)} aria-label="Indent under the item above" title="Indent"
-      data-testid={`checklist-item-indent-${item.id}`}><IndentIncrease className="h-5 w-5" /></button>}
-    {info.child && <button type="button" className="prio-btn" onClick={() => onIndent(false)} aria-label="Unindent" title="Unindent"
-      data-testid={`checklist-item-unindent-${item.id}`}><IndentDecrease className="h-5 w-5" /></button>}
+    {info.canIndent && <button type="button" className="prio-btn gap-1 text-xs font-bold sm:!w-auto sm:px-2" onClick={() => onIndent(true)} aria-label="Indent right, under the item above" title="Indent right"
+      data-testid={`checklist-item-indent-${item.id}`}><ArrowRightToLine className="h-5 w-5" /><span className="hidden sm:inline">Indent</span></button>}
+    {info.child && <button type="button" className="prio-btn gap-1 text-xs font-bold sm:!w-auto sm:px-2" onClick={() => onIndent(false)} aria-label="Outdent left, back to the top level" title="Outdent left"
+      data-testid={`checklist-item-unindent-${item.id}`}><ArrowLeftToLine className="h-5 w-5" /><span className="hidden sm:inline">Outdent</span></button>}
   </div>
 );
 

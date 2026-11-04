@@ -557,3 +557,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Print/PDF/email (backend ship_log.arrange_log) and Excel (Folder + Folder row columns) follow folder order and depth.
 - Excel master workbook now named Boat_Lists_Export_<YYYY-MM-DD>.xlsx; separate files still one zip.
 - Tested iteration_98 + iteration_99 (100%).
+
+## 2026-06 Indent / Outdent controls
+- Duplicate item check is per group (same label allowed under different parents; clashes only within one parent or at top level).
+- Checklist ordering tools: separate Indent right (ArrowRightToLine) and Outdent left (ArrowLeftToLine) buttons, text labels from sm up. Indent only shows for a top-level item with no sub-items whose item above belongs to a normal group (not a Ship's Log folder); Outdent only on sub-items. Old "merge group into the group above" dialog removed (outline.js canIndent).
