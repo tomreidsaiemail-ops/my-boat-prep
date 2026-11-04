@@ -1,8 +1,9 @@
 import { TYPE_OPTIONS } from "@/components/boat/maint/CustomListBuilder";
+import { setRole } from "@/lib/sheetImport";
 
 const TYPES = TYPE_OPTIONS.filter(([t]) => t !== "image" && t !== "pdf");
 
-// Step 2: every tab's columns with a type each (default Text). The first column becomes the item description.
+// Step 2: every tab's columns with a type each (default Text); pick which column is the item description (and category).
 export const ImportColumns = ({ plan, onChange }) => (
   <div className="flex flex-col gap-3" data-testid="import-columns">
     {plan.map((t, n) => (
@@ -18,9 +19,12 @@ export const ImportColumns = ({ plan, onChange }) => (
               {t.headers.map((h, c) => (
                 <li key={c} className="flex items-center gap-2" data-testid={`import-col-${n}-${c}`}>
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{h}</span>
-                  {c === 0 ? <span className="shrink-0 text-xs font-bold text-[var(--muted)]">Item description</span> : (
-                    <select value={t.types[c]} onChange={(e) => onChange(n, { types: t.types.map((x, k) => (k === c ? e.target.value : x)) })}
-                      className="field-input h-9 !w-40 shrink-0 !px-2 !text-sm" aria-label={`Type for ${h}`} data-testid={`import-type-${n}-${c}`}>
+                  {t.types[c] === "@unit" ? <span className="shrink-0 text-xs font-bold text-[var(--muted)]" data-testid={`import-unit-${n}-${c}`}>Unit of {h.replace(/ unit$/i, "")}</span> : (
+                    <select value={t.types[c]} onChange={(e) => onChange(n, { types: setRole(t.types, c, e.target.value) })}
+                      className={`field-input h-9 !w-40 shrink-0 !px-2 !text-sm ${t.types[c] === "@desc" ? "!border-[var(--navy)] font-bold" : ""}`} aria-label={`Type for ${h}`} data-testid={`import-type-${n}-${c}`}>
+                      <option value="@desc">Use as item description</option>
+                      <option value="@cat">Use as category</option>
+                      <option value="@skip">Don't import</option>
                       {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                     </select>
                   )}

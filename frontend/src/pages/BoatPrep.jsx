@@ -86,6 +86,7 @@ import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
 import { ExcelExportDialog } from "@/components/boat/ExcelExportDialog";
 import { ShopScanDialog } from "@/components/boat/stores/ShopScanDialog";
+import { bulkMove } from "@/lib/bulkMove";
 import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
 import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
 import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
@@ -189,6 +190,15 @@ export default function BoatPrep({ boatId, boats }) {
     mutate((s) => ({ ...s, data: { ...s.data, [from]: (s.data[from] || []).filter((i) => i.id !== item.id), [toId]: moveInto(s.data[toId] || [], row, target) } }));
     setDialog(null);
     toast(`Moved "${item.label}" to ${target.name}`, { duration: 6000, action: { label: "Undo", onClick: () => mutate((s) => ({ ...s, data: { ...s.data, ...before } })) } });
+  };
+  const bulkMoveItems = ({ to, ids }) => {
+    const target = registry.find((l) => l.id === to);
+    const from = active.id;
+    const before = { [from]: data[from] || [], [to]: data[to] || [] };
+    const moved = bulkMove({ source: active, sourceItems: before[from], target, targetItems: before[to], ids, labelFor,
+      defs: active.kind === MAINT_KIND ? attrsForList(maintDefs, active) : [], targetDefs: target.kind === MAINT_KIND ? attrsForList(maintDefs, target) : [] });
+    mutate((s) => ({ ...s, data: { ...s.data, [from]: moved.source, [to]: moved.target } }));
+    toast(`${ids.length} ${ids.length === 1 ? "item" : "items"} moved to ${target.name}`, { duration: 6000, action: { label: "Undo", onClick: () => mutate((s) => ({ ...s, data: { ...s.data, ...before } })) } });
   };
   const createCustom = ({ name, attrs, columns }) => {
     const id = `maint_${CUSTOM}_${Date.now()}`;
@@ -598,11 +608,11 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(`${picks.length} ${picks.length === 1 ? "item" : "items"} added to ${active.name}`);
   };
-  const renameList = (name, description = "", move = null) => {
+  const renameList = (name, description = "", move = null, bulk = null) => {
     const { id, name: old } = dialog.list;
     if (!name) return "Please enter a list name";
     if (allLists.some((l) => l.id !== id && l.name.toLowerCase() === name.toLowerCase())) return `${name} already exists`;
-    if (move && !ready) return "Fill in your boat details at the top first, then you can move items to an area.";
+    if ((move || bulk) && !ready) return "Fill in your boat details at the top first, then you can move items.";
     const descChanged = description !== (dialog.list.description || "");
     if (name !== old || descChanged) {
       mutate((s) => ({ ...s, registry: s.registry.map((l) => (l.id === id ? { ...l, name, ...(descChanged ? { description: description.slice(0, DESCRIPTION_MAX) } : {}) } : l)) }));
@@ -612,6 +622,7 @@ export default function BoatPrep({ boatId, boats }) {
       setItems((list) => list.map((i) => (move.ids.includes(i.id) ? { ...i, area: move.area } : i)));
       toast.success(`${move.ids.length} ${move.ids.length === 1 ? "item" : "items"} moved to ${areas.find((a) => a.id === move.area)?.name}`);
     }
+    if (bulk) bulkMoveItems(bulk);
     setDialog(null);
     return true;
   };
@@ -812,7 +823,8 @@ export default function BoatPrep({ boatId, boats }) {
         initial={dialog?.type === "clone" ? `My ${dialog.list.name}` : ""}
         onConfirm={dialog?.type === "clone" ? cloneList : () => true} onClose={() => setDialog(null)} />
       <RenameListDialog list={dialog?.type === "rename" ? dialog.list : null} onConfirm={renameList} onClose={() => setDialog(null)}
-        areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName} />
+        areas={movable && dialog?.list?.id === active.id ? areas : []} items={items} labelFor={labelFor} areaOf={areaName}
+        targets={!crew && dialog?.list?.id === active.id && registry.some((l) => l.id === active.id) ? registry.filter((l) => l.id !== active.id && !(state.list_hidden || []).includes(l.id)) : []} />
       <TopUpDialog open={dialog?.type === "topup"} list={active} items={items} description={listDescription} labelFor={labelFor} onAdd={addTopUp} onClose={() => setDialog(null)} />
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}

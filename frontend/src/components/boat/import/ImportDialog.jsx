@@ -4,7 +4,7 @@ import { FileUp, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ImportColumns } from "@/components/boat/import/ImportColumns";
 import { ImportPreview } from "@/components/boat/import/ImportPreview";
-import { defsFor, itemsFor, planImport, readFiles } from "@/lib/sheetImport";
+import { cleanDefs, defsFor, itemsFor, planImport, readFiles } from "@/lib/sheetImport";
 
 const MAX_FILES = 10;
 const MAX_MB = 10;
@@ -46,7 +46,7 @@ export const ImportDialog = ({ names, ctx, onImport, onClose }) => {
       seen.add(nm);
     }
     const now = Date.now();
-    setBuilt(live.map((t, n) => { const defs = defsFor(t); return { name: t.name.trim(), defs, items: itemsFor(t, defs, ctx, now + n * 10000) }; }));
+    setBuilt(live.map((t, n) => { const defs = defsFor(t); return { name: t.name.trim(), defs: cleanDefs(defs), items: itemsFor(t, defs, ctx, now + n * 10000) }; }));
     setStep("preview");
   };
   const empty = plan.filter((t) => t.empty);

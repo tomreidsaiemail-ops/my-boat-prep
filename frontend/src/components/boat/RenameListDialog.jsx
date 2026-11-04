@@ -2,20 +2,24 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ListDescriptionField } from "@/components/boat/ListDraftTools";
 import { MoveToAreaSection } from "@/components/boat/MoveToAreaSection";
+import { BulkMoveSection } from "@/components/boat/BulkMoveSection";
 
 const NO_MOVE = { area: "", ids: [] };
 
 // Edit List Panel: rename, describe, and move list contents to a boat area (when the boat has areas).
-export const RenameListDialog = ({ list, areas = [], items = [], labelFor, areaOf, onConfirm, onClose }) => {
+export const RenameListDialog = ({ list, areas = [], items = [], labelFor, areaOf, onConfirm, onClose, targets = [] }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [move, setMove] = useState(NO_MOVE);
+  const [bulk, setBulk] = useState(null);
   const [error, setError] = useState("");
-  useEffect(() => { if (list) { setName(list.name); setDescription(list.description || ""); setMove(NO_MOVE); setError(""); } }, [list]);
+  useEffect(() => { if (list) { setName(list.name); setDescription(list.description || ""); setMove(NO_MOVE); setBulk(null); setError(""); } }, [list]);
   const submit = (e) => {
     e.preventDefault();
     if (move.area && !move.ids.length) { setError("Nothing is ticked to move. Tick the items to move, or clear the boat area."); return; }
-    const res = onConfirm(name.trim(), description.trim(), move.area ? move : null);
+    if (bulk && !bulk.to) { setError("Choose the list to move the items to, or tap Don't bulk move."); return; }
+    if (bulk && !bulk.ids.length) { setError("Nothing is ticked to move. Tick the items to move, or tap Don't bulk move."); return; }
+    const res = onConfirm(name.trim(), description.trim(), move.area ? move : null, bulk);
     if (typeof res === "string") setError(res);
   };
   return (
@@ -30,6 +34,7 @@ export const RenameListDialog = ({ list, areas = [], items = [], labelFor, areaO
           </label>
           <ListDescriptionField value={description} onChange={setDescription} testId="rename-list" />
           {areas.length > 0 && items.length > 0 && <MoveToAreaSection areas={areas} items={items} labelFor={labelFor} areaOf={areaOf} move={move} onChange={(m) => { setMove(m); setError(""); }} />}
+          {targets.length > 0 && items.length > 0 && <BulkMoveSection items={items} targets={targets} labelFor={labelFor} bulk={bulk} onChange={(b) => { setBulk(b); setError(""); }} />}
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="rename-list-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
             <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="rename-list-cancel-btn">Cancel</button>
