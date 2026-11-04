@@ -460,3 +460,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Magic Marine Navigator: intro text under ASK label, route map removed, up to 5 weather/routing screenshots (item-photo list_id weatherRouting) with commentary, 12h stale hint, reminders (re-upload on forecast updates, AI polars), "Why we're going" note; stored in boat.weather {photos[{id,note,at,logged}], why, advice, advice_at}; crew see photos read-only.
 - Leaving Dock: heading containing "Departure" ticks/unticks its children and auto-ticks when all children ticked (lib/outline tickDeparture). On Departure ticked (skipper) -> warning dialog Log it / Not now -> Ship's Log "Departure decision - route - time" with folded detail + weather_photos thumbnails; Ship's Log PDF embeds the photos (server.log_images), email notes them.
 - Tests: test_weather_departure.py, ui83_setup.py, iteration_83.
+
+## 2026-11 Area totals + movable zone map labels
+- Boat area item count now includes items in its folders/boxes (just the total).
+- Edit labels: drag a label to move it (PinnedPhoto onDrag, pointer events, tap still opens), plus up/down/left/right nudge buttons (1% steps) in the label form; new labels show while placing. Self-tested (drag + nudge saved to DB).

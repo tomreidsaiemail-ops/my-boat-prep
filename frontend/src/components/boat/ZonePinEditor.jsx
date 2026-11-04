@@ -1,14 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Loader2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 
 const NEW = "__new";
+const STEP = 0.01;
 const pinId = () => `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-const PinForm = ({ pin, areas, onSave, onDelete, onCancel }) => {
+const NUDGES = [["up", ArrowUp, 0, -STEP], ["left", ArrowLeft, -STEP, 0], ["down", ArrowDown, 0, STEP], ["right", ArrowRight, STEP, 0]];
+
+const Nudge = ({ onNudge }) => (
+  <div className="flex flex-wrap items-center gap-1.5" data-testid="zone-pin-nudge">
+    <span className="field-label mr-1">Move label</span>
+    {NUDGES.map(([dir, Icon, dx, dy]) => (
+      <button key={dir} type="button" className="btn-ghost h-10 w-10 justify-center p-0" aria-label={`Move label ${dir}`} onClick={() => onNudge(dx, dy)} data-testid={`zone-pin-nudge-${dir}`}>
+        <Icon className="h-4 w-4" />
+      </button>
+    ))}
+  </div>
+);
+
+const PinForm = ({ pin, areas, onSave, onDelete, onCancel, onNudge }) => {
   const linked = areas.some((a) => a.id === pin.area_id);
   const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas.find((a) => !a.parent_id)?.id || NEW);
   const [name, setName] = useState(linked ? "" : pin.label || "");
@@ -31,6 +45,7 @@ const PinForm = ({ pin, areas, onSave, onDelete, onCancel }) => {
         className="field-input" aria-label="New boat area name" data-testid="zone-pin-name-input" />}
       {areaId === NEW && <p className="text-xs text-[var(--muted)]">A new name is also added to your Boat Inventory when you save.</p>}
       {error && <p className="text-sm font-bold text-[var(--red)]" data-testid="zone-pin-error">{error}</p>}
+      <Nudge onNudge={onNudge} />
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn-solid h-10 px-4 text-sm" onClick={save} data-testid="zone-pin-save-btn">Place label</button>
         <button type="button" className="btn-ghost h-10 px-3 text-sm" onClick={onCancel} data-testid="zone-pin-cancel-btn">Cancel</button>
@@ -54,6 +69,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
     setEditing({ pin: { id: pinId(), x, y, label: "", area_id: null }, isNew: true });
   };
   const keep = (p) => { setPins((ps) => (editing.isNew ? [...ps, p] : ps.map((x) => (x.id === p.id ? p : x)))); setEditing(null); };
+  const movePin = (id, x, y) => {
+    const at = { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
+    setPins((ps) => ps.map((p) => (p.id === id ? { ...p, ...at } : p)));
+    setEditing((ed) => (ed && ed.pin.id === id ? { ...ed, pin: { ...ed.pin, ...at } } : ed));
+  };
+  const shown = editing?.isNew ? [...pins, editing.pin] : pins;
   const save = async () => {
     if (!online) { toast.error("You need a signal to save zone map labels"); return; }
     const fresh = [...new Set(pins.filter((p) => !areas.some((a) => a.id === p.area_id)).map((p) => p.label))].filter((n) => !areas.some((a) => a.name.trim().toLowerCase() === n.toLowerCase()));
@@ -75,11 +96,13 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
       <DialogContent className="max-h-[94vh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-3" data-testid="zone-pin-editor">
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight">Label this zone map</DialogTitle>
-          <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its boat area. Tap a label to change or remove it.</DialogDescription>
+          <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its boat area. Drag a label to move it, or tap it to fine-tune with the arrows, change or remove it.</DialogDescription>
         </DialogHeader>
-        <PinnedPhoto src={pic.src} alt="Zone map to label" pins={pins} areas={areas} imgRef={img} onImage={editing ? undefined : place}
-          onPin={(p) => setEditing({ pin: p, isNew: false })} imgClass="max-h-[60vh] w-full rounded-md object-contain" testId="zone-pin-photo" />
+        <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
+          onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}
+          highlight={editing?.pin.id} imgClass="max-h-[60vh] w-full rounded-md object-contain" testId="zone-pin-photo" />
         {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={areas} onSave={keep} onCancel={() => setEditing(null)}
+          onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
         {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}
         <DialogFooter className="gap-2">

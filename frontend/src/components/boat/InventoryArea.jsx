@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, sub = false, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -69,6 +69,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
   const shownLinks = visibleLinked || linked;
   const removed = items.filter((i) => i.removed).length;
   const total = items.length + linked.length;
+  const shownTotal = total + subItems;
   return (
     <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white ${sub ? "mx-3 mb-2" : ""}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
       data-testid={`inventory-area-${area.id}`} data-sub={sub ? "true" : "false"}>
@@ -80,7 +81,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             <span className="flex items-center gap-1.5 font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>
               <Highlight text={area.name} query={query} />
             </span>
-            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{total} {total === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
+            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {!readOnly && (
@@ -101,7 +102,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
       </div>
       {open && (
         <>
-          {total === 0 && <p className="border-t border-[var(--line)] px-3 py-3 text-sm text-[var(--muted)]" data-testid={`inventory-area-empty-${area.id}`}>Nothing listed in here yet.</p>}
+          {total === 0 && !subCount && <p className="border-t border-[var(--line)] px-3 py-3 text-sm text-[var(--muted)]" data-testid={`inventory-area-empty-${area.id}`}>Nothing listed in here yet.</p>}
           {onShowOnMap && !query && (
             <button type="button" className="flex w-full items-center gap-2 border-t border-[var(--line)] px-3 py-2 text-left text-sm font-bold text-[var(--blue)] hover:bg-sky-50" onClick={onShowOnMap} data-testid={`inventory-area-show-map-${area.id}`}>
               <MapPin className="h-4 w-4 shrink-0" /> Show on zone map
