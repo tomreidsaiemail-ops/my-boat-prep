@@ -317,6 +317,34 @@ MASTER_LISTS = (
 )
 
 
+LOG_HELP = [
+    ("Admin - Help Panel - Ships Log", "The Ship's Log help panel. Top-level lines are paragraphs, indented lines are bullets, and a line starting 'Skipper's Tip:' is the tip.", [
+        "A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board. However, you can add other note worthy logs as you decide. "
+        "The offline mode lets you do that at sea. The idea here is that once you have reached your destination you can print off this log and add it to the Ship's Log binder on board.",
+        "Skipper's Tip: complete Ship's Log below for this voyage then click Email Ship's Log below when back at the dock, accumulate the Ship's Logs in your Ship's Logs email folder "
+        "and then bulk print them at your local print shop, and then add them to the binder onboard."]),
+    ("Admin - Help Panel - Ships Log Passage Folders", "Instructions in the Ship's Log 'Group a passage' popup. Top-level lines are paragraphs, indented lines are bullets.", [
+        "Group a passage into one tidy folder.",
+        "Pick the first log of the passage as the Start log and the last one as the End log.",
+        "Check the Source, Destination and dates; the folder is named Source - Destination - Date range.",
+        "Everything from the Start log to the End log goes into the folder. Tap the folder to open or close it, or Ungroup to put the logs back.",
+        "Fold a year puts every passage folder and log from one year into a single folder, e.g. 2024 Ship's Logs."]),
+]
+
+
+async def seed_log_help():
+    """Runs once: adds the editable Ship's Log help panels, if they aren't there already."""
+    if await db.migrations.find_one({"_id": "ships_log_help"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    for name, description, lines in LOG_HELP:
+        if await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 1}):
+            continue
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
+                                            "items": [{"id": n + 1, "label": t, **({"indent": True} if name.endswith("Folders") and n else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": "ships_log_help", "at": now})
+
+
 async def add_spars_attributes():
     """Runs once: puts Spars & Heavy Hardware on the Age, Diameter and Length attributes and adds Spar material, keeping any admin edits."""
     if await db.migrations.find_one({"_id": "spars_attributes"}):

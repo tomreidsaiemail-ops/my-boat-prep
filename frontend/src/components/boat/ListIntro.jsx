@@ -38,7 +38,17 @@ const INTROS = {
   },
 };
 
-export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSkipperCheck }) => {
+const TIP = /^\s*skipper'?s tip\s*:\s*/i;
+// Editable help from an "Admin - Help Panel - ..." list: lines are paragraphs, indented lines bullets, "Skipper's Tip:" lines the tip.
+const AdminHelp = ({ items, prefix }) => (
+  <div className="space-y-2" data-testid={`${prefix}-admin-help`}>
+    {items.map((i, k) => (TIP.test(i.label)
+      ? <p key={k} data-testid={`${prefix}-skipper-tip`}><b className="text-[var(--blue)]">Skipper&apos;s Tip:</b> {i.label.replace(TIP, "")}</p>
+      : <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""}>{i.label}</p>))}
+  </div>
+);
+
+export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSkipperCheck, helpItems }) => {
   const intro = INTROS[listId];
   const [stored, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
   const hidden = stored && canHide;
@@ -64,7 +74,7 @@ export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSki
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm leading-relaxed">
         {title && <div className="mb-0.5 font-display text-base font-extrabold tracking-wide">{title}</div>}
-        {text}
+        {helpItems?.length ? <AdminHelp items={helpItems} prefix={prefix} /> : text}
         {confirm && (
           <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border-2 border-white/70 bg-white/10 p-3 font-bold" data-testid={`${listId}-skipper-check-label`}>
             <input type="checkbox" checked={!!skipperChecked} onChange={(e) => onSkipperCheck(e.target.checked)}
@@ -72,7 +82,7 @@ export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSki
             <span>{confirm}</span>
           </label>
         )}
-        {tip && <p className="mt-2" data-testid={`${prefix}-skipper-tip`}><b className="text-[var(--blue)]">Skipper's Tip:</b> {tip}</p>}
+        {tip && !helpItems?.length && <p className="mt-2" data-testid={`${prefix}-skipper-tip`}><b className="text-[var(--blue)]">Skipper's Tip:</b> {tip}</p>}
         {collapsible && (
           <button type="button" onClick={() => setHide(true)} data-testid={`${prefix}-help-hide-btn`}
             className="mt-2 inline-flex min-h-[40px] items-center gap-1 font-bold text-[var(--blue)] hover:underline">

@@ -30,9 +30,10 @@ const FoldButton = ({ id, folded, onFold }) => (
   </button>
 );
 
-const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl }) => (
+const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0 }) => (
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
+    {depth > 0 && <div className="shrink-0 border-r-2 border-sky-200" style={{ width: depth * 18 }} aria-hidden="true" data-testid={`checklist-item-depth-${item.id}`} />}
     {info?.child && <div className="w-7 shrink-0" aria-hidden="true" />}
     {number && <div className="shrink-0 pl-2 pt-3">{number}</div>}
     <div className="flex min-w-0 flex-1 flex-col">
@@ -63,7 +64,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
 );
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl }) => {
+export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.child && folded.includes(info[item.id].parent);
@@ -92,8 +93,9 @@ export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDele
       )}
       {items.filter((item) => !hidden(item)).map((item) => {
         const inf = info[item.id];
+        if (item.folder && folderRow) return folderRow(item);
         return (
-          <Row key={item.id} item={item} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
+          <Row key={item.id} item={item} depth={depthOf ? depthOf(item.id) : 0} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}

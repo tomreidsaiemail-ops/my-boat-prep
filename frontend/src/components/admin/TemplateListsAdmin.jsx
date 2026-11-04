@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Check, ListPlus, Loader2, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownUp, Check, ListPlus, Loader2, Pencil, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { TemplateListEditor } from "@/components/admin/TemplateListEditor";
 import {
@@ -26,10 +26,47 @@ const Row = ({ t, onEdit, onDelete }) => (
   </li>
 );
 
+const FILTERS = [
+  ["all", "All", () => true], ["private", "Admin use only", (t) => t.private], ["published", "Published", (t) => !t.private],
+  ["help", "Help Panels", (t) => /^\s*admin\s*-\s*help panel/i.test(t.name)], ["admin", "Admin lists", (t) => /^\s*admin\s*-/i.test(t.name)],
+];
+const SORTS = {
+  az: ["Name A-Z", (a, b) => a.name.localeCompare(b.name)], za: ["Name Z-A", (a, b) => b.name.localeCompare(a.name)],
+  updated: ["Recently updated", (a, b) => String(b.updated_at).localeCompare(String(a.updated_at))], size: ["Most items", (a, b) => b.items.length - a.items.length],
+};
+
+const Controls = ({ q, setQ, filter, setFilter, sort, setSort, shown, total }) => (
+  <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="template-list-controls">
+    <div className="flex gap-2">
+      <span className="relative min-w-0 flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search list names..." aria-label="Search template lists" className="field-input w-full pl-9" data-testid="template-list-search" />
+      </span>
+      <label className="flex shrink-0 items-center gap-1.5">
+        <ArrowDownUp className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
+        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort template lists" className="field-input !w-auto" data-testid="template-list-sort">
+          {Object.entries(SORTS).map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
+        </select>
+      </label>
+    </div>
+    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Filter template lists">
+      {FILTERS.map(([k, label]) => (
+        <button key={k} type="button" role="radio" aria-checked={filter === k} onClick={() => setFilter(k)} data-testid={`template-list-filter-${k}`}
+          className={`h-8 rounded-full border-[1.5px] px-3 text-xs font-bold [transition:background-color_.15s] ${filter === k ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white"}`}>{label}</button>
+      ))}
+    </div>
+    <p className="text-xs text-[var(--muted)]" data-testid="template-list-count">Showing {shown} of {total} lists</p>
+  </div>
+);
+
 export const TemplateListsAdmin = () => {
   const [lists, setLists] = useState(null);
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("az");
+  const visible = (lists || []).filter((t) => FILTERS.find(([k]) => k === filter)[2](t) && t.name.toLowerCase().includes(q.trim().toLowerCase())).sort(SORTS[sort][1]);
 
   useEffect(() => {
     api.get("/admin/template-lists").then(({ data }) => setLists(data)).catch(() => { toast.error("Couldn't load template lists"); setLists([]); });
@@ -66,10 +103,14 @@ export const TemplateListsAdmin = () => {
       {editing ? <TemplateListEditor key={editing.id || "new"} initial={editing === "new" ? null : editing} onSave={save} onCancel={() => setEditing(null)} />
         : <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" onClick={() => setEditing("new")} data-testid="template-list-new-btn"><ListPlus className="h-5 w-5" /> New template list</button>}
       {!lists ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
+        <>
+        {lists.length > 0 && <Controls q={q} setQ={setQ} filter={filter} setFilter={setFilter} sort={sort} setSort={setSort} shown={visible.length} total={lists.length} />}
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="template-lists">
           {lists.length === 0 && <li className="p-4 text-center text-sm text-[var(--muted)]" data-testid="template-lists-empty">No template lists yet</li>}
-          {lists.map((t) => <Row key={t.id} t={t} onEdit={() => setEditing(t)} onDelete={() => setRemoving(t)} />)}
+          {lists.length > 0 && !visible.length && <li className="p-4 text-center text-sm text-[var(--muted)]" data-testid="template-lists-no-match">No lists match. Clear the search or pick All.</li>}
+          {visible.map((t) => <Row key={t.id} t={t} onEdit={() => setEditing(t)} onDelete={() => setRemoving(t)} />)}
         </ul>
+        </>
       )}
       <AlertDialog open={!!removing} onOpenChange={(o) => !o && setRemoving(null)}>
         <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="template-list-delete-dialog">
