@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DetailsSection } from "@/components/boat/telemetry/DetailsSection";
 import { TelemetrySection } from "@/components/boat/telemetry/TelemetrySection";
@@ -86,7 +87,7 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -103,6 +104,11 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
             <TextField id="boat-make" label="Make" value={boat.make} placeholder="e.g. Beneteau" onChange={(v) => onChange("make", v)} />
             <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
+            {onMaintSetup && boat.make?.trim() && boat.model?.trim() && (
+              <button type="button" onClick={onMaintSetup} className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
+                <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
+              </button>
+            )}
           </div>
           <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-year-row">
             <ColourField id="hull-colour" label="Hull colour" value={boat.hull_colour} onChange={(v) => onChange("hull_colour", v)} />

@@ -36,7 +36,7 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
-from templates import seed_budget_template  # noqa: E402
+from templates import seed_budget_template, seed_master_attributes  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
@@ -49,6 +49,7 @@ from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
+from maint_ai import router as maint_ai_router  # noqa: E402
 import setup_stripe  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
@@ -525,6 +526,7 @@ app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(ai_lists_router)
+app.include_router(maint_ai_router)
 app.include_router(admin_analytics_router)
 app.include_router(quota.router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
@@ -597,6 +599,7 @@ async def create_indexes():
     await _upgrade_pob_lines()
     await add_racing_roles()
     await seed_budget_template()
+    await seed_master_attributes()
     await seed_terms_template()
     await seed_colour_presets()
 

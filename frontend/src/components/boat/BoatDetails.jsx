@@ -46,12 +46,13 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
   const moreRef = useRef(null);
-  const dialog = <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={() => setMore(false)} returnFocus={moreRef} onMakeKit={onMakeKit} />;
+  const dialog = <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={() => { setMore(false); onDetailsClosed?.(); }} returnFocus={moreRef} onMakeKit={onMakeKit}
+    onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} />;
   const focused = useRef(false);
   useEffect(() => { if (complete && !focused.current) setOpen(false); }, [complete]);
   const onBlur = (e) => {

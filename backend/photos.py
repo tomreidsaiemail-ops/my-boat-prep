@@ -93,7 +93,7 @@ ITEM_PHOTO_LISTS = {"riggingChecks", "electricalService", "engineService", "weat
 @router.post("/boats/{boat_id}/item-photo")
 async def upload_item_photo(boat_id: BoatPath, list_id: str = Query(..., max_length=40), file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     """Skipper-only photo for a Rigging / Electrical / Engine checklist item; the item keeps the returned photo_id."""
-    if list_id not in ITEM_PHOTO_LISTS:
+    if list_id not in ITEM_PHOTO_LISTS and not list_id.startswith("maint_"):
         raise HTTPException(status_code=400, detail="Photos are for Rigging Checks, Electrical Service, Engine Service items and Navigator weather and routing screenshots")
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
@@ -131,4 +131,50 @@ async def get_item_photo(boat_id: BoatPath, photo_id: Annotated[str, Path(patter
 @router.delete("/boats/{boat_id}/item-photo/{photo_id}")
 async def remove_item_photo(boat_id: BoatPath, photo_id: Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")], user: dict = Depends(get_current_user)):
     await db.item_photos.update_one({"photo_id": photo_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"is_deleted": True}})
+    return {"ok": True}
+
+
+PDF_MAX = 5 * 1024 * 1024
+
+
+@router.post("/boats/{boat_id}/item-file")
+async def upload_item_file(boat_id: BoatPath, list_id: str = Query(..., pattern=r"^maint_[A-Za-z0-9_]{1,40}$"), file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """Skipper-only PDF (e.g. a manual) for a Boat Maintenance list item; the item keeps the returned file_id."""
+    if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    data = await file.read(PDF_MAX + 1)
+    if file.content_type != "application/pdf" or not data.startswith(b"%PDF"):
+        raise HTTPException(status_code=400, detail="Please choose a PDF file")
+    if len(data) > PDF_MAX:
+        raise HTTPException(status_code=400, detail="That PDF is too big (max 5 MB)")
+    file_id = uuid.uuid4().hex
+    try:
+        result = await asyncio.to_thread(put_object, f"{APP_NAME}/item-files/{user['user_id']}/{file_id}.pdf", data, "application/pdf")
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Couldn't save the PDF, please try again")
+    name = (file.filename or "manual.pdf")[:120]
+    await db.item_files.insert_one({"file_id": file_id, "owner_id": user["user_id"], "boat_id": boat_id, "list_id": list_id, "path": result["path"],
+                                    "name": name, "size": len(data), "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"file_id": file_id, "name": name}
+
+
+@router.get("/boats/{boat_id}/item-file/{file_id}")
+async def get_item_file(boat_id: BoatPath, file_id: Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")],
+                        owner: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None, user: dict = Depends(get_current_user)):
+    owner_id = owner or user["user_id"]
+    if owner_id != user["user_id"] and not await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="No file")
+    doc = await db.item_files.find_one({"file_id": file_id, "owner_id": owner_id, "boat_id": boat_id, "is_deleted": False}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No file")
+    try:
+        data = await asyncio.to_thread(get_object, doc["path"])
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Couldn't load the PDF")
+    return Response(content=data, media_type="application/pdf", headers={"Cache-Control": "private, max-age=604800"})
+
+
+@router.delete("/boats/{boat_id}/item-file/{file_id}")
+async def remove_item_file(boat_id: BoatPath, file_id: Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")], user: dict = Depends(get_current_user)):
+    await db.item_files.update_one({"file_id": file_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"is_deleted": True}})
     return {"ok": True}

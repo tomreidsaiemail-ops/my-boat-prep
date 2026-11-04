@@ -82,6 +82,9 @@ import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, linesToItems
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
+import { MaintList } from "@/components/boat/maint/MaintList";
+import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
+import { MAINT_CATEGORY, MAINT_KIND, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
@@ -150,6 +153,24 @@ export default function BoatPrep({ boatId, boats }) {
   useEffect(() => {
     if (needBudget) mutate((s) => withBudget(s, budgetTpl.items), { count: false });
   }, [needBudget]); // eslint-disable-line react-hooks/exhaustive-deps
+  const maintDefs = masterDefs(useAdminLists(MAINT_PREFIX, online));
+  const hasMaint = registry.some((l) => l.kind === MAINT_KIND);
+  const OFFERS = "mbp_maint_offers";
+  const offered = () => { try { return JSON.parse(localStorage.getItem(OFFERS)) || []; } catch { return []; } };
+  const offerMaint = () => {
+    if (crew || hasMaint || !["make", "model", "boat_type"].every((k) => (boat[k] || "").trim()) || offered().includes(offerKey(boatId, boat))) return;
+    setTimeout(() => setDialog({ type: "maint", auto: true }), 250);
+  };
+  const dismissMaint = () => { localStorage.setItem(OFFERS, JSON.stringify([...offered(), offerKey(boatId, boat)].slice(-50))); setDialog(null); };
+  const createMaint = (made, due) => {
+    const now = Date.now();
+    const taken = new Set(registry.map((l) => l.name.toLowerCase()));
+    const add = made.map((m, n) => ({ id: `maint_${m.key}_${now + n}`, name: taken.has(m.name.toLowerCase()) ? `My ${m.name}` : m.name, isSystem: false, kind: MAINT_KIND, maint: m.key, category: MAINT_CATEGORY }));
+    mutate((s) => ({ ...s, registry: [...s.registry, ...add], data: { ...s.data, ...Object.fromEntries(add.map((l, n) => [l.id, maintItems(made[n].groups, due, now + n * 1000)])) } }));
+    setDialog(null);
+    pickList(add[0].id);
+    toast.success(`${add.length} Boat Maintenance ${add.length === 1 ? "list" : "lists"} created. Review and correct each one.`);
+  };
   const { setVessel } = boats;
   useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
@@ -606,7 +627,8 @@ export default function BoatPrep({ boatId, boats }) {
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit} />}
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
+            onDetailsClosed={offerMaint} onMaintSetup={hasMaint ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
@@ -658,6 +680,8 @@ export default function BoatPrep({ boatId, boats }) {
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
+        : active.kind === MAINT_KIND ? <MaintList key={active.id} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
+            ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
@@ -722,6 +746,8 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}
         onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
+      {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto}
+        onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />

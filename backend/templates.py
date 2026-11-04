@@ -125,7 +125,7 @@ async def list_categories(_: dict = Depends(get_current_user)):
     return {"items": [{"label": i["label"]} for i in items]}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ")
 
 
 @router.get("/admin-lists")
@@ -278,3 +278,51 @@ async def seed_budget_template():
                                             "description": "Seeds each boat's Boat Budget. Write 'Description | Product'; a line without | is just a Description.",
                                             "items": [{"id": n + 1, "label": t} for n, t in enumerate(BUDGET_LINES)], "created_at": now, "updated_at": now, "updated_by": "system"})
     await db.migrations.insert_one({"_id": "boat_budget_template", "at": datetime.now(timezone.utc).isoformat()})
+
+
+MASTER_ATTRIBUTE_LINES = [
+    "1. Types", "char = text, 1000 characters unless char(8) or char(8000) is given", "date = dd/mm/ccyy or mm/dd/ccyy, following the phone's locale",
+    "integer = whole number, up to 99999999", "integer age = years old", "decimal = up to 999999.99", "decimal length = m, mm, feet or inches",
+    "decimal area = sqm (sq ft on imperial boats)", "decimal weight = g or kg (lb or oz on imperial boats)", "decimal cost = in the boat's currency, e.g. USD or NZD",
+    "image = photo upload, with delete", "pdf = PDF upload, with delete", "Any other type is a picklist row of Admin - master attribute types",
+    "2. Attributes - Name, type and lists (or All), split by |",
+    "Brand | char | All", "Make | char | All", "Model | char | All", "Serial number | char | All", "Colour | char | All", "Weight | decimal weight | All",
+    "Cost | decimal cost | All", "Last service date | date | All", "Next service date | date | All", "PDF manual | pdf | All", "Image | image | All",
+    "Web link | char(8000) | All", "Winch gear ratios | char | Deck Hardware",
+    "Sail type | sail types | Sail Loft", "Sail material | sail material types | Sail Loft", "Furling type | furling type | Sail Loft",
+    "Batten style | batten style | Sail Loft", "Sail area | decimal area | Sail Loft", "Luff length | decimal length | Sail Loft",
+    "Age | integer age | Sail Loft, Running Rigging, Standing Rigging, Ground Tackle",
+    "Line type | line type | Running Rigging, Standing Rigging, Ground Tackle", "Line material | line material type | Running Rigging, Standing Rigging, Ground Tackle",
+    "Diameter | decimal length | Running Rigging, Standing Rigging, Ground Tackle", "Length | decimal length | Running Rigging, Standing Rigging, Ground Tackle",
+    "Anchor type | anchor types | Ground Tackle", "Chain length | decimal length | Ground Tackle",
+]
+MASTER_TYPE_LINES = [
+    "furling type - In-Boom Furling, In-Mast Furling, Forestay Furling",
+    "sail types - Main sail, Headsail, Jib, Genoa, Spinnaker, Gennaker, Code Zero, Staysail, Storm jib, Trysail, Mizzen, Topsail, Screacher, Parasailor, Drifter",
+    "sail material types - Woven Polyester, Dacron, Nylon, Laminated Polyester, Pentex, Mylar, Kevlar, Technora, Twaron, Carbon Fiber, Dyneema, Spectra, Vectran, Cuben Fiber, Composite",
+    "line material type - Polyester, Dyneema, Kevlar, Vectran, Nylon, Polypropylene",
+    "batten style - Partial, Full-length, Hybrid",
+    "anchor types - Rocna, Plow, Bruce, Danforth, Delta, Spade, Grapnel, Mushroom, Fortress, Admiralty",
+    "line type - Halyard, Sheet, Downhaul, Reef point, Topping lift, Cunningham, Kicker, Vang, Outhaul, Bowline, Sternline, Springline, Breastline, Painter, "
+    "Forestay, Backstay, Shroud, Tack line, In-hauler, Barber hauler, Lazyjack line, Running backstay, Preventer, Anchor rode, Warp, Tow line",
+]
+MASTER_LISTS = (
+    ("Admin - master attributes", MASTER_ATTRIBUTE_LINES,
+     "Attributes for the Boat Maintenance lists. Write 'Name | type | lists' (lists comma separated, or All). Lines without | are notes."),
+    ("Admin - master attribute types", MASTER_TYPE_LINES, "Picklists, one row per type: 'type name - value, value, value'."),
+)
+
+
+async def seed_master_attributes():
+    """Runs once: adds the private master attribute lists used by Deck Hardware, Sail Loft, Rigging and Ground Tackle."""
+    if await db.migrations.find_one({"_id": "master_attributes"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    for name, lines, description in MASTER_LISTS:
+        if await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 1}):
+            continue
+        heads = [n for n, t in enumerate(lines) if t[:1].isdigit()]
+        items = [{"id": n + 1, "label": t, **({"indent": True} if heads and n not in heads else {})} for n, t in enumerate(lines)]
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
+                                            "items": items, "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": "master_attributes", "at": now})
