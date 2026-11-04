@@ -1,0 +1,37 @@
+{
+  "summary": "Tested the new 'Batch Magic Scan My Shopping' and 'Sync Food & Drink Boat Areas Magically' features end to end at 390px against real Gemini and Whisper, using the Pro skipper (TEST_Kia Ora) and the free user as crew. Backend: 14/14 pytest pass. Frontend: every requested flow passed and no functional bugs were found. What passed: (1) The hamburger menu order is Bartender, Shop scan, Sync, separator, FAQ. Crew don't see any of the three. Offline, both new items show the 'The Magic Provisioning Assistant needs a signal' toast. (2) Areas step: the 7 defaults appear with the correct F/D flags, existing areas are reused and a missing Bilge shows a NEW badge (I temporarily removed Bilge to test this). The extra D-flagged TEST_Gantry is listed. Show-others lists TEST_Port Locker and tapping F moves it into the targets. Start creates Bilge with drinks:true. (3) Sets: the title reads 'Shopping Set 1 of 3: Fridge'. Chips show photo counts and jump between steps. Next shows 'Next: Pantry' and then 'Review shopping'. Back works. Uploading several photos at once works and removing one updates 'X of 20 photos used'. The status reads 'Scanning photo 1 of 3...' and then '2 photos scanned'. Done is disabled while scanning. (4) Review: rows show name, qty, a destination select (set areas plus other F/D areas) and a weight in kg, or lb on a boat with feet units. A qty of 0 gives the toast 'Quantities must be whole numbers from 1'. Done adds same-name items to the existing quantity (Red lettuce 1->4, removed flag cleared). The Ship's Log line is 'Batch Magic Scan My Shopping, <date>: 15 items added, MPA estimated weight added 6.0 kg (Fridge 7, Pantry 8)'. (5) Smart learning: Broccoli moved to Pantry was 'Remembered: you put this in Pantry last time' on the next scan. Green lettuce moved back to Fridge cleared its learned key (Pantry.learned went to ['broccoli']). (6) Closing with photos opens the discard dialog. Keep going keeps the dialog open and Discard adds nothing. (7) Sync: typed text matched Iceberg x2 and Red lettuce x4, the unknown list showed 'frozen pizza', and the total and weight were shown. Qty 99 gave the toast 'You can't use more than is on board'. Confirm left Iceberg at 8 and Red lettuce at qty 0 with removed:true (Fridge shows '1 removed for now'). The Ship's Log Sync line is correct. Back keeps the text. stores-empty shows and Work it out is disabled on a boat with no F/D stock. In headless Chromium the mic button shows the toast 'Microphone permission is needed to record'. (8) Regression: the Magic Bartender, Batch Magic Scan (inventory), Excel export dialog and Boat Maintenance lists all open.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/mpa/consumed", "issue": "parse_consumed forces qty=max(1, qty), so if the model returns qty 0 for an item it judges 'not finished', 1 unit is still removed. Lines with qty<1 should be dropped instead."},
+      {"endpoint": "GET /api/me/boats", "issue": "The backend error log has older 'KeyError: updated_at' entries in inventory.boat_maps (m['updated_at'], m['colour']). No boats currently have zone_maps without updated_at, but using .get() would harden it. Not caused by this feature."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Shop scan areas step", "issues": ["After tagging the last 'other' area, the others panel still shows only the hint 'Tap F or D to use one of these...' with nothing below it, and the show/hide toggle disappears. Hide the panel when 'others' is empty.", "With all 8 defaults ticked the wizard has 8 sets. Consider unticking empty, rarely used areas by default (optional)."]},
+      {"screen": "Sync dialog", "issues": ["The title reads 'Sync Food & Drink Boat Areas' while the menu says '...Magically'. This is fine but slightly inconsistent."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_stores_ai.py", "/app/test_reports/pytest/pytest_results_86.xml"],
+  "action_items": [
+    "Optional: in stores_ai.parse_consumed, skip items whose qty < 1 instead of raising them to 1",
+    "Optional: hide the empty 'other boat areas' panel once every other area has been tagged",
+    "Optional edge case: if a learned area is no longer flagged F/D it is still used as r.dest but is not in the dests options, so the select shows the wrong area. Only use learnedArea when the area is in dests (food || drinks)",
+    "Optional edge case: applyShopping with the same item name in two sets (one moved, one not) clears the learned key depending on row order"
+  ],
+  "critical_code_review_comments": [
+    "stores.js applyShopping: the learned-key removal runs for every row, so two rows with the same name where one is moved and one is not lose the learning when the unmoved row comes later.",
+    "ShopScanDialog useRows: learnedArea can return an area that is not F/D any more. It exists in areas but not in dests, so the select's displayed value doesn't match r.dest.",
+    "SyncStoresDialog: stock is recomputed every render and rows map u.n to stock[u.n-1]. If areas change during the AI call (a crew sync), the indices can point to different items. Snapshot the stock at request time.",
+    "The transcribe endpoint correctly strips ';codecs=' params, enforces 8MB and 500B limits, and doesn't consume a Magic."
+  ],
+  "updated_files": ["/app/backend/tests/test_stores_ai.py"],
+  "success_rate": {"backend": "100% (14/14)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "I backed up the TEST_Kia Ora (test-user-pro/main) areas and Ship's Log to /tmp/boat_backup.json, temporarily removed the empty Bilge area to test the NEW badge, then restored areas and shipsLog from the backup after testing. I ran xl85_setup.py setup and set its units to ft for the lb check, then ran teardown (TEST_xl85 removed). I reset test-user-pro's magic_quota daily_used to 0 before testing, as the note allowed; about 8 Magics were used.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Note: launch_free (FIRST200) makes every user premium, so free-user 403 checks are relaxed to accept 200. Run with 'pytest tests/test_stores_ai.py -n 0' (pytest.ini adds xdist). Use the photo https://images.unsplash.com/photo-1542838132-92c53300491e?w=900 through set_input_files buffer. After each set step, wait for shop-set-step-{n} before clicking shop-next-btn again, because quick double clicks are lost. The inventory batch-scan dialog auto-opens a 'New boat area' sub-dialog, so Escape doesn't close it."
+}

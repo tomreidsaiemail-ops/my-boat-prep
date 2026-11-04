@@ -20,7 +20,7 @@ const useRows = (entries, areas) => {
       const have = new Set(rs.map((r) => r.entry));
       const add = entries.filter((e) => e.status === "done" && !have.has(e.key)).flatMap((e) => (e.items || []).map((i, n) => {
         const learned = learnedArea(areas, i.name);
-        const dest = learned && areas.some((a) => a.id === learned) ? learned : e.name;
+        const dest = learned && areas.some((a) => a.id === learned && (a.food || a.drinks)) ? learned : e.name;
         return { key: `${e.key}-${n}`, entry: e.key, name: i.name, qty: String(i.qty), unitW: (i.weight_g || 0) / (i.qty || 1), setArea: e.name, dest, learned: dest !== e.name, keep: true };
       }));
       const kept = rs.filter((r) => keys.has(r.entry));

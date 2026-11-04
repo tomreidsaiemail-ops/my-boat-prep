@@ -68,14 +68,14 @@ def parse_consumed(stock: List[StockItem]):
                 qty = int(r.get("qty", 1))
             except (TypeError, ValueError):
                 continue
-            if not 1 <= n <= len(stock) or n in seen or stock[n - 1].qty < 1:
+            if not 1 <= n <= len(stock) or n in seen or stock[n - 1].qty < 1 or qty < 1:
                 continue
             seen.add(n)
             try:
                 grams = min(500000, max(0, int(float(r.get("weight_g", 0)))))
             except (TypeError, ValueError):
                 grams = 0
-            used.append({"n": n, "qty": min(max(1, qty), stock[n - 1].qty), "weight_g": grams})
+            used.append({"n": n, "qty": min(qty, stock[n - 1].qty), "weight_g": grams})
         unknown = [str(u).strip()[:80] for u in (raw.get("unknown") or []) if str(u).strip()][:20]
         return {"items": used, "unknown": unknown}
     return parse

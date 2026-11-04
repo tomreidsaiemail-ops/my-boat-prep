@@ -31,7 +31,7 @@ export const ShopAreasStep = ({ targets, setTargets, others, onTagOther }) => {
           <ChevronDown className={`h-4 w-4 [transition:transform_.15s] ${showOthers ? "rotate-180" : ""}`} /> {showOthers ? "Hide other boat areas" : "Click here to show other boat areas"}
         </button>
       )}
-      {showOthers && (
+      {showOthers && others.length > 0 && (
         <ul className="flex flex-col gap-2 rounded-lg bg-[var(--panel)] p-2" data-testid="shop-areas-others">
           <li className="text-xs text-[var(--muted)]">Tap F or D to use one of these for your shopping too.</li>
           {others.map((a) => <Row key={a.id} other t={{ ...a, food: false, drinks: false, use: true }} onChange={(p) => onTagOther(a, p)} />)}

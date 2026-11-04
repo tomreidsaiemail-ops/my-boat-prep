@@ -34,6 +34,7 @@ export const learnedArea = (areas, name) => areas.find((a) => (a.learned || []).
 // rows: [{ name, qty, dest, setArea }]. Same-name items add to the quantity; moved items are remembered on their new area.
 export const applyShopping = (areas, rows) => {
   const next = areas.map((a) => ({ ...a, items: [...(a.items || [])], learned: [...(a.learned || [])] }));
+  const moved = new Set(rows.filter((r) => r.dest !== r.setArea).map((r) => itemKey(r.name)));
   rows.forEach((r) => {
     const key = itemKey(r.name);
     const dest = next.find((a) => a.id === r.dest);
@@ -41,6 +42,7 @@ export const applyShopping = (areas, rows) => {
     const at = dest.items.findIndex((i) => norm(i.name) === key);
     if (at >= 0) dest.items[at] = { ...dest.items[at], qty: (Number(dest.items[at].qty) || 0) + r.qty, removed: false };
     else dest.items.push({ id: newAreaItemId(), name: r.name, qty: r.qty });
+    if (r.dest === r.setArea && moved.has(key)) return;
     next.forEach((a) => { a.learned = a.learned.filter((k) => k !== key); });
     if (r.dest !== r.setArea) dest.learned = [...dest.learned, key].slice(-300);
   });

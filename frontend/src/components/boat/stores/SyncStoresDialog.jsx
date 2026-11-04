@@ -35,9 +35,10 @@ export const SyncStoresDialog = ({ areas, units, onDone, onClose }) => {
   const work = async () => {
     if (text.trim().length < 2) { toast.error("Say or type what was used first"); return; }
     setBusy(true);
+    const snap = stock.slice(0, 600);
     try {
-      const { data } = await api.post("/ai/mpa/consumed", { text: text.trim(), stock: stock.slice(0, 600).map((s) => ({ name: s.name.slice(0, 80), qty: Math.min(9999, s.qty), area: s.area.slice(0, 120) })) }, { timeout: 90000 });
-      setRows(data.items.map((u) => { const s = stock[u.n - 1]; return { key: `${s.areaId}-${s.itemId}`, ...s, stock: s.qty, qty: String(u.qty), unitW: u.weight_g / u.qty, keep: true }; }));
+      const { data } = await api.post("/ai/mpa/consumed", { text: text.trim(), stock: snap.map((s) => ({ name: s.name.slice(0, 80), qty: Math.min(9999, s.qty), area: s.area.slice(0, 120) })) }, { timeout: 90000 });
+      setRows(data.items.map((u) => { const s = snap[u.n - 1]; return { key: `${s.areaId}-${s.itemId}`, ...s, stock: s.qty, qty: String(u.qty), unitW: u.weight_g / u.qty, keep: true }; }));
       setUnknown(data.unknown || []);
     } catch (err) { if (err?.response?.data?.code !== "daily_limit") toast.error(apiError(err, "The MPA couldn't work that out, please try again")); }
     setBusy(false);

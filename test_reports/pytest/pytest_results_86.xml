@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="14" time="53.045" timestamp="2026-11-04T06:13:09.672010+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_stores_ai.TestShoppingScan" name="test_shopping_scan_returns_weights" time="23.368" /><testcase classname="tests.test_stores_ai.TestShoppingScan" name="test_shopping_scan_free_user_blocked" time="17.207"><failure message="assert 200 in (402, 403)&#10; +  where 200 = &lt;Response [200]&gt;.status_code">tests/test_stores_ai.py:51: in test_shopping_scan_free_user_blocked
+    assert r.status_code in (402, 403)
+E   assert 200 in (402, 403)
+E    +  where 200 = &lt;Response [200]&gt;.status_code</failure></testcase><testcase classname="tests.test_stores_ai.TestShoppingScan" name="test_shopping_scan_bad_type" time="0.196" /><testcase classname="tests.test_stores_ai.TestConsumed" name="test_consumed_matches_and_caps" time="4.590" /><testcase classname="tests.test_stores_ai.TestConsumed" name="test_consumed_validation" time="0.286" /><testcase classname="tests.test_stores_ai.TestConsumed" name="test_consumed_free_blocked" time="2.058"><failure message="assert 200 in (402, 403)&#10; +  where 200 = &lt;Response [200]&gt;.status_code">tests/test_stores_ai.py:84: in test_consumed_free_blocked
+    assert r.status_code in (402, 403)
+E   assert 200 in (402, 403)
+E    +  where 200 = &lt;Response [200]&gt;.status_code</failure></testcase><testcase classname="tests.test_stores_ai.TestConsumed" name="test_consumed_unauth" time="0.120" /><testcase classname="tests.test_stores_ai.TestParseConsumedUnit" name="test_parse_drops_invalid_and_caps" time="0.258"><failure message="KeyError: 'MONGO_URL'">tests/test_stores_ai.py:95: in test_parse_drops_invalid_and_caps
+    from stores_ai import StockItem, parse_consumed
+stores_ai.py:10: in &lt;module&gt;
+    from auth import require_premium
+auth.py:12: in &lt;module&gt;
+    from db import db
+db.py:4: in &lt;module&gt;
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+                                ^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'MONGO_URL'</failure></testcase><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_wav_ok" time="1.104" /><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_webm_codecs_type_ok" time="1.734" /><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_rejects_other_type" time="0.152" /><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_rejects_tiny" time="0.116" /><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_rejects_big" time="0.476" /><testcase classname="tests.test_stores_ai.TestTranscribe" name="test_transcribe_free_blocked" time="1.258"><failure message="assert 200 in (402, 403)&#10; +  where 200 = &lt;Response [200]&gt;.status_code">tests/test_stores_ai.py:128: in test_transcribe_free_blocked
+    assert r.status_code in (402, 403)
+E   assert 200 in (402, 403)
+E    +  where 200 = &lt;Response [200]&gt;.status_code</failure></testcase></testsuite></testsuites>
