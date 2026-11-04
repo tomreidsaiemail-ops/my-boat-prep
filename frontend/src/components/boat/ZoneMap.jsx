@@ -158,7 +158,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
                 <MapPin className="h-3.5 w-3.5" /> {p.map.pins?.length ? `Edit labels (${p.map.pins.length})` : "Label this map"}
               </button>
               <button type="button" className="btn-ghost h-9 px-3 text-xs hover:text-[var(--red)]" disabled={removing === p.key} onClick={() => removeMap(p.map)} data-testid={`boat-zone-map-remove-${p.key}`}>
-                {removing === p.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this map
+                {removing === p.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} <span className="sm:hidden">Remove</span><span className="hidden sm:inline">Remove this map</span>
               </button>
             </div>
           )}

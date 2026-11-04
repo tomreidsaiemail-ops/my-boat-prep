@@ -446,3 +446,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Sync fix: server-pushed list items (crew MMD + walkthrough sign-offs) tracked in user_boats.pushed_items and re-added until the skipper's phone sends them back once (sync_merge.keep_pushed).
 - Note: FIRST200 promo makes free users Pro, so old tests expecting free 403s fail (pre-existing).
 - Tests: test_crew_prep_mmd.py, test_mmd_log_race.py, iteration_81.
+
+## 2026-11 Sub-areas, zone map colours, rainbow grouping
+- Sub-areas (folders/boxes): areas with parent_id, nested inside parent (closed by default), own list + Magic Scan (photo not kept); "Add a folder or box", "Put inside another area" (merge), "Take out of <parent>"; delete parent removes subs (Undo restores); search returns zone map › area › sub-area path; inventory PDF lists subs after parent ("Parent › Sub: item").
+- F/D badge before area names removed (toggle buttons on right remain).
+- Zone maps: name + colour (zone_colours.py). 20-colour sequence auto-assigned, unique per boat; colour picker square left of Edit labels (PUT /api/boats/{id}/zone-maps/{map}/meta); names containing a word from private admin list "Admin - Zone Map Predetermined Colours" (seeded "Cockpit - Gold" etc) default to that colour unless taken or manually picked.
+- Boat areas take their zone map's colour; inventory list grouped in rainbow order with map-name headers, "Not on a zone map" last.
+- Tests: backend/tests/test_zone_colours.py, ui82_setup.py, iteration_82.

@@ -19,7 +19,7 @@ export const MapNameField = ({ boat, map, online, onMaps }) => {
   };
   return (
     <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} onBlur={save} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-      placeholder="Name this map, e.g. Saloon" aria-label="Zone map name" className="field-input h-9 min-w-0 flex-1 basis-full text-sm normal-case tracking-normal sm:basis-0"
+      placeholder="Name this map, e.g. Saloon" aria-label="Zone map name" className="field-input h-9 min-w-0 flex-1 basis-full text-sm normal-case tracking-normal"
       data-testid={`boat-zone-map-name-${map.id}`} />
   );
 };

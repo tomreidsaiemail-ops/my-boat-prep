@@ -274,7 +274,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     const kids = parent ? [] : subsOf(a.id);
     const pin = pinFor[a.id] || (parent && pinFor[parent.id]);
     return (
-      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex} subCount={kids.length} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
+      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
         onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}

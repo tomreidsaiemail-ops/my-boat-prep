@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend E2E (Pro, desktop 1920 + mobile 390) on a temporary TEST_ui82 boat. I re-ran the backend test test_zone_colours.py: 7/7 pass. Working: zone map rows (name box, colour square left of Edit labels, coloured left border); colour picker (20 swatches, the other map's colour disabled, picking Teal updates square, border, group header and toast, and it persists after reload with colour_manual=true); naming 'Saloon port side' auto-colours a Gold map Green with toast 'Zone map named Saloon port side and coloured Green'; a manually chosen colour is not overridden when renamed 'Cockpit area'; a 3rd map uploaded through the UI got the first free colour (Gold); pinning through ZonePinEditor puts the area in the right colour group; rainbow grouping (Green, then Teal, then 'Not on a zone map') with map-name headers; F toggle lights up, inventory-area-food-badge does not exist, and names line up (x=738 for all). Sub-areas: add 'Blue box' gives a CLOSED nested card (data-sub=true) and parent count '1 item · 1 folder or box'; a duplicate name (any case) is rejected with an inline error; an item added inside a sub-area persists; take-out works; merging Red folder into Saloon nav desk cupboard works (confirm button disabled until a parent is picked, the area itself is not offered); merging into a parent that already has a sub with that name is rejected; taking out a sub whose name clashes with a top-level area is rejected. Search 'impeller' shows the parent and the sub; the sub path reads 'Cockpit area › Saloon nav desk cupboard' and the parent path reads 'Cockpit area'; searching the parent name shows all of its subs. Deleting a parent with 2 subs removes all of them and Undo restores all of them. Mobile 390: no horizontal overflow and the name box is full width. All changes were checked in MongoDB after the 700ms sync.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MapColourPicker trigger", "issue": "The colour 'square' shows as a narrow 12x20px pill and the button is 36x48, not 36x36. Root cause: App.css .btn-ghost sets padding: 0 10px and min-height: 48px, which override Tailwind p-0 and h-9 because App.css loads later. Fix: use !p-0 !min-h-0 on the trigger, or a plain button class, and add shrink-0 to the inner span.", "selector": "[data-testid=boat-zone-map-colour-<id>] span", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Zone map row, mobile 390px", "issues": ["The colour square, Edit labels and Remove this map do not fit on one row below the name box (36+132+154+gaps is more than the 318px available). Remove this map wraps onto a 3rd right-aligned line. Shrinking the Remove label to 'Remove', or fixing the btn-ghost min-height/padding, would keep it on one row."]},
+      {"screen": "Zone map row, desktop", "issues": ["The name input is only about 158px wide, so the placeholder 'Name this map, e.g. Saloon' is cut off to 'Name this map, e.'"]},
+      {"screen": "Inventory list", "issues": ["Coloured cards have a 6px left border and uncoloured ones 1.5px, so names in the 'Not on a zone map' group sit about 4px left of names in coloured groups. Consider a transparent 6px left border on uncoloured cards."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_colours.py", "/app/backend/tests/ui82_setup.py"],
+  "action_items": [
+    "Fix the MapColourPicker trigger sizing so it is a real rounded square (override .btn-ghost padding and min-height).",
+    "Mobile zone map row: keep colour square + Edit labels + Remove on one row under the name box.",
+    "Optional: widen the desktop name input or shorten its placeholder; even out left-border width for uncoloured inventory cards."
+  ],
+  "critical_code_review_comments": [
+    "ZonePinEditor area select lists sub-areas by their bare name (e.g. 'Blue box', with no 'Parent ›' prefix), so a folder can be pinned and look like a top-level area. Consider listing only top-level areas, or using the labelled names.",
+    "Same root cause as the picker: any 'btn-ghost h-9' button (Edit labels, Remove this map) is 48px tall, not 36px.",
+    "Sync is debounced by 700ms (useBoatStore). Edits made just before closing the tab are lost unless there is a flush on pagehide/visibilitychange. Seen in testing when the browser closed within 700ms of an edit (food toggle, sub item, take-out). A real user closing the app quickly would hit the same thing."
+  ],
+  "updated_files": ["/app/backend/tests/ui82_setup.py"],
+  "success_rate": {"backend": "100% (7/7, re-run only)", "frontend": "95% (all requested flows work; 1 medium sizing bug + layout nits)"},
+  "seed_data_creation": "Temporary TEST_ui82 boat for test-user-pro (5 areas, 2 maps via API + 1 via UI) was created and then removed with ui82_setup.py teardown; Pro last_boat was reset to unset, as before. The 3 uploaded zone map images remain in object storage, orphaned, because there is no delete-object path.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use `REACT_APP_BACKEND_URL=... python /app/backend/tests/ui82_setup.py setup|teardown` to create/remove a TEST_ui82 Pro boat with areas a_nav/a_galley/a_red/a_cockpit/a_fwd and 2 zone maps (Gold pins cockpit+galley, Blue pins nav). Wait about 2s after the last edit before the script ends, or the 700ms debounced sync is lost. The Delete confirm uses media-delete-confirm-btn; Undo is a sonner action button named 'Undo'."
+}

@@ -10,7 +10,7 @@ const pinId = () => `p${Date.now().toString(36)}${Math.random().toString(36).sli
 
 const PinForm = ({ pin, areas, onSave, onDelete, onCancel }) => {
   const linked = areas.some((a) => a.id === pin.area_id);
-  const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas[0]?.id || NEW);
+  const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas.find((a) => !a.parent_id)?.id || NEW);
   const [name, setName] = useState(linked ? "" : pin.label || "");
   const [error, setError] = useState("");
   const save = () => {
@@ -23,7 +23,7 @@ const PinForm = ({ pin, areas, onSave, onDelete, onCancel }) => {
     <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-[var(--panel)] p-3" data-testid="zone-pin-form">
       <label className="flex flex-col gap-1"><span className="field-label">Boat area at this spot</span>
         <select value={areaId} onChange={(e) => { setAreaId(e.target.value); setError(""); }} className="field-input" data-testid="zone-pin-area-select">
-          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          {areas.filter((a) => !a.parent_id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           <option value={NEW}>New boat area...</option>
         </select>
       </label>

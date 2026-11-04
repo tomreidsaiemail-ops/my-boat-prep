@@ -20,8 +20,8 @@ export const MapColourPicker = ({ boat, map, maps, online, onMaps }) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className="btn-ghost h-9 w-9 justify-center p-0" aria-label={`Zone map colour: ${map.colour}. Change colour`} title={`${map.colour} (tap to change)`} data-testid={`boat-zone-map-colour-${map.id}`}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="h-5 w-5 rounded-[5px] border border-black/20" style={{ backgroundColor: ZONE_COLOURS[map.colour] }} />}
+        <button type="button" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border-[1.5px] border-[var(--line)] bg-white [transition:border-color_.15s] hover:border-[var(--navy)]" aria-label={`Zone map colour: ${map.colour}. Change colour`} title={`${map.colour} (tap to change)`} data-testid={`boat-zone-map-colour-${map.id}`}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="h-5 w-5 shrink-0 rounded-[5px] border border-black/20" style={{ backgroundColor: ZONE_COLOURS[map.colour] }} />}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 border-2 border-[var(--navy)] p-3" align="end" data-testid={`boat-zone-map-colour-menu-${map.id}`}>
