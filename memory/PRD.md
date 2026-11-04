@@ -542,3 +542,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Magic Mariner: /api/ai/maint-lists now runs one Gemini call per list in parallel (one Magic use per request, one retry per list, json_repair fallback). Sends picklists, weight, cost, length/area (units m/mm or feet/inches, sqm/sq ft) and make/model/colour; length/diameter/area also marked est. Toast names any list that fell back to starter items.
 - Existing boats with the 5 old lists get the "Create Boat Maintenance lists..." button offering only the new one; new sailboats are auto-offered all 6.
 - Tested iteration_96 (backend + frontend 100%); json/brand fixes self-tested by curl. tests/test_maint_spars.py added by tester.
+
+## 2026-06 Racing weight tracking
+- lib/weights.js weighUp() (provided through WeightsContext in BoatPrep): gear total per Boat Maintenance category (sum of "decimal weight" attrs, g/kg/lb/oz converted; category heads with items not double counted; custom lists excluded), fluids from latest Leaving the Dock levels (no level = full; diesel 0.84 / petrol 0.74 kg/L by engine type, water 1, gas + estimated empty bottle = bottle size), provisions = area items qty x unit_g (Batch Magic Scan now stores unit_g), crew = POB x average crew weight (default 85 kg / 187 lb), boat baseline weight.
+- Additional details: Racing weight panel (WeightPanel.jsx): editable Weight (boat_weight), read-only Totalled on deck weight, Average crew weight (crew_weight), six category totals, All-Up Racing Displacement breakdown. Boat/crew weights convert when Measurements toggle m<->ft. Backend BoatDetails boat_weight/crew_weight (up to 6 digits).
+- Each non-custom maintenance list: footer with list weight total, on deck total, displacement.
+- Tested iteration_97 (backend 9/9, frontend 100%) + polish (alignment, unit switch, head double count, 6 digits) self-verified.

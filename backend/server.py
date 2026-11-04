@@ -95,7 +95,8 @@ class Battery(BaseModel):
     notes: str = Field(default="", max_length=200)
 
 
-TANK_FIELDS = ("fuel_tank", "fuel_jerry", "fuel_jerry_size", "water_tank", "water_jerry", "water_jerry_size", "gas_bottles", "gas_kg", "gas_extra", "cruise_kn", "boat_weight", "crew_weight")
+TANK_FIELDS = ("fuel_tank", "fuel_jerry", "fuel_jerry_size", "water_tank", "water_jerry", "water_jerry_size", "gas_bottles", "gas_kg", "gas_extra", "cruise_kn")
+WEIGHT_FIELDS = ("boat_weight", "crew_weight")
 
 
 class BoatDetails(BaseModel):
@@ -149,6 +150,12 @@ class BoatDetails(BaseModel):
     def tank_number(cls, v):
         v = str(v if v is not None else "").strip().replace(",", ".")
         return v if re.fullmatch(r"\d{0,5}(\.\d{0,2})?", v) else ""
+
+    @field_validator(*WEIGHT_FIELDS, mode="before")
+    @classmethod
+    def weight_number(cls, v):
+        v = str(v if v is not None else "").strip().replace(",", ".")
+        return v if re.fullmatch(r"\d{0,6}(\.\d{0,2})?", v) else ""
 
     @field_validator("depart", "arrive", mode="before")
     @classmethod

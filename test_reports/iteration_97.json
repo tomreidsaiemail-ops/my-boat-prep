@@ -1,0 +1,29 @@
+{
+  "summary": "Tested racing weight tracking on the backend and frontend. Backend: the new test_boat_weights.py gave 9 of 9 passed. boat_weight and crew_weight go through TANK_FIELDS validation: '5000.5' is kept, '1,5' becomes '1.5', 'abc', '123456' and '-5' become '', and the int 85 becomes '85'. The values persist through PUT then GET /api/me/boat, area items keep unit_g, and a request with no auth gets 401. Frontend, tested with 2 seeded TEST pro users (seeded directly in the DB, no AI calls). Metric boat: boat 5000 kg, POB 4 x 80 kg, fuel 100 L at 1/2 plus a 20 L jerry can, water 200 L at 3/4, gas 2 bottles + 1 extra of 4.5 kg with no level picked. Deck Hardware has 10 kg, 500 g, 2 lb and 16 oz items, Sail Loft 25 (no unit), Standing Rigging has no weight, Ground Tackle 30 kg, Spars 145 kg, a custom list has 999 kg, and the Fridge has Milk 2 x 1000 g, removed Bread, Water 6 x 1500 g and Apples with no unit_g. The dialog showed exactly the expected values: on deck 211.9 kg; Deck 11.9, Sail 25, Running 'no list yet', Standing 0, Ground 30, Spars 145; Fluids 235.8 (58.8 fuel + 150 water + 27 gas incl. bottle tare); Provisions 11 kg; Crew '4 on board x 80 kg' = 320; Total 5,778.7 kg. The custom list was correctly excluded. Live updates work. Weight 6000 changes the total to 6,778.7. Clearing crew weight falls back to '85 kg (typical)' with an 85 placeholder. Typing 'abc' is rejected. Changing POB to 5 gives 452.5 kg. These persist after reload (1 PUT). Maint list footer: Deck Hardware shows '11.9 kg / 211.9 / 5,778.7'. Editing item Weight 10 to 20 gives 21.9 / 221.9 / 5,788.7, and switching the unit to lb gives 10.9 / 5,777.7. The Additional details dialog matches the footer. The custom list and My To Do have no footer, and Standing Rigging shows 0 kg. Feet/gallon boat at 390px, with latest engine log 'Outboard petrol' (petrol density 0.74): 10000 lb, 20 gal fuel, 10 gal water, no levels. The label says '- full tanks', fluids 206.9 lb, gear 12.2 lb (10 with no unit = lb, plus 1 kg), crew '2 x 187 lb (typical)' = 374, total 10,593.1 lb, all as expected. Picking Leaving the Dock fuel 1/2 gives 145.2 lb with the 'full tanks' label gone, and water Empty gives 61.7 lb and a total of 10,448 lb, both correct. At 390px the dialog has no horizontal overflow (document scrollWidth 390, dialog scroll = client width).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Additional details - Racing weight", "issues": ["The 'Totalled on deck weight' label wraps to 2 lines at both 1920 and 390 widths, while 'Weight' is 1 line. This pushes the read-only on-deck output about 14px below the Weight input, so the 2 boxes in the row are misaligned. 'Average crew weight' also wraps at 390. Consider a shorter label ('On deck weight') or items-end alignment on the grid."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_boat_weights.py", "/app/backend/tests/manual_it97_weights_seed.py", "/app/test_reports/pytest/pytest_it97.xml"],
+  "action_items": [
+    "Minor: boat_weight and crew_weight are stored as bare numbers, and their unit comes from boat.units. If a user switches Boat units between m and ft, the stored 5000 (kg) is silently read as 5000 lb, and the same happens to crew weight. Item weights that have no weight__unit are reinterpreted the same way. Consider storing a unit with the value, or converting the value when units change.",
+    "Minor (product): crew weight is POB x average, so children are counted at the adult average weight. The dialog already knows the children count, so consider a lower child weight or a note.",
+    "Optional: fix the 'Totalled on deck weight' label wrap and alignment (see design_issues)."
+  ],
+  "critical_code_review_comments": [
+    "weights.js: listWeightKg sums 'decimal weight' attributes on category heads as well as items, by design ('categories included'). If the AI or a user puts a weight on a category head and also on its items, it is counted twice. Consider skipping heads (items without indent) or documenting this.",
+    "WeightPanel NUM_RE allows only 5 integer digits (max 99,999), and so does the backend. A 50 t boat entered in lb (110,000 lb) can't be entered.",
+    "fluidsKg: the empty bottle weight is estimated as bottle size x (bottles + extra), for example 4.5 kg of tare for a 4.5 kg bottle. That's a reasonable approximation, and it matches the spec.",
+    "The ShopScanDialog to applyShopping unit_g chain is consistent: weight = unitW x qty, and unit_g = weight / qty."
+  ],
+  "updated_files": ["/app/backend/tests/test_boat_weights.py", "/app/backend/tests/manual_it97_weights_seed.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Created TEST_it97_m and TEST_it97_f (pro, sessions test_session_it97_m/f) with boats via backend/tests/manual_it97_weights_seed.py. All were deleted afterwards with 'clean' (users, sessions, user_boats). Pro, Free and Admin data were only read (the pro boat was used as a template), not modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Seed with 'python3 backend/tests/manual_it97_weights_seed.py' and run 'clean' afterwards. The comments in the script give the expected values. Seeded maint items need indent:1 under a category head (no indent) to get the maint-expand-<id> arrow; the attribute input is maint-attr-weight-<id> and the unit select is -unit. Leaving the Dock needs the leavingDock entry in the registry (the seed adds it); level buttons are level-fuel-half etc. Run test_boat_weights.py with -n 0 (pytest.ini adds xdist) and re-seed afterwards, because it overwrites TEST_it97_f's weights."
+}

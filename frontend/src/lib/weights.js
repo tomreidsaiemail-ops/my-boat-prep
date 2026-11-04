@@ -8,9 +8,15 @@ export const CREW_DEFAULT = { kg: 85, lb: 187 };
 export const weightUnit = (boat) => (boat.units === "ft" ? "lb" : "kg");
 export const fmtKg = (kg, unit) => `${(Math.round((unit === "lb" ? kg / TO_KG.lb : kg) * 10) / 10).toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
 const inKg = (v, unit) => num(v) * TO_KG[unit];
+// Boat and crew weights follow the Measurements toggle, so convert them when it changes.
+export const switchWeights = (boat, units, onChange) => ["boat_weight", "crew_weight"].filter((k) => num(boat[k])).forEach((k) => {
+  const v = units === "ft" ? num(boat[k]) / TO_KG.lb : num(boat[k]) * TO_KG.lb;
+  onChange(k, String(Math.min(999999.99, Math.round(v * 10) / 10)));
+});
 
-// Every "decimal weight" attribute of every item (categories included) in kg.
-export const listWeightKg = (items, keys, boatUnit) => items.reduce((sum, i) => sum + keys.reduce((s, k) => s + num(i.attrs?.[k]) * (TO_KG[i.attrs?.[`${k}__unit`]] || TO_KG[boatUnit]), 0), 0);
+// Every "decimal weight" attribute in kg; a category head with items under it isn't counted, so its items aren't counted twice.
+export const listWeightKg = (items, keys, boatUnit) => items.reduce((sum, i, n) => (!i.indent && items[n + 1]?.indent ? sum
+  : sum + keys.reduce((s, k) => s + num(i.attrs?.[k]) * (TO_KG[i.attrs?.[`${k}__unit`]] || TO_KG[boatUnit]), 0)), 0);
 const weightKeys = (defs, list) => attrsForList(defs, list).filter((d) => d.type === "decimal weight").map((d) => d.key);
 
 export const gearTotals = (registry, data, defs, boatUnit) => MAINT_LISTS.map((m) => {

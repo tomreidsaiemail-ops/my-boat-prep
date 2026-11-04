@@ -2,7 +2,7 @@ import { Scale } from "lucide-react";
 import { useWeights } from "@/components/boat/weights/WeightsContext";
 import { fmtKg } from "@/lib/weights";
 
-const NUM_RE = /^\d{0,5}([.,]\d{0,2})?$/;
+const NUM_RE = /^\d{0,6}([.,]\d{0,2})?$/;
 
 const Row = ({ label, value, testId, bold, muted }) => (
   <div className={`flex items-baseline justify-between gap-2 text-sm ${bold ? "font-extrabold" : ""}`} data-testid={testId}>
@@ -29,7 +29,7 @@ export const WeightPanel = ({ boat, onChange }) => {
   return (
     <section className="col-span-2 flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-slate-50 p-3" data-testid="weight-panel">
       <h3 className="flex items-center gap-2 text-sm font-extrabold"><Scale className="h-4 w-4" /> Racing weight</h3>
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 items-end gap-2.5">
         <WeightInput id="boat-weight" label="Weight" value={boat.boat_weight} unit={u} placeholder="Boat only" onChange={(v) => onChange("boat_weight", v)} />
         <div className="flex min-w-0 flex-col gap-1">
           <span className="field-label">Totalled on deck weight</span>

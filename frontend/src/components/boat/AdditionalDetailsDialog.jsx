@@ -8,6 +8,7 @@ import { PetsSection } from "@/components/boat/PetsSection";
 import { ColourField } from "@/components/boat/telemetry/ColourField";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeightPanel } from "@/components/boat/weights/WeightPanel";
+import { switchWeights } from "@/lib/weights";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -139,7 +140,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
           </label>
           <DetailsSection title="Vessel Telemetry / Vessel Dimensions" testId="dimensions-section"
             summary={[["LOA", boat.loa], ["LWL", boat.lwl], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, LWL, beam, draft and mast height"}>
-            <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => onChange("units", u)} /></div>
+            <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => { if (u !== unit) switchWeights(boat, u, onChange); onChange("units", u); }} /></div>
             <DimField id="loa" label="LOA (length overall)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
             <DimField id="lwl" label="LWL (waterline length)" value={boat.lwl} unit={unit} onChange={(v) => onChange("lwl", v)} />
             <HullSpeedHint boat={boat} onUse={(v) => onChange("cruise_kn", v)} testId="dimensions-hull-speed" />
