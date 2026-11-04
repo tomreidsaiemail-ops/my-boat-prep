@@ -29,6 +29,7 @@ import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
 import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName } from "@/components/boat/CrewPrepProgress";
+import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeatherPhotos, weatherUrl } from "@/components/boat/navigator/WeatherPhotos";
 import { DepartureLogDialog, departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { VoyageCard } from "@/components/boat/VoyageCard";
@@ -639,7 +640,7 @@ export default function BoatPrep({ boatId, boats }) {
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}
           onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting} online={online} onUpgrade={() => askUpgrade("Magic Marine Engineer")}
-          cruise={boat.cruise_kn} onCruise={(v) => updateBoat("cruise_kn", v)}
+          cruise={boat.cruise_kn} onCruise={(v) => updateBoat("cruise_kn", v)} cruiseHint={<HullSpeedHint boat={boat} onUse={(v) => updateBoat("cruise_kn", v)} testId="engine-hull-speed" />}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />

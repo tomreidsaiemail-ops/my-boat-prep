@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { DetailsSection } from "@/components/boat/telemetry/DetailsSection";
 import { TelemetrySection } from "@/components/boat/telemetry/TelemetrySection";
 import { PetsSection } from "@/components/boat/PetsSection";
+import { ColourField } from "@/components/boat/telemetry/ColourField";
+import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -103,6 +105,8 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
           </div>
           <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-year-row">
+            <ColourField id="hull-colour" label="Hull colour" value={boat.hull_colour} onChange={(v) => onChange("hull_colour", v)} />
+            <ColourField id="deck-colour" label="Deck colour" value={boat.deck_colour} onChange={(v) => onChange("deck_colour", v)} />
             <label htmlFor="boat-year" className="flex min-w-0 flex-col gap-1">
               <span className="field-label">Year of manufacture</span>
               <input id="boat-year" inputMode="numeric" value={boat.year_built || ""} placeholder="e.g. 2012"
@@ -129,6 +133,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => onChange("units", u)} /></div>
             <DimField id="loa" label="LOA (length overall)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
             <DimField id="lwl" label="LWL (waterline length)" value={boat.lwl} unit={unit} onChange={(v) => onChange("lwl", v)} />
+            <HullSpeedHint boat={boat} onUse={(v) => onChange("cruise_kn", v)} testId="dimensions-hull-speed" />
             <DimField id="beam" label="Beam" value={boat.beam} unit={unit} onChange={(v) => onChange("beam", v)} />
             <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
             <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />

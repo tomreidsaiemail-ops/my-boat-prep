@@ -14,6 +14,8 @@ const round = (n) => Math.round(n * 10) / 10;
 
 export const CRUISE_DEFAULT = 6;
 export const cruiseKn = (boat) => num(boat.cruise_kn) || CRUISE_DEFAULT;
+// 1.34 x square root of the waterline length in feet (displacement hulls).
+export const hullSpeed = (boat) => { const lwl = num(boat.lwl); return lwl ? 1.34 * Math.sqrt(boat.units === "ft" ? lwl : lwl * 3.28084) : 0; };
 export const tankUnit = (boat) => (boat.tank_units === "gal" ? "gal" : "L");
 
 export const ROLES = { engine: "Engine battery", house: "House bank", portable: "Portable battery" };

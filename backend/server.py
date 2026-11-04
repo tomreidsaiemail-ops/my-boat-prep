@@ -119,6 +119,8 @@ class BoatDetails(BaseModel):
     make: str = ""
     model: str = ""
     year_built: str = ""
+    hull_colour: str = ""
+    deck_colour: str = ""
     budget_currency: str = ""
     budget_notes: str = ""
     tank_units: Literal["L", "gal"] = "L"
@@ -158,6 +160,11 @@ class BoatDetails(BaseModel):
     def year_digits(cls, v):
         v = re.sub(r"\D", "", str(v or ""))[:4]
         return v if not v or 1800 <= int(v) <= datetime.now(timezone.utc).year + 1 else ""
+
+    @field_validator("hull_colour", "deck_colour", mode="before")
+    @classmethod
+    def colour_text(cls, v):
+        return str(v or "")[:40]
 
     @field_validator("make", "model", mode="before")
     @classmethod

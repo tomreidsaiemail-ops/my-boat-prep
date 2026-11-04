@@ -36,7 +36,7 @@ const EngineTypeHead = ({ type }) => (
 
 const NOTES_MAX = 2000;
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
   const [value, setValue] = useState("");
@@ -84,6 +84,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
             </span>
           </label>
         </div>}
+        {engine && cruiseHint}
         <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-2 items-end" : "grid-cols-2"}`}>
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}
