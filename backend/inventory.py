@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from db import db
 from auth import get_current_user, require_admin, require_premium
 from photos import APP_NAME, MAX_BYTES, TYPES, get_object, put_object
+from zone_colours import fill_colours, next_colour
 
 router = APIRouter(prefix="/api")
 INVENTORY_ID = "boatInventory"
@@ -26,7 +27,8 @@ async def _read_picture(file: UploadFile) -> bytes:
 
 
 def boat_maps(doc: dict) -> list:
-    return [{"id": m["id"], "v": m["updated_at"], "pins": m.get("pins") or []} for m in (doc.get("zone_maps") or [])]
+    return [{"id": m["id"], "v": m["updated_at"], "pins": m.get("pins") or [], "name": m.get("name", ""), "colour": m["colour"]}
+            for m in fill_colours(doc.get("zone_maps") or [])]
 
 
 class ZonePin(BaseModel):
@@ -80,7 +82,7 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), user: di
         await asyncio.to_thread(put_object, path, data, file.content_type)
     except Exception:
         raise HTTPException(status_code=502, detail="Couldn't save the picture right now, please try again")
-    entry = {"id": map_id, "path": path, "content_type": file.content_type, "updated_at": datetime.now(timezone.utc).isoformat()}
+    entry = {"id": map_id, "path": path, "content_type": file.content_type, "updated_at": datetime.now(timezone.utc).isoformat(), "name": "", "colour": next_colour(doc.get("zone_maps") or [])}
     res = await db.user_boats.update_one({**key, f"zone_maps.{MAX_BOAT_MAPS - 1}": {"$exists": False}}, {"$push": {"zone_maps": entry}})
     if not res.modified_count:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
@@ -179,11 +181,16 @@ async def save_area_defaults(payload: AreaDefaultsIn, admin: dict = Depends(requ
 
 def inventory_list_for_pdf(areas: list, registry: list = (), data: dict = None) -> dict:
     items = []
-    for a in areas or []:
+    names = {a.get("id"): a.get("name", "") for a in areas or []}
+    # Folders and boxes (sub-areas) follow the cupboard they live in.
+    ordered = [x for a in areas or [] if not a.get("parent_id") for x in [a, *[s for s in areas if s.get("parent_id") == a.get("id")]]]
+    ordered += [a for a in areas or [] if a not in ordered]
+    for a in ordered:
+        where = f"{names[a['parent_id']]} › {a.get('name', '')}" if a.get("parent_id") in names else a.get("name", "")
         for i in a.get("items", []):
-            items.append({"label": f"{a.get('name', '')}: {i.get('name', '')} x{i.get('qty', 1)}{' (removed for now)' if i.get('removed') else ''}", "checked": bool(i.get("removed")), "flagged": False})
+            items.append({"label": f"{where}: {i.get('name', '')} x{i.get('qty', 1)}{' (removed for now)' if i.get('removed') else ''}", "checked": bool(i.get("removed")), "flagged": False})
         for lst in registry:
             for i in (data or {}).get(lst.get("id"), []):
                 if i.get("area") == a.get("id"):
-                    items.append({"label": f"{a.get('name', '')}: {lst.get('name', '')} - {i.get('label', '')}", "checked": bool(i.get("checked")), "flagged": False})
+                    items.append({"label": f"{where}: {lst.get('name', '')} - {i.get('label', '')}", "checked": bool(i.get("checked")), "flagged": False})
     return {"name": "Boat Inventory", "items": items}

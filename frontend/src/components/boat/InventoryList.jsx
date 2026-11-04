@@ -14,6 +14,9 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
+import { areaZones, rainbowGroups } from "@/lib/zoneColours";
+import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
+import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -91,15 +94,27 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     toast.success(`${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };
   const q = query.trim().toLowerCase();
-  const results = !q ? areas.map((a) => ({ area: a })) : areas.flatMap((a) => {
+  const isTop = (a) => !a.parent_id || !areas.some((p) => p.id === a.parent_id);
+  const tops = areas.filter(isTop);
+  const subsOf = (id) => areas.filter((a) => a.parent_id === id && a.id !== id);
+  const zones = areaZones(boat, areas);
+  const hit = (a, all) => {
     const links = linked[a.id] || [];
-    if (matches(a.name, q)) return [{ area: a, visible: a.items || [], visibleLinked: links }];
+    if (!q || all || matches(a.name, q)) return { area: a, visible: a.items || [], visibleLinked: links };
     const hits = (a.items || []).filter((i) => matches(i.name, q));
     const linkHits = links.filter((l) => matches(`${l.listName} ${l.text}`, q));
-    return hits.length || linkHits.length ? [{ area: a, visible: hits, visibleLinked: linkHits }] : [];
+    return hits.length || linkHits.length ? { area: a, visible: hits, visibleLinked: linkHits } : null;
+  };
+  // Search looks inside folders and boxes too, so a hit shows its zone map, boat area and sub-area.
+  const results = tops.flatMap((a) => {
+    const own = hit(a);
+    const subs = subsOf(a.id).map((s) => hit(s, !!q && matches(a.name, q))).filter(Boolean);
+    if (!own && !subs.length) return [];
+    return [{ ...(own || { area: a, visible: [], visibleLinked: [] }), subs }];
   });
-  const found = results.reduce((n, r) => n + (r.visible || []).reduce((m, i) => m + (i.qty || 1), 0) + (r.visibleLinked || []).length, 0);
-  const out = results.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).length, 0);
+  const rows = results.flatMap((r) => [r, ...r.subs]);
+  const found = rows.reduce((n, r) => n + (r.visible || []).reduce((m, i) => m + (i.qty || 1), 0) + (r.visibleLinked || []).length, 0);
+  const out = rows.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
   const moveItem = (area, item, edits, targetId) => {
@@ -127,17 +142,39 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       return { ...x, items };
     }));
   };
-  // Checklist tags point at the area id, so restoring the same area brings its tagged items back too.
+  // Checklist tags point at the area id, so restoring the same area brings its tagged items back too. Its folders and boxes go with it.
   const deleteArea = (area) => {
-    const index = areas.findIndex((a) => a.id === area.id);
-    const saved = areas[index];
-    onChange((list) => list.filter((a) => a.id !== area.id));
+    const before = areas;
+    const gone = new Set([area.id, ...subsOf(area.id).map((s) => s.id)]);
+    onChange((list) => list.filter((a) => !gone.has(a.id)));
     undoToast(area.name, () => onChange((list) => {
       if (list.some((a) => a.id === area.id)) return list;
-      const next = [...list];
-      next.splice(Math.min(index, next.length), 0, saved);
-      return next;
+      const kept = before.filter((a) => gone.has(a.id) || list.some((x) => x.id === a.id)).map((a) => list.find((x) => x.id === a.id) || a);
+      return [...kept, ...list.filter((x) => !before.some((b) => b.id === x.id))];
     }));
+  };
+  const addSub = (name) => {
+    const parent = dialog.area;
+    if (!name) return "Please enter a name, e.g. Red folder";
+    if (subsOf(parent.id).some((s) => same(s.name, name))) return `${name} is already in ${parent.name}`;
+    onChange((list) => [...list, { id: newId(), name, items: [], parent_id: parent.id }]);
+    setDialog(null);
+    toast.success(`${name} added to ${parent.name}. Open it to Magic Scan its contents.`);
+    return true;
+  };
+  const mergeInto = (targetId) => {
+    const { area } = dialog;
+    const target = areas.find((a) => a.id === targetId);
+    if (subsOf(targetId).some((s) => same(s.name, area.name))) { toast.error(`${target.name} already has ${area.name}`); return; }
+    setArea(area.id, (a) => ({ ...a, parent_id: targetId }));
+    setDialog(null);
+    toast.success(`${area.name} is now inside ${target.name}`);
+  };
+  const takeOut = (sub) => {
+    const parent = areas.find((a) => a.id === sub.parent_id);
+    if (tops.some((t) => same(t.name, sub.name))) { toast.error(`There's already a boat area called ${sub.name}. Rename it first.`); return; }
+    setArea(sub.id, ({ parent_id: _p, ...a }) => a);
+    toast.success(`${sub.name} taken out of ${parent?.name || "its cupboard"}`);
   };
   const startMove = (a) => {
     if (areas.length < 2) { toast.warning("You can only move items to new boat areas when there is more than one boat area."); return; }
@@ -153,7 +190,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
 
   const addArea = (name) => {
     if (!name) return "Please enter a cupboard or locker name";
-    if (areas.some((a) => same(a.name, name))) return `${name} is already on your list`;
+    if (tops.some((a) => same(a.name, name))) return `${name} is already on your list`;
     const id = newId();
     setFresh(id);
     onChange((list) => [...list, { id, name, items: [] }]);
@@ -186,7 +223,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     onChange((cur) => {
       const next = [...cur];
       list.forEach(({ name, items }) => {
-        const at = next.findIndex((a) => same(a.name, name));
+        const at = next.findIndex((a) => !a.parent_id && same(a.name, name));
         if (at >= 0) next[at] = { ...next[at], items: toItems(items) };
         else next.push({ id: newId(), name, items: toItems(items) });
       });
@@ -194,7 +231,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     });
     setBatchOpen(false);
     const count = list.reduce((n, a) => n + a.items.length, 0);
-    const replaced = list.filter((a) => areas.some((x) => same(x.name, a.name))).length;
+    const replaced = list.filter((a) => tops.some((x) => same(x.name, a.name))).length;
     const added = list.length - replaced;
     const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
@@ -202,7 +239,8 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   const renameArea = (name) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
-    if (areas.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
+    const scope = area.parent_id ? subsOf(area.parent_id) : tops;
+    if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
     setArea(area.id, (a) => ({ ...a, name }));
     setDialog(null);
     return true;
@@ -229,6 +267,32 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     } catch (e) { toast.error(apiError(e, "Couldn't publish right now")); }
   };
 
+  const labelled = areas.map((a) => (isTop(a) ? a : { ...a, name: `${areas.find((p) => p.id === a.parent_id).name} › ${a.name}` }));
+  const groups = rainbowGroups(results, zones);
+  const coloured = Object.keys(zones).length > 0;
+  const renderArea = ({ area: a, visible, visibleLinked, subs = [] }, parent) => {
+    const kids = parent ? [] : subsOf(a.id);
+    const pin = pinFor[a.id] || (parent && pinFor[parent.id]);
+    return (
+      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex} subCount={kids.length} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
+        path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
+        linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
+        onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
+        focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0}
+        onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
+        onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
+        onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
+        onDeleteItem={(i) => deleteItem(a, i)}
+        onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)}
+        onToggleFood={() => { setArea(a.id, (x) => ({ ...x, food: !x.food })); toast.success(a.food ? `${a.name} is no longer a Food area` : `${a.name} is now a Food area. Its items count as stock for the MPA.`); }}
+        onToggleDrinks={() => { setArea(a.id, (x) => ({ ...x, drinks: !x.drinks })); toast.success(a.drinks ? `${a.name} is no longer a Drinks area` : `${a.name} is now a Drinks area for the Magic Bartender.`); }}>
+        {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
+        {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
+          onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}
+      </InventoryArea>
+    );
+  };
+
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
@@ -253,19 +317,16 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       {readOnly ? areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p> : (
         <InventoryInstructions searching={!!q} />
       )}
-      <ul className="flex flex-col gap-2">
-        {results.map(({ area: a, visible, visibleLinked }) => (
-          <InventoryArea key={a.id} area={a} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
-            linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
-            onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={fresh === a.id} focusAt={focus?.id === a.id ? focus.at : 0}
-            onShowOnMap={pinFor[a.id] ? () => setMapFocus({ ...pinFor[a.id], at: Date.now() }) : undefined}
-            onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
-            onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
-            onDeleteItem={(i) => deleteItem(a, i)}
-            onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)}
-            onToggleFood={() => { setArea(a.id, (x) => ({ ...x, food: !x.food })); toast.success(a.food ? `${a.name} is no longer a Food area` : `${a.name} is now a Food area. Its items count as stock for the MPA.`); }}
-            onToggleDrinks={() => { setArea(a.id, (x) => ({ ...x, drinks: !x.drinks })); toast.success(a.drinks ? `${a.name} is no longer a Drinks area` : `${a.name} is now a Drinks area for the Magic Bartender.`); }} />
-        ))}
+      <ul className="flex flex-col gap-2" data-testid="inventory-areas">
+        {groups.map((g) => [
+          coloured && (
+            <li key={`group-${g.key || "none"}`} className="flex items-center gap-2 pt-1 text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`inventory-colour-group-${(g.key || "none").toLowerCase()}`}>
+              <span className="h-3.5 w-3.5 rounded-[4px] border border-black/20" style={{ backgroundColor: g.zone ? g.zone.hex : "transparent" }} />
+              {g.zone ? g.zone.map : "Not on a zone map"}
+            </li>
+          ),
+          ...g.rows.map((r) => renderArea(r)),
+        ])}
       </ul>
       {!readOnly && !q && <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />}
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} onClose={() => setBatchOpen(false)} onConfirm={applyBatch} />}
@@ -277,11 +338,16 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
       <SuggestAreasDialog open={dialog?.type === "suggest"} names={suggestions} onClose={() => setDialog(null)} onConfirm={(names) => { addSuggested(names); setDialog(null); }} />
       <TextDialog open={dialog?.type === "rename"} title="Rename Cupboard" confirmLabel="Save" testId="inventory-rename"
         initial={dialog?.type === "rename" ? dialog.area.name : ""} onConfirm={dialog?.type === "rename" ? renameArea : () => true} onClose={() => setDialog(null)} />
-      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={areas} onConfirm={saveItem} onClose={() => setDialog(null)} />
-      <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note="Everything listed inside it is removed too, and checklist items tagged with it lose their tag."
+      <TextDialog open={dialog?.type === "sub"} title={dialog?.type === "sub" ? `Add a folder or box to ${dialog.area.name}` : ""} confirmLabel="Add" testId="inventory-sub"
+        description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. Only the list is kept, not the photo."
+        placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => setDialog(null)} />
+      <MergeAreaDialog area={dialog?.type === "merge" ? dialog.area : null} onMerge={mergeInto} onClose={() => setDialog(null)}
+        parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id).map((t) => ({ id: t.id, name: t.name, colour: zones[t.id]?.hex })) : []} />
+      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={labelled} onConfirm={saveItem} onClose={() => setDialog(null)} />
+      <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note={`Everything listed inside it${dialog?.type === "delete" && subsOf(dialog.area.id).length ? ", including its folders and boxes," : ""} is removed too, and checklist items tagged with it lose their tag.`}
         onClose={() => setDialog(null)} onConfirm={() => { deleteArea(dialog.area); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
-      <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={areas} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
+      <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={labelled} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
         onMove={finishMove} onClose={() => setDialog(null)} />
     </section>
   );

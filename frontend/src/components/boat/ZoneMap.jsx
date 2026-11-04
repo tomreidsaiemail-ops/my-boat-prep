@@ -9,6 +9,9 @@ import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
 import { LinkedText } from "@/components/boat/LinkedText";
+import { MapColourPicker } from "@/components/boat/zone/MapColourPicker";
+import { MapNameField } from "@/components/boat/zone/MapNameField";
+import { ZONE_COLOURS } from "@/lib/zoneColours";
 import useAdminLists from "@/hooks/useAdminLists";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
@@ -143,11 +146,14 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
         </button>
       )}
       {pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
-        <div key={p.key} className="flex flex-col gap-1" data-testid={`zone-map-item-${p.key}`}>
-          <PinnedPhoto src={p.src} alt={`Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
+        <div key={p.key} className="flex flex-col gap-1 rounded-md border-l-[6px] pl-2" style={{ borderLeftColor: p.map ? ZONE_COLOURS[p.map.colour] || "transparent" : "transparent" }} data-testid={`zone-map-item-${p.key}`}>
+          {p.map && !canEdit && p.map.name && <p className="text-sm font-bold text-[var(--navy)]" data-testid={`boat-zone-map-title-${p.key}`}>{p.map.name}</p>}
+          <PinnedPhoto src={p.src} alt={p.map?.name || `Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
             onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
           {p.map && canEdit && (
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <MapNameField boat={boat} map={p.map} online={online} onMaps={onBoatMaps} />
+              <MapColourPicker boat={boat} map={p.map} maps={own} online={online} onMaps={onBoatMaps} />
               <button type="button" className="btn-ghost h-9 px-3 text-xs" onClick={() => (online ? setLabelling(p) : toast.error("You need a signal to label a zone map"))} data-testid={`boat-zone-map-label-${p.key}`}>
                 <MapPin className="h-3.5 w-3.5" /> {p.map.pins?.length ? `Edit labels (${p.map.pins.length})` : "Label this map"}
               </button>

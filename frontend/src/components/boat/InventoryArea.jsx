@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { DrinksBadge, FoodBadge } from "@/components/boat/MpaBadges";
 import { Check, ChevronDown, Link2, Loader2, MapPin, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
@@ -61,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, sub = false, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -71,15 +70,17 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
   const removed = items.filter((i) => i.removed).length;
   const total = items.length + linked.length;
   return (
-    <li className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid={`inventory-area-${area.id}`}>
+    <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white ${sub ? "mx-3 mb-2" : ""}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
+      data-testid={`inventory-area-${area.id}`} data-sub={sub ? "true" : "false"}>
       <div className="flex items-center">
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] flex-1 items-center gap-3 px-3 text-left" data-testid={`inventory-area-toggle-${area.id}`}>
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
-          <span className="flex flex-1 flex-col py-2">
+          <span className="flex min-w-0 flex-1 flex-col py-2">
+            {path && <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-path-${area.id}`}>{path}</span>}
             <span className="flex items-center gap-1.5 font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>
-              {area.food && <FoodBadge testId={`inventory-area-food-badge-${area.id}`} />}{area.drinks && <DrinksBadge testId={`inventory-area-drinks-badge-${area.id}`} />}<Highlight text={area.name} query={query} />
+              <Highlight text={area.name} query={query} />
             </span>
-            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{total} {total === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
+            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{total} {total === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {!readOnly && (
@@ -122,6 +123,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
               </label>
             </div>
           )}
+          {children}
         </>
       )}
     </li>

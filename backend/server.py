@@ -39,6 +39,7 @@ from crew import router as crew_router, backfill_invite_keys, add_racing_roles  
 from templates import seed_budget_template  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
+from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
@@ -481,6 +482,7 @@ app.include_router(service_history_router)
 app.include_router(crew_router)
 app.include_router(crew_agreement_router)
 app.include_router(crew_briefings_router)
+app.include_router(zone_colours_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)
@@ -558,6 +560,7 @@ async def create_indexes():
     await add_racing_roles()
     await seed_budget_template()
     await seed_terms_template()
+    await seed_colour_presets()
 
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]
