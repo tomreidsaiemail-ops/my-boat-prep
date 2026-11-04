@@ -1,12 +1,18 @@
+import useAdminLists from "@/hooks/useAdminLists";
 import { AlertTriangle, BellRing } from "lucide-react";
 
-export const NavigatorIntro = () => (
-  <div className="flex flex-col gap-1.5 text-sm leading-snug" data-testid="navigator-intro">
-    <p>The MAGIC MARINE NAVIGATOR recommends the use of some of the excellent weather and routing products available.</p>
-    <p>Planning a suitable weather window for a passage is vital and these products excel in the complex area of weather routing and vessel routing.</p>
-    <p>The MMN will give some general advice, however, use the weather and routing products and upload screen shots from them here to share with the crew who may not have these products or access to your account.</p>
-  </div>
-);
+// Paragraphs come from the private admin list "Admin - Help Panel - MMN Routing Guidance" (cached for offline use).
+const GUIDANCE = "admin - help panel - mmn routing guidance";
+
+export const NavigatorIntro = ({ online }) => {
+  const items = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === GUIDANCE)?.items || [];
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-col gap-1.5 text-sm leading-snug" data-testid="navigator-intro">
+      {items.map((i, n) => <p key={i.id ?? n} data-testid={`navigator-intro-${n}`}>{i.label}</p>)}
+    </div>
+  );
+};
 
 export const NavigatorReminders = () => (
   <ul className="flex flex-col gap-1.5 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="navigator-reminders">

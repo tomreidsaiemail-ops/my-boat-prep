@@ -69,7 +69,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
       </div>
       <label htmlFor="navigator-question" className="field-label">ASK THE MAGIC MARINE NAVIGATOR</label>
-      <NavigatorIntro />
+      <NavigatorIntro online={online} />
       <div className="flex items-start gap-2">
         <textarea id="navigator-question" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
           placeholder="e.g. Mana to Picton Via Queen Charlotte Sound" className="field-input min-w-0 flex-1 resize-none leading-snug placeholder-shown:overflow-hidden placeholder-shown:text-ellipsis placeholder-shown:whitespace-nowrap" data-testid="navigator-question-input" />
