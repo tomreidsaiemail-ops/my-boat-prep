@@ -33,6 +33,7 @@ import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeatherPhotos, weatherUrl } from "@/components/boat/navigator/WeatherPhotos";
 import { DepartureLogDialog, departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { VoyageCard } from "@/components/boat/VoyageCard";
+import { GoDecisionCard } from "@/components/boat/GoDecisionCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
@@ -673,7 +674,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /></>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}

@@ -60,7 +60,7 @@ export const WeatherPhotos = ({ boat, onPatch, online, boatId, owner, readOnly }
   const remove = (p) => {
     save({ photos: photos.filter((x) => x.id !== p.id) });
     // Photos already in the Ship's Log stay stored so the log keeps them.
-    if (!p.logged) api.delete(`/boats/${boatId}/item-photo/${p.id}`).catch(() => {});
+    if (!p.logged && !p.shared) api.delete(`/boats/${boatId}/item-photo/${p.id}`).catch(() => {});
     toast.success("Photo removed");
   };
   if (readOnly && !photos.length) return null;

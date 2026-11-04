@@ -5,6 +5,7 @@ import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuard
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
 import { NavigatorIntro, NavigatorReminders, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
 import { stamp } from "@/components/boat/departure/LogCopy";
+import { CrewGoShare } from "@/components/boat/navigator/CrewGoShare";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -83,6 +84,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} />
       <NavigatorReminders />
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} />
+      <CrewGoShare boat={boat} boatId={boatId} online={online} onWeather={onWeather} />
     </div>
   );
 };
