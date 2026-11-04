@@ -8,7 +8,7 @@ import { ItemPhoto } from "@/components/boat/ItemPhoto";
 import { MmdLogAnswer } from "@/components/boat/doctor/MmdLogAnswer";
 import { LogPhotos } from "@/components/boat/navigator/LogPhotos";
 
-const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
+export const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
     <button type="button" className={`prio-btn ${item.flagged ? "!text-[var(--red)]" : ""}`} onClick={onFlag} aria-pressed={!!item.flagged}
       aria-label={item.flagged ? "Remove flag" : "Flag as urgent"} title={item.flagged ? "Remove flag" : "Flag as urgent"} data-testid={`checklist-item-flag-${item.id}`}>

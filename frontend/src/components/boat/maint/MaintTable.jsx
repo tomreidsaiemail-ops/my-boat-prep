@@ -2,14 +2,20 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ChevronsUpDown, Plus } from "lucide-react";
 import { MaintRow } from "@/components/boat/maint/MaintRow";
+import { PriorityTools } from "@/components/boat/Checklist";
+import { OrderNumber } from "@/components/boat/OrderNumber";
+import { SettingToggle } from "@/components/boat/AddItemForm";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { dueTone, effectiveDue } from "@/lib/maint";
+import { flagOutline, moveOutline, outlineInfo, placeOutline, setIndent } from "@/lib/outline";
 
 const NEW_CAT = "__new";
 const groupEnd = (items, n) => { let e = n + 1; while (e < items.length && items[e].indent) e += 1; return e; };
 
-export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
+export const MaintTable = ({ items, setItems, defs, ctx, guard, ordering, onOrderingChange, promptDelete, onPromptDeleteChange }) => {
   const [openIds, setOpenIds] = useState([]);
   const [draft, setDraft] = useState("");
+  const [doomed, setDoomed] = useState(null);
   const heads = items.filter((i) => !i.indent);
   const [under, setUnder] = useState("");
   const target = under === NEW_CAT || heads.some((h) => String(h.id) === under) ? under : heads.length ? String(heads[heads.length - 1].id) : NEW_CAT;
@@ -17,6 +23,9 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
   const allOpen = kids.length > 0 && kids.every((i) => openIds.includes(i.id));
   const toggleRow = (id) => setOpenIds((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
   const update = (id, patch) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const tools = ordering && !ctx.readOnly;
+  const info = tools ? outlineInfo(items) : {};
+  const reorder = (fn) => guard() && setItems(fn);
   const remove = (item) => {
     if (!guard()) return;
     const start = items.findIndex((i) => i.id === item.id);
@@ -25,6 +34,11 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
     setItems((list) => list.filter((i) => !ids.includes(i.id)));
     const undo = () => setItems((list) => (list.some((i) => i.id === item.id) ? list : [...list.slice(0, start), ...gone, ...list.slice(start)]));
     toast(`Deleted "${item.label}"${gone.length > 1 ? ` and its ${gone.length - 1} ${gone.length === 2 ? "item" : "items"}` : ""}`, { duration: 6000, action: { label: "Undo", onClick: undo } });
+  };
+  const askRemove = (item) => {
+    if (!promptDelete) { remove(item); return; }
+    const n = items.findIndex((i) => i.id === item.id);
+    setDoomed({ item, subs: item.indent ? 0 : groupEnd(items, n) - n - 1 });
   };
   const add = (e) => {
     e.preventDefault();
@@ -70,16 +84,27 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
             </tr>
           </thead>
           <tbody>
-            {items.map((item, n) => (
-              <MaintRow key={item.id} item={item} due={dues[n]} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} defs={defs} ctx={ctx}
-                onChange={(p) => update(item.id, p)} onDelete={() => remove(item)} />
-            ))}
+            {items.map((item, n) => {
+              const inf = info[item.id];
+              return (
+                <MaintRow key={item.id} item={item} due={dues[n]} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} defs={defs} ctx={ctx}
+                  onChange={(p) => update(item.id, p)} onDelete={() => askRemove(item)}
+                  number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} prefix="maint-item"
+                    onPlace={(p) => reorder((list) => placeOutline(list, item.id, p))} />}
+                  tools={tools && inf && <PriorityTools item={item} info={{ ...inf, canIndent: inf.canIndent && !inf.subs }} onFlag={() => reorder((list) => flagOutline(list, item.id))}
+                    onMove={(d) => reorder((list) => moveOutline(list, item.id, d))} onIndent={(v) => reorder((list) => setIndent(list, item.id, v))} />} />
+              );
+            })}
             {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="maint-empty">No items yet. Add a category below.</td></tr>}
           </tbody>
         </table>
       </div>
       {!ctx.readOnly && (
-        <form onSubmit={add} className="flex flex-col gap-2" data-testid="maint-add-form">
+        <form onSubmit={add} className="flex flex-col gap-2 rounded-lg bg-[var(--panel)] p-3" data-testid="maint-add-form">
+          <div className="flex flex-wrap items-center gap-x-6">
+            <SettingToggle checked={!!ordering} onChange={onOrderingChange} label="Show List Ordering Icons" testId="ordering-toggle" />
+            <SettingToggle checked={!!promptDelete} onChange={onPromptDeleteChange} label="Prompt on delete" testId="prompt-delete-toggle" />
+          </div>
           <div className="flex gap-2">
             <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={200} placeholder={target === NEW_CAT ? "New category..." : "New item..."} aria-label="New item" className="field-input" data-testid="maint-add-input" />
             <button type="submit" className="btn-solid shrink-0 gap-1 px-4" data-testid="maint-add-btn"><Plus className="h-4 w-4" /> Add</button>
@@ -93,6 +118,9 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
           </label>
         </form>
       )}
+      <ConfirmDelete item={doomed ? { name: doomed.item.label } : null} testId="maint-item-delete" onClose={() => setDoomed(null)}
+        note={doomed?.subs ? `This category and its ${doomed.subs} ${doomed.subs === 1 ? "item" : "items"} will be removed from this list.` : "It will be removed from this list."}
+        onConfirm={() => { remove(doomed.item); setDoomed(null); }} />
     </div>
   );
 };

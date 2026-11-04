@@ -6,11 +6,11 @@ import { DUE_KEY, LAST_KEY, dueTone, localDate } from "@/lib/maint";
 const TONES = { orange: "bg-orange-100", red: "bg-red-100" };
 
 // Wrapping text so long names stay readable on a phone; tap it to edit.
-const Cell = ({ value, onSave, testId, bold, readOnly }) => {
+const Cell = ({ value, onSave, testId, bold, flagged, readOnly }) => {
   const [v, setV] = useState(value || "");
   const [editing, setEditing] = useState(false);
   useEffect(() => setV(value || ""), [value]);
-  const weight = bold ? "font-extrabold" : "";
+  const weight = `${bold ? "font-extrabold" : ""} ${flagged ? "!text-[var(--red)]" : ""}`;
   if (!editing) return (
     <button type="button" onClick={() => !readOnly && setEditing(true)} data-testid={testId} title={readOnly ? undefined : "Tap to edit"}
       className={`budget-cell !h-auto min-h-[38px] break-words py-1.5 text-left text-[15px] leading-snug ${weight}`}>{value}</button>
@@ -32,7 +32,7 @@ const DateCell = ({ value, inherited, onChange, label, testId, readOnly }) => (
   </span>
 );
 
-export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ctx }) => {
+export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ctx, number, tools }) => {
   const id = item.id;
   const head = !item.indent;
   const attrs = item.attrs || {};
@@ -50,7 +50,8 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
                 <ChevronRight className={`h-4 w-4 [transition:transform_.15s] ${open ? "rotate-90" : ""}`} />
               </button>
             )}
-            <Cell value={item.label} bold={head} readOnly={ctx.readOnly} testId={`maint-desc-${id}`} onSave={(v) => onChange({ label: v })} />
+            {number}
+            <Cell value={item.label} bold={head} flagged={item.flagged} readOnly={ctx.readOnly} testId={`maint-desc-${id}`} onSave={(v) => onChange({ label: v })} />
           </div>
         </td>
         <td className="p-1">{!head && <DateCell value={attrs[LAST_KEY]} label="Last service date" readOnly={ctx.readOnly} testId={`maint-last-${id}`} onChange={(v) => setAttrs({ [LAST_KEY]: v })} />}</td>
@@ -61,6 +62,7 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
           </button>}
         </td>
       </tr>
+      {tools && <tr className={head ? "bg-slate-100" : TONES[tone] || ""} data-testid={`maint-tools-${id}`}><td colSpan={4} className={`px-1 ${head ? "" : "pl-8"}`}>{tools}</td></tr>}
       {open && !head && (
         <tr className={TONES[tone] || ""} data-testid={`maint-details-${id}`}>
           <td colSpan={4} className="px-2 pb-3 pt-1">

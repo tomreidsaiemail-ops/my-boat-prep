@@ -718,6 +718,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
         : active.kind === MAINT_KIND ? <MaintList key={active.id} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
+            ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
