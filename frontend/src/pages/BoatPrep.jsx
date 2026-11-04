@@ -242,7 +242,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (!guard()) return;
     if (active.id !== "leavingDock") { setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i))); return; }
     const next = tickDeparture(items, id);
-    setItems(() => next);
+    setItems((list) => tickDeparture(list, id));
     if (!crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
   };
   const remove = (id) => {

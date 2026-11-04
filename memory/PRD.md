@@ -453,3 +453,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Zone maps: name + colour (zone_colours.py). 20-colour sequence auto-assigned, unique per boat; colour picker square left of Edit labels (PUT /api/boats/{id}/zone-maps/{map}/meta); names containing a word from private admin list "Admin - Zone Map Predetermined Colours" (seeded "Cockpit - Gold" etc) default to that colour unless taken or manually picked.
 - Boat areas take their zone map's colour; inventory list grouped in rainbow order with map-name headers, "Not on a zone map" last.
 - Tests: backend/tests/test_zone_colours.py, ui82_setup.py, iteration_82.
+
+## 2026-11 Walkthrough folder peek, contents cards, Navigator weather photos, Departure decision log
+- Crew walkthrough + agreement stops list each cupboard's folders/boxes (closed, tap to peek) - inventory/FolderPeek.jsx.
+- "Print contents cards" (Boat Inventory, shown when sub-areas exist): POST /api/inventory/folder-cards.pdf -> 4 quarter-page cards per A4 (folder_cards.py).
+- Magic Marine Navigator: intro text under ASK label, route map removed, up to 5 weather/routing screenshots (item-photo list_id weatherRouting) with commentary, 12h stale hint, reminders (re-upload on forecast updates, AI polars), "Why we're going" note; stored in boat.weather {photos[{id,note,at,logged}], why, advice, advice_at}; crew see photos read-only.
+- Leaving Dock: heading containing "Departure" ticks/unticks its children and auto-ticks when all children ticked (lib/outline tickDeparture). On Departure ticked (skipper) -> warning dialog Log it / Not now -> Ship's Log "Departure decision - route - time" with folded detail + weather_photos thumbnails; Ship's Log PDF embeds the photos (server.log_images), email notes them.
+- Tests: test_weather_departure.py, ui83_setup.py, iteration_83.

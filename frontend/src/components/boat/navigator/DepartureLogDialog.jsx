@@ -29,7 +29,7 @@ export const DepartureLogDialog = ({ open, boat, boatId, onLog, onClose }) => {
   const url = weatherUrl(boatId);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-md overflow-y-auto rounded-lg border-2 border-amber-500" data-testid="departure-log-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-amber-500" data-testid="departure-log-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold"><AlertTriangle className="h-5 w-5 text-amber-600" /> About to log your departure</DialogTitle>
           <DialogDescription>Departure is ticked. Your weather and routing photos, your commentary and why you decided to go are about to be logged in the Ship's Log, in case conditions turn out differently.</DialogDescription>

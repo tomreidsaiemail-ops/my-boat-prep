@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend E2E (Pro, temporary TEST_ui83 boat) of Walkthrough Folder Peek, Folder Contents Cards PDF, Magic Marine Navigator (intro, no route map, weather photos, reminders, why note) and Leaving Dock Departure heading + Ship's Log departure decision. Backend regression test_weather_departure.py re-run: 4/4 pass. All requested flows passed on desktop and 390px mobile. Found 2 minor design issues, no functional bugs.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Departure log dialog at 390px", "issues": ["The dialog runs edge to edge (left 0, right 390) with no side margin, so the amber border touches the screen edges. Nothing overflows horizontally. The weather full-view dialog uses w-[calc(100%-1.5rem)]; add the same to DepartureLogDialog's DialogContent."]},
+      {"screen": "Crew walkthrough map", "issues": ["A pin label pill near the left edge (x=0.2, 'Saloon nav desk cupboard') sticks out past the left edge of the map image. Probably not new in this change."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_weather_departure.py", "/app/backend/tests/ui83_setup.py", "/app/test_reports/pytest/pytest_results_iter83.xml"],
+  "action_items": [
+    "Optional: give DepartureLogDialog a mobile side margin (w-[calc(100%-1.5rem)])",
+    "Optional: keep zone pin label pills inside the map image bounds in the walkthrough"
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.toggle computes tickDeparture(items, id) from the render-time items rather than a functional update. Very fast double taps could act on stale state. Low risk.",
+    "The 'over 12 hours old' stale warning on weather photos was not run in the UI (it needs an old timestamp). Code review only.",
+    "After a Departure decision is logged, the weather photos stay in the Route Hazards panel marked logged:true. Removing them later keeps the stored file, which is intended so the log keeps its photos. Photos removed before logging are soft-deleted (is_deleted true), as expected."
+  ],
+  "updated_files": ["/app/backend/tests/ui83_setup.py"],
+  "success_rate": {"backend": "100% (4/4 regression)", "frontend": "100% of requested flows"},
+  "verified": [
+    "Route Hazards: navigator-intro (3 paragraphs) is the element right after the 'ASK THE MAGIC MARINE NAVIGATOR' label. No .leaflet-container before or after a real Ask (answer came back, advice + advice_at saved to boat.weather).",
+    "Weather photos: uploaded 5 via weather-photo-input. At 5 the add button is disabled and reads '5 photos added (remove one to add another)'. Age text shows. Remove brings the count to 4 and re-enables the button. Full view opens and the image loads. Note and navigator-why-input persist after reload. navigator-reminders shows both reminders.",
+    "Leaving Dock (seeded heading, and also built in the UI with add + ordering-mode indent): a normal item ticks on its own; one child ticked does not tick Departure; all children ticked auto-ticks Departure and opens the dialog; unticking a child unticks Departure; ticking Departure ticks all children. The dialog shows 4 photos and why; 'Not now' closes without logging; 'Log it' closes and adds the entry.",
+    "Ship's Log: 'Departure decision - Mana to Picton - <time>' with depart-log-toggle folding/unfolding depart-log-answer (why, route, photo notes). 4 log-photo thumbnails; log-photo-<id>-0 opens full view with the image loaded. DB has detail + weather_photos, and the photos are marked logged.",
+    "Boat Inventory: inventory-folder-cards-btn 'Print contents cards for 2 folders and boxes' downloads a valid %PDF. Backend PDF text has one card per folder with parent, zone and items. The button is hidden when no area has a parent_id.",
+    "Crew walkthrough (2 stops): the Saloon stop shows walkthrough-folders-title, and both folder rows start closed. The toggle opens the items (Paper charts x3, Tide tables x1); the empty box shows 'Nothing listed in here yet'; tapping again closes it. The Cockpit stop (no sub-areas) has no folders title.",
+    "Mobile 390px: the navigator panel, weather photo slots and departure dialog have no horizontal overflow (scrollWidth 390)."
+  ],
+  "seed_data_creation": "Temporary TEST_ui83 boat (via ui83_setup.py) and 5 item_photos for it. All removed: boat deleted, item_photos for boat TEST_ui83 deleted, users.last_boat for test-user-pro unset (it was null before).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use `REACT_APP_BACKEND_URL=... python /app/backend/tests/ui83_setup.py setup|teardown` to create or remove TEST_ui83: areas a_nav (subs a_red with 2 items, a_box empty) and a_cockpit on one zone map, Leaving Dock seeded with 101 Tidy lines, 102 Departure, 103/104 indented children, 105 Fenders, and route Mana to Picton. teardown does not delete item_photos; delete them by boat_id TEST_ui83 + owner test-user-pro. Boat Inventory list id is boatInventory. Open the zone map with zone-map-toggle before using crew-walkthrough-btn. Export REACT_APP_BACKEND_URL before running pytest."
+}
