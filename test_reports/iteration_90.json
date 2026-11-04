@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only retest of Import Spreadsheet + Move to another list, using Playwright at 390px as pro skipper test_session_pro_1 in an en-US browser with month-first dates. Used a new file /tmp/imp/T2.xlsx (built by make2.py) with 3 tabs: TDates (text dates '15/03/2026', '31/02/2026', '13/13/2026' and '03/04/2026', a real Excel date, and negative numbers), TGear (columns length/CONDITION/Brand/Cost) and an empty tab TEmpty. Also used /tmp/imp/many (11 CSVs) and bad.txt. All 4 retest fixes work: dates, attribute mapping on Move, budget cost, and the toasts. Negative number handling works. Regression passes. 1 new medium issue: negative imported numbers can't be edited in the item details. All TEST data was removed through the UI, and GET /api/me/boat matches the baseline (registry 34 = 34, no data differences).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AttrField.jsx BlurInput filters (NUM integer /^\\d{0,8}$/, DEC /^\\d{0,6}([.,]\\d{0,2})?$/)", "issue": "Import now keeps negative numbers (Whole number -50, Cost -120.5, Decimal -7.25), but the details editor filters don't allow '-'. Any keystroke in a field holding '-50' is rejected (Backspace and typing '5' were both ignored, and the value stayed -50). The user can only clear the whole field, and can't type a negative number by hand. Fix: allow an optional leading '-' in NUM.integer and DEC for the 'integer', 'decimal' and 'decimal cost' types only (not age/length/area/weight).", "selector": "maint-details-<id> input[aria-label='Num']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Import dialog at 390px", "issues": ["Top-center validation toasts no longer cover Preview/Back, but they now cover the dialog title 'Import Spreadsheet' for about 4s. This is acceptable and minor."]}
+    ]
+  },
+  "verified_passing": [
+    "Dates: '15/03/2026' -> 2026-03-15 (shown as 03/15/2026, date input value 2026-03-15); '31/02/2026' and '13/13/2026' -> blank with no 'when' attr saved; real Excel date -> 2026-04-01; '03/04/2026' -> 2026-03-04 (month-first, as expected for en-US).",
+    "Numbers: Whole number -50 and '-1,200' -> -1200, Cost -120.5, and Decimal -7.25 stay negative. Age -3 -> 3, Length -2.5 -> 2.5 m and Weight -10 -> 10 kg become positive.",
+    "11 files: a top-center toast says 'Only the first 10 files are used. Import the rest next time.' and 10 tabs are shown. bad.txt gives the toast 'Please choose .xlsx or .csv files' at top-center.",
+    "Duplicate tab name: the toast 'Two tabs would both be called imported - tdates. Please rename one.' appears at top-center. An existing list name gives 'You already have a list called My To Do List'. A blank name gives 'Every list needs a name'. The Preview button was clickable while these toasts were showing.",
+    "Naming and preview: 'Imported - TDates' and 'Imported - TGear'; 'Empty tab: it will be skipped'; the preview lists the empty tab as skipped; 'Import 2 lists'; Back keeps the chosen types; the success toast appears; the first list becomes active.",
+    "Move TEST_Rope (length, CONDITION, Brand, Cost) to Lines and Ropes: attrs {length 12.5, length__unit m, condition Good}. Matching is case-insensitive by name. The label is 'TEST_Rope - Brand: Marlow, Cost: 50 USD'.",
+    "Move TEST_A from TDates to Imported - TGear: Cost and Length (with units) mapped. The other values went into the label: 'When: 03/15/2026, Num: -50, Age: 3 yrs, Weight: 10 kg, Dec: -7.25'.",
+    "Move TEST_Pump to Boat Budget: cost '230.5' and the budget total shows $230.50. Product is 'CONDITION: Fair, Brand: Jabsco, Cost: 230.5 USD'.",
+    "Move TEST_Todo to My To Do List: Undo puts the row back; moving again gives the label 'TEST_Todo - length: 3 m, CONDITION: Worn, Brand: Lewmar, Cost: 10 USD'."
+  ],
+  "test_report_links": ["/tmp/imp/make2.py", "/tmp/imp/T2.xlsx"],
+  "action_items": [
+    "Allow a leading '-' in the AttrField number/decimal input filters for the integer, decimal and decimal cost types, so imported negative values can be edited (or the user can enter them)."
+  ],
+  "critical_code_review_comments": [
+    "movedRow maps by name/key without checking type. A Text column 'Length' with 'approx 3m' would be copied into a decimal length attr, and a picklist value not in the target's options would go into a picklist. Consider moving the value to the description when types or picklist options don't match.",
+    "If two source defs match the same target attr (one by name, one by key), the second one overwrites the first silently.",
+    "The duplicate-name toast echoes the lowercase text the user typed ('imported - tdates'), which is fine but a bit odd.",
+    "numOf with '5-10' gives 5, and a Unicode minus sign '−50' becomes positive. These are rare edge cases."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "~96% (all retest items pass; 1 new medium issue)"},
+  "seed_data_creation": "Imported 'Imported - TDates' and 'Imported - TGear' on pro boat main and moved items into Lines and Ropes, Boat Budget and My To Do List. All of these were deleted through the UI and the state was checked against a baseline GET /api/me/boat. The 'TEST_Bread' provision and the main agent's 'Imported - Equipment' list were there before this run and were left alone.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "/tmp/imp/make2.py builds T2.xlsx. The browser is en-US with month-first dates. Deleting a list takes 3 clicks: maint-delete-list-btn -> delete-list-confirm-btn -> 'Yes, delete it'. Item delete confirm buttons are item-delete-confirm-btn and maint-item-delete-confirm-btn. The move button maint-move-<id> only appears after maint-expand-<id> (expanded state persists after Undo). Check stored values with GET /api/me/boat using cookie session_token=test_session_pro_1."
+}

@@ -8,7 +8,7 @@ export const ImportColumns = ({ plan, onChange }) => (
     {plan.map((t, n) => (
       <section key={`${t.file}-${t.tab}-${n}`} className="flex min-w-0 flex-col gap-2 rounded-md border bg-[var(--panel)] p-2.5" data-testid={`import-tab-${n}`}>
         <p className="text-xs font-bold text-[var(--muted)]">{t.file}{t.tab !== t.file ? ` · tab "${t.tab}"` : ""}</p>
-        {t.empty ? <p className="text-sm font-semibold text-amber-800" data-testid={`import-tab-empty-${n}`}>Empty tab: it will be skipped.</p> : (
+        {t.empty ? <p className="text-sm font-semibold text-amber-800" data-testid={`import-tab-empty-${n}`}>Empty tab{t.zeroRows ? " (only blanks and 0)" : ""}: it will be skipped.</p> : (
           <>
             <label className="flex flex-col gap-1">
               <span className="field-label">List name</span>
@@ -27,7 +27,7 @@ export const ImportColumns = ({ plan, onChange }) => (
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-[var(--muted)]">{t.rows.length} {t.rows.length === 1 ? "row" : "rows"}{t.cut ? " (only the first 2000 are imported)" : ""}</p>
+            <p className="text-xs text-[var(--muted)]">{t.rows.length} {t.rows.length === 1 ? "row" : "rows"}{t.cut ? " (only the first 2000 are imported)" : ""}{t.zeroRows ? ` · ${t.zeroRows} ${t.zeroRows === 1 ? "row" : "rows"} with only blanks and 0 skipped` : ""}</p>
           </>
         )}
       </section>

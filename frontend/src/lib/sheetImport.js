@@ -7,6 +7,9 @@ export const MAX_ROWS = 2000;
 const MAX_COLS = 40;
 const cell = (v) => (v instanceof Date ? v : v === null || v === undefined ? "" : String(v).trim());
 const blank = (row) => row.every((v) => v === "");
+// A row holding only blanks and zeros (0, 0.00, -0) counts as empty and isn't imported.
+const zeroish = (v) => v === "" || (!(v instanceof Date) && /^[-+]?0*([.,]0*)?$/.test(String(v).trim()));
+const emptyRow = (row) => row.every(zeroish);
 const baseName = (file) => file.name.replace(/\.(xlsx|xlsm|xls|csv)$/i, "").trim() || "Spreadsheet";
 
 const readTab = (ws) => {
@@ -15,8 +18,9 @@ const readTab = (ws) => {
   if (start < 0) return { headers: [], rows: [] };
   const width = Math.max(...rows.map((r) => r.length));
   const headers = Array.from({ length: width }, (_, n) => String(rows[start][n] || "").trim() || `Column ${n + 1}`);
-  const body = rows.slice(start + 1).filter((r) => !blank(r)).map((r) => headers.map((_, n) => r[n] ?? ""));
-  return { headers, rows: body.slice(0, MAX_ROWS), cut: body.length > MAX_ROWS };
+  const lines = rows.slice(start + 1).filter((r) => !blank(r));
+  const body = lines.filter((r) => !emptyRow(r)).map((r) => headers.map((_, n) => r[n] ?? ""));
+  return { headers, rows: body.slice(0, MAX_ROWS), cut: body.length > MAX_ROWS, zeroRows: lines.length - body.length };
 };
 
 export const readFiles = async (files) => {
