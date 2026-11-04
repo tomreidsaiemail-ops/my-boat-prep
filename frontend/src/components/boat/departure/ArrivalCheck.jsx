@@ -2,6 +2,7 @@ import { Flag, RotateCcw } from "lucide-react";
 import { SetupPrompt } from "@/components/boat/departure/DepartureCheck";
 import { TankLevels, allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { LogCopy, stamp } from "@/components/boat/departure/LogCopy";
+import { TankChange } from "@/components/boat/departure/TankChange";
 import { arrivalSummary, arrivalUsage, num, usedText } from "@/lib/telemetry";
 
 const r = (n) => Math.round(n * 10) / 10;
@@ -19,7 +20,7 @@ const Used = ({ label, value, testId }) => (
 );
 
 // Matches the Leaving the Dock check: levels on arrival, then fuel, water and gas used since the last departure.
-export const ArrivalCheck = ({ boat, listName, onBoatChange, onLog, onUnlog, onRelog }) => {
+export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog }) => {
   const depart = boat.depart || {};
   const arrive = boat.arrive || {};
   const setArrive = (patch) => onBoatChange("arrive", { ...arrive, ...patch });
@@ -39,6 +40,7 @@ export const ArrivalCheck = ({ boat, listName, onBoatChange, onLog, onUnlog, onR
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="arrival-setup-btn" />
       <TankLevels boat={boat} prefix="arrive-" arrival levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
         details={{ fuel: levels.fuel ? left(use.fuelNow, u) : "", gas: levels.gas ? left(use.gasNow, "kg") : "", water: levels.water ? left(use.waterNow, u) : "" }} />
+      <TankChange boat={boat} prefix="arrive-" engineType={engineType} levels={levels} amounts={arrive.amounts} onSet={setArrive} onLog={onTankLog} />
       {(num(boat.fuel_jerry) > 0 || num(boat.water_jerry) > 0 || num(boat.gas_extra) > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="arrival-spares">
           {num(boat.fuel_jerry) > 0 && <Count id="arrival-fuel-jerry" label="Fuel cans still full" value={arrive.fuel_jerry_left} max={num(boat.fuel_jerry)} onChange={(v) => setArrive({ fuel_jerry_left: v })} />}

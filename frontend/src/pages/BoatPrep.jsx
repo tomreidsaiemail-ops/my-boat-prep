@@ -326,6 +326,16 @@ export default function BoatPrep({ boatId, boats }) {
     setItems((list) => tickDeparture(list, id));
     if (!crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
   };
+  // Select All: ticks (or clears) every row shown; single rows can still be unticked afterwards.
+  const tickAll = (on) => {
+    if (!guard()) return;
+    const ids = new Set(shown.map((i) => i.id));
+    const next = items.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i));
+    const before = new Map(items.filter((i) => ids.has(i.id)).map((i) => [i.id, !!i.checked]));
+    setItems((list) => list.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i)));
+    toast(on ? `Ticked all ${ids.size} items` : `Unticked all ${ids.size} items`, { duration: 6000, action: { label: "Undo", onClick: () => setItems((list) => list.map((i) => (before.has(i.id) ? { ...i, checked: before.get(i.id) } : i))) } });
+    if (active.id === "leavingDock" && !crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
+  };
   const remove = (id) => {
     if (!guard()) return;
     const listId = active.id;
@@ -689,6 +699,12 @@ export default function BoatPrep({ boatId, boats }) {
     boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : "", listId: active.id, canEdit: !crew, online,
     onPatch: (id, patch) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: (s.data[active.id] || []).map((i) => (i.id === id ? { ...i, ...patch } : i)) } })),
   };
+  const logTank = (text) => {
+    if (!guard()) return false;
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id: Date.now(), label: text.slice(0, 2000), checked: false }] } }));
+    toast.success("Logged in the Ship's Log");
+    return true;
+  };
   const relogDeparture = (id, text, kind) => {
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
     toast.success(`Ship's Log ${kind.toLowerCase()} entry updated`);
@@ -750,10 +766,10 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
-          onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} />
+          onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
-        <ArrivalCheck boat={boat} listName={active.name} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} />
+        <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && SERVICE_LOGS[active.id] && (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
@@ -800,7 +816,7 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={shown} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onTickAll={tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (

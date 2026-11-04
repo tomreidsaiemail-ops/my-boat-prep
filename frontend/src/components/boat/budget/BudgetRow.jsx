@@ -29,7 +29,7 @@ const History = ({ item }) => (item.history?.length ? (
   <ul className="flex flex-col gap-0.5 pl-6 pt-1.5 text-[11px] text-[var(--muted)]" data-testid={`budget-history-${item.id}`}>
     <li className="field-label">Change history</li>
     {[...item.history].reverse().map((h, n) => (
-      <li key={n}>{h.field === "Created" ? h.to : `${h.field} ${h.from || "(blank)"} to ${h.to || "(blank)"}`}, {when(h.at)}</li>
+      <li key={n}>{h.field === "Created" ? h.to : `${h.field} ${(h.field === "Date paid" ? shortDate(h.from) : h.from) || "(blank)"} to ${(h.field === "Date paid" ? shortDate(h.to) : h.to) || "(blank)"}`}, {when(h.at)}</li>
     ))}
   </ul>
 ) : null);
@@ -53,7 +53,7 @@ export const BudgetRow = ({ item, open, onOpen, onChange, onLink, onDelete, lock
         <td className="p-1"><DateCell value={item.paid} locked={locked} onChange={(v) => onChange({ paid: v })} testId={`budget-date-${id}`} /></td>
         <td className="p-1"><Cell value={item.cost} placeholder="0.00" inputMode="decimal" filter={COST_RE} aria-label="Cost" testId={`budget-cost-${id}`} readOnly={locked} className="budget-cell text-right font-mono" onSave={(v) => onChange({ cost: v.replace(",", ".") })} /></td>
         <td className="p-0 text-center">
-          <button type="button" onClick={onDelete} disabled={locked} aria-label={`Delete ${item.label || "budget item"}`} className="inline-flex h-9 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--red)]" data-testid={`budget-delete-${id}`}>
+          <button type="button" onClick={onDelete} disabled={locked} style={locked ? { opacity: 0.3 } : undefined} aria-label={`Delete ${item.label || "budget item"}`} className="inline-flex h-9 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--red)]" data-testid={`budget-delete-${id}`}>
             <X className="h-4 w-4" />
           </button>
         </td>

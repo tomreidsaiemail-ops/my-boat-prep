@@ -36,7 +36,8 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
   };
   const saveLink = (raw) => {
     if (raw && !/^(https?:\/\/)?[^\s/$.?#].[^\s]*\.[^\s]+/i.test(raw)) return "Enter a web address, e.g. www.example.com/product";
-    update(linkFor.id, { url: storeUrl(raw) });
+    if (!guard()) return true;
+    setItems((list) => list.map((i) => (i.id === linkFor.id ? { ...i, ...tracked(i, { url: storeUrl(raw) }) } : i)));
     setLinkFor(null);
     return true;
   };
@@ -50,7 +51,7 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
     <div className="flex flex-col gap-3">
       {locked && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-slate-50 px-3 py-2 text-sm" data-testid="budget-locked-banner">
-          <Lock className="h-4 w-4 shrink-0 text-[var(--navy)]" /> <span className="min-w-0 flex-1"><b>{year}</b> is a past year, so it's locked to keep your records intact.</span>
+          <Lock className="h-4 w-4 shrink-0 text-[var(--navy)]" /> <span className="min-w-0 flex-1"><b>{year}</b> is a past year, so it's locked to keep your records intact. Web links can still be changed.</span>
           <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-3 text-xs" onClick={() => setUnlocked((u) => [...u, year])} data-testid="budget-unlock-btn"><LockOpen className="h-4 w-4" /> Unlock to correct</button>
         </div>
       )}
@@ -77,7 +78,7 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
           <tbody>
             {items.map((item) => (
               <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => remove(item)} locked={locked}
-                onLink={() => (item.url ? setOpening(item) : !locked && guard() && setLinkFor(item))} />
+                onLink={() => (item.url ? setOpening(item) : guard() && setLinkFor(item))} />
             ))}
             {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items in {year} yet.{locked ? "" : " Add one below."}</td></tr>}
           </tbody>

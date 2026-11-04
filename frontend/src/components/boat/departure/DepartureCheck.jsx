@@ -4,6 +4,7 @@ import { AdditionalDetailsDialog } from "@/components/boat/AdditionalDetailsDial
 import { PassagePlan } from "@/components/boat/departure/PassagePlan";
 import { TankLevels, allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { LogCopy, stamp } from "@/components/boat/departure/LogCopy";
+import { TankChange } from "@/components/boat/departure/TankChange";
 import { departureSummary, fuelOnBoard, gasOnBoard, num, passagePlan, tankUnit, telemetryConfigured, waterOnBoard } from "@/lib/telemetry";
 
 const about = (n, u) => (n ? `about ${Math.round(n * 10) / 10} ${u} on board` : "");
@@ -30,7 +31,7 @@ export const SetupPrompt = ({ boat, onChange, testId }) => {
   );
 };
 
-export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog, onRelog }) => {
+export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog, onRelog, onTankLog }) => {
   const depart = boat.depart || {};
   const setDepart = (patch) => onBoatChange("depart", { ...depart, ...patch });
   const levels = depart.levels || {};
@@ -47,6 +48,7 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="departure-setup-btn" />
       <TankLevels boat={boat} levels={levels} onLevel={(k, v) => setDepart({ levels: { ...levels, [k]: v } })}
         details={{ fuel: about(fuelOnBoard(boat, levels.fuel), u), gas: about(gasOnBoard(boat, levels.gas), "kg"), water: about(waterOnBoard(boat, levels.water), u) }} />
+      <TankChange boat={boat} engineType={engineType} levels={levels} amounts={depart.amounts} onSet={setDepart} onLog={onTankLog} />
       <PassagePlan boat={boat} depart={depart} setDepart={setDepart} onBoatChange={onBoatChange} engineType={engineType} premium={premium} online={online} onUpgrade={onUpgrade} />
       <LogCopy prefix="departure" label="Copy this departure's tank and battery status into the Ship's Log" logged={!!depart.log_id} blocked={blocked}
         outdated={!!depart.log_id && depart.log_sig !== sig}

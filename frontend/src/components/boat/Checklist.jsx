@@ -63,7 +63,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
 );
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl }) => {
+export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.child && folded.includes(info[item.id].parent);
@@ -75,6 +75,14 @@ export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDelet
   };
   return (
     <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="checklist">
+      {onTickAll && items.length > 0 && (
+        <li className="border-b-[1.5px] border-[var(--line)] bg-slate-50">
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 px-3 text-sm font-bold" data-testid="checklist-select-all-label">
+            <input type="checkbox" checked={items.every((i) => i.checked)} onChange={(e) => onTickAll(e.target.checked)} className="h-5 w-5 accent-[var(--navy)]" data-testid="checklist-select-all" />
+            Select All <span className="font-medium text-[var(--muted)]" data-testid="checklist-select-all-count">({items.filter((i) => i.checked).length} of {items.length} ticked)</span>
+          </label>
+        </li>
+      )}
       {items.length === 0 && (
         <li className="flex items-center justify-between gap-3 p-4 text-sm font-medium text-[var(--muted)]" data-testid="checklist-empty">
           <span>{tickOnly ? "No items on this list yet." : "No items yet. Add your first task below."}</span>

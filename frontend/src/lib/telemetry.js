@@ -121,3 +121,27 @@ export const arrivalSummary = (boat, depart, arrive, use, when, listName) => {
   if (use.actualRate) parts.push(`Actual fuel use about ${round(use.actualRate)} ${u}/h against ${round(use.plan.rate)} ${u}/h planned`);
   return `${parts.join(". ")}.`;
 };
+
+// Fuel and water top-ups and use: volume change, estimated weight change and the new tank level for the Ship's Log.
+const GAL_L = 3.785;
+const fuelKind = (engineType) => (/petrol|gasoline|benzin|outboard/i.test(engineType || "") ? "petrol" : "diesel");
+const DENSITY = { diesel: 0.84, petrol: 0.74, water: 1 };
+const nearestLevel = (f) => LEVELS.reduce((a, b) => (Math.abs(b.value - f) < Math.abs(a.value - f) ? b : a)).key;
+export const tankChange = (boat, key, amount, added, levels = {}, amounts = {}, engineType = "") => {
+  const unit = tankUnit(boat);
+  const cap = num(boat[`${key}_tank`]);
+  const kind = key === "fuel" ? fuelKind(engineType) : "water";
+  const kg = amount * (unit === "gal" ? GAL_L : 1) * DENSITY[kind];
+  const weight = boat.units === "ft" ? `${round(kg * 2.20462)} lb` : `${round(kg)} kg`;
+  const name = key === "fuel" ? "Fuel" : "Water";
+  const exact = amounts[key] !== undefined && cap && levels[key] === nearestLevel(amounts[key] / cap);
+  const start = !cap || !levels[key] ? null : exact ? amounts[key] : BY_KEY[levels[key]].value * cap;
+  if (start !== null && !added && amount > start + 0.05) return { error: `That's more than the ${round(start)} ${unit} in the tank.` };
+  if (start !== null && added && start + amount > cap + 0.05) return { error: `That's more than the ${round(cap)} ${unit} tank can take (about ${round(start)} ${unit} in it now).` };
+  const now = start === null ? null : Math.max(0, Math.min(cap, start + (added ? amount : -amount)));
+  const level = now === null ? null : nearestLevel(now / cap);
+  const tail = now === null ? "" : ` Tank now about ${round(now)} ${unit} of ${round(cap)} ${unit} (${levelLabel(level)}).`;
+  const when = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const text = `${name} ${added ? "added" : "used"} ${round(amount)} ${unit}${key === "fuel" ? ` (${kind})` : ""}, estimated weight ${added ? "added" : "removed"} ${weight}, ${when}.${tail}`;
+  return { text, level, now };
+};
