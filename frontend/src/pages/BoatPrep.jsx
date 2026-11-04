@@ -83,6 +83,8 @@ import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
+import { ExcelExportDialog } from "@/components/boat/ExcelExportDialog";
+import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
 import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
 import { MAINT_CATEGORY, MAINT_KIND, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
@@ -384,6 +386,18 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(`${dialog.list.name} deleted`);
   };
+  const buildSheets = async (all) => {
+    const sctx = { currency: budgetCurrency(boat), labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l) };
+    const sheet = (l) => ({ name: l.name, rows: l.isInventory ? inventoryRows(areas, boats.current) : listRows(l, data[l.id] || [], sctx) });
+    if (!all) return [sheet(active)];
+    const out = [{ name: "Boat details", rows: boatRows(boat) }, ...registry.map(sheet), { name: "Boat inventory", rows: inventoryRows(areas, boats.current) },
+      { name: "Engine service history", rows: serviceRows(state.engine_log || [], "engine_log") },
+      { name: "Electrical service history", rows: serviceRows(state.electrical_log || [], "electrical_log") },
+      { name: "Zone maps", rows: zoneRows(boats.current, areas) }];
+    if (crew) return out;
+    const info = online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
+    return [...out, { name: "Crew", rows: info ? crewRows(info) : [{ Note: "The crew list needs a signal. Export again when you're online to include it." }] }];
+  };
   const exportLists = (current, zone) => guard(zone) && (current || needPro("Export All lists")) && setPrintMode(current ? "current" : "all");
   const addItem = (text) => {
     if (!guard("bottom")) return null;
@@ -630,7 +644,7 @@ export default function BoatPrep({ boatId, boats }) {
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={hasMaint ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
-      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
+      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
@@ -731,7 +745,7 @@ export default function BoatPrep({ boatId, boats }) {
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
-      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} locked={!premium} />
+      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}
@@ -746,6 +760,7 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}
         onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
+      {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
       {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto}
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
