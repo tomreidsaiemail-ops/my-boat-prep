@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 99: Universal Excel export + Ship's Log folders in Excel + all iteration_98 fixes verified. Everything passed. Backend: 18/18 pytest (paper-log 422 rules, Ship's Log email/PDF folder layout, admin template-list cap, it98 regression; real OCR test deselected). Frontend (Playwright at 1920 and 390): all three Excel exports downloaded and checked with openpyxl; PrintView Export Current/All folder headings; folders-all button label, including the exact repro; year row icons and count; paper scan stops at 429 and confirms before close (OCR mocked with page.route); admin template search/sort stack at 390; grouping, fold year, ungroup and reload persistence still work; no horizontal overflow at 390.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{id}/paper-log", "issue": "title='   ' (whitespace only) passes min_length=1 and the hint gets an empty title. Date pattern accepts impossible dates like 2024-13-45. The UI already trims and uses a date picker, so impact is low."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Email Ship's Log HTML", "issues": ["Folder contents step in only in the label cell; the checkbox column stays at the far left at every depth. The PDF steps in the checkbox too. Cosmetic only."]},
+      {"screen": "Admin template lists 390px", "issues": ["List names are cut very short ('Admin - Hel...') because the 'Admin use only' badge and two icon buttons share the row (existing layout)."]}
+    ]
+  },
+  "verified": [
+    "excel-export-one-btn -> \"Ship's Log 2026-11-04.xlsx\", one tab with Folder/Folder row columns in folder order, Ticked blank on folder rows",
+    "excel-export-zip-btn -> 'TEST it98 Vessel spreadsheets 2026-11-04.zip' with one .xlsx per list plus Boat details, inventory, service histories, Zone maps, Crew",
+    "excel-export-master-btn description shows 'Boat_Lists_Export_2026-11-04.xlsx'; the saved file has that name and a tab per list",
+    "Folder path column e.g. \"2024 Ship's Logs > Auckland - Russell - 1 Mar 2024 to 4 Mar 2024\". Lists without folders (Leaving Dock, Crew Roles, First Aid) keep Group/Item/Heading/Ticked/Flagged/Boat area unchanged, with indent groups intact",
+    "(a) Repro: group a passage, open it, Fold a year 2024 -> label 'Open all folders'. Open/close all toggles correctly",
+    "(b) Export Current and Export All: print-folder-<id> rows have no print-box, are bold, and are indented 0/2rem/4rem by depth in folder order",
+    "(c) Email endpoint 200; stored items have depth 0/1/2 and folder flags; PDF layout text shows bold headings with no [ ] and stepped contents; email HTML folder rows have an empty checkbox cell and bold text",
+    "(d) Year row: navy bg rgb(15,23,42) with white rename/ungroup icons; count reads '4 logs in 2 items'",
+    "(e) 422 when title is missing or empty, title >120, date missing or in a bad format; 401 without auth; scan stopped after the first 429 (2 requests for 3 pages, third untouched); Cancel/Esc with scanned pages opens a window.confirm, dismissing keeps the dialog open, accepting closes it",
+    "(f) At 390px the sort select sits below the search; search filter works; /api/admin/template-lists uses to_list(1000)"
+  ],
+  "test_report_links": ["/app/backend/tests/test_it99_export_folders.py", "/app/backend/tests/test_paper_log_it98.py", "/app/backend/tests/manual_it99_folders_seed.py", "/app/backend/tests/manual_it99_inspect_xlsx.py", "/app/backend/tests/manual_it99_inspect_pdf.py", "/app/test_reports/pytest/it99.xml"],
+  "action_items": [
+    "Optional: strip title before validating it on paper-log (reject whitespace) and check the date is real (datetime.strptime)",
+    "Optional: move the email checkbox cell in with the depth padding so it matches the PDF"
+  ],
+  "critical_code_review_comments": [
+    "excelExport.exportMaster ignores its 'title' argument (unused param)",
+    "PrintView numbered lists (isShared/kind) number with n+1 over all rows; folder rows would take a number if a numbered list ever had folders (Ship's Log is not numbered, so no impact today)"
+  ],
+  "updated_files": ["/app/backend/tests/test_it99_export_folders.py", "/app/backend/tests/manual_it99_folders_seed.py", "/app/backend/tests/manual_it99_inspect_xlsx.py", "/app/backend/tests/manual_it99_inspect_pdf.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Used manual_it98_shipslog_seed.py plus the new manual_it99_folders_seed.py (closed 2024 year folder > open passage > logs 1-3, log 4 in year). Cleaned with 'clean'; also deleted the 2 ship_logs docs owned by TEST_it98_log. test_paper_log_it98.py needed no changes because it already sends title and date.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Seed: python3 backend/tests/manual_it98_shipslog_seed.py, then optionally manual_it99_folders_seed.py for a ready folder tree (ids 9000000000001 year, 9000000000002 passage). Mock OCR in Playwright with page.route('**/api/boats/*/paper-log'). Download Excel exports with page.expect_download into /tmp/dl99 and run manual_it99_inspect_xlsx.py. Run pytest with -p no:xdist -o addopts='' and export REACT_APP_BACKEND_URL from frontend/.env. The email test sends to delivered@resend.dev, then the PDF is checked with manual_it99_inspect_pdf.py."
+}

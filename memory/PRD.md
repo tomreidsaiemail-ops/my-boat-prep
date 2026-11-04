@@ -548,3 +548,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Additional details: Racing weight panel (WeightPanel.jsx): editable Weight (boat_weight), read-only Totalled on deck weight, Average crew weight (crew_weight), six category totals, All-Up Racing Displacement breakdown. Boat/crew weights convert when Measurements toggle m<->ft. Backend BoatDetails boat_weight/crew_weight (up to 6 digits).
 - Each non-custom maintenance list: footer with list weight total, on deck total, displacement.
 - Tested iteration_97 (backend 9/9, frontend 100%) + polish (alignment, unit switch, head double count, 6 digits) self-verified.
+
+## 2026-06 Ship's Log organisation + admin template sort/filter
+- Admin template lists: search, quick filters (All / Admin use only / Published / Help Panels / Admin lists), sort (Name A-Z/Z-A, Recently updated, Most items); API cap 1000.
+- Ship's Log help from private admin list "Admin - Help Panel - Ships Log" (seeded; "Skipper's Tip:" line = tip). Passage popup help from "Admin - Help Panel - Ships Log Passage Folders".
+- Ship's Log folders (lib/logFolders.js, components/boat/shipslog/*): Group a passage (Start/End log, Source, Destination, dates -> "Src - Dst - range" folder), Fold a year ("<yyyy> Ship's Logs" holding passages + logs), open/close, open/close all, rename, ungroup with Undo. Items point at folders with `in`; folders keep `open`. Crew open/close locally only.
+- Batch Magic Scan Paper Logs: per page title + date typed by skipper, POST /api/boats/{id}/paper-log (Gemini OCR, one Magic per page, usage MPL), editable text, rows "<title> - <date>: <text>" with log_date.
+- Print/PDF/email (backend ship_log.arrange_log) and Excel (Folder + Folder row columns) follow folder order and depth.
+- Excel master workbook now named Boat_Lists_Export_<YYYY-MM-DD>.xlsx; separate files still one zip.
+- Tested iteration_98 + iteration_99 (100%).

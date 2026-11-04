@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime
 from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile
 from PIL import Image
@@ -26,6 +27,12 @@ SYSTEM = ("You transcribe handwritten and printed paper Ship's Log pages for the
 async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str = Form(min_length=1, max_length=120), date: str = Form(pattern=r"^\d{4}-\d{2}-\d{2}$"),
                     user: dict = Depends(require_premium)):
     """Batch Magic Scan Paper Logs: reads one photographed page into text for a Ship's Log row."""
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Give the page a real date")
+    if not title.strip():
+        raise HTTPException(status_code=422, detail="Give the page a title")
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:

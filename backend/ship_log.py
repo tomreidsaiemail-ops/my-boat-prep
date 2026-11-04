@@ -207,8 +207,8 @@ def build_email_html(log: dict, pdf_url: str, from_name: str) -> str:
 
 def _item_rows(items: list) -> str:
     return "".join(
-        f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"" if i.get("folder") else "&#10003;" if i["checked"] else "&#9744;"}</td>'
-        f'<td style="padding:8px 0 8px {24 * min(i.get("depth") or (1 if i.get("indent") else 0), 5)}px;border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "font-weight:bold;color:#0f172a" if i.get("folder") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}{_answer_html(i)}</td></tr>'
+        f'<tr><td style="padding:8px 10px 8px {24 * min(i.get("depth") or (1 if i.get("indent") else 0), 5)}px;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"" if i.get("folder") else "&#10003;" if i["checked"] else "&#9744;"}</td>'
+        f'<td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "font-weight:bold;color:#0f172a" if i.get("folder") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}{_answer_html(i)}</td></tr>'
         for i in items
     )
 
