@@ -475,3 +475,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-11 Hull/deck colour + hull speed hint
 - Additional details: Hull colour + Deck colour (common list or "Other..." own words; boat.hull_colour/deck_colour, 40 chars). Trip report gets "Colours: white hull, cream deck" line (placeholder if empty).
 - Hull speed = 1.34 x sqrt(LWL ft); hint under LWL and under Engine Service cruising speed: "Hull speed X kn. Comfortable cruising about 80%" + "Use N kn" button (sets cruise_kn); multihull/planing note. Self-tested.
+
+- 2026-06: Moved Magic Bartender button from Boat Details into the hamburger menu (above FAQ, with separator). Hidden for crew as before.

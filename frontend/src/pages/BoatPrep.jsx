@@ -601,12 +601,12 @@ export default function BoatPrep({ boatId, boats }) {
   return (
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq}
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /></>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onBartender={openBartender} batchHelp={batchHelp} onMakeKit={makePetKit} />}
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={ownerOnly(() => needPro("Create your own lists") && guard() && setDialog({ type: "list" }))} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
