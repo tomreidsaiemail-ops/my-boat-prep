@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend-only test of Smarter Select All and the Gas Bottle Log (TankChange Gas tab), with Fuel/Water regression. Everything requested works. Select All shows on normal skipper lists (Pro myTodo, custom_1793042167417, leavingDock, arrivingDest). It is hidden on shipsLog, mayDay, panPan and Crew Roles (tpl_test67crew), and on every list for crew (free user on the shared Pro boat c_test-user-pro_main: myTodo, custom list, riggingChecks, mayDay, shipsLog; the items still render as toggles). Gas tab works on departure (tank-change-gas) and arrival (arrive-tank-change-gas). The unit label says 'bottles' and the hint shows the spare count. Empty or 0 gives 'Enter how many bottles.'. Swap 1 logs exactly as specified. With 2 bottles in use, level 1/2 and a swap of 1, the level moves to Full and the text ends 'Gas in use now Full.'. Swap 3 with 2 in use gives an error and nothing is logged. Added 2 logs '...estimated weight added 18 kg (gas 9 kg plus about 9 kg of bottle)... Spare bottles now 2.' and gas_extra becomes '2' in the DB. Removed 1 brings it to 1, and it persisted after reload. Remove 5 with 2 spares gives 'There are only 2 spare gas bottles on board.'. Remove with 0 spares gives 'There are no spare gas bottles on board to take off.'. Neither error logs anything. With units ft and gas_kg 9, weights show in lb (99.2 lb, 39.7 lb, 119 lb). With gas_bottles blank, a swap has no upper limit and does not change the level. Fuel regression: empty amount gives 'Enter how many litres.'. 20 L added at 1/2 on a 100 L tank logs 'Fuel added 20 L (diesel), estimated weight added 16.8 kg ... Tank now about 70 L of 100 L (3/4).' and the picker moves to 3/4. Water 10 L logs with 10 kg. At 390px there is no horizontal overflow (scrollWidth 390); on the gas row, Swapped sits beside the input and Added/Removed wrap to a second row. At 1920px all three fit on one row.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TankChange gas amount input", "issue": "Typing '1.5' keystroke by keystroke drops the '.' silently and leaves '15' (COUNT_RE rejects only the dot). A user who expects half a bottle could log 15 bottles by accident. Consider showing a hint/error on a non-digit key, or blocking the whole edit.", "selector": "[data-testid='tank-change-amount']", "priority": "LOW"},
+      {"component": "TankChange gas hint", "issue": "The hint says '(the gas level above goes up)' whenever a gas level is picked, even when gas_bottles (bottles in use) is blank. In that case gasChange returns level null and the level does not change, so the hint is misleading.", "selector": "[data-testid='tank-change-hint']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TankChange Gas tab at 390px", "issues": ["The row wraps unevenly: 'Swapped' sits beside the input and 'Added' and 'Removed' drop to a left-aligned second row. It is usable with no overflow, but a 3-button full-width row under the input would look tidier."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: show the '(the gas level above goes up)' hint only when num(boat.gas_bottles) > 0 as well as levels.gas",
+    "Optional: give feedback when a decimal is typed into the gas bottle count, rather than silently dropping the '.'",
+    "Optional: CREW_ROLES is /^crew roles$/i (exact match), so copies like 'Crew Roles 2' or 'Crew Roles - Sample' still show Select All. Widen it if 'named like Crew Roles' should include these"
+  ],
+  "critical_code_review_comments": [
+    "gasChange lb rounding: the total is rounded separately from its parts, so 39.7 lb shows next to 'gas 19.8 lb plus about 19.8 lb' (sum 39.6). This is cosmetic.",
+    "With units ft, the bottle size still reads '9 kg each' / 'of 9 kg' while the weights are in lb. That is probably fine because bottles are sold by kg, but note it.",
+    "TankChange calls onSet and onBoatChange in the same handler. For gas these are mutually exclusive (swap sets the level, add/remove sets gas_extra), so there is no stale-state overwrite today. Keep it that way if both ever fire together."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested checks passed (3 low-priority polish items)"},
+  "seed_data_creation": "Created a temporary user test-user-gas1 (session test_session_gas1, tos set) with its own boat 'main' (leavingDock, arrivingDest, shipsLog). Deleted it afterwards: users, user_sessions and user_boats, by user_id. No seeded data was modified. The free crew user was viewed with 'Not now' on the agreement dialog; nothing was accepted or ticked.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Free user test_session_free_1 lands on the crew boat (boat-option-c_test-user-pro_main), and a crew-agreement-dialog opens; close it with the 'Not now' button. The Pro boat has no leavingDock or arrivingDest, so for TankChange tests create a TEST user whose user_boats doc has data.leavingDock/arrivingDest/shipsLog plus a registry, and whose boat has vessel, callsign and skipper filled. Level picker testids: level-gas-half, level-fuel-3q and so on. The Extra bottles input (gas-extra-input) is inside a collapsed Additional details section, so verify gas_extra in the DB. Each browser_automation run is a fresh context, so changes you make to the DB are picked up on load."
+}

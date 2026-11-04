@@ -44,16 +44,18 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
       <div className="flex flex-wrap gap-2">
         <span className="relative min-w-[110px] flex-1">
           <input type="text" inputMode={gas ? "numeric" : "decimal"} value={amount} placeholder={gas ? "1" : "20"} aria-label={gas ? "Number of gas bottles" : `Amount of ${tank}`} className="field-input w-full pr-16" data-testid={`${p}-amount`}
-            onChange={(e) => (gas ? COUNT_RE : AMOUNT_RE).test(e.target.value) && setAmount(e.target.value.replace(",", "."))} />
+            onChange={(e) => { const v = e.target.value; if (gas && /[.,]/.test(v)) { setError("Gas bottles are counted whole, e.g. 1 or 2."); return; } if ((gas ? COUNT_RE : AMOUNT_RE).test(v)) setAmount(v.replace(",", ".")); }} />
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">{u}</span>
         </span>
-        {gas && <Act id={`${p}-swap`} Icon={ArrowLeftRight} label="Swapped" solid onClick={() => go("swap")} />}
-        <Act id={`${p}-add`} Icon={Plus} label="Added" solid={!gas} onClick={() => go("add")} />
-        <Act id={`${p}-use`} Icon={Minus} label={gas ? "Removed" : "Used"} onClick={() => go(gas ? "remove" : "use")} />
+        <div className={`flex gap-2 ${gas ? "w-full [&>button]:flex-1" : ""}`}>
+          {gas && <Act id={`${p}-swap`} Icon={ArrowLeftRight} label="Swapped" solid onClick={() => go("swap")} />}
+          <Act id={`${p}-add`} Icon={Plus} label="Added" solid={!gas} onClick={() => go("add")} />
+          <Act id={`${p}-use`} Icon={Minus} label={gas ? "Removed" : "Used"} onClick={() => go(gas ? "remove" : "use")} />
+        </div>
       </div>
       {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid={`${p}-error`}>{error}</p>}
       <p className="text-xs text-[var(--muted)]" data-testid={`${p}-hint`}>
-        {gas ? `Swapped: empty bottles swapped for full ones${levels.gas ? " (the gas level above goes up)" : ""}. Added or Removed: full spare bottles brought on board or taken off (spare bottles now ${num(boat.gas_extra)}). ` : ""}
+        {gas ? `Swapped: empty bottles swapped for full ones${levels.gas && num(boat.gas_bottles) ? " (the gas level above goes up)" : ""}. Added or Removed: full spare bottles brought on board or taken off (spare bottles now ${num(boat.gas_extra)}). ` : ""}
         Goes into the Ship&apos;s Log straight away with the estimated weight change{!gas && levels[tank] ? ", and the level above is updated" : ""}.
       </p>
     </div>

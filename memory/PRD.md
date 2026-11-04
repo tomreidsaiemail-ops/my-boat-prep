@@ -529,4 +529,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Boat Budget: web links stay editable on locked past years (user choice); banner says so. Other fields stay locked.
 - Fuel & water auto-log: TankChange card (Fuel/Water, amount, Added/Used) in Leaving the Dock and Arrival checks (arrive- prefix). Each change goes straight into the Ship's Log with volume, fuel type (diesel 0.84 / petrol 0.74 / water 1 kg/L; lb for ft boats; gal x 3.785) and estimated weight change; with a picked level and tank capacity, it shows "Tank now about X of Y" and moves the level picker. Over-capacity/over-use errors; inline message when boat details are missing. lib/telemetry.js tankChange().
 - Tested iteration_94 (frontend 100%).
-- Backlog: turn ship log notes into tidy log entries (AI); maybe hide Select All on Ship's Log/Crew Roles.
+- Backlog: turn ship log notes into tidy log entries (AI).
+
+## 2026-06 Smarter Select All + Gas bottle log
+- Select All hidden on Ship's Log, Mayday/Pan-Pan (EMERGENCY), any list whose name contains "Crew Roles", and for crew (tick-only) views.
+- TankChange card now "Add or use fuel, water and gas": Gas tab (whole bottles) with Swapped (empty for full, + gas weight; raises the gas level by count/bottles in use when a level is picked), Added / Removed (full spare bottles, updates boat.gas_extra, weight = gas + estimated empty bottle of the same weight). Errors for swapping more than in use / removing more spares than on board; decimal typed -> "counted whole" message. lib/telemetry.js gasChange().
+- Tested iteration_95 (100%); its 3 low polish items fixed after (hint only when bottles in use set, decimal feedback, buttons in a full-width row on the gas tab).
