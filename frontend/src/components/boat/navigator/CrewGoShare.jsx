@@ -22,7 +22,14 @@ export const CrewGoShare = ({ boat, boatId, online, onWeather }) => {
   const w = boat.weather || {};
   const photos = w.photos || [];
   const load = () => online && api.get(`/boats/${boatId}/go-plan`, { timeout: 15000 }).then(({ data }) => setInfo(data)).catch(() => {});
-  useEffect(() => { load(); }, [online, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load();
+    if (!online) return undefined;
+    const onFocus = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onFocus);
+    const timer = setInterval(onFocus, 60000);
+    return () => { document.removeEventListener("visibilitychange", onFocus); clearInterval(timer); };
+  }, [online, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = async () => {
     setConfirm(false);

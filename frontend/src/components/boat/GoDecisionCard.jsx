@@ -17,8 +17,7 @@ export const GoDecisionCard = ({ boat, online }) => {
   const params = { owner_id: boat.owner_id, boat_id: boat.boat_id };
   const load = () => api.get("/crew/go-plan", { params, timeout: 10000 }).then(({ data }) => setInfo(data)).catch(() => {});
   useEffect(() => {
-    setInfo(null);
-    if (!online) return undefined;
+    if (!online) { setInfo(null); return undefined; }
     load();
     const onFocus = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onFocus);
@@ -58,12 +57,15 @@ export const GoDecisionCard = ({ boat, online }) => {
       )}
       {answer && (
         <p className={`rounded-md px-3 py-2 text-sm font-bold ${answer.agree ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-[var(--red)]"}`} data-testid="go-decision-answer">
-          {answer.agree ? "You agreed to go." : `You didn't agree: ${answer.reason}`} You can change your answer.
+          {answer.agree ? "You agreed to go." : `You didn't agree: ${answer.reason.replace(/[.!?]*$/, ".")}`} You can change your answer.
         </p>
       )}
       {saying && (
-        <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={3} autoFocus placeholder="Why don't you agree? e.g. The swell forecast looks too big for the crossing"
-          className="field-input min-h-[80px] resize-y py-2 text-base leading-snug" data-testid="go-decision-reason-input" />
+        <>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={3} autoFocus placeholder="Why don't you agree? e.g. The swell forecast looks too big for the crossing"
+            className="field-input min-h-[80px] resize-y py-2 text-base leading-snug" data-testid="go-decision-reason-input" />
+          <button type="button" onClick={() => { setSaying(false); setReason(""); }} className="self-start text-xs font-bold underline" data-testid="go-decision-reason-cancel-btn">Cancel</button>
+        </>
       )}
       <div className="flex gap-2">
         <button type="button" disabled={!!busy} onClick={() => reply(true)} data-testid="go-decision-agree-btn"

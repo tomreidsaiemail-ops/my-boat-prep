@@ -510,3 +510,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Tested iteration_87 (95%) + fixes self-verified.
 
 - 2026-06: Route Planning "ASK THE MAGIC MARINE NAVIGATOR" intro paragraphs now come from private admin list "Admin - Help Panel - MMN Routing Guidance" (NavigatorIntro via useAdminLists, cached offline; hidden if the list is missing). Self-tested.
+
+## 2026-06 Crew decision to go (Crew Route Share)
+- Route Planning (skipper): CrewGoShare card under "Why we're going": "Send to crew" posts POST /api/boats/{id}/go-plan (route, why, up to 5 weather photos; marks photos shared so removal doesn't delete files); re-send confirms and clears answers. Status list via GET /api/boats/{id}/go-plan (crew answers + pending invites "Not joined yet"), refreshes on focus and every 60 s. In-app only (no email).
+- Crew: GoDecisionCard in the crew header (after Planned voyage): route, why, photos; Agree to go / Not agreed (reason required, Cancel) -> POST /api/crew/go-plan/answer (409 if plan is stale). Ship's Log lines pushed server-side (pushed_items) for the send and for every answer. backend/go_decision.py.
+- Tested iteration_88 (backend 6/6, frontend 100%) + minor fixes. Test crew link: test-user-free is crew on test-user-pro/main.

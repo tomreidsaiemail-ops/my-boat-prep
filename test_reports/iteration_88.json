@@ -1,0 +1,39 @@
+{
+  "summary": "Tested Crew Route Share / Decision to go end to end: backend with pytest (6/6 pass) and UI with Playwright at 390px plus one desktop check. Skipper used test_session_pro_1 and crew used test_session_free_1 on boat c_test-user-pro_main. All requested flows work. Backend: send, 400 when the plan is empty, 404 for a non-owner, 422 for a bad photo id, owner status with crew and pending invites, crew GET (404 for non-crew), 400 on an empty reason (whitespace-only included), 409 on a stale plan_id, saving a disagree then changing to agree, and a re-send that resets answers. Ship's Log lines were checked in the DB and in the UI. Skipper UI: crew-go-send-btn label, crew-go-resend-dialog (Not yet / Send and ask again), crew-go-status 'Sent .. · X of 1 crew agreed', and person rows showing Waiting, Agreed <time>, Not agreed <time> with crew-go-reason, and 'Not joined yet' for a TEST_ pending invite. After sending, the weather photo got shared:true. Removing it from Route Planning sent no DELETE, and the crew could still load the image (200 via ?owner=). Crew UI: go-decision-route, why and photos (thumbnail loads, note caption shown). Disagree first shows the reason box; an empty reason gives the toast 'Please say why you don't agree'; with a reason it saves and shows go-decision-answer. The answer persists on reload. Agree switches the answer. After the skipper re-sends, the card asks again with the updated why. Regression: Magic Marine Navigator ask returned an answer, weather photo upload and note work, Why we're going works, and the crew Planned voyage card RSVP 'I'm in' works (toast shown, card sits above the Decision to go card). One blocker for testing: the Pro boat had no Route Planning list (see context).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "push_log (go_decision.py)", "issue": "Ship's Log item id = ms timestamp. Two answers in the same millisecond (or a send plus an answer) would get the same id, and the keep_pushed / $pull by item.id logic would then merge or drop the wrong one. A uuid-based or collision-checked id would be safer."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "GoDecisionCard answer banner", "issue": "There is no separator after a disagree reason that has no punctuation, so it reads 'You didn't agree: TEST_ swell too big for Cook Strait You can change your answer.'", "selector": "[data-testid='go-decision-answer']", "priority": "LOW"},
+      {"component": "GoDecisionCard reason box", "issue": "Once 'Not agreed' is tapped, the reason textarea can't be closed without sending or agreeing. There is no Cancel.", "selector": "[data-testid='go-decision-reason-input']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Skipper crew status", "issue": "CrewGoShare loads /boats/{id}/go-plan only on mount and when online changes. Unlike the crew card, it has no visibilitychange or refresh. A skipper with Route Planning open won't see new crew answers or invite changes until they switch lists or reload.", "affected_selectors": ["[data-testid='crew-go-status']"]},
+      {"flow": "Crew card load", "issue": "GET /api/crew/go-plan fires twice on mount (harmless, just a duplicate request).", "affected_selectors": ["[data-testid='go-decision-card']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_go_decision.py", "/app/test_reports/pytest/pytest_go_decision.xml"],
+  "action_items": [
+    "Optional: add a refresh (visibilitychange or a small refresh button) to CrewGoShare so the skipper sees answers live",
+    "Optional: add a '.' or line break between the disagree reason and 'You can change your answer.'; add a Cancel for the reason box",
+    "Optional: make push_log item ids collision-safe",
+    "Data note: the test-user-pro boat 'main' registry was missing routeHazards (and other defaults such as leavingDock, safety, crewPrep), and they were not in deleted_lists, so Reset All could not restore them. This is likely left over from the earlier corrupted restore."
+  ],
+  "critical_code_review_comments": [
+    "go_decision.py is clean: Pydantic validation, _id excluded, the owner check via owned_boat, crew-only queries filtered by crew membership, stale plan_id returns 409",
+    "send_go_plan doesn't check that the photo ids belong to the owner's boat. There is no leak, because get_item_photo filters by owner_id+boat_id, but a bad id would just show a broken image to crew",
+    "The 'N crew asked to agree' count covers only joined crew. Pending invites are not counted, which matches the spec",
+    "shared:true keeps photo files stored forever after removal (intended, but no cleanup path)"
+  ],
+  "updated_files": ["/app/backend/tests/test_go_decision.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (minor UX notes only)"},
+  "seed_data_creation": "Pro boat: added 'routeHazards' to deleted_lists via mongo, then restored the Route Planning list through the UI Reset All dialog so the list could be tested (it stays on the boat). Created and then deleted a TEST_Pending Pat invite. Set voyage_notes to a TEST_ value for the RSVP test, then restored it to '' and deleted the rsvp. Route start/dest and why were cleared back to '' through the UI. The go_plan is still on the boat (latest TEST_ plan) and there are TEST_ Decision to go lines in the Ship's Log. The navigator ask stored weather.advice.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Crew boat key in the boat picker for test_session_free_1 is c_test-user-pro_main. The active boat persists across reloads, and a crew-agreement-dialog pops up: click 'Not now'. Route Planning is now in the Pro boat registry (list-option-routeHazards). Use /tmp/wx.jpg (PIL-generated) for weather photo uploads. The skipper status card needs a list switch or reload to refresh."
+}

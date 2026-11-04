@@ -1,4 +1,5 @@
 import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, List
@@ -39,7 +40,8 @@ def route_of(plan: dict) -> str:
 
 async def push_log(owner_id: str, boat_id: str, label: str) -> None:
     now = datetime.now(timezone.utc)
-    item = {"id": int(now.timestamp() * 1000), "label": label[:2000], "checked": False, "ts": now.isoformat()}
+    # Millisecond id plus a random tail so two answers in the same instant never share an id.
+    item = {"id": int(now.timestamp() * 1000) * 1000 + secrets.randbelow(1000), "label": label[:2000], "checked": False, "ts": now.isoformat()}
     await db.user_boats.update_one({"owner_id": owner_id, "boat_id": boat_id},
                                    {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
 
