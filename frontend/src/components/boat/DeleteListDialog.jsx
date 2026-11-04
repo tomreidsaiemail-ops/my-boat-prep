@@ -12,6 +12,11 @@ const bodyText = (list, sure) => {
       ? "Your budgeting history (every cost, date paid and web link) will be gone for good. Reset All can only bring back an empty budget from the template."
       : "This removes your Boat Budget with all its costs, dates paid and web links.";
   }
+  if (list?.kind === MAINT_KIND && list.maint === "custom") {
+    return sure
+      ? "Are you absolutely certain you want to delete this and all that is contained in it? Every category, item, detail, photo and PDF in it will be gone for good."
+      : "This removes the list with all its categories, items and details.";
+  }
   if (list?.kind === MAINT_KIND) {
     return sure
       ? "Are you absolutely certain you want to delete this and all that is contained in it? Every category, item, service date, attribute, photo and manual in it will be gone for good."

@@ -1,0 +1,37 @@
+{
+  "summary": "Frontend-only test of the Custom Attribute List Builder at 390px (plus one desktop check) with the Pro skipper (TEST_Kia Ora) and the beta user. All requested flows passed. There are no critical or functional blockers. I found 6 minor issues.\n\nWhat passed:\n- Menu order: bartender, shop-scan, sync-stores, builder ('Custom Attribute List Builder...'), separator, FAQ.\n- Builder pool: 27 master chips, including the built-in Condition picklist (Good/Fair/Worn/Replace). A picked chip leaves the pool and comes back when you remove the attribute.\n- All 13 own-attribute types are listed.\n- builder-own-error: 'Name the attribute first' and 'Add the picklist choices, separated by commas'. Picklist choices are de-duplicated (A, B, B, C becomes A, B, C).\n- A duplicate key gets a suffix: an own 'Length' became length_2.\n- Columns: the first 2 non-photo/PDF picks are auto-ticked and the rest are disabled at 2. Unticking one re-enables the others. Photo can be ticked by hand.\n- Up/down/remove work, and the first item's up button is disabled.\n- builder-error: 'Please name your list', 'You already have a list called lines and ropes' (case-insensitive) and 'Add at least one attribute'.\n- Create: the new list becomes active with data-custom=true. Headers show Description plus the chosen columns, there is one starting 'Items' category, and a toast appears.\n- Adding items: under Items, and as a new category (the Add to select switches to the new category).\n- Tapping a column cell opens all attribute fields. Column text is right: picklist 'Halyard'/'Worn', 'Photo' after an image upload, date 12/24/2025 in the locale format. Diameter 10 mm and Age 7 persist after reload.\n- Expand-all works.\n- Ordering icons show (numbers and tools) with no overflow.\n- Prompt on delete: the item and category notes are correct ('This category and its 1 item...'). Delete then Undo restores the row and the restore persists.\n- Two-step Delete this list works (stage first, then certain).\n- Excel 'This list' export includes the attribute columns and values: Line type, Condition, Diameter + unit, 'Photo attached', Age + 'years old', and the date.\n- Regression: the standard Deck Hardware list still has the Last service / Service due headers and date inputs. On the beta boat, which has no standard maintenance lists, the 'Create Boat Maintenance lists...' button still shows after a custom list was created.\n- No horizontal overflow: builder scrollWidth 362 = clientWidth 362, and table wrap 356 = 356 at 390px.\n\nNot tested live: the crew rule (crew don't see the builder). No crew relationship exists in the DB. I checked it in code only: onBuilder is undefined when crew, and the item sits inside the crew-gated onBartender block.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CustomListBuilder", "issue": "The builder-error message stays on screen after its cause is fixed. For example, 'Add at least one attribute' is still shown after attributes are added. It only clears when the list name input changes.", "selector": "[data-testid='builder-error']", "priority": "LOW"},
+      {"component": "BoatPrep.createCustom", "issue": "Create does not call guard(). On a boat whose details are not ready (the beta user), the builder still creates the list. But adding items (maint-add-btn uses guard('bottom')) and 'Delete this list' are then silently blocked, so the skipper ends up with a list they can neither fill nor delete. Either guard Create, or show the boat-details warning clearly.", "selector": "[data-testid='builder-create-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Excel export of a custom list", "issue": "lib/excelExport.js maintRows always adds 'Last service', 'Service due' and 'Due date from' columns, even for maint==='custom' lists that never chose those attributes. They come out as empty columns. For custom lists, use only list.attrs.", "affected_selectors": ["[data-testid='excel-export-one-btn']"]},
+      {"flow": "Excel export of a custom list", "issue": "Export columns are keyed by d.name, so two attributes with the same display name collide and one overwrites the other. Example: master 'Length' and own 'Length' (key length_2). An attribute named 'Category' or 'Description' also overwrites the fixed columns. Make export headers unique, or reject duplicate names in the builder.", "affected_selectors": []}
+    ],
+    "design_issues": [
+      {"screen": "Custom list table at 390px", "issues": ["With 2 columns (92px each) plus ordering icons, the Description column is narrow and words break mid-word, e.g. 'TEST_M/ain halyard'. Consider break-normal with hyphens, or narrower columns."]},
+      {"screen": "Delete list dialog for custom lists", "issues": ["The copy mentions 'service dates', which may not apply to a custom list."]},
+      {"screen": "List selector", "issues": ["Custom lists appear under 'Your lists', not the 'Boat Maintenance' section, because the registry entry has no category. Confirm this is intended."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Guard createCustom (or the builder menu item) with guard() when the boat details are not ready. Otherwise the new list can't be edited or deleted.",
+    "Clear builder-error when the attribute list changes.",
+    "In excelExport maintRows, leave out Last service / Service due / Due date from for maint==='custom' lists.",
+    "Prevent duplicate attribute display names in the builder (or de-dupe Excel headers), and protect the reserved Category/Description header names."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx is 833 lines, over the 700-line guideline. Consider splitting it further.",
+    "defOf: a name made only of symbols (e.g. '!!!') gives the key 'attribute'. A second such name gives the key '_2' (slug is empty), which is valid but ugly.",
+    "attrsForList for custom lists returns list.attrs as stored. If an admin later changes a master attribute's picklist, existing custom lists keep the old options. This is probably intended (a snapshot) but should be documented."
+  ],
+  "updated_files": ["/app/test_reports/iteration_87.json"],
+  "success_rate": {"backend": "N/A (skipped as requested)", "frontend": "95%"},
+  "seed_data_creation": "Created and then deleted TEST_Ropes T1 and TEST_Types T1 on the Pro boat (deleted through the UI). Created TEST_Beta Custom on the beta user's boat. Its boat details are not ready, so it could not be deleted in the UI; I removed it with a targeted Mongo $pull by its id (maint_custom_1793777242169) plus $unset of data.<id> on user_boats. I did not touch the user's 'Lines and Ropes' list. No JSON restore was done.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use the cookie session_token=test_session_pro_1 on the preview domain. The active list is not persisted across reloads: after a reload, wait about 2.5s for the state to load, then open list-selector and click list-option-<id>. Custom list ids look like maint_custom_<ts> and live in the 'Your lists' section. The beta user's boat is not 'ready', so guard() blocks adding items and deleting lists there. No crew relationships exist in the DB (user_boats.crew is empty everywhere), so the crew menu check needs an invite set up. openpyxl is available in /tmp/python3 locally for parsing downloaded xlsx files saved via save_as('/tmp/..')."
+}

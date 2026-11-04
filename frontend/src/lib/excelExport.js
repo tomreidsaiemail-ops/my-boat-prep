@@ -31,13 +31,13 @@ const budgetRows = (items, currency) => items.map((i) => ({
   Description: i.label || "", Product: i.product || "", "Web link": i.url || "", "Date paid": asDate(i.paid), [`Cost${currency ? ` (${currency})` : ""}`]: String(i.cost || "").trim() ? costOf(i) : "",
 }));
 
-const maintRows = (items, defs) => {
-  const fields = defs.filter((d) => d.key !== LAST_KEY && d.key !== DUE_KEY);
+const maintRows = (items, defs, custom) => {
+  const fields = custom ? defs : defs.filter((d) => d.key !== LAST_KEY && d.key !== DUE_KEY);
   return items.map((i, n) => {
     const a = i.attrs || {};
     const due = effectiveDue(items, n);
-    const row = { Category: i.indent ? headOf(items, n) : i.label, Description: i.indent ? i.label : "", "Last service": asDate(a[LAST_KEY]),
-      "Service due": asDate(due.date), "Due date from": due.date ? (due.inherited ? "Category" : "Own") : "" };
+    const row = { Category: i.indent ? headOf(items, n) : i.label, Description: i.indent ? i.label : "",
+      ...(custom ? {} : { "Last service": asDate(a[LAST_KEY]), "Service due": asDate(due.date), "Due date from": due.date ? (due.inherited ? "Category" : "Own") : "" }) };
     fields.forEach((d) => {
       const v = a[d.key];
       if (d.type === "image") row[d.name] = v ? "Photo attached" : "";
@@ -54,7 +54,7 @@ const maintRows = (items, defs) => {
 
 export const listRows = (list, items, ctx) => {
   if (list.kind === "budget") return budgetRows(items, ctx.currency);
-  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list));
+  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list), list.maint === "custom");
   return checklistRows(items, ctx.labelFor, ctx.areaName);
 };
 

@@ -669,7 +669,7 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
         onShopScan={crew ? undefined : () => openStores("shopScan")} onSyncStores={crew ? undefined : () => openStores("syncStores")}
-        onBuilder={crew ? undefined : () => setDialog({ type: "builder" })}
+        onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />

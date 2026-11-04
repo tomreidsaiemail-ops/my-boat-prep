@@ -69,7 +69,7 @@ export const MaintTable = ({ items, setItems, defs, cols, ctx, guard, ordering, 
       )}
       <div className="overflow-x-auto rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="maint-table-wrap">
         <table className="w-full min-w-[320px] table-fixed border-collapse text-sm" data-testid="maint-table">
-          <colgroup><col />{(cols || [0, 1]).map((c, n) => <col key={c.key || n} className={cols ? "w-[92px]" : "w-[80px]"} />)}<col className="w-[28px]" /></colgroup>
+          <colgroup><col />{(cols || [0, 1]).map((c, n) => <col key={c.key || n} className={cols ? "w-[84px]" : "w-[80px]"} />)}<col className="w-[28px]" /></colgroup>
           <thead className="bg-slate-50">
             <tr>
               <th className="px-1 py-1.5 text-left">

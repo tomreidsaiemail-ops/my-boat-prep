@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Plus, TableProperties, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,6 +9,7 @@ export const TYPE_OPTIONS = [
   ["decimal", "Decimal number"], ["decimal length", "Length"], ["decimal area", "Area"], ["decimal weight", "Weight"], ["decimal cost", "Cost"], ["image", "Photo"], ["pdf", "PDF"],
 ];
 const MAX_COLS = 2;
+const RESERVED = ["description", "category"];
 const CONDITION = { key: "condition", name: "Condition", type: "picklist", options: ["Good", "Fair", "Worn", "Replace"] };
 const typeLabel = (d) => (d.type === "char" && d.max > 1000 ? "Web link / long text" : TYPE_OPTIONS.find(([t]) => t === d.type)?.[1] || "Text");
 const defOf = (name, type, values, taken) => {
@@ -28,7 +29,7 @@ const OwnAttribute = ({ taken, onAdd }) => {
     const n = name.trim();
     if (!n) { setError("Name the attribute first"); return; }
     if (type === "picklist" && !values.split(",").some((v) => v.trim())) { setError("Add the picklist choices, separated by commas"); return; }
-    onAdd(defOf(n.slice(0, 60), type, values, taken));
+    if (!onAdd(defOf(n.slice(0, 60), type, values, taken))) return;
     setName(""); setValues(""); setType("char"); setError("");
   };
   return (
@@ -77,8 +78,16 @@ export const CustomListBuilder = ({ master, names, onCreate, onClose }) => {
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
   const taken = list.map((d) => d.key);
+  useEffect(() => setError(""), [list.length]);
   const pool = [...master, ...(master.some((d) => d.key === CONDITION.key) ? [] : [CONDITION])].filter((d) => !taken.includes(d.key));
-  const add = (d) => setList((l) => [...l, { ...d, on: undefined, col: l.filter((x) => x.col).length < MAX_COLS && !["image", "pdf"].includes(d.type) }]);
+  const clash = (n) => (RESERVED.includes(n.trim().toLowerCase()) ? `"${n}" is already a column name, please choose another`
+    : list.some((d) => d.name.trim().toLowerCase() === n.trim().toLowerCase()) ? `${n} is already in this list` : "");
+  const add = (d) => {
+    const bad = clash(d.name);
+    if (bad) { setError(bad); return false; }
+    setList((l) => [...l, { ...d, on: undefined, col: l.filter((x) => x.col).length < MAX_COLS && !["image", "pdf"].includes(d.type) }]);
+    return true;
+  };
   const create = () => {
     const n = name.trim();
     if (!n) { setError("Please name your list"); return; }
