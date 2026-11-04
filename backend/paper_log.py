@@ -24,15 +24,14 @@ SYSTEM = ("You transcribe handwritten and printed paper Ship's Log pages for the
 
 
 @router.post("/boats/{boat_id}/paper-log")
-async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str = Form(min_length=1, max_length=120), date: str = Form(pattern=r"^\d{4}-\d{2}-\d{2}$"),
+async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str = Form(default="", max_length=120), date: str = Form(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$"),
                     user: dict = Depends(require_premium)):
-    """Batch Magic Scan Paper Logs: reads one photographed page into text for a Ship's Log row."""
-    try:
-        datetime.strptime(date, "%Y-%m-%d")
-    except ValueError:
-        raise HTTPException(status_code=422, detail="Give the page a real date")
-    if not title.strip():
-        raise HTTPException(status_code=422, detail="Give the page a title")
+    """Batch Magic Scan Paper Logs: reads one photographed page into text; reading starts before the skipper has titled and dated it."""
+    if date:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Give the page a real date")
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:
@@ -47,7 +46,7 @@ async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str 
     source = await quota.consume(user["user_id"])
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"paperlog-{uuid.uuid4()}", system_message=SYSTEM).with_model("gemini", "gemini-3-flash-preview")
     text, usage = "", None
-    hint = f"This page is the Ship's Log '{title.strip()}'" + (f" dated {date}" if date else "") + ". Transcribe it."
+    hint = (f"This page is the Ship's Log '{title.strip()}'" if title.strip() else "This page is from a paper Ship's Log") + (f" dated {date}" if date else "") + ". Transcribe it."
     try:
         async for ev in chat.stream_message(UserMessage(text=hint, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])):
             if isinstance(ev, TextDelta):
