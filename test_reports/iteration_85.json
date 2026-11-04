@@ -1,0 +1,36 @@
+{
+  "summary": "Frontend-only test of the Excel export feature at 390px and 1920px. I opened every downloaded file with openpyxl/zipfile and checked its contents. I seeded a TEST_xl85 Pro boat with budget costs and dates, maintenance attributes (units, photo, PDF, own and inherited due dates), inventory folders, zone maps, engine and electrical logs, a crew member plus pending and declined invites, long and illegal list names, and a list that duplicates the name 'Boat details'. These all worked: the Export to Excel button at top and bottom, the dialog showing today's date 2026-11-04, the single, zip and master downloads with the correct names, the master tab order, 31-character unique tab names, illegal characters stripped, ' (2)' added to duplicate names, the 'Note: Nothing here yet' row for empty lists, real date cells, numeric costs (1,234.50 -> 1234.5), maintenance attributes, inherited Service due with Own/Category, and the Inventory 'Inside' and Zone map columns. The Crew tab lists crew and invites with the right statuses. Offline, all three exports work with no network calls and the Crew tab shows the 'needs a signal' note. A crew user's export has no Crew tab. The free user gets no upgrade prompt. Exports work without vessel details (the file is named 'My Boat Prep master ...'). Regression checks passed: Export Current and Export All print views (19 sections), and the Magic Bartender menu item. One real bug: SheetJS rejects some sheet names, so any list named 'History', or with a name that starts or ends with an apostrophe, makes the single, zip and master exports fail for the whole boat.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "excelExport.js tabName()", "issue": "A list named 'History' (any case), or with a name that starts or ends with an apostrophe (e.g. 'Quoted'), makes XLSX.utils.book_append_sheet throw. SheetJS 0.20.3 check_ws_name gives 'Sheet name cannot be History' or 'cannot start or end with apostrophe'. Single export of that list, and the zip and master exports of the whole boat, all fail with the error toast and no file. Reproduced in the browser and in node.", "selector": "[data-testid=excel-export-one-btn],[data-testid=excel-export-zip-btn],[data-testid=excel-export-master-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Excel files (cosmetic)", "issues": [
+        "Tab names keep runs of spaces after illegal characters are stripped: 'TEST_Fuel/Water: [tanks]?*' becomes 'TEST_Fuel Water   tanks'. Collapse whitespace in tabName.",
+        "Boat details field labels come straight from the keys: 'Pob', 'Cruise kn', 'Shore enabled', 'Log email', 'Tank units'. A label map would read better (POB, Cruising speed (kn)). 'Cruise kn' is exported as text '6', not a number.",
+        "Crew RSVP is exported in raw lowercase ('yes').",
+        "Agreement signed uses the UTC date part of accepted_at, so it can be one day off for NZ users."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/xl85_setup.py", "/app/backend/tests/xlsx_inspect.py"],
+  "action_items": [
+    "Fix tabName in frontend/src/lib/excelExport.js: strip leading and trailing apostrophes (e.g. .replace(/^'+|'+$/g, '')) and rename a name equal to 'history' (case-insensitive), e.g. to 'History list'. This applies to single and zip exports too, because book([s]) uses tabName.",
+    "Optional: collapse whitespace in tab names; add friendly labels for Boat details fields."
+  ],
+  "critical_code_review_comments": [
+    "tabName does not handle the Excel-reserved name 'History' or leading/trailing apostrophes, so one bad list name breaks every full export.",
+    "buildSheets: when the crew API fails online (timeout or 5xx), the Crew tab says 'needs a signal', which is misleading but harmless.",
+    "budgetCurrency falls back to the browser region (en-US gives USD) when boat.budget_currency is unset, so the Cost header currency depends on the locale. This is expected behaviour, noted for awareness.",
+    "Date cell format follows the locale (mm/dd/yyyy under en-US). The values are real dates, and I confirmed there is no timezone shift in the NZ, LA and UTC timezones."
+  ],
+  "updated_files": ["/app/backend/tests/xl85_setup.py", "/app/backend/tests/xlsx_inspect.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "95% (all requested flows pass; 1 edge-case bug with reserved or apostrophe list names)"},
+  "seed_data_creation": "TEST_xl85 boat (owner test-user-pro, crew test-user-free) and crew_invites xl85_inv1/xl85_inv2, created by xl85_setup.py setup and removed by teardown. last_boat was restored for both users. My first seed briefly had zone maps without updated_at, which made /api/me/boats return 500 for the Pro user. I fixed it within minutes and it is fully removed now. Note: backend boat_maps() raises KeyError on zone maps without updated_at or colour, so it is fragile to malformed data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run 'REACT_APP_BACKEND_URL=... python /app/backend/tests/xl85_setup.py setup|teardown' to create or remove the rich TEST_xl85 boat. Switch to it with boat-selector, then boat-option-TEST_xl85 (crew view: boat-option-c_test-user-pro_TEST_xl85). Downloads: page.expect_download, then save_as into /app/.screenshots/dl. Inspect files with 'python3 /app/backend/tests/xlsx_inspect.py <rows> <files>' (openpyxl was pip-installed). Retest the fix by adding lists named 'History' and \"'Quoted'\" to the registry and exporting.",
+  "rca of the issue": "SheetJS check_ws_name (called by book_append_sheet) throws for the reserved sheet name 'History' and for names that start or end with an apostrophe. tabName() only strips \\/?*[]: and truncates to 31 characters, so these names reach SheetJS unchanged. The throw is caught in ExcelExportDialog.run, which shows the error toast and produces no file. Repro: create a list named History, then Export to Excel and choose Every list, one master spreadsheet. Result: no download. Fix: sanitise these two cases in tabName."
+}

@@ -59,8 +59,10 @@ export const listRows = (list, items, ctx) => {
 };
 
 const SKIP = new Set(["weather", "depart", "arrive"]);
+const LABELS = { pob: "Persons on board (POB)", mmsi: "MMSI", loa: "LOA", lwl: "LWL", cruise_kn: "Cruising speed (kn)", log_email: "Skipper email", shore_email: "Shore contact email",
+  shore_enabled: "Shore contact on", units: "Measurement units", tank_units: "Tank units", year_built: "Year of manufacture", budget_currency: "Currency", trip_days: "Trip duration (days)" };
 export const boatRows = (boat) => Object.entries(boat).filter(([k, v]) => !SKIP.has(k) && v !== "" && v !== null && v !== undefined && !(Array.isArray(v) && !v.length))
-  .map(([k, v]) => ({ Field: pretty(k),
+  .map(([k, v]) => ({ Field: LABELS[k] || pretty(k),
     Value: k === "pets" ? v.map((p) => [p.name, p.type].filter(Boolean).join(" - ")).join("; ")
       : Array.isArray(v) || typeof v === "object" ? JSON.stringify(v) : typeof v === "boolean" ? yes(v) || "No" : v }));
 
@@ -83,7 +85,7 @@ export const zoneRows = (boat, areas) => (boat?.zone_maps || []).map((m, n) => (
 }));
 
 export const crewRows = (info) => [
-  ...(info.crew || []).map((c) => ({ Name: c.name || "", Email: c.email || "", Roles: (c.roles || []).join(", "), Status: "Crew", RSVP: c.rsvp || "", "Agreement signed": asDate(c.agreement?.accepted_at || "") })),
+  ...(info.crew || []).map((c) => ({ Name: c.name || "", Email: c.email || "", Roles: (c.roles || []).join(", "), Status: "Crew", RSVP: c.rsvp ? c.rsvp[0].toUpperCase() + c.rsvp.slice(1) : "", "Agreement signed": c.agreement?.accepted_at ? asDate(stamp(new Date(c.agreement.accepted_at))) : "" })),
   ...(info.invites || []).map((i) => ({ Name: i.name || "", Email: i.email || "", Roles: (i.roles || []).join(", "), Status: i.declined_at ? "Declined" : "Invited", RSVP: "", "Agreement signed": "" })),
 ];
 
@@ -94,7 +96,8 @@ const sheetOf = (rows) => {
   return ws;
 };
 const tabName = (name, used) => {
-  const base = String(name).replace(/[\\/?*[\]:]/g, " ").trim().slice(0, 31) || "Sheet";
+  const clean = String(name).replace(/[\\/?*[\]:]/g, " ").replace(/\s+/g, " ").replace(/^['\s]+|['\s]+$/g, "");
+  const base = (/^history$/i.test(clean) ? `${clean} list` : clean).slice(0, 31).replace(/['\s]+$/, "") || "Sheet";
   let n = base; let k = 2;
   while (used.has(n.toLowerCase())) { const sfx = ` (${k++})`; n = base.slice(0, 31 - sfx.length) + sfx; }
   used.add(n.toLowerCase());
