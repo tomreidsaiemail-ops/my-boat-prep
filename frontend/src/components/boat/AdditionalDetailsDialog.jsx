@@ -125,9 +125,10 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             {boat.mmsi && boat.mmsi.length !== 9 && <span className="text-xs font-bold text-[var(--red)]" data-testid="mmsi-warning">An MMSI number has 9 digits</span>}
           </label>
           <DetailsSection title="Vessel Telemetry / Vessel Dimensions" testId="dimensions-section"
-            summary={[["LOA", boat.loa], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, beam, draft and mast height"}>
+            summary={[["LOA", boat.loa], ["LWL", boat.lwl], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, LWL, beam, draft and mast height"}>
             <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => onChange("units", u)} /></div>
-            <DimField id="loa" label="LOA (length)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
+            <DimField id="loa" label="LOA (length overall)" value={boat.loa} unit={unit} onChange={(v) => onChange("loa", v)} />
+            <DimField id="lwl" label="LWL (waterline length)" value={boat.lwl} unit={unit} onChange={(v) => onChange("lwl", v)} />
             <DimField id="beam" label="Beam" value={boat.beam} unit={unit} onChange={(v) => onChange("beam", v)} />
             <DimField id="draft" label="Draft" value={boat.draft} unit={unit} onChange={(v) => onChange("draft", v)} />
             <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />

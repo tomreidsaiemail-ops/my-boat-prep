@@ -108,6 +108,7 @@ class BoatDetails(BaseModel):
     mmsi: str = ""
     units: Literal["m", "ft"] = "m"
     loa: str = ""
+    lwl: str = ""
     beam: str = ""
     draft: str = ""
     mast_height: str = ""
@@ -192,7 +193,7 @@ class BoatDetails(BaseModel):
     def unit_or_metres(cls, v):
         return v if v in ("m", "ft") else "m"
 
-    @field_validator("loa", "beam", "draft", "mast_height", mode="before")
+    @field_validator("loa", "lwl", "beam", "draft", "mast_height", mode="before")
     @classmethod
     def dimension(cls, v):
         v = str(v or "").strip().replace(",", ".")[:8]

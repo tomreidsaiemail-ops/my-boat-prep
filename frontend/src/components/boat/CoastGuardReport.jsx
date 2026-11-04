@@ -8,14 +8,17 @@ export const coastGuardReport = (boat, start, dest, result) => {
   const pob = boat.pob || 1;
   const kids = Math.min(boat.children || 0, pob);
   const via = (result.waypoints || []).slice(1, -1).map((w) => w.name).filter(Boolean);
-  const size = boat.loa ? `, LOA ${boat.loa} ${boat.units === "ft" ? "ft" : "m"}` : "";
+  const u = boat.units === "ft" ? "ft" : "m";
+  const size = [boat.loa && `LOA ${boat.loa} ${u}`, boat.lwl && `LWL ${boat.lwl} ${u}`].filter(Boolean).map((s) => `, ${s}`).join("");
+  const makeModel = [boat.make, boat.model].map((s) => (s || "").trim()).filter(Boolean).join(" ");
+  const built = /^\d{4}$/.test(boat.year_built || "") ? `, built ${boat.year_built}` : "";
   const wt = boat.units === "ft" ? "lb" : "kg";
   const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())
     .map((p) => `${p.name?.trim() || "Unnamed"} (${[p.type?.trim() || "pet", p.breed?.trim(), p.weight && `${p.weight} ${wt}`].filter(Boolean).join(", ")})`);
   return [
     `Vessel: ${boat.vessel || FILL("VESSEL NAME")}`,
     `Callsign: ${boat.callsign || FILL("CALLSIGN")}${/^\d{9}$/.test(boat.mmsi || "") ? ` · MMSI ${boat.mmsi}` : ""}`,
-    `Boat: ${boat.boat_type || FILL("BOAT TYPE AND COLOUR")}${size}`,
+    `Boat: ${boat.boat_type || FILL("BOAT TYPE AND COLOUR")}${makeModel ? `, ${makeModel}` : ""}${built}${size}`,
     `Skipper: ${boat.skipper || FILL("SKIPPER NAME")}`,
     `Persons on board: ${pob}${kids ? ` (${count(pob - kids, "adult", "adults")}, ${count(kids, "child", "children")})` : ""}`,
     ...(pets.length ? [`Pets on board: ${pets.join("; ")}`] : []),

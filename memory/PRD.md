@@ -467,3 +467,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-11 Year of manufacture
 - Boat details > Additional details: "Year of manufacture" (boat.year_built, 4 digits, 1800..next year, backend validated). Shown in Boat Budget header ("Year built"); sent to /api/ai/budget so the Magic Mariner allows for the boat's age. Self-tested (save/reload, AI answer).
+
+## 2026-11 Trip report boat line + LWL
+- Coast Guard trip report "Boat:" line now: type, make model, "built YYYY", LOA and LWL.
+- Vessel Dimensions: new LWL (waterline length) next to LOA (boat.lwl, backend validated like other dimensions). Self-tested save/reload.
