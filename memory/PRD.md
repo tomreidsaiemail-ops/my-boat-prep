@@ -572,3 +572,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Batch Magic Scan Paper Logs is asynchronous (usePaperQueue.js): pages read one at a time as soon as they're added (title/date now optional server-side, checked if given) while the skipper titles/dates them; "Processing n of N" banner (amber "read / didn't work" summary on failures), per-page status + Try again, 429 stops the queue; Review step (edit title/date/text) then OK adds rows. Closing confirms (mentions an in-flight page). Disabled buttons dimmed globally.
 - Ship's Log rows clamp to 3 lines (ClampText.jsx, measured with ResizeObserver), full text as hover tooltip, per-row expand/collapse icon only on long rows, master "Expand all / Collapse all log rows"; always start collapsed on each visit. Works for crew.
 - Tested iteration_101 + iteration_102 (100%), last two polish items self-applied.
+
+## 2026-06 Typed hierarchy moves + Log Rigging Check on maintenance lists
+- Typing a full number (e.g. 10.2.1) in an item's number badge moves it (with its branch) there if valid (lib/outline.js moveToPath): parent must exist, not itself/its own branch, max 4 levels; error toast otherwise; opens folded ancestors; toast when the final number shifts.
+- Boat Maintenance lists (6 core): "Log Rigging Check" (rigging/spars) / "Log Service" (deck, sails, ground tackle) button + per-item "Log service for this item..." (MaintServiceDialog). Sets Last service / Service due on picked items, keeps per-item service history, adds a Rigging Service History entry (with list name/next due), a Ship's Log row and a My To Do reminder (due_maint_<listId>, earliest due).
+- Tested iteration_103 (96%; ancestor unfold, error clearing and move toast fixed after).

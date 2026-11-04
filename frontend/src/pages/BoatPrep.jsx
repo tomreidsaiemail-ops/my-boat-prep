@@ -417,8 +417,12 @@ export default function BoatPrep({ boatId, boats }) {
     const res = moveToPath(items, id, path);
     if (res.error) { toast.error(`Can't move it to ${path}: ${res.error}`); return; }
     const parent = path.split(".").slice(0, -1).join(".");
-    if (parent) { const p = items.find((x) => outlineInfo(items)[x.id]?.num === parent); if (p) setFold(p.id, false); }
+    const info = outlineInfo(items);
+    const p = parent && items.find((x) => info[x.id]?.num === parent);
+    if (p) [...info[p.id].ancestors, p.id].forEach((a) => setFold(a, false));
     setItems((list) => moveToPath(list, id, path).items || list);
+    const num = outlineInfo(res.items)[id]?.num;
+    if (num && num !== path) toast(`Moved - it's now ${num}, because the numbers above it shifted`);
   };
   // Log Rigging Check / Log Service from a Boat Maintenance list: item dates + history, Rigging Service History, Ship's Log and a To Do reminder.
   const logMaintService = (entry) => {

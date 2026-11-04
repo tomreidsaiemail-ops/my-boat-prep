@@ -1,0 +1,48 @@
+{
+  "summary": "Frontend-only test (Playwright, desktop + 1 mobile screenshot) of (B) the 10.2.1 typed-position move bug fix and (A) the Log Rigging Check / Log Service feature on the 6 Boat Maintenance lists. Seeded TEST user TEST_it103 (session test_session_it103) with a TEST_Outline checklist (1-10, 4>4.1>4.1.1, 5>5.1, 10>10.1,10.2>10.2.1), the 6 maint lists, a custom maint list, Rigging Checks, Ship's Log, My To Do; removed afterwards. Almost everything passes. One minor bug: if the grandparent (10) is folded, the moved item stays hidden because only the direct parent (10.2) is unfolded.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatPrep.placePath", "issue": "With both 10 and 10.2 folded, typing 10.2.1 on item 11 moved it correctly (later seen at 10.2.1, data-level 2, old 10.2.1 became 10.2.2, kept after reload), but 10 stayed folded ('Ten 4 sub-items · 0 ticked'), so the moved item was hidden. placePath only calls setFold(parent.id,false) for the direct parent. It should also unfold every ancestor: outlineInfo(items)[p.id].ancestors.forEach(a => setFold(a,false)). With only 10.2 folded it opens correctly.", "selector": "checklist-item-fold-10", "priority": "MEDIUM"},
+      {"component": "MaintServiceDialog", "issue": "The validation error (maint-service-error) stays on screen after the user fixes the field, until Save is pressed again. Minor: clear the error when a field changes.", "selector": "maint-service-error", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [{"screen": "MaintServiceDialog", "issues": ["Date / Next due use the browser's native date inputs, not the shadcn calendar. This matches the rest of the app, so it's only a note."]}]
+  },
+  "passed_tests": [
+    "Ordering toggle on; a newly added item lands at the end as 11 (top level)",
+    "Typing 10.2.1 makes it the first sub-item of 10.2 (data-level 2); the old 10.2.1 becomes 10.2.2; kept after reload",
+    "A folded 10.2 opens when an item moves into it (10 open)",
+    "Typing x.2.9 puts the item last under x.2 (7.2.4)",
+    "A branch moves with its sub-items: 5 (with 5.1) typed as 3.1 became 3.1 / 3.1.1",
+    "A plain number still reorders among siblings (8 typed as 1)",
+    "A leaf moved to 4 levels (7.2.1.1) shows data-level 3",
+    "Error toasts, nothing changes: 'no item 8.9 to go under'; 'can't go under itself' (4.1.1.1, 4.2); 'deeper than 4 levels' (branch of depth 2 to 7.2.1; branch with a child to 7.2.1.1); '4 levels deep at most' (1.1.1.1.1); 'Type a number like...' (abc)",
+    "Button text: Log Rigging Check on Running Rigging, Standing Rigging and Spars & Heavy Hardware; Log Service on Deck Hardware, Sail Loft and Ground Tackle. The dialog title, who label (Rigger's / Sailmaker's name / Serviced by), placeholders and date (today) all match",
+    "No button on a custom attribute list; no button and no per-item button for crew (test-user-free on the pro boat)",
+    "Validation: no items, no name ('Enter the rigger's name'), due equal to or before the date",
+    "Ticking a category heading ticks all its items; Save shows a count",
+    "Saving sets maint-last and maint-due on the picked items only, shows a success toast, and the per-item history shows date · who · notes · next due",
+    "The per-item 'Log service for this item...' opens the dialog with that item pre-ticked",
+    "Rigging Checks shows the Rigging Service History entries with the list name, next due, items and notes",
+    "Ship's Log row has the exact format, including Notes and Next due",
+    "My To Do has a single due_maint_<listId> item that updated to the earliest due date (01/05/2027)",
+    "Everything above was still there after reload"
+  ],
+  "test_report_links": ["/app/backend/tests/manual_it103_seed.py"],
+  "action_items": [
+    "In BoatPrep.placePath, unfold all ancestors of the target parent as well as the parent itself, so a folded 10 opens when moving to 10.2.1",
+    "Optional: clear the MaintServiceDialog error when inputs change"
+  ],
+  "critical_code_review_comments": [
+    "placePath computes outlineInfo(items) inside the find callback (once per item, so O(n^2)). Compute it once.",
+    "moveToPath resolves the parent number before removing the moved branch, so moving an item from above (e.g. 7 to 10.2.1) works but the final number shifts (it showed as 9.2.1). This is reasonable, because the user types what they see, but a later typed number like 10.2.9 then fails with 'no item 10.2'. Consider a toast that shows the new number.",
+    "MaintServiceDialog ItemPicks hides top-level items with no sub-items (head && !kids.length), so an uncategorised top-level item (e.g. the legacy 'Starter' item) can't be logged from the list-level dialog."
+  ],
+  "updated_files": ["/app/backend/tests/manual_it103_seed.py (new seed/clean helper)"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "96%"},
+  "seed_data_creation": "TEST_it103 user/session/boat created with manual_it103_seed.py and removed with 'clean'. No changes to test-user-pro data (the crew check was read-only).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use backend/tests/manual_it103_seed.py [clean]. The ordering toggle (checkbox) and fold state are not kept across reload, so turn on ordering-toggle after each reload. Don't remove sonner toast nodes from the DOM in scripts: it crashes React (insertBefore error). After a move from above, the numbers shift, so re-read numbers before typing the next path."
+}

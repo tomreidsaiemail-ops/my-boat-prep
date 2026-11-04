@@ -13,7 +13,7 @@ const ItemPicks = ({ items, picked, setPicked }) => {
         const head = !it.indent;
         const kids = [];
         for (let k = n + 1; head && k < items.length && items[k].indent; k += 1) kids.push(items[k]);
-        const ids = head ? kids.map((x) => x.id) : [it.id];
+        const ids = head && kids.length ? kids.map((x) => x.id) : [it.id];
         const on = ids.length > 0 && ids.every((x) => picked.includes(x));
         if (head && !kids.length) return null;
         return (
@@ -36,6 +36,7 @@ export const MaintServiceDialog = ({ list, items, preselect = [], onSave, onClos
   const [notes, setNotes] = useState("");
   const [due, setDue] = useState("");
   const [error, setError] = useState("");
+  const edit = (set) => (v) => { setError(""); set(v); };
   const save = () => {
     if (!picked.length) return setError("Pick at least one item");
     if (!by.trim()) return setError(`Enter the ${w.who.toLowerCase()}`);
@@ -52,16 +53,16 @@ export const MaintServiceDialog = ({ list, items, preselect = [], onSave, onClos
           <DialogDescription>{list.name}: pick the items you checked or serviced. It sets their Last service (and Service due) dates and goes in the Rigging Service History and the Ship&apos;s Log.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <ItemPicks items={items} picked={picked} setPicked={setPicked} />
+          <ItemPicks items={items} picked={picked} setPicked={edit(setPicked)} />
           <div className="grid grid-cols-2 gap-2">
             <label className="col-span-2 flex flex-col gap-1"><span className="field-label">{w.who}</span>
-              <input value={by} onChange={(e) => setBy(e.target.value.slice(0, 80))} placeholder={w.placeholder} className="field-input" data-testid="maint-service-by" /></label>
+              <input value={by} onChange={(e) => edit(setBy)(e.target.value.slice(0, 80))} placeholder={w.placeholder} className="field-input" data-testid="maint-service-by" /></label>
             <label className="flex flex-col gap-1"><span className="field-label">Date</span>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="field-input" data-testid="maint-service-date" /></label>
+              <input type="date" value={date} onChange={(e) => edit(setDate)(e.target.value)} className="field-input" data-testid="maint-service-date" /></label>
             <label className="flex flex-col gap-1"><span className="field-label">Next due (optional)</span>
-              <input type="date" value={due} min={date} onChange={(e) => setDue(e.target.value)} className="field-input" data-testid="maint-service-due" /></label>
+              <input type="date" value={due} min={date} onChange={(e) => edit(setDue)(e.target.value)} className="field-input" data-testid="maint-service-due" /></label>
             <label className="col-span-2 flex flex-col gap-1"><span className="field-label">{w.notes}</span>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value.slice(0, 1000))} rows={3} placeholder={w.notesHint} className="field-input min-h-[80px] py-2" data-testid="maint-service-notes" /></label>
+              <textarea value={notes} onChange={(e) => edit(setNotes)(e.target.value.slice(0, 1000))} rows={3} placeholder={w.notesHint} className="field-input min-h-[80px] py-2" data-testid="maint-service-notes" /></label>
           </div>
           {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid="maint-service-error">{error}</p>}
         </div>
