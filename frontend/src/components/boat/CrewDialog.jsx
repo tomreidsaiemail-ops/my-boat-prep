@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Pencil, UserMinus, UserPlus, X } from "lucide-react";
+import { Clock, Loader2, Mail, Pencil, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
@@ -11,6 +11,8 @@ import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
+import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
+import { PrepBadge } from "@/components/boat/CrewPrepProgress";
 
 const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
@@ -64,6 +66,17 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, onl
     if (!online) { toast.error("Go online to change your crew"); return; }
     try { await fn(); toast.success(msg); load(); } catch (err) { toast.error(apiError(err)); }
   };
+  const [sending, setSending] = useState(null);
+  const sendBriefings = async (member) => {
+    if (!online) { toast.error("Go online to email role briefings"); return; }
+    setSending(member ? member.user_id : "all");
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/briefings`, member ? { member_id: member.user_id } : {}, { timeout: 60000 });
+      if (data.sent.length) toast.success(`Role briefing emailed to ${data.sent.join(", ")}`);
+      if (data.skipped.length) toast.error(`No briefing to send for ${data.skipped.join(", ")}. Give them a role with a Role Briefing in your Crew Roles list.`);
+    } catch (err) { toast.error(apiError(err, "Couldn't email the briefing, please try again")); }
+    setSending(null);
+  };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -86,15 +99,25 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, onl
           {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
           {info.crew.map((m) => (
             <Row key={m.user_id} title={m.name || m.email} sub={m.email} roles={m.roles} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
-              badge={<AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />}
+              badge={<>
+                <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
+                <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
+                <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
+              </>}
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+              badge={<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
+        {info.crew.length > 1 && (
+          <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => sendBriefings(null)} disabled={!!sending || !online} data-testid="crew-briefings-all-btn">
+            {sending === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Resend role briefings to all crew
+          </button>
+        )}
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
         <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}

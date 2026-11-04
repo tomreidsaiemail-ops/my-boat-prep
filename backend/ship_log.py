@@ -78,14 +78,16 @@ def _with_badges(it: dict, label: str) -> str:
 
 
 def render_items(items: list, ctx: dict) -> list:
-    return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0}
+    return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
+             **({"answer": str(it["mmd_answer"])} if it.get("mmd_answer") else {})}
             for n, it in enumerate(items)]
 
 
 def _item_para(i: dict) -> Paragraph:
     if i.get("flagged"):
         return Paragraph("FLAGGED: " + escape(i["label"]), FLAG)
-    return Paragraph(escape(i["label"]), DONE if i["checked"] else ITEM)
+    answer = f'<br/><font size="9" color="#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</font>' if i.get("answer") else ""
+    return Paragraph(escape(i["label"]) + answer, DONE if i["checked"] else ITEM)
 
 
 def _pdf_row(mark: str, i: dict) -> list:
@@ -134,9 +136,15 @@ def build_email_html(log: dict, pdf_url: str, from_name: str) -> str:
 def _item_rows(items: list) -> str:
     return "".join(
         f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"&#10003;" if i["checked"] else "&#9744;"}</td>'
-        f'<td style="padding:8px 0 8px {"24px" if i.get("indent") else "0"};border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}</td></tr>'
+        f'<td style="padding:8px 0 8px {"24px" if i.get("indent") else "0"};border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}{_answer_html(i)}</td></tr>'
         for i in items
     )
+
+
+def _answer_html(i: dict) -> str:
+    if not i.get("answer"):
+        return ""
+    return f'<br/><span style="font-size:13px;color:#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</span>'
 
 
 def _wrap(log: dict, heading: str, rows: str, pdf_url: str, from_name: str) -> str:

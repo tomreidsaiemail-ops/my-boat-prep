@@ -307,6 +307,9 @@ PET_DOCTOR = ("You are the Magic Marine Doctor in the My Boat Prep app, helping 
 PET_DOCTOR_FOOTER = "This is pet first-aid guidance only. Contact a vet by phone or radio as soon as you can, and in a human emergency call Mayday on VHF channel 16."
 
 
+MMD_LOG_RULE = "Tick the box to agree your question and the Doctor's answer go in the Ship's Log"
+
+
 class DoctorAskIn(BaseModel):
     question: str = Field(default="", max_length=1024, validate_default=True)
     kit_name: str = Field(default="First Aid Kit", max_length=80)
@@ -315,6 +318,10 @@ class DoctorAskIn(BaseModel):
     children: int = Field(default=0, ge=0, le=999)
     pet: Optional[PetIn] = None
     units: str = Field(default="kg", pattern="^(kg|lb)$")
+    log_agree: bool = Field(default=False, validate_default=True)
+    log_when: str = Field(default="", max_length=60)
+    boat_id: str = Field(default="main", pattern=r"^[A-Za-z0-9_-]{1,40}$")
+    owner_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$")
 
     @field_validator("question")
     @classmethod
@@ -322,6 +329,13 @@ class DoctorAskIn(BaseModel):
         if not v.strip():
             raise ValueError("Type a question for the Magic Marine Doctor first")
         return v.strip()
+
+    @field_validator("log_agree")
+    @classmethod
+    def need_log_agree(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError(MMD_LOG_RULE)
+        return v
 
 
 def parse_doctor(text: str, footer: str = DOCTOR_FOOTER) -> str:
@@ -360,11 +374,35 @@ def _answer_out(d: dict) -> dict:
             "has_photo": bool(d.get("photo")), "created_at": d["created_at"]}
 
 
+async def mmd_asker(user: dict, body: DoctorAskIn) -> Optional[str]:
+    """'Skipper' for the boat's owner, else the crew member's name. Checked before the Doctor runs so no generation is wasted."""
+    if not body.owner_id or body.owner_id == user["user_id"]:
+        return "Skipper"
+    doc = await db.user_boats.find_one({"owner_id": body.owner_id, "boat_id": body.boat_id, "crew": user["user_id"]}, {"_id": 0, f"crew_names.{user['user_id']}": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
+    return ((doc.get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user.get("email") or "Crew").strip()[:80]
+
+
+async def log_mmd(user: dict, body: DoctorAskIn, who: str, answer: str) -> dict:
+    """Ship's Log entry for every Doctor question. Crew entries go straight onto the skipper's boat; the skipper's app adds its own."""
+    now = datetime.now(timezone.utc)
+    when = re.sub(r"[^\w ,:/.\-]", "", body.log_when).strip() or now.strftime("%d %b %Y %H:%M UTC")
+    pet = f" about {body.pet.name.strip() or body.pet.type.strip() or 'a pet'}" if body.pet else ""
+    item = {"id": int(now.timestamp() * 1000), "label": f"Magic Marine Doctor asked by {who}{pet} on {when}: {body.question}"[:2000],
+            "mmd_answer": answer, "checked": False, "ts": now.isoformat()}
+    if body.owner_id and body.owner_id != user["user_id"]:
+        await db.user_boats.update_one({"owner_id": body.owner_id, "boat_id": body.boat_id, "crew": user["user_id"]},
+                                       {"$push": {"data.shipsLog": item}, "$set": {"updated_at": now.isoformat()}})
+    return item
+
+
 @router.post("/ai/doctor-ask")
 async def doctor_ask(body: DoctorAskIn, user: dict = Depends(require_premium)):
+    who = await mmd_asker(user, body)
     answer, left = await _doctor(body, user)
     saved = await _save_answer(user, body, answer)
-    return {"answer": answer, "asks_left": left, "saved": saved}
+    return {"answer": answer, "asks_left": left, "saved": saved, "log_item": await log_mmd(user, body, who, answer)}
 
 
 DOCTOR_PHOTO_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -383,6 +421,7 @@ async def doctor_ask_photo(payload: str = Form(...), file: UploadFile = File(...
     data = await file.read(DOCTOR_PHOTO_MAX + 1)
     if len(data) > DOCTOR_PHOTO_MAX:
         raise HTTPException(status_code=400, detail="That photo is too big (max 5 MB)")
+    who = await mmd_asker(user, body)
     answer, left = await _doctor(body, user, data)
     photo = None
     try:
@@ -392,7 +431,7 @@ async def doctor_ask_photo(payload: str = Form(...), file: UploadFile = File(...
     except Exception as e:
         log.error(f"Doctor photo save failed: {e}")
     saved = await _save_answer(user, body, answer, photo)
-    return {"answer": answer, "asks_left": left, "saved": saved, "photo_saved": bool(photo)}
+    return {"answer": answer, "asks_left": left, "saved": saved, "photo_saved": bool(photo), "log_item": await log_mmd(user, body, who, answer)}
 
 
 @router.get("/ai/doctor-history")

@@ -1,11 +1,13 @@
+import re
 from datetime import datetime, timezone
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
 from crew import BoatPath, owned_boat, role_briefings
+from agreement_pdf import build_agreement_pdf
 
 router = APIRouter(prefix="/api")
 TERMS_LIST = r"^\s*admin\s*-\s*boat terms( and conditions)?\s*$"
@@ -81,6 +83,35 @@ async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_
            **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {})}
     await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}": rec}})
     return {"agreement": rec}
+
+
+@router.get("/crew/agreement/pdf")
+async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None,
+                        member_id: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None, user: dict = Depends(get_current_user)):
+    """The skipper can download any crew member's agreement; crew can download only their own."""
+    owner_id = owner_id or user["user_id"]
+    member = member_id or user["user_id"]
+    if owner_id != user["user_id"] and member != user["user_id"]:
+        raise HTTPException(status_code=403, detail="You can only download your own agreement")
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": member},
+                                       {"_id": 0, "boat": 1, "boat_terms": 1, "zone_maps": 1, "areas": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="That crew member isn't on this boat")
+    people = {u["user_id"]: u for u in await db.users.find({"user_id": {"$in": [owner_id, member]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(2)}
+    crew_user, owner = people.get(member) or {}, people.get(owner_id) or {}
+    briefs = await role_briefings(owner_id, boat_id)
+    rec = (doc.get("agreements") or {}).get(member) or {}
+    areas = {a.get("id"): a.get("name") for a in doc.get("areas") or [] if isinstance(a, dict)}
+    pins = [(f"{m['id']}:{p['id']}", areas.get(p.get("area_id")) or p.get("label") or f"Stop {n + 1}")
+            for m in doc.get("zone_maps") or [] for n, p in enumerate(m.get("pins") or [])]
+    crew_name = (doc.get("crew_names") or {}).get(member) or crew_user.get("name") or crew_user.get("email") or "Crew"
+    pdf = build_agreement_pdf({
+        "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
+        "crew_name": crew_name, "crew_email": crew_user.get("email", ""),
+        "roles": [(r, briefs.get(r.lower(), "")) for r in (doc.get("crew_roles") or {}).get(member) or []],
+        "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [(name, sid in (rec.get("stops") or [])) for sid, name in pins], "agreement": rec})
+    safe = re.sub(r"[^\w .-]", "", crew_name)[:60] or "Crew"
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="Boat Agreement - {safe}.pdf"'})
 
 
 async def seed_terms_template():

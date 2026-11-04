@@ -134,7 +134,7 @@ ENDPOINTS = [
     ("/api/ai/engine-ask", {"question": "How often change impeller?"}),
     ("/api/ai/mpa/provisions", {"items": ["Bread"], "adults": 2, "children": 0, "days": 2}),
     ("/api/ai/mpa/aisles", {"items": ["Bread"], "aisles": ["Bakery"]}),
-    ("/api/ai/doctor-ask", {"question": "How to treat a burn?"}),
+    ("/api/ai/doctor-ask", {"log_agree": True, "question": "How to treat a burn?"}),
     ("/api/ai/navigator-ask", {"start": "Auckland", "destination": "Waiheke"}),
 ]
 
@@ -174,7 +174,7 @@ class TestConsumption:
     def test_daily_limit_zero_blocks(self):
         put_settings(0, 20, 5)
         seed(daily_used=0, purchased=0)
-        r = s(PRO).post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "Burn?"}, timeout=60)
+        r = s(PRO).post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "Burn?"}, timeout=60)
         assert r.status_code == 429
         put_settings(20, 20, 5)
 
@@ -341,7 +341,7 @@ class TestPacks:
     def test_429_includes_packs(self):
         put_full(1, 20, 5, 100, 15)
         seed(daily_used=1, purchased=0)
-        r = s(PRO).post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "Burn?"}, timeout=60)
+        r = s(PRO).post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "Burn?"}, timeout=60)
         assert r.status_code == 429
         assert [p["id"] for p in r.json()["packs"]] == ["small", "big"]
         assert r.json()["packs"][1]["price_text"] == "NZ$15"

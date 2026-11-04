@@ -35,7 +35,7 @@ def created(pro):
         pro.delete(f"{BASE_URL}/api/ai/doctor-history/{i}")
 
 
-PAYLOAD = {"question": "TEST_ What are these items and when would I use them for a cut hand?", "kit_name": "First Aid Kit",
+PAYLOAD = {"log_agree": True, "question": "TEST_ What are these items and when would I use them for a cut hand?", "kit_name": "First Aid Kit",
            "kit": ["Plasters", "Bandage", "Antiseptic"], "adults": 2, "children": 0}
 
 

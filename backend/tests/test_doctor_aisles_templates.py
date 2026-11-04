@@ -25,7 +25,7 @@ def _count(kind):
 # ---- Doctor ----
 def test_doctor_pro_answer_and_separate_quota():
     before = {k: _count(k) for k in ("doctor", "engine", "mpa", "draft")}
-    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "A crew member has a deep cut on their hand", "kit_name": "First Aid Kit - basic for cruising",
+    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "A crew member has a deep cut on their hand", "kit_name": "First Aid Kit - basic for cruising",
                                                           "kit": ["Plasters", "Sterile dressings", "Antiseptic wipes"], "adults": 2, "children": 1}, headers=PRO, timeout=120)
     assert r.status_code == 200, r.text
     d = r.json()
@@ -44,7 +44,7 @@ def test_doctor_shared_quota_429():
     db.app_settings.update_one({"key": "magic_quota"}, {"$set": {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}}, upsert=True)
     db.magic_quota.update_one({"user_id": "test-user-pro"}, {"$set": {"daily_used": 20, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
     try:
-        r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "headache"}, headers=PRO, timeout=60)
+        r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "headache"}, headers=PRO, timeout=60)
         assert r.status_code == 429, r.text
         assert r.json()["code"] == "daily_limit"
         r2 = requests.post(f"{BASE_URL}/api/ai/mpa/aisles", json={"items": ["  "], "aisles": AISLES}, headers=PRO, timeout=60)
@@ -54,13 +54,13 @@ def test_doctor_shared_quota_429():
 
 
 def test_doctor_free_403():
-    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": "cut"}, headers=FREE, timeout=30)
+    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "cut"}, headers=FREE, timeout=30)
     assert r.status_code == 403
 
 
 @pytest.mark.parametrize("q", ["", "   ", "x" * 1025])
 def test_doctor_validation_422(q):
-    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"question": q}, headers=PRO, timeout=30)
+    r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": q}, headers=PRO, timeout=30)
     assert r.status_code == 422, r.text
 
 

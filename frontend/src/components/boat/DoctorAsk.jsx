@@ -29,8 +29,9 @@ const WhoNeedsHelp = ({ pets, value, onChange }) => (
   </div>
 );
 
-export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "kg", online, locked, onUpgrade }) => {
+export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "kg", online, locked, onUpgrade, logParams, crew, onLogged }) => {
   const [question, setQuestion] = useState("");
+  const [logAgree, setLogAgree] = useState(false);
   const [who, setWho] = useState(pets.length && /pet/i.test(kitName) ? "0" : "");
   const [state, setState] = useState({ busy: false, error: "", answer: "", left: null });
   const [photo, setPhoto] = useState(null);
@@ -40,10 +41,13 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
   const ask = () => {
     if (locked) { onUpgrade(); return; }
     if (!question.trim()) { setState((s) => ({ ...s, error: "Type a question for the Magic Marine Doctor first" })); return; }
+    if (!logAgree) { setState((s) => ({ ...s, error: "Tick the box to agree your question and the Doctor's answer go in the Ship's Log" })); return; }
     if (!online) { setState((s) => ({ ...s, error: "The Magic Marine Doctor needs a signal. In an emergency call Mayday on VHF 16." })); return; }
     setState({ busy: true, error: "", answer: "", left: null });
     const forPet = pet ? { pet: { type: pet.type || "", name: pet.name || "", breed: pet.breed || "", weight: pet.weight || "" }, units } : {};
-    const body = { question: question.trim(), kit_name: kitName, kit: kit.slice(0, 150), adults, children, ...forPet };
+    const when = new Date().toLocaleString("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const body = { question: question.trim(), kit_name: kitName, kit: kit.slice(0, 150), adults, children, ...forPet, log_agree: true, log_when: when,
+      boat_id: logParams.boat_id, ...(logParams.owner_id ? { owner_id: logParams.owner_id } : {}) };
     let call;
     if (photo) {
       const form = new FormData();
@@ -55,6 +59,7 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
       .then(({ data }) => {
         setState((s) => ({ ...s, busy: false, answer: data.answer, left: data.asks_left }));
         setVersion((v) => v + 1);
+        if (data.log_item) onLogged(data.log_item);
         if (photo && data.photo_saved === false) toast.error("The Doctor saw your photo, but it couldn't be saved with the answer");
         if (photo) { URL.revokeObjectURL(photo.preview); setPhoto(null); }
       })
@@ -74,6 +79,11 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
         </button>
       </div>
       <DoctorPhotoPicker photo={photo} onChange={setPhoto} disabled={state.busy} />
+      <label className="flex items-start gap-2 rounded-md bg-[var(--panel)] px-3 py-2 text-sm font-semibold" data-testid="doctor-log-agree">
+        <input type="checkbox" checked={logAgree} onChange={(e) => { setLogAgree(e.target.checked); setState((s) => ({ ...s, error: "" })); }}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="doctor-log-agree-checkbox" />
+        <span>I agree my question and the Doctor's answer will be logged in the Ship's Log under {crew ? "my name" : "\"Skipper\""}.</span>
+      </label>
       {state.busy && <p className="flex items-center gap-2 text-sm font-semibold" data-testid="doctor-loading"><Loader2 className="h-4 w-4 animate-spin" /> The Magic Marine Doctor is thinking...</p>}
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="doctor-error">{state.error}</p>}
       {state.answer && <AnswerCard answer={state.answer} left={state.left} onClose={() => setState((s) => ({ ...s, answer: "" }))} />}

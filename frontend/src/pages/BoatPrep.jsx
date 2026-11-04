@@ -28,6 +28,7 @@ import { CrewBanner } from "@/components/boat/CrewBanner";
 import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
 import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
+import { CrewPrepProgress, crewPrepName } from "@/components/boat/CrewPrepProgress";
 import { VoyageCard } from "@/components/boat/VoyageCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
@@ -214,6 +215,11 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const setItems = (fn) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: fn(s.data[active.id] || []) } }));
   const isDup = (text, exceptId) => !mealLists.some((l) => l.id === active.id) && items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
+  const logMmd = (item) => {
+    if (crew) { toast.success("Question and answer logged in the skipper's Ship's Log"); return; }
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), item] } }));
+    toast.success("Question and answer logged in the Ship's Log");
+  };
   const signOffWalkthrough = async (stops) => {
     const when = new Date().toLocaleString("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
     if (!crew) {
@@ -637,6 +643,7 @@ export default function BoatPrep({ boatId, boats }) {
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
+          {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
           {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
             <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
           )}
@@ -674,7 +681,8 @@ export default function BoatPrep({ boatId, boats }) {
           {/^first aid kit/i.test(active.name || "") && (
             <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
               children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} pets={(boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())} units={boat.units === "ft" ? "lb" : "kg"}
-              online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")} />
+              online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")}
+              logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} crew={crew} onLogged={logMmd} />
           )}
         </>
       )}

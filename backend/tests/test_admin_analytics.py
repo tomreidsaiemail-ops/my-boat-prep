@@ -144,7 +144,7 @@ def jpeg():
 # --- Real AI calls record usage per feature (one call each)
 class TestUsageRecording:
     @pytest.mark.parametrize("code,path,body", [
-        ("MMD", "/api/ai/doctor-ask", {"question": "Small cut on finger, what do I do?", "kit": ["Plasters", "Antiseptic wipes"]}),
+        ("MMD", "/api/ai/doctor-ask", {"log_agree": True, "question": "Small cut on finger, what do I do?", "kit": ["Plasters", "Antiseptic wipes"]}),
         ("MME", "/api/ai/engine-ask", {"question": "Engine overheats at high revs", "engine_type": "Yanmar 3GM"}),
         ("MLG", "/api/ai/list-draft", {"name": "TEST_ Day sail", "description": "Short checklist for a day sail, 5 items"}),
         ("MPA", "/api/ai/mpa/aisles", {"items": ["Milk", "Bread"], "aisles": ["Dairy", "Bakery"]}),

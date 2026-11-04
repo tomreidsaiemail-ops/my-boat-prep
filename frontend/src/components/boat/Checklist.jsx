@@ -5,6 +5,7 @@ import { MpaText } from "@/components/boat/MpaBadges";
 import { MealTypeBadge } from "@/components/boat/MealTypePicker";
 import { isMealHead } from "@/lib/mpa";
 import { ItemPhoto } from "@/components/boat/ItemPhoto";
+import { MmdLogAnswer } from "@/components/boat/doctor/MmdLogAnswer";
 
 const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
@@ -45,6 +46,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
         </span>
       </button>
+      {item.mmd_answer && <MmdLogAnswer id={item.id} answer={item.mmd_answer} />}
       {tools}
     </div>
     {fold && <div className="flex shrink-0 items-start pt-2"><FoldButton id={item.id} folded={fold.folded} onFold={fold.onFold} /></div>}

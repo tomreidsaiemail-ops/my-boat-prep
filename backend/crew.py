@@ -178,6 +178,24 @@ async def save_voyage_notes(boat_id: BoatPath, payload: NotesIn, user: dict = De
     return {"ok": True}
 
 
+def prep_counts(items: list) -> dict:
+    """Ticked / total on a Crew Prep list; group headings aren't tasks so they don't count."""
+    tasks = [i for n, i in enumerate(items) if not (not i.get("indent") and n + 1 < len(items) and items[n + 1].get("indent"))]
+    return {"ticked": sum(1 for i in tasks if i.get("checked")), "total": len(tasks)}
+
+
+async def crew_prep_progress(owner_id: str, boat_id: str) -> dict:
+    """Crew name (lower case) -> progress on their own 'Crew Prep - <name>' list."""
+    reg = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, "registry": 1})
+    lists = {m.group(1).strip().lower(): (l["id"], l["name"]) for l in (reg or {}).get("registry") or []
+             if (m := re.match(r"^\s*crew prep\s*-\s*(.+)$", str(l.get("name", "")), re.I))}
+    if not lists:
+        return {}
+    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, **{f"data.{lid}": 1 for lid, _ in lists.values()}})
+    data = (doc or {}).get("data") or {}
+    return {k: {"list_id": lid, "list_name": name, **prep_counts(data.get(lid) or [])} for k, (lid, name) in lists.items()}
+
+
 @router.get("/boats/{boat_id}/crew")
 async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     doc = await owned_boat(user, boat_id)
@@ -188,8 +206,12 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
                                          {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1}).to_list(100)
     rsvp = doc.get("rsvp") or {}
     names, agreements = doc.get("crew_names") or {}, doc.get("agreements") or {}
-    return {"crew": [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
-                      "agreement": agreements.get(m["user_id"])} for m in members], "invites": invites,
+    prep = await crew_prep_progress(user["user_id"], boat_id)
+    for i in invites:
+        i["prep"] = prep.get((i.get("name") or "").strip().lower())
+    crew = [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
+             "agreement": agreements.get(m["user_id"])} for m in members]
+    return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""),
             "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", "")}
 
