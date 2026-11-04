@@ -464,3 +464,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-11 Area totals + movable zone map labels
 - Boat area item count now includes items in its folders/boxes (just the total).
 - Edit labels: drag a label to move it (PinnedPhoto onDrag, pointer events, tap still opens), plus up/down/left/right nudge buttons (1% steps) in the label form; new labels show while placing. Self-tested (drag + nudge saved to DB).
+
+## 2026-11 Year of manufacture
+- Boat details > Additional details: "Year of manufacture" (boat.year_built, 4 digits, 1800..next year, backend validated). Shown in Boat Budget header ("Year built"); sent to /api/ai/budget so the Magic Mariner allows for the boat's age. Self-tested (save/reload, AI answer).

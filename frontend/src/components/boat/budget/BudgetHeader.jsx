@@ -13,10 +13,11 @@ export const BudgetHeader = ({ boat, currency, onBoatChange, open, onOpenChange:
   const missing = !(boat.make || "").trim() || !(boat.model || "").trim();
   return (
     <div className="flex flex-col gap-2" data-testid="budget-header">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Fact label="Boat type" value={boat.boat_type} testId="budget-boat-type" />
         <Fact label="Make" value={boat.make} testId="budget-boat-make" />
         <Fact label="Model" value={boat.model} testId="budget-boat-model" />
+        <Fact label="Year built" value={boat.year_built} testId="budget-boat-year" />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button type="button" className={`${missing ? "btn-solid" : "btn-ghost"} h-10 min-h-0 gap-1.5 px-3 text-sm`} onClick={() => setOpen(true)} data-testid="budget-edit-details-btn">

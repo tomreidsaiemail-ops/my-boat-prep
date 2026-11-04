@@ -10,7 +10,7 @@ export const BudgetComments = ({ boat, currency, paused, onBoatChange, premium, 
   const latest = useRef(notes);
   latest.current = notes;
   const has = !!((boat.make || "").trim() || (boat.model || "").trim());
-  const key = [boat.make, boat.model, boat.boat_type, currency].join("|");
+  const key = [boat.make, boat.model, boat.boat_type, boat.year_built, currency].join("|");
   const ask = async (quiet = false) => {
     if (!premium) { onUpgrade(); return; }
     if (!has) { if (!quiet) toast.error("Fill in your boat's make and model first"); return; }
@@ -18,7 +18,7 @@ export const BudgetComments = ({ boat, currency, paused, onBoatChange, premium, 
     setBusy(true);
     try {
       const { data } = await api.post("/ai/budget", { make: boat.make || "", model: boat.model || "", boat_type: boat.boat_type || "", currency,
-        loa: boat.loa || "", units: boat.units === "ft" ? "ft" : "m" }, { timeout: 90000 });
+        loa: boat.loa || "", units: boat.units === "ft" ? "ft" : "m", year_built: /^\d{4}$/.test(boat.year_built || "") ? boat.year_built : "" }, { timeout: 90000 });
       // An automatic fill never replaces notes the skipper typed while it was thinking.
       if (!quiet || !latest.current.trim()) {
         onBoatChange("budget_notes", data.answer);

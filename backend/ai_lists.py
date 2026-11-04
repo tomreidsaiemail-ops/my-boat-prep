@@ -606,6 +606,7 @@ class BudgetIn(BaseModel):
     currency: str = Field(default="", max_length=3)
     loa: str = Field(default="", max_length=8)
     units: str = Field(default="m", pattern="^(m|ft)$")
+    year_built: str = Field(default="", pattern=r"^(\d{4})?$")
 
 
 def parse_budget(text: str) -> str:
@@ -623,6 +624,10 @@ async def budget_comments(body: BudgetIn, user: dict = Depends(require_premium))
     prompt = f"How much a year should I budget for {boat} per year?"
     if body.loa.strip():
         prompt += f"\nLength overall: {body.loa.strip()} {body.units}"
+    if body.year_built:
+        age = max(0, datetime.now(timezone.utc).year - int(body.year_built))
+        prompt += (f"\nYear of manufacture: {body.year_built} (about {age} years old). Allow for what a boat this age typically needs, "
+                   "e.g. standing rigging, sails, engine, wiring and upholstery replacement when due.")
     prompt += f"\nCurrency: {body.currency.strip().upper() or 'the local currency, named'}"
     answer, left = await _run(user, "budget", prompt, parse_budget, {"name": "Boat budget", "boat": boat[:120]}, BUDGETER, "Magic Mariner budgeting")
     return {"answer": answer, "asks_left": left}

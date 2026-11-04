@@ -117,6 +117,7 @@ class BoatDetails(BaseModel):
     pets: List[Pet] = Field(default_factory=list, max_length=20)
     make: str = ""
     model: str = ""
+    year_built: str = ""
     budget_currency: str = ""
     budget_notes: str = ""
     tank_units: Literal["L", "gal"] = "L"
@@ -150,6 +151,12 @@ class BoatDetails(BaseModel):
     @classmethod
     def weather_size(cls, v):
         return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 24000 else {}
+
+    @field_validator("year_built", mode="before")
+    @classmethod
+    def year_digits(cls, v):
+        v = re.sub(r"\D", "", str(v or ""))[:4]
+        return v if not v or 1800 <= int(v) <= datetime.now(timezone.utc).year + 1 else ""
 
     @field_validator("make", "model", mode="before")
     @classmethod

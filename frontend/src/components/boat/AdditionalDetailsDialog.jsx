@@ -94,13 +94,21 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
         onCloseAutoFocus={(e) => { if (returnFocus?.current) { e.preventDefault(); returnFocus.current.focus(); } }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat details - Additional details</DialogTitle>
-          <DialogDescription className="text-left text-sm">All optional. Boat type and people on board fill in your Mayday and Pan-Pan calls. Make and model help the Magic Mariner with your Boat Budget.</DialogDescription>
+          <DialogDescription className="text-left text-sm">All optional. Boat type and people on board fill in your Mayday and Pan-Pan calls. Make, model and year help the Magic Mariner with your Boat Budget.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2.5">
           <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-identity-row">
             <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
             <TextField id="boat-make" label="Make" value={boat.make} placeholder="e.g. Beneteau" onChange={(v) => onChange("make", v)} />
             <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
+          </div>
+          <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-year-row">
+            <label htmlFor="boat-year" className="flex min-w-0 flex-col gap-1">
+              <span className="field-label">Year of manufacture</span>
+              <input id="boat-year" inputMode="numeric" value={boat.year_built || ""} placeholder="e.g. 2012"
+                onChange={(e) => onChange("year_built", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="field-input" data-testid="boat-year-input" />
+            </label>
           </div>
           <div className="col-span-2 grid grid-cols-3 items-end gap-2.5" data-testid="pob-row">
             <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={setPob} />
