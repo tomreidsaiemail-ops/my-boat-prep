@@ -6,6 +6,7 @@ import { MealTypeBadge } from "@/components/boat/MealTypePicker";
 import { isMealHead } from "@/lib/mpa";
 import { ItemPhoto } from "@/components/boat/ItemPhoto";
 import { MmdLogAnswer } from "@/components/boat/doctor/MmdLogAnswer";
+import { LogPhotos } from "@/components/boat/navigator/LogPhotos";
 
 const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
@@ -29,7 +30,7 @@ const FoldButton = ({ id, folded, onFold }) => (
   </button>
 );
 
-const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo }) => (
+const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl }) => (
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {info?.child && <div className="w-7 shrink-0" aria-hidden="true" />}
@@ -56,11 +57,13 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
       <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete item" onClick={onDelete} data-testid={`checklist-item-delete-${item.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
     </div>}
     {item.mmd_answer && <MmdLogAnswer id={item.id} answer={item.mmd_answer} />}
+    {item.detail && <MmdLogAnswer id={item.id} answer={item.detail} kind="depart" />}
+    {logPhotoUrl && item.weather_photos?.length > 0 && <LogPhotos id={item.id} photos={item.weather_photos} urlFor={logPhotoUrl} />}
   </li>
 );
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null }) => {
+export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.child && folded.includes(info[item.id].parent);
@@ -82,7 +85,7 @@ export const Checklist = ({ items, labelFor, onToggle, onEdit, onDelete, onDelet
       {items.filter((item) => !hidden(item)).map((item) => {
         const inf = info[item.id];
         return (
-          <Row key={item.id} item={item} pick={picks} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
+          <Row key={item.id} item={item} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}

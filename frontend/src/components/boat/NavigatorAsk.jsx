@@ -1,19 +1,20 @@
 import { useRef, useState } from "react";
 import { Compass, Loader2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { RouteMap } from "@/components/boat/RouteMap";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
+import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
+import { NavigatorIntro, NavigatorReminders, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
+import { stamp } from "@/components/boat/departure/LogCopy";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
-const AnswerCard = ({ result, boat, gps, left, onClose }) => (
+const AnswerCard = ({ result, boat, left, onClose }) => (
   <div className="flex flex-col gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] px-3 py-2" data-testid="navigator-answer-card">
     <div className="flex items-center gap-2">
       <span className="flex flex-1 items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide"><Compass className="h-4 w-4" /> The Magic Marine Navigator suggests</span>
       <button type="button" className="icon-btn h-8 w-8" aria-label="Close answer" onClick={onClose} data-testid="navigator-answer-close-btn"><X className="h-4 w-4" /></button>
     </div>
     <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
-    {result.waypoints?.length >= 2 && <RouteMap waypoints={result.waypoints} gps={gps} />}
     <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
     {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left (free today + bought)</span>}
   </div>
@@ -27,7 +28,7 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
-export const NavigatorAsk = ({ boat, gps, onChange, items, online, locked, onUpgrade }) => {
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -53,7 +54,11 @@ export const NavigatorAsk = ({ boat, gps, onChange, items, online, locked, onUpg
       pob: boat.pob, children: boat.children, trip_days: boat.trip_days };
     const route = { start: start.trim(), dest: dest.trim() };
     api.post("/ai/navigator-ask", { question: question.trim(), start: route.start, destination: route.dest, boat: details, items: items.slice(0, 150) }, { timeout: 90000 })
-      .then(({ data }) => setState((s) => ({ ...s, busy: false, result: { ...data, ...route }, left: data.asks_left })))
+      .then(({ data }) => {
+        setState((s) => ({ ...s, busy: false, result: { ...data, ...route }, left: data.asks_left }));
+        // Kept for the Departure decision in the Ship's Log.
+        onWeather({ advice: String(data.answer || "").slice(0, 6000), advice_at: stamp() });
+      })
       .catch((e) => setState((s) => ({ ...s, busy: false, error: apiError(e, "The Magic Marine Navigator couldn't answer right now. Please try again.") })));
   };
 
@@ -64,6 +69,7 @@ export const NavigatorAsk = ({ boat, gps, onChange, items, online, locked, onUpg
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
       </div>
       <label htmlFor="navigator-question" className="field-label">ASK THE MAGIC MARINE NAVIGATOR</label>
+      <NavigatorIntro />
       <div className="flex items-start gap-2">
         <textarea id="navigator-question" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
           placeholder="e.g. Mana to Picton Via Queen Charlotte Sound" className="field-input min-w-0 flex-1 resize-none leading-snug placeholder-shown:overflow-hidden placeholder-shown:text-ellipsis placeholder-shown:whitespace-nowrap" data-testid="navigator-question-input" />
@@ -73,7 +79,10 @@ export const NavigatorAsk = ({ boat, gps, onChange, items, online, locked, onUpg
       </div>
       {state.busy && <p className="flex items-center gap-2 text-sm font-semibold" data-testid="navigator-loading"><Loader2 className="h-4 w-4 animate-spin" /> The Magic Marine Navigator is plotting...</p>}
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-error">{state.error}</p>}
-      {state.result && <AnswerCard result={state.result} boat={boat} gps={gps} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
+      {state.result && <AnswerCard result={state.result} boat={boat} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
+      <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} />
+      <NavigatorReminders />
+      <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} />
     </div>
   );
 };

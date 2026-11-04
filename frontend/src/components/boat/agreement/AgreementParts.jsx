@@ -20,7 +20,7 @@ const Stop = ({ step, areas, ticked, onTick, n }) => {
       {open && <>
         <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
-        <WalkStopContents area={area} />
+        <WalkStopContents area={area} areas={areas} />
       </>}
     </li>
   );

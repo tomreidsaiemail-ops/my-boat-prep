@@ -87,14 +87,14 @@ async def get_photo(boat_id: BoatPath, owner: Annotated[Optional[str], Query(pat
     return Response(content=data, media_type=photo["content_type"], headers={"Cache-Control": "private, max-age=604800"})
 
 
-ITEM_PHOTO_LISTS = {"riggingChecks", "electricalService", "engineService"}
+ITEM_PHOTO_LISTS = {"riggingChecks", "electricalService", "engineService", "weatherRouting"}
 
 
 @router.post("/boats/{boat_id}/item-photo")
 async def upload_item_photo(boat_id: BoatPath, list_id: str = Query(..., max_length=40), file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     """Skipper-only photo for a Rigging / Electrical / Engine checklist item; the item keeps the returned photo_id."""
     if list_id not in ITEM_PHOTO_LISTS:
-        raise HTTPException(status_code=400, detail="Photos are for Rigging Checks, Electrical Service and Engine Service items")
+        raise HTTPException(status_code=400, detail="Photos are for Rigging Checks, Electrical Service, Engine Service items and Navigator weather and routing screenshots")
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:

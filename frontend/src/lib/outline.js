@@ -130,3 +130,21 @@ export const insertSuggestions = (items, picks, base, labelFor = (i) => i.label)
   });
   return next;
 };
+
+// Leaving Dock: a "Departure" heading and the items under it tick together.
+const isDepartureHead = (list, n) => n >= 0 && !list[n].indent && !!list[n + 1]?.indent && /\bdeparture\b/i.test(list[n].label || "");
+const groupEnd = (list, n) => { let e = n + 1; while (e < list.length && list[e].indent) e += 1; return e; };
+export const departureTicked = (list) => list.some((i, n) => i.checked && isDepartureHead(list, n));
+export const tickDeparture = (list, id) => {
+  const n = list.findIndex((i) => i.id === id);
+  if (n < 0) return list;
+  const on = !list[n].checked;
+  if (isDepartureHead(list, n)) { const end = groupEnd(list, n); return list.map((i, k) => (k >= n && k < end ? { ...i, checked: on } : i)); }
+  const next = list.map((i, k) => (k === n ? { ...i, checked: on } : i));
+  if (!next[n].indent) return next;
+  let h = n;
+  while (h > 0 && next[h].indent) h -= 1;
+  if (!isDepartureHead(next, h)) return next;
+  const all = next.slice(h + 1, groupEnd(next, h)).every((i) => i.checked);
+  return next.map((i, k) => (k === h ? { ...i, checked: all } : i));
+};

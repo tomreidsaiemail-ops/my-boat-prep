@@ -17,6 +17,7 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 import { areaZones, rainbowGroups } from "@/lib/zoneColours";
 import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
 import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
+import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -65,7 +66,7 @@ const AddArea = ({ onAdd, onBatch }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff }) => {
+export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "" }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -328,6 +329,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
           ...g.rows.map((r) => renderArea(r)),
         ])}
       </ul>
+      {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} />}
       {!readOnly && !q && <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />}
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} onClose={() => setBatchOpen(false)} onConfirm={applyBatch} />}
       {admin && !readOnly && areas.length > 0 && (

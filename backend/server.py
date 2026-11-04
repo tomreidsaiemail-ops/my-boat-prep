@@ -20,7 +20,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 from email_service import send_email, EMAIL_FROM_NAME  # noqa: E402
-from ship_log import build_pdf, build_email_html, render_items, log_title  # noqa: E402
+from ship_log import build_pdf, build_email_html, render_items, log_title, log_photo_ids  # noqa: E402
 from db import db, client  # noqa: E402
 from auth import router as auth_router, get_current_user, require_premium, to_user_out  # noqa: E402
 from payments import router as payments_router  # noqa: E402
@@ -40,12 +40,13 @@ from templates import seed_budget_template  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
+from folder_cards import router as folder_cards_router  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
-from photos import router as photos_router, init_storage  # noqa: E402
+from photos import router as photos_router, init_storage, get_object  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
 import setup_stripe  # noqa: E402
@@ -132,6 +133,7 @@ class BoatDetails(BaseModel):
     batteries: List[Battery] = Field(default_factory=list, max_length=12)
     depart: Dict[str, Any] = Field(default_factory=dict)
     arrive: Dict[str, Any] = Field(default_factory=dict)
+    weather: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator(*TANK_FIELDS, mode="before")
     @classmethod
@@ -143,6 +145,11 @@ class BoatDetails(BaseModel):
     @classmethod
     def depart_size(cls, v):
         return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 12000 else {}
+
+    @field_validator("weather", mode="before")
+    @classmethod
+    def weather_size(cls, v):
+        return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 24000 else {}
 
     @field_validator("make", "model", mode="before")
     @classmethod
@@ -464,7 +471,22 @@ async def ship_log_pdf(log_id: LogId):
     if not log:
         raise HTTPException(status_code=404, detail="Ship's Log not found")
     filename = log_title(log).replace("'", "").replace("/", "-") + ".pdf"
-    return Response(build_pdf(log), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+    return Response(build_pdf(log, await log_images(log)), media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{filename}"'})
+
+
+async def log_images(log: dict) -> dict:
+    """Photos logged with a departure stay readable in the PDF even if the skipper later swaps them in the Navigator."""
+    ids = list(log_photo_ids(log))
+    if not ids:
+        return {}
+    docs = await db.item_photos.find({"photo_id": {"$in": ids}, "owner_id": log.get("owner_id")}, {"_id": 0, "photo_id": 1, "path": 1}).to_list(50)
+    out = {}
+    for d in docs:
+        try:
+            out[d["photo_id"]] = await asyncio.to_thread(get_object, d["path"])
+        except Exception:
+            logging.getLogger(__name__).warning("ship log photo %s could not be loaded", d["photo_id"])
+    return out
 
 
 app.include_router(api_router)
@@ -483,6 +505,7 @@ app.include_router(crew_router)
 app.include_router(crew_agreement_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
+app.include_router(folder_cards_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)

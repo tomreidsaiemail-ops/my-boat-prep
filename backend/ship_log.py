@@ -3,7 +3,8 @@ from html import escape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, PageBreak
+from reportlab.platypus import Image, SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, PageBreak
+from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
 
 TITLE = ParagraphStyle("t", fontName="Helvetica-Bold", fontSize=22, leading=26, spaceAfter=4)
@@ -11,6 +12,7 @@ META = ParagraphStyle("m", fontName="Helvetica", fontSize=10, leading=14)
 ITEM = ParagraphStyle("i", fontName="Helvetica", fontSize=12, leading=16)
 DONE = ParagraphStyle("d", parent=ITEM, textColor=colors.HexColor("#555555"))
 FLAG = ParagraphStyle("f", parent=ITEM, fontName="Helvetica-Bold", textColor=colors.HexColor("#b91c1c"))
+NOTE = ParagraphStyle("n", fontName="Helvetica", fontSize=9, leading=11, textColor=colors.HexColor("#475569"))
 
 
 def log_lists(log: dict) -> list:
@@ -79,7 +81,9 @@ def _with_badges(it: dict, label: str) -> str:
 
 def render_items(items: list, ctx: dict) -> list:
     return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
-             **({"answer": str(it["mmd_answer"])} if it.get("mmd_answer") else {})}
+             **({"answer": str(it.get("mmd_answer") or it.get("detail"))} if it.get("mmd_answer") or it.get("detail") else {}),
+             **({"photos": [{"photo_id": str(ph.get("photo_id", "")), "note": str(ph.get("note") or "")[:600]} for ph in it["weather_photos"][:5] if isinstance(ph, dict)]}
+                if isinstance(it.get("weather_photos"), list) and it["weather_photos"] else {})}
             for n, it in enumerate(items)]
 
 
@@ -90,15 +94,43 @@ def _item_para(i: dict) -> Paragraph:
     return Paragraph(escape(i["label"]) + answer, DONE if i["checked"] else ITEM)
 
 
-def _pdf_row(mark: str, i: dict) -> list:
+def _photos_block(i: dict, images: dict) -> list:
+    """Weather and routing screenshots logged with a departure, two to a row with the skipper's note under each."""
+    cells = []
+    for ph in i.get("photos") or []:
+        data = images.get(ph.get("photo_id"))
+        if not data:
+            continue
+        try:
+            w, h = ImageReader(BytesIO(data)).getSize()
+        except Exception:
+            continue
+        scale = min(76 * mm / w, 62 * mm / h)
+        cells.append([Image(BytesIO(data), width=w * scale, height=h * scale), Paragraph(escape(ph.get("note") or ""), NOTE)])
+    if not cells:
+        return []
+    rows = [cells[n:n + 2] + [""] * (2 - len(cells[n:n + 2])) for n in range(0, len(cells), 2)]
+    return [Spacer(1, 4), Table(rows, colWidths=[78 * mm, 78 * mm], style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0)])]
+
+
+def _cell(i: dict, images: dict):
+    extra = _photos_block(i, images) if i.get("photos") else []
+    return [_item_para(i), *extra] if extra else _item_para(i)
+
+
+def _pdf_row(mark: str, i: dict, images: dict = None) -> list:
     # Sub-items sit one column in, under their parent item.
     if i.get("indent"):
-        return [Paragraph("", ITEM), Table([[Paragraph(mark, ITEM), _item_para(i)]], colWidths=[12 * mm, 150 * mm],
+        return [Paragraph("", ITEM), Table([[Paragraph(mark, ITEM), _cell(i, images or {})]], colWidths=[12 * mm, 150 * mm],
                                            style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)])]
-    return [Paragraph(mark, ITEM), _item_para(i)]
+    return [Paragraph(mark, ITEM), _cell(i, images or {})]
 
 
-def build_pdf(log: dict) -> bytes:
+def log_photo_ids(log: dict) -> set:
+    return {ph["photo_id"] for lst in log_lists(log) for i in lst.get("items", []) for ph in i.get("photos") or []}
+
+
+def build_pdf(log: dict, images: dict = None) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
                             title=log_title(log), author="My Boat Prep")
@@ -112,7 +144,7 @@ def build_pdf(log: dict) -> bytes:
         if n:
             story.append(PageBreak())
         mark = (lambda n, i: f"{n}.") if lst.get("numbered") else (lambda n, i: "[X]" if i["checked"] else "[  ]")
-        rows = [_pdf_row(mark(n, i), i) for n, i in enumerate(lst["items"], 1)]
+        rows = [_pdf_row(mark(n, i), i, images) for n, i in enumerate(lst["items"], 1)]
         story += [Paragraph(escape(lst["name"].upper()), TITLE), Spacer(1, 4), meta, Spacer(1, 12)]
         if rows:
             tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
@@ -142,9 +174,10 @@ def _item_rows(items: list) -> str:
 
 
 def _answer_html(i: dict) -> str:
+    pics = f'<br/><span style="font-size:13px;color:#475569">+ {len(i["photos"])} weather and routing photos with notes (see the PDF)</span>' if i.get("photos") else ""
     if not i.get("answer"):
-        return ""
-    return f'<br/><span style="font-size:13px;color:#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</span>'
+        return pics
+    return f'<br/><span style="font-size:13px;color:#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</span>{pics}'
 
 
 def _wrap(log: dict, heading: str, rows: str, pdf_url: str, from_name: str) -> str:

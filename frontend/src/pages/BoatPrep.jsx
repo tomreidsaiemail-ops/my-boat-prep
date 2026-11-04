@@ -29,6 +29,8 @@ import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
 import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName } from "@/components/boat/CrewPrepProgress";
+import { WeatherPhotos, weatherUrl } from "@/components/boat/navigator/WeatherPhotos";
+import { DepartureLogDialog, departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { VoyageCard } from "@/components/boat/VoyageCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
@@ -75,7 +77,7 @@ import { MealTypePicker } from "@/components/boat/MealTypePicker";
 import { DESCRIPTION_MAX } from "@/components/boat/ListDraftTools";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { ITEM_MAX, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent } from "@/lib/outline";
+import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, linesToItems, moveOutline, outlineInfo, placeOutline, removeOutline, setIndent, tickDeparture } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
@@ -236,7 +238,13 @@ export default function BoatPrep({ boatId, boats }) {
     } catch (e) { toast.error(apiError(e, "Couldn't sign off right now. Please try again.")); return false; }
   };
 
-  const toggle = (id) => guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
+  const toggle = (id) => {
+    if (!guard()) return;
+    if (active.id !== "leavingDock") { setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i))); return; }
+    const next = tickDeparture(items, id);
+    setItems(() => next);
+    if (!crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
+  };
   const remove = (id) => {
     if (!guard()) return;
     const listId = active.id;
@@ -544,6 +552,14 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  const patchWeather = (patch) => mutate((s) => ({ ...s, boat: { ...s.boat, weather: { ...(s.boat.weather || {}), ...patch } } }), { count: false });
+  const logDecision = () => {
+    const entry = departureDecision(boat);
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] },
+      boat: { ...s.boat, weather: { ...(s.boat.weather || {}), photos: (s.boat.weather?.photos || []).map((p) => ({ ...p, logged: true })) } } }));
+    setDialog(null);
+    toast.success("Departure decision logged in the Ship's Log");
+  };
   const engineType = [...(state.engine_log || [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).find((e) => e.engine_type)?.engine_type || "";
   const logDeparture = (text, kind) => {
     const id = Date.now();
@@ -632,7 +648,7 @@ export default function BoatPrep({ boatId, boats }) {
         : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering} onDeleteList={askDeleteList}
             store={ownMediaStore(items, online, (fn) => guard() && setItems(fn))} />
         : active.isInventory ? (premium
-          ? <InventoryList areas={areas} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
+          ? <InventoryList areas={areas} vessel={boat.vessel} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
@@ -658,7 +674,7 @@ export default function BoatPrep({ boatId, boats }) {
             </div>
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
-          <Checklist items={shown} labelFor={labelFor} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
+          <Checklist items={shown} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={askIndent} folded={folded} onFold={setFold} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
@@ -671,8 +687,9 @@ export default function BoatPrep({ boatId, boats }) {
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
           {!crew && active.id === "routeHazards" && (
-            <NavigatorAsk key={boatId} boat={boat} gps={gps} onChange={updateBoat} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+            <NavigatorAsk key={boatId} boat={boat} onChange={updateBoat} onWeather={patchWeather} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
+          {crew && active.id === "routeHazards" && <WeatherPhotos boat={boat} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
@@ -714,6 +731,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
+      <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} roleGroups={roleGroups(state)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
