@@ -1,4 +1,6 @@
+import asyncio
 import json
+import logging
 import os
 import re
 import uuid
@@ -6,15 +8,21 @@ from datetime import datetime, timezone
 from typing import Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 from db import db
 from auth import require_premium
-from ai_lists import _run
+import quota
 from usage import record_usage
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 MAINT_KEYS = {"deckHardware": "Deck Hardware", "sailLoft": "Sail Loft", "runningRigging": "Running Rigging",
-              "standingRigging": "Standing Rigging", "groundTackle": "Ground Tackle"}
+              "standingRigging": "Standing Rigging", "groundTackle": "Ground Tackle", "sparsHardware": "Spars & Heavy Hardware"}
+LIST_HINTS = {"sparsHardware": "the structural spars and heavy fittings: mast, boom, rigid vang or kicker, spinnaker pole, whisker pole, bowsprit or prodder, "
+              "spreaders, gooseneck, mast step, and where fitted the mizzen mast, davits and arch. Give each spar its make (mast maker), model or section, "
+              "colour or finish, length, section diameter, weight and replacement cost. Always include the mast, boom, vang, spinnaker pole and bowsprit, "
+              "even where they are common options rather than standard"}
 KIND_DAILY = 30
 KIND_SYSTEM = ("You are the Magic Mariner in the My Boat Prep app. You know boat makes and models. Decide whether the boat described is a sailing boat "
                "(mast and sails, including sailing catamarans, trimarans and motor-sailers) or not (motor boats, launches, RIBs, power catamarans). "
@@ -40,12 +48,13 @@ class AttrDef(BaseModel):
 
 
 class MaintIn(BoatIn):
-    lists: List[str] = Field(min_length=1, max_length=5)
+    lists: List[str] = Field(min_length=1, max_length=6)
     attrs: Dict[str, List[AttrDef]] = {}
     currency: str = Field(default="", pattern=r"^([A-Z]{3})?$")
 
 
 ESTIMATES = ("decimal weight", "decimal cost")
+MEASURES = ("decimal length", "decimal area")
 
 
 def _number(text: str):
@@ -99,7 +108,7 @@ def _clean_attrs(raw, defs: List[AttrDef]) -> dict:
         d, text = by_key.get(str(k)), str(v or "").strip()
         if not d or not text:
             continue
-        if d.type in ESTIMATES:
+        if d.type in ESTIMATES or d.type in MEASURES:
             num = _number(text)
             if num:
                 out[d.key] = num
@@ -142,23 +151,58 @@ async def maint_lists(body: MaintIn, user: dict = Depends(require_premium)):
     weight_unit = "lb" if body.units == "ft" else "kg"
     money = body.currency or "USD"
 
+    imperial = body.units == "ft"
+
     def describe(d: AttrDef) -> str:
         if d.type == "decimal weight":
             return f"{d.key} (ALWAYS give your estimated weight of the item as a plain number in {weight_unit})"
         if d.type == "decimal cost":
             return f"{d.key} (ALWAYS give your estimated replacement cost, bought new today, as a plain number in {money})"
+        if d.type == "decimal length":
+            unit = ("inches" if imperial else "mm") if re.search("diameter|thickness", d.key) else ("feet" if imperial else "m")
+            return f"{d.key} (a plain number in {unit}, where it applies to the item)"
+        if d.type == "decimal area":
+            return f"{d.key} (a plain number in {'sq ft' if imperial else 'sqm'}, where it applies to the item)"
         return d.key + (f" (one of: {', '.join(d.options)})" if d.options else "")
-    spec = []
-    for k in lists:
+
+    def prompt_for(k: str) -> str:
         attrs = "; ".join(describe(d) for d in body.attrs.get(k, []))
-        spec.append(f'- "{k}" = {MAINT_KEYS[k]}' + (f". Attributes: {attrs}" if attrs else ""))
-    prompt = (f"Boat: {boat}{extra}.\nMake these maintenance lists of the gear this boat most likely has, as fitted from the factory plus common additions:\n"
-              + "\n".join(spec) +
-              "\nGroup each list into a few categories (headings, e.g. 'Winches', 'Headsails', 'Halyards', 'Shrouds', 'Anchors') with the specific items under each "
-              "(e.g. 'Primary winch - port', 'Genoa', 'Main halyard', 'Cap shroud - starboard', 'Primary anchor'). At most 12 headings and 40 items per list. "
-              "Fill every weight and cost attribute for every item with a realistic estimate for this boat's size; fill the other attributes only when you "
-              "are confident, using the exact option text. "
-              'Return exactly: {"lists": {"<key>": [{"heading": "...", "items": [{"label": "...", "attrs": {"<attribute key>": "..."}}]}]}}')
-    result, left = await _run(user, "maint", prompt, parse_maint(lists, body.attrs), {"name": "Boat maintenance lists", "boat": boat[:120]}, MAINT_SYSTEM,
-                              "Magic Mariner maintenance lists")
-    return {"lists": result, "asks_left": left}
+        what = f"{MAINT_KEYS[k]}" + (f" ({LIST_HINTS[k]})" if k in LIST_HINTS else "")
+        return (f"Boat: {boat}{extra}.\nMake the \"{k}\" maintenance list = {what}, of the gear this boat most likely has, as fitted from the factory plus common additions."
+                + (f"\nAttributes: {attrs}" if attrs else "") +
+                "\nGroup the list into a few categories (headings, e.g. 'Winches', 'Headsails', 'Halyards', 'Shrouds', 'Anchors', 'Mast') with the specific items under each "
+                "(e.g. 'Primary winch - port', 'Genoa', 'Main halyard', 'Cap shroud - starboard', 'Primary anchor', 'Spinnaker pole'). At most 12 headings and 40 items. "
+                "Fill every weight and cost attribute for every item with a realistic estimate for this boat's size; fill length, diameter and area where they apply "
+                "with realistic figures for this boat; fill make, model, colour and the other attributes only when you are reasonably confident, using the exact option text. "
+                "Valid JSON only: never put a double quote character inside a value (write inches as in, e.g. 1.5 in). "
+                f'Return exactly: {{"lists": {{"{k}": [{{"heading": "...", "items": [{{"label": "...", "attrs": {{"<attribute key>": "..."}}}}]}}]}}}}')
+
+    source = await quota.consume(user["user_id"])
+    await db.ai_drafts.insert_one({"draft_id": str(uuid.uuid4()), "user_id": user["user_id"], "kind": "maint", "name": "Boat maintenance lists", "boat": boat[:120],
+                                   "created_at": datetime.now(timezone.utc).isoformat()})
+
+    async def one(k: str, tries: int = 2):
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"maint-{uuid.uuid4()}", system_message=MAINT_SYSTEM).with_model("gemini", "gemini-3-flash-preview")
+        text, usage = "", None
+        try:
+            async for ev in chat.stream_message(UserMessage(text=prompt_for(k))):
+                if isinstance(ev, TextDelta):
+                    text += ev.content
+                elif isinstance(ev, StreamDone):
+                    usage = ev.usage
+                    break
+            return parse_maint([k], body.attrs)(text)
+        except Exception as e:
+            log.error(f"Magic Mariner maintenance list {k} failed: {e}; reply={text[:300]!r}")
+            return await one(k, tries - 1) if tries > 1 else {}
+        finally:
+            if usage:
+                await record_usage(user["user_id"], "MMM", usage)
+
+    result = {}
+    for part in await asyncio.gather(*(one(k) for k in lists)):
+        result.update(part)
+    if not result:
+        await quota.refund(user["user_id"], source)
+        raise HTTPException(status_code=503, detail="Magic Mariner maintenance lists couldn't do that right now. Please try again.")
+    return {"lists": result, "asks_left": await quota.left(user["user_id"])}

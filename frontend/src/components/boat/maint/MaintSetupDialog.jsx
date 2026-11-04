@@ -4,12 +4,12 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api, apiError } from "@/lib/api";
-import { ESTIMATED, MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLikeSailboat, markEstimates } from "@/lib/maint";
+import { MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLikeSailboat, magicAttr, markEstimates } from "@/lib/maint";
 import { budgetCurrency } from "@/lib/budget";
 
 const boatBody = (b) => ({ make: (b.make || "").trim(), model: (b.model || "").trim(), boat_type: (b.boat_type || "").trim(), year_built: /^\d{4}$/.test(b.year_built || "") ? b.year_built : "", loa: String(b.loa || "").slice(0, 8), units: b.units === "ft" ? "ft" : "m" });
 
-// The Magic Mariner checks the boat is a sailboat, then offers the five Boat Maintenance lists (tailored for Pro, starter items otherwise).
+// The Magic Mariner checks the boat is a sailboat, then offers the six Boat Maintenance lists (tailored for Pro, starter items otherwise).
 export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [], onCreate, onDismiss, onClose }) => {
   const magic = premium && online;
   const [step, setStep] = useState(magic ? "checking" : looksLikeSailboat(boat) ? "offer" : "notSail");
@@ -33,11 +33,11 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [],
     let tailored = {};
     if (magic) {
       setStep("making");
-      const attrs = Object.fromEntries(chosen.map((l) => [l.key, attrsForList(defs, { maint: l.key, name: l.name }).filter((d) => d.type === "picklist" || ESTIMATED.includes(d.type))
+      const attrs = Object.fromEntries(chosen.map((l) => [l.key, attrsForList(defs, { maint: l.key, name: l.name }).filter(magicAttr)
         .map((d) => ({ key: d.key, name: d.name.slice(0, 80), type: d.type, options: (d.options || []).slice(0, 60) }))]));
       try {
-        const lists = (await api.post("/ai/maint-lists", { ...boatBody(boat), currency, lists: chosen.map((l) => l.key), attrs }, { timeout: 120000 })).data.lists;
-        tailored = Object.fromEntries(Object.entries(lists).map(([k, groups]) => [k, markEstimates(groups, attrs[k] || [], { weight: boat.units === "ft" ? "lb" : "kg", cost: currency })]));
+        const lists = (await api.post("/ai/maint-lists", { ...boatBody(boat), currency, lists: chosen.map((l) => l.key), attrs }, { timeout: 180000 })).data.lists;
+        tailored = Object.fromEntries(Object.entries(lists).map(([k, groups]) => [k, markEstimates(groups, attrs[k] || [], { weight: boat.units === "ft" ? "lb" : "kg", cost: currency, boat: boat.units })]));
       } catch (err) { toast.error(`${apiError(err, "The Magic Mariner couldn't tailor the lists")} Starter items were used instead.`); }
     }
     onCreate(chosen.map((l) => ({ ...l, groups: tailored[l.key] || STARTER[l.key] })), due);
@@ -58,7 +58,7 @@ export const MaintSetupDialog = ({ boat, premium, online, defs, auto, have = [],
           </p>
         )}
         {step === "notSail" && (
-          <p className="text-sm" data-testid="maint-setup-not-sail">The Magic Mariner doesn&apos;t think your {name} is a sailboat. These lists cover sails, rigging and deck hardware, so they suit sailing boats best.</p>
+          <p className="text-sm" data-testid="maint-setup-not-sail">The Magic Mariner doesn&apos;t think your {name} is a sailboat. These lists cover sails, rigging, spars and deck hardware, so they suit sailing boats best.</p>
         )}
         {step === "offer" && (
           <div className="flex flex-col gap-3 text-sm" data-testid="maint-setup-offer">

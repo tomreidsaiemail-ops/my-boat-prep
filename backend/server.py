@@ -36,7 +36,7 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
-from templates import seed_budget_template, seed_master_attributes  # noqa: E402
+from templates import add_spars_attributes, seed_budget_template, seed_master_attributes  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
@@ -607,6 +607,7 @@ async def create_indexes():
     await add_racing_roles()
     await seed_budget_template()
     await seed_master_attributes()
+    await add_spars_attributes()
     await seed_terms_template()
     await seed_colour_presets()
 

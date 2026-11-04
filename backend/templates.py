@@ -291,17 +291,21 @@ MASTER_ATTRIBUTE_LINES = [
     "Web link | char(8000) | All", "Winch gear ratios | char | Deck Hardware",
     "Sail type | sail types | Sail Loft", "Sail material | sail material types | Sail Loft", "Furling type | furling type | Sail Loft",
     "Batten style | batten style | Sail Loft", "Sail area | decimal area | Sail Loft", "Luff length | decimal length | Sail Loft",
-    "Age | integer age | Sail Loft, Running Rigging, Standing Rigging, Ground Tackle",
+    "Age | integer age | Sail Loft, Running Rigging, Standing Rigging, Ground Tackle, Spars & Heavy Hardware",
     "Line type | line type | Running Rigging, Standing Rigging, Ground Tackle", "Line material | line material type | Running Rigging, Standing Rigging, Ground Tackle",
-    "Diameter | decimal length | Running Rigging, Standing Rigging, Ground Tackle", "Length | decimal length | Running Rigging, Standing Rigging, Ground Tackle",
+    "Diameter | decimal length | Running Rigging, Standing Rigging, Ground Tackle, Spars & Heavy Hardware",
+    "Length | decimal length | Running Rigging, Standing Rigging, Ground Tackle, Spars & Heavy Hardware",
     "Anchor type | anchor types | Ground Tackle", "Chain length | decimal length | Ground Tackle",
+    "Spar material | spar material types | Spars & Heavy Hardware",
 ]
+SPARS = "Spars & Heavy Hardware"
+SPAR_TYPE_LINE = "spar material types - Aluminium, Carbon fibre, Wood, Stainless steel, Fibreglass, Composite"
 MASTER_TYPE_LINES = [
     "furling type - In-Boom Furling, In-Mast Furling, Forestay Furling",
     "sail types - Main sail, Headsail, Jib, Genoa, Spinnaker, Gennaker, Code Zero, Staysail, Storm jib, Trysail, Mizzen, Topsail, Screacher, Parasailor, Drifter",
     "sail material types - Woven Polyester, Dacron, Nylon, Laminated Polyester, Pentex, Mylar, Kevlar, Technora, Twaron, Carbon Fiber, Dyneema, Spectra, Vectran, Cuben Fiber, Composite",
     "line material type - Polyester, Dyneema, Kevlar, Vectran, Nylon, Polypropylene",
-    "batten style - Partial, Full-length, Hybrid",
+    "batten style - Partial, Full-length, Hybrid", SPAR_TYPE_LINE,
     "anchor types - Rocna, Plow, Bruce, Danforth, Delta, Spade, Grapnel, Mushroom, Fortress, Admiralty",
     "line type - Halyard, Sheet, Downhaul, Reef point, Topping lift, Cunningham, Kicker, Vang, Outhaul, Bowline, Sternline, Springline, Breastline, Painter, "
     "Forestay, Backstay, Shroud, Tack line, In-hauler, Barber hauler, Lazyjack line, Running backstay, Preventer, Anchor rode, Warp, Tow line",
@@ -311,6 +315,26 @@ MASTER_LISTS = (
      "Attributes for the Boat Maintenance lists. Write 'Name | type | lists' (lists comma separated, or All). Lines without | are notes."),
     ("Admin - master attribute types", MASTER_TYPE_LINES, "Picklists, one row per type: 'type name - value, value, value'."),
 )
+
+
+async def add_spars_attributes():
+    """Runs once: puts Spars & Heavy Hardware on the Age, Diameter and Length attributes and adds Spar material, keeping any admin edits."""
+    if await db.migrations.find_one({"_id": "spars_attributes"}):
+        return
+    for name, extra in (("Admin - master attributes", "Spar material | spar material types | Spars & Heavy Hardware"), ("Admin - master attribute types", SPAR_TYPE_LINE)):
+        tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 0, "list_id": 1, "items": 1})
+        if not tpl:
+            continue
+        items = tpl.get("items") or []
+        for i in items:
+            parts = [p.strip() for p in str(i.get("label", "")).split("|")]
+            if len(parts) == 3 and parts[0].lower() in ("age", "diameter", "length") and parts[2].lower() != "all" and "spars" not in parts[2].lower():
+                i["label"] = f"{parts[0]} | {parts[1]} | {parts[2]}, {SPARS}"
+        if not any(str(i.get("label", "")).lower().startswith(extra.split(" ")[0].lower() + " " + extra.split(" ")[1].lower()) for i in items):
+            items.append({"id": max([int(i.get("id") or 0) for i in items if isinstance(i.get("id"), (int, float))] or [0]) + 1, "label": extra,
+                          **({"indent": True} if any(i.get("indent") for i in items) else {})})
+        await db.list_templates.update_one({"list_id": tpl["list_id"]}, {"$set": {"items": items, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.migrations.insert_one({"_id": "spars_attributes", "at": datetime.now(timezone.utc).isoformat()})
 
 
 async def seed_master_attributes():

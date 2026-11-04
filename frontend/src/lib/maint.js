@@ -1,4 +1,4 @@
-// Boat Maintenance lists (Deck Hardware, Sail Loft, Rigging, Ground Tackle) with typed attributes from the private admin lists
+// Boat Maintenance lists (Deck Hardware, Sail Loft, Rigging, Ground Tackle, Spars & Heavy Hardware) with typed attributes from the private admin lists
 // "Admin - master attributes" (Name | type | lists) and "Admin - master attribute types" (type name - value, value...).
 const normName = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, " ").trim();
 
@@ -14,6 +14,7 @@ export const MAINT_LISTS = [
   { key: "runningRigging", name: "Running Rigging" },
   { key: "standingRigging", name: "Standing Rigging" },
   { key: "groundTackle", name: "Ground Tackle" },
+  { key: "sparsHardware", name: "Spars & Heavy Hardware" },
 ];
 const BASIC = ["date", "integer", "integer age", "decimal", "decimal length", "decimal area", "decimal weight", "decimal cost", "image", "pdf"];
 export const UNITS = { "decimal length": ["m", "mm", "feet", "inches"], "decimal area": ["sqm", "sq ft"], "decimal weight": ["g", "kg", "lb", "oz"] };
@@ -81,12 +82,16 @@ export const dueTone = (iso, today = new Date()) => {
   return days < 0 ? "red" : days <= 30 ? "orange" : "";
 };
 
-// Weight and cost the Magic Mariner estimates; they carry "<key>__est" until the skipper edits them.
+// Weight, cost and measurements the Magic Mariner estimates; they carry "<key>__est" until the skipper edits them.
 export const ESTIMATED = ["decimal weight", "decimal cost"];
+const MEASURED = ["decimal length", "decimal area"];
+// Text attributes the Magic Mariner may fill when it's confident (make, model, colour).
+export const MAGIC_TEXT = /^(brand|make|model|colour|color)$/;
+export const magicAttr = (d) => d.type === "picklist" || ESTIMATED.includes(d.type) || MEASURED.includes(d.type) || (d.type === "char" && MAGIC_TEXT.test(d.key));
 export const markEstimates = (groups, defs, units) => groups.map((g) => ({ ...g, items: g.items.map((i) => {
   const attrs = { ...i.attrs };
-  defs.filter((d) => ESTIMATED.includes(d.type) && attrs[d.key]).forEach((d) => {
-    const u = d.type === "decimal cost" ? units.cost : units.weight;
+  defs.filter((d) => (ESTIMATED.includes(d.type) || MEASURED.includes(d.type)) && attrs[d.key]).forEach((d) => {
+    const u = d.type === "decimal cost" ? units.cost : d.type === "decimal weight" ? units.weight : defaultUnit(d.type, d.key, units.boat);
     if (u) attrs[`${d.key}__unit`] = u;
     attrs[`${d.key}__est`] = "1";
   });
@@ -137,6 +142,8 @@ export const STARTER = {
     G("Mooring lines", A("Bowlines", { line_type: "Bowline" }), A("Sternlines", { line_type: "Sternline" }), A("Springlines", { line_type: "Springline" }))],
   standingRigging: [G("Stays", A("Forestay", { line_type: "Forestay" }), A("Backstay", { line_type: "Backstay" })),
     G("Shrouds", A("Cap shrouds", { line_type: "Shroud" }), A("Lower shrouds", { line_type: "Shroud" })), G("Fittings", "Chainplates", "Turnbuckles and toggles", "Spreaders", "Mast step and masthead")],
+  sparsHardware: [G("Mast", "Mast", "Spreaders", "Masthead fittings", "Mast step"), G("Boom", "Boom", "Gooseneck", "Rigid vang or kicker"),
+    G("Poles and sprits", "Spinnaker pole", "Whisker pole", "Bowsprit"), G("Heavy hardware", "Chainplates", "Davits or arch")],
   groundTackle: [G("Anchors", "Primary anchor", "Kedge anchor"), G("Rode", "Anchor chain", A("Anchor rope", { line_type: "Anchor rode" }), "Swivel and shackles"), G("Windlass", "Windlass and gypsy", "Chain stopper or snubber")],
 };
 
