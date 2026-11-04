@@ -1,98 +1,122 @@
-// One level of sub-items: a top-level item plus the indented items straight after it form a group.
-const isChild = (items, i) => i > 0 && !!items[i].indent;
-
-const groupsOf = (items) => {
-  const gs = [];
-  items.forEach((it, i) => { if (isChild(items, i)) gs[gs.length - 1].push(it); else gs.push([it]); });
-  return gs;
+// Outline up to 4 levels: `indent` marks every sub-item (so one-level code keeps working) and `level` (2-3) marks deeper ones.
+export const MAX_DEPTH = 3;
+const rawDepth = (it) => (!it.indent ? 0 : Math.min(Math.max(Number(it.level) || 1, 1), MAX_DEPTH));
+// Depths as shown: the first item is top level and no item sits more than one level below the item above it.
+export const depthsOf = (items) => {
+  const d = [];
+  items.forEach((it, i) => { d.push(i === 0 ? 0 : Math.min(rawDepth(it), d[i - 1] + 1)); });
+  return d;
+};
+const withDepth = (it, d) => {
+  const { level: _l, ...rest } = it;
+  return { ...rest, indent: d > 0, ...(d > 1 ? { level: d } : {}) };
+};
+const subtreeEnd = (d, i) => { let e = i + 1; while (e < d.length && d[e] > d[i]) e += 1; return e; };
+const prevSibling = (d, i) => { for (let j = i - 1; j >= 0; j -= 1) { if (d[j] === d[i]) return j; if (d[j] < d[i]) return -1; } return -1; };
+const nextSibling = (d, i) => { const e = subtreeEnd(d, i); return e < d.length && d[e] === d[i] ? e : -1; };
+const siblingsOf = (d, i) => {
+  let first = i;
+  for (let j = prevSibling(d, i); j >= 0; j = prevSibling(d, j)) first = j;
+  const out = [];
+  for (let j = first; j >= 0; j = nextSibling(d, j)) out.push(j);
+  return out;
+};
+// Rebuilds the list after reordering sibling subtrees (blocks of [start, end) indexes).
+const reorderSiblings = (items, d, i, order) => {
+  const sibs = siblingsOf(d, i);
+  const blocks = sibs.map((s) => items.slice(s, subtreeEnd(d, s)));
+  const start = sibs[0];
+  const end = subtreeEnd(d, sibs[sibs.length - 1]);
+  return [...items.slice(0, start), ...order(blocks, sibs.indexOf(i)).flat(), ...items.slice(end)];
 };
 
-const flat = (gs) => gs.flatMap((g) => g.map((it, k) => (k === 0 && it.indent ? { ...it, indent: false } : it)));
-
-const locate = (items, id) => {
-  const gs = groupsOf(items);
-  for (let gi = 0; gi < gs.length; gi += 1) {
-    const k = gs[gi].findIndex((x) => x.id === id);
-    if (k >= 0) return { gs, gi, k };
-  }
-  return null;
-};
-
-// Per item: N / N.n number, whether it's a sub-item, move limits, and a shade on every group that has sub-items.
+// Per item: 6 / 6.1 / 6.1.1 number, depth, direct parent and ancestors (for folding), move limits, whole-subtree sub-item counts.
 export const outlineInfo = (items) => {
-  const gs = groupsOf(items);
+  const d = depthsOf(items);
   const out = {};
-  gs.forEach((g, gi) => {
-    g.forEach((it, k) => {
-      out[it.id] = {
-        num: k ? `${gi + 1}.${k}` : `${gi + 1}`, pos: k || gi + 1, total: k ? g.length - 1 : gs.length, child: k > 0,
-        upOk: k ? k > 1 : gi > 0, downOk: k ? k < g.length - 1 : gi < gs.length - 1,
-        canIndent: !k && gi > 0 && g.length === 1 && !gs[gi - 1][0].folder && !it.folder, shade: g.length > 1,
-        parent: g[0].id, subs: k ? 0 : g.length - 1, subsTicked: k ? 0 : g.slice(1).filter((x) => x.checked).length,
-      };
-    });
+  const path = [];
+  const stack = [];
+  items.forEach((it, i) => {
+    path.length = d[i] + 1;
+    path[d[i]] = (path[d[i]] || 0) + 1;
+    stack.length = d[i];
+    const end = subtreeEnd(d, i);
+    const below = items.slice(i + 1, end);
+    const sibs = siblingsOf(d, i);
+    const k = sibs.indexOf(i);
+    const prev = prevSibling(d, i);
+    const deepest = Math.max(d[i], ...d.slice(i + 1, end));
+    out[it.id] = {
+      num: path.slice(0, d[i] + 1).join("."), pos: k + 1, total: sibs.length, child: d[i] > 0, depth: d[i],
+      upOk: k > 0, downOk: k < sibs.length - 1, prevSib: prev >= 0 ? items[prev].id : null,
+      canIndent: prev >= 0 && deepest < MAX_DEPTH && !items[prev].folder && !it.folder, canOutdent: d[i] > 0,
+      shade: d[i] === 0 ? end - i > 1 : true,
+      parent: d[i] ? stack[d[i] - 1] : it.id, ancestors: [...stack], top: d[i] ? stack[0] : it.id,
+      subs: below.length, subsTicked: below.filter((x) => x.checked).length,
+    };
+    stack.push(it.id);
   });
   return out;
 };
 
+const at = (items, id) => items.findIndex((i) => i.id === id);
+
 export const moveOutline = (items, id, dir) => {
-  const loc = locate(items, id);
-  if (!loc) return items;
-  const { gs, gi, k } = loc;
-  if (!k) {
-    const j = gi + dir;
-    if (j < 0 || j >= gs.length) return items;
-    [gs[gi], gs[j]] = [gs[j], gs[gi]];
-    return flat(gs);
-  }
-  const g = [...gs[gi]];
-  const j = k + dir;
-  if (j < 1 || j >= g.length) return items;
-  [g[k], g[j]] = [g[j], g[k]];
-  gs[gi] = g;
-  return flat(gs);
+  const i = at(items, id);
+  if (i < 0) return items;
+  const d = depthsOf(items);
+  return reorderSiblings(items, d, i, (blocks, k) => {
+    const j = k + dir;
+    if (j < 0 || j >= blocks.length) return blocks;
+    const b = [...blocks];
+    [b[k], b[j]] = [b[j], b[k]];
+    return b;
+  });
 };
 
-// Top-level items move with their sub-items to group position n; sub-items move to position n inside their group.
+// An item moves with everything under it to position n among the items at its own level.
 export const placeOutline = (items, id, n) => {
-  const loc = locate(items, id);
-  if (!loc) return items;
-  const { gs, gi, k } = loc;
-  if (!k) {
-    const [g] = gs.splice(gi, 1);
-    gs.splice(Math.min(Math.max(n - 1, 0), gs.length), 0, g);
-    return flat(gs);
-  }
-  const g = [...gs[gi]];
-  const [it] = g.splice(k, 1);
-  g.splice(Math.min(Math.max(n, 1), g.length), 0, it);
-  gs[gi] = g;
-  return flat(gs);
+  const i = at(items, id);
+  if (i < 0) return items;
+  const d = depthsOf(items);
+  return reorderSiblings(items, d, i, (blocks, k) => {
+    const b = [...blocks];
+    const [it] = b.splice(k, 1);
+    b.splice(Math.min(Math.max(n - 1, 0), b.length), 0, it);
+    return b;
+  });
 };
 
-// Flagging jumps an item (and its sub-items) to the top; a flagged sub-item jumps to the top of its group.
+// Flagging jumps an item (and everything under it) to the top of its level.
 export const flagOutline = (items, id) => {
-  const loc = locate(items, id);
-  if (!loc) return items;
-  const { gs, gi, k } = loc;
-  const it = gs[gi][k];
-  if (it.flagged) return items.map((i) => (i.id === id ? { ...i, flagged: false } : i));
-  const g = gs[gi].map((x) => (x.id === id ? { ...x, flagged: true } : x));
-  if (!k) { gs.splice(gi, 1); gs.unshift(g); return flat(gs); }
-  const [f] = g.splice(k, 1);
-  g.splice(1, 0, f);
-  gs[gi] = g;
-  return flat(gs);
+  const i = at(items, id);
+  if (i < 0) return items;
+  if (items[i].flagged) return items.map((x) => (x.id === id ? { ...x, flagged: false } : x));
+  const d = depthsOf(items);
+  const marked = items.map((x) => (x.id === id ? { ...x, flagged: true } : x));
+  return reorderSiblings(marked, d, i, (blocks, k) => { const b = [...blocks]; const [f] = b.splice(k, 1); return [f, ...b]; });
 };
 
-export const setIndent = (items, id, indent) => items.map((i, n) => (i.id === id && (n > 0 || !indent) ? { ...i, indent } : i));
+// Indent right: the item and everything under it go one level in, under the item above at its level. Outdent left: one level out.
+export const setIndent = (items, id, indent) => {
+  const i = at(items, id);
+  if (i < 0) return items;
+  const info = outlineInfo(items)[id];
+  if (indent ? !info.canIndent : !info.canOutdent) return items;
+  const d = depthsOf(items);
+  const end = subtreeEnd(d, i);
+  const step = indent ? 1 : -1;
+  return items.map((x, k) => (k >= i && k < end ? withDepth(x, d[k] + step) : x));
+};
 
-// Deleting a top-level item promotes its first sub-item so the rest stay grouped.
+// Deleting an item with sub-items promotes its first sub-item (and what's under that) one level so the rest stay grouped.
 export const removeOutline = (items, id) => {
-  const n = items.findIndex((i) => i.id === id);
-  if (n < 0) return items;
-  const next = items.map((i, x) => (x === n + 1 && !isChild(items, n) && i.indent ? { ...i, indent: false } : i));
-  return next.filter((i) => i.id !== id);
+  const i = at(items, id);
+  if (i < 0) return items;
+  const d = depthsOf(items);
+  const end = subtreeEnd(d, i);
+  const firstEnd = i + 1 < end ? subtreeEnd(d, i + 1) : i + 1;
+  return items.map((x, k) => (k > i && k < firstEnd ? withDepth(x, d[k] - 1) : x)).filter((x) => x.id !== id);
 };
 
 // "1. Trauma", "1.Trauma" and "1) Trauma" are headings; "2.5L water" isn't.

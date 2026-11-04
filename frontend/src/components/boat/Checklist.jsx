@@ -18,7 +18,7 @@ export const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
     <button type="button" className="prio-btn" onClick={() => onMove(1)} disabled={!info.downOk} aria-label="Move down" data-testid={`checklist-item-down-${item.id}`}><ArrowDown className="h-5 w-5" /></button>
     {info.canIndent && <button type="button" className="prio-btn gap-1 text-xs font-bold sm:!w-auto sm:px-2" onClick={() => onIndent(true)} aria-label="Indent right, under the item above" title="Indent right"
       data-testid={`checklist-item-indent-${item.id}`}><ArrowRightToLine className="h-5 w-5" /><span className="hidden sm:inline">Indent</span></button>}
-    {info.child && <button type="button" className="prio-btn gap-1 text-xs font-bold sm:!w-auto sm:px-2" onClick={() => onIndent(false)} aria-label="Outdent left, back to the top level" title="Outdent left"
+    {info.canOutdent && <button type="button" className="prio-btn gap-1 text-xs font-bold sm:!w-auto sm:px-2" onClick={() => onIndent(false)} aria-label="Outdent left, one level out" title="Outdent left"
       data-testid={`checklist-item-unindent-${item.id}`}><ArrowLeftToLine className="h-5 w-5" /><span className="hidden sm:inline">Outdent</span></button>}
   </div>
 );
@@ -34,7 +34,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {depth > 0 && <div className="shrink-0 border-r-2 border-sky-200" style={{ width: depth * 18 }} aria-hidden="true" data-testid={`checklist-item-depth-${item.id}`} />}
-    {info?.child && <div className="w-7 shrink-0" aria-hidden="true" />}
+    {info?.child && <div className="shrink-0" style={{ width: `${1.75 * (info.depth || 1)}rem` }} aria-hidden="true" data-testid={`checklist-item-level-${item.id}`} data-level={info.depth || 1} />}
     {number && <div className="shrink-0 pl-2 pt-3">{number}</div>}
     <div className="flex min-w-0 flex-1 flex-col">
       <button type="button" role="checkbox" aria-checked={item.checked} onClick={onToggle} data-testid={`checklist-item-toggle-${item.id}`}
@@ -67,11 +67,10 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
 export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
-  const hidden = (item) => outline && info[item.id]?.child && folded.includes(info[item.id].parent);
-  // Indenting under a folded group opens it so the item doesn't vanish.
+  const hidden = (item) => outline && info[item.id]?.ancestors?.some((a) => folded.includes(a));
+  // Indenting under a folded item opens it so the item doesn't vanish.
   const indent = (id, v) => {
-    const i = items.findIndex((x) => x.id === id);
-    if (v && i > 0) onFold?.(info[items[i - 1].id].parent, false);
+    if (v && info[id]?.prevSib) onFold?.(info[id].prevSib, false);
     onIndent(id, v);
   };
   return (

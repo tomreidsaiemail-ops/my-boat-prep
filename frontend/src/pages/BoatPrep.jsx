@@ -353,13 +353,21 @@ export default function BoatPrep({ boatId, boats }) {
     const index = items.findIndex((i) => i.id === id);
     const item = items[index];
     if (!item) return;
-    // removeOutline promotes the next sub-item when a group's main item goes; undo puts that back too.
-    const promoted = !(index > 0 && item.indent) && items[index + 1]?.indent ? items[index + 1].id : null;
+    // removeOutline promotes the first sub-item when an item with sub-items goes; undo puts their levels back too.
+    const next = removeOutline(items, id);
+    const before = new Map(items.map((i) => [i.id, i]));
+    const shifted = new Map(next.filter((i) => before.get(i.id).level !== i.level || !!before.get(i.id).indent !== !!i.indent)
+      .map((i) => [i.id, { indent: before.get(i.id).indent, level: before.get(i.id).level }]));
     setItems((list) => removeOutline(list, id));
     const undo = () => mutate((s) => {
       const cur = s.data[listId];
       if (!cur || cur.some((i) => i.id === id)) return s;
-      const restored = cur.map((i) => (i.id === promoted ? { ...i, indent: true } : i));
+      const restored = cur.map((i) => {
+        if (!shifted.has(i.id)) return i;
+        const { level: _l, indent: _i, ...rest } = i;
+        const was = shifted.get(i.id);
+        return { ...rest, ...(was.indent ? { indent: true } : {}), ...(was.level ? { level: was.level } : {}) };
+      });
       restored.splice(Math.min(index, restored.length), 0, item);
       return { ...s, data: { ...s.data, [listId]: restored } };
     });
@@ -605,7 +613,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (source.id === TIPS_ID) return { kind: "tips", items: tips.map((t) => ({ id: t.id, label: t.label, checked: false })) };
     const own = state.data[source.id] || [];
     return { kind: source.kind, items: own.map((i) => (source.kind && source.kind !== "tips" ? { ...i, checked: false }
-      : { id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}) })) };
+      : { id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}), ...(i.level ? { level: i.level } : {}) })) };
   };
   const listExists = (name) => allLists.some((l) => l.name.toLowerCase() === name.toLowerCase());
   const cloneMany = (source, names) => {

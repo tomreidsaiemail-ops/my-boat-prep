@@ -114,7 +114,7 @@ def arrange_log(items: list) -> list:
 def render_items(items: list, ctx: dict) -> list:
     items = arrange_log(items)
     return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
-             "depth": it.get("_depth") or (1 if it.get("indent") and n > 0 else 0), **({"folder": True} if it.get("folder") else {}),
+             "depth": it.get("_depth") or ((it.get("level") if isinstance(it.get("level"), int) and 1 <= it.get("level") <= 3 else 1) if it.get("indent") and n > 0 else 0), **({"folder": True} if it.get("folder") else {}),
              **({"answer": str(it.get("mmd_answer") or it.get("detail"))} if it.get("mmd_answer") or it.get("detail") else {}),
              **({"photos": [{"photo_id": str(ph.get("photo_id", "")), "note": str(ph.get("note") or "")[:600]} for ph in it["weather_photos"][:5] if isinstance(ph, dict)]}
                 if isinstance(it.get("weather_photos"), list) and it["weather_photos"] else {})}

@@ -17,7 +17,7 @@ export const PublishTemplateBar = ({ list, items, template, online, onPublish })
     setConfirm(false);
     setBusy(true);
     try {
-      const res = await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}) })), note.trim());
+      const res = await onPublish(list.id, items.map((i) => ({ id: i.id, label: i.label, ...(i.dynamic ? { dynamic: i.dynamic } : {}), ...(i.indent ? { indent: true } : {}), ...(i.indent && i.level > 1 ? { level: i.level } : {}) })), note.trim());
       setNote("");
       if (res?.unchanged) toast.info(`${list.name} already matches the master template, so nothing was published`);
       else toast.success(`${list.name} published as the master template`);

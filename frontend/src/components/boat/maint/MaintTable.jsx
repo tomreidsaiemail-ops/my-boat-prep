@@ -93,7 +93,7 @@ export const MaintTable = ({ items, setItems, defs, cols, ctx, guard, ordering, 
                   onChange={(p) => update(item.id, p)} onDelete={() => askRemove(item)}
                   number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} prefix="maint-item"
                     onPlace={(p) => reorder((list) => placeOutline(list, item.id, p))} />}
-                  tools={tools && inf && <PriorityTools item={item} info={{ ...inf, canIndent: inf.canIndent && !inf.subs }} onFlag={() => reorder((list) => flagOutline(list, item.id))}
+                  tools={tools && inf && <PriorityTools item={item} info={{ ...inf, canIndent: inf.canIndent && !inf.subs && inf.depth === 0 }} onFlag={() => reorder((list) => flagOutline(list, item.id))}
                     onMove={(d) => reorder((list) => moveOutline(list, item.id, d))} onIndent={(v) => reorder((list) => setIndent(list, item.id, v))} />} />
               );
             })}

@@ -15,7 +15,7 @@ const Meta = ({ boat, verboseDate }) => (
 
 const ListPage = ({ list, items: raw, labelFor, boat, verboseDate, index }) => {
   const folders = raw.some((i) => i.folder);
-  const rows = folders ? arrangeLog(raw).rows : raw.map((item, n) => ({ item, depth: item.indent && n > 0 ? 1 : 0 }));
+  const rows = folders ? arrangeLog(raw).rows : raw.map((item, n) => ({ item, depth: item.indent && n > 0 ? Number(item.level) || 1 : 0 }));
   return (
   <section className={`print-page ${index > 0 ? "page-break" : ""}`} data-testid={`print-list-${list.id}`}>
     <div className="print-head">
