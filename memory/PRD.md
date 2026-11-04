@@ -567,3 +567,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Every level with sub-items folds; hidden by any folded ancestor. Indent shows only with a previous sibling and if the branch stays within 4 levels; Outdent never at top level. Maintenance lists stay one level.
 - Delete category dialog shows depth and has "Delete only <heading>, keep its items". Order badge widens for 6.1.1.1; dotted position typing per level. Print view / PDF indent per level; template publish keeps level.
 - Tested iteration_100 (95% -> fixes self-verified).
+
+## 2026-06 Async paper log scan + Ship's Log clamp
+- Batch Magic Scan Paper Logs is asynchronous (usePaperQueue.js): pages read one at a time as soon as they're added (title/date now optional server-side, checked if given) while the skipper titles/dates them; "Processing n of N" banner (amber "read / didn't work" summary on failures), per-page status + Try again, 429 stops the queue; Review step (edit title/date/text) then OK adds rows. Closing confirms (mentions an in-flight page). Disabled buttons dimmed globally.
+- Ship's Log rows clamp to 3 lines (ClampText.jsx, measured with ResizeObserver), full text as hover tooltip, per-row expand/collapse icon only on long rows, master "Expand all / Collapse all log rows"; always start collapsed on each visit. Works for crew.
+- Tested iteration_101 + iteration_102 (100%), last two polish items self-applied.

@@ -35,7 +35,7 @@ const FoldButton = ({ id, folded, onFold }) => (
 const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0, clamp }) => {
   const [long, setLong] = useState(false);
   const open = !!clamp?.open.includes(item.id);
-  const expand = clamp && (long || open) ? <ExpandButton id={item.id} open={open} onToggle={() => clamp.toggle(item.id)} /> : null;
+  const expand = clamp && long ? <ExpandButton id={item.id} open={open} onToggle={() => clamp.toggle(item.id)} /> : null;
   return (
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
@@ -58,7 +58,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
       {tools}
     </div>
     {fold && <div className="flex shrink-0 items-start pt-2"><FoldButton id={item.id} folded={fold.folded} onFold={fold.onFold} /></div>}
-    {tickOnly && (photo || expand) && <div className="flex shrink-0 items-center self-center pr-2">{expand}{photo}</div>}
+    {tickOnly && (photo || expand) && <div className={`flex shrink-0 items-center pr-2 ${expand ? "self-start pt-2" : "self-center"}`}>{expand}{photo}</div>}
     {!tickOnly && <div className="flex shrink-0 items-center pr-1">
       {expand}
       {photo}

@@ -1,0 +1,39 @@
+{
+  "summary": "Frontend-only test of the Ship's Log 3-line clamp / hover tooltip / per-row expand toggle / master Expand-Collapse all, plus the 3 iteration_101 paper-scan fixes. Seeded TEST_it98_log with 3 extra log rows (700-char x2, 118-char) and temporarily added the same rows (ids 990001-990003) to test-user-pro boat 'main' for the crew view; all removed afterwards. All requested behaviours pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ship's Log after 'Expand all log rows'", "issues": ["Expand all adds every visible non-folder row id to logOpen, so short 1-line rows (e.g. 'TEST log A 2024 Mar') also show a Collapse (ChevronsDownUp) icon that does nothing visible. They disappear again on Collapse all. Suggest only rendering ExpandButton when `long` (keep the measured long value) or only adding rows that are long."]},
+      {"screen": "Crew tick-only Ship's Log", "issues": ["Expand icon wrapper uses self-center, so on an expanded long row the icon sits mid-row (owner view keeps it at the top next to edit/delete). Minor alignment inconsistency."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: don't show the per-row collapse icon on short rows after Expand all (BoatPrep.jsx line ~838 / Checklist.jsx Row `expand` condition).",
+    "Optional: top-align the crew-view expand icon (Checklist.jsx tickOnly wrapper self-center -> self-start pt-2)."
+  ],
+  "critical_code_review_comments": [
+    "Expand all only collects rows in logFolders.visible; rows inside a closed folder stay collapsed when the folder is later opened while the master button reads 'Collapse all'. Acceptable but worth knowing.",
+    "ClampText sets title on every Ship's Log row (incl. short ones); harmless duplicate tooltip on short rows.",
+    "Paper-scan page date fields use native <input type=date> (pre-existing)."
+  ],
+  "verified": [
+    "Desktop 1920: 700-char rows data-clamped=true, CSS -webkit-line-clamp 3, height 67px vs 358 scroll, title attr = full text (700 chars); short rows have no expand icon; 118-char row exactly 3 lines -> no icon",
+    "checklist-item-expand-<id> aria-expanded false->true shows full text (data-clamped=false, no title), click again re-clamps",
+    "Clicking checklist-item-text-<id> still ticks/unticks the row",
+    "log-expand-all-btn: 'Expand all log rows' -> all rows open, label 'Collapse all log rows' -> all clamped again",
+    "Works with a 2025 year folder open (folder row log-folder-<id> has no expand icon; rows inside expand)",
+    "Switching to Leaving Dock: no master button, no expand icons, data-clamped=false; back to Ship's Log -> all collapsed; reload + reopen -> all collapsed",
+    "Resize 1920->390: 118-char row gains expand icon (67/134), back to 1920 icon removed",
+    "Crew (test_session_free_1 on TEST_Kia Ora shared boat): master button shown, row clamped with tooltip, expand icon present (no edit btn), toggle + master work",
+    "Paper scan (mocked paper-log: 1 success, 1 500): while processing review button disabled with opacity 0.5 / cursor not-allowed; Cancel during processing confirm = \"Discard the page being read now (its Magic use is already spent)? ...\"; after: banner '1 read · 1 didn't work (tap Try again)' with bg-amber-50 text-amber-900; Cancel with done page confirm = 'Discard 1 scanned page? ...'"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "manual_it98_shipslog_seed.py run then cleaned; /tmp/seed_long.py pushed ids 990001-990003 into TEST_it98_log and test-user-pro shipsLog and pulled them by id afterwards (test-user-pro back to 19 logs).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Open Ship's Log via list-selector -> list-option-shipsLog (force). The app does not remember the active list across reload (opens default list). Crew login with test_session_free_1 lands on shared boat 'TEST_Kia Ora' with a Boat T&C dialog; click 'Not now'. Use `import asyncio` in route handlers for the paper-log mock."
+}
