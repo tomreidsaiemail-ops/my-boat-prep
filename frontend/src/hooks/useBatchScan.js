@@ -6,7 +6,7 @@ export const BATCH_MAX = 50;
 let seq = 0;
 
 // Batch Magic Scan: photos are queued and scanned one at a time in the background.
-export default function useBatchScan(boatId) {
+export default function useBatchScan(boatId, params = { batch: true }) {
   const [entries, setEntries] = useState([]);
   const busy = useRef(false);
   const inflight = useRef(null);
@@ -24,8 +24,8 @@ export default function useBatchScan(boatId) {
     form.append("file", next.blob, "cupboard.jpg");
     const ctrl = new AbortController();
     inflight.current = { key: next.key, ctrl };
-    api.post(`/boats/${boatId}/scan`, form, { params: { batch: true }, timeout: 90000, signal: ctrl.signal })
-      .then(({ data }) => alive.current && patch(next.key, { status: "done", rows: toRows(data.items), found: data.items.length, scansLeft: data.scans_left }))
+    api.post(`/boats/${boatId}/scan`, form, { params, timeout: 90000, signal: ctrl.signal })
+      .then(({ data }) => alive.current && patch(next.key, { status: "done", rows: toRows(data.items), items: data.items, found: data.items.length, scansLeft: data.scans_left }))
       .catch((err) => {
         if (!alive.current || ctrl.signal.aborted) return;
         const msg = apiError(err, "The AI scan didn't work");
@@ -34,7 +34,7 @@ export default function useBatchScan(boatId) {
         else patch(next.key, { status: "error", error: msg });
       })
       .finally(() => { busy.current = false; inflight.current = null; if (alive.current) setEntries((es) => [...es]); });
-  }, [entries, boatId]);
+  }, [entries, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
   const abort = (key) => { if (inflight.current && (!key || inflight.current.key === key)) inflight.current.ctrl.abort(); };
   useEffect(() => () => abort(), []);
 

@@ -84,6 +84,9 @@ import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
 import { ExcelExportDialog } from "@/components/boat/ExcelExportDialog";
+import { ShopScanDialog } from "@/components/boat/stores/ShopScanDialog";
+import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
+import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
 import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
 import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
 import { MAINT_CATEGORY, MAINT_KIND, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
@@ -386,6 +389,25 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(`${dialog.list.name} deleted`);
   };
+  const openStores = (type) => {
+    if (!needPro(type === "shopScan" ? "Batch Magic Scan My Shopping" : "Sync Food & Drink Boat Areas")) return;
+    if (!online) { toast.error("The Magic Provisioning Assistant needs a signal"); return; }
+    setDialog({ type });
+  };
+  const areaLabel = (id) => areas.find((a) => a.id === id)?.name || "Boat area";
+  const logStores = (label) => ({ id: Date.now(), label: label.slice(0, 2000), checked: false });
+  const doneShopping = (rows) => {
+    const entry = logStores(shopLog(rows.map((r) => ({ ...r, areaName: areaLabel(r.dest) })), (r) => r.areaName, boat.units));
+    mutate((s) => ({ ...s, areas: applyShopping(s.areas || [], rows), data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] } }));
+    setDialog(null);
+    toast.success(`${rows.reduce((n, r) => n + r.qty, 0)} items put away and written in the Ship's Log`);
+  };
+  const doneUsed = (rows) => {
+    const entry = logStores(usedLog(rows, (r) => areaLabel(r.areaId), boat.units));
+    mutate((s) => ({ ...s, areas: applyConsumed(s.areas || [], rows), data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] } }));
+    setDialog(null);
+    toast.success(`${rows.reduce((n, r) => n + r.qty, 0)} items taken out of your stores and written in the Ship's Log`);
+  };
   const buildSheets = async (all) => {
     const sctx = { currency: budgetCurrency(boat), labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l) };
     const sheet = (l) => ({ name: l.name, rows: l.isInventory ? inventoryRows(areas, boats.current) : listRows(l, data[l.id] || [], sctx) });
@@ -637,6 +659,7 @@ export default function BoatPrep({ boatId, boats }) {
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
+        onShopScan={crew ? undefined : () => openStores("shopScan")} onSyncStores={crew ? undefined : () => openStores("syncStores")}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
@@ -760,6 +783,9 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}
         onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
+      {dialog?.type === "shopScan" && <ShopScanDialog boatId={boats.current.boat_id} areas={areas} units={boat.units} onDone={doneShopping} onClose={() => setDialog(null)}
+        onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
+      {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} onDone={doneUsed} onClose={() => setDialog(null)} />}
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
       {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto}
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}

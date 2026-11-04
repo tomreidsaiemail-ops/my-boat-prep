@@ -50,6 +50,7 @@ from photos import router as photos_router, init_storage, get_object  # noqa: E4
 from ai_scan import router as ai_scan_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
 from maint_ai import router as maint_ai_router  # noqa: E402
+from stores_ai import router as stores_ai_router  # noqa: E402
 import setup_stripe  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
@@ -527,6 +528,7 @@ app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(ai_lists_router)
 app.include_router(maint_ai_router)
+app.include_router(stores_ai_router)
 app.include_router(admin_analytics_router)
 app.include_router(quota.router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)

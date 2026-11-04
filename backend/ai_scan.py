@@ -36,6 +36,19 @@ BAR_PROMPT = (
     "Count how many of each you can see; use 1 if unsure. Ignore glasses, tools and furniture. "
     'Return exactly: {"items": [{"name": "...", "qty": 1}]}. If you cannot see any, return {"items": []}.'
 )
+SHOP_PROMPT = (
+    "These are groceries and drinks just bought for a boat, laid out for a photo. List every distinct item. "
+    "Use short plain names a sailor would use (e.g. 'Milk 2L', 'Tinned tomatoes', 'Beer cans'). Count how many of each; use 1 if unsure. "
+    "Estimate weight_g, the total weight in grams of that many, including packaging. Ignore bags, receipts, tables and hands. "
+    'Return exactly: {"items": [{"name": "...", "qty": 1, "weight_g": 400}]}. If you cannot see any, return {"items": []}.'
+)
+
+
+def _grams(v) -> int:
+    try:
+        return min(500000, max(0, int(float(v))))
+    except (TypeError, ValueError):
+        return 0
 
 
 def parse_items(text: str) -> list:
@@ -53,13 +66,14 @@ def parse_items(text: str) -> list:
         except (TypeError, ValueError):
             qty = 1
         seen.add(name.lower())
-        out.append({"name": name, "qty": qty})
+        out.append({"name": name, "qty": qty, **({"weight_g": _grams(r.get("weight_g"))} if "weight_g" in r else {})})
     return out[:MAX_ITEMS]
 
 
 @router.post("/boats/{boat_id}/scan")
-async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), bartender: bool = Query(default=False), user: dict = Depends(require_premium)):
-    feature = "MBT" if bartender else "BMMS" if batch else "MMS"
+async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), bartender: bool = Query(default=False),
+                       shopping: bool = Query(default=False), user: dict = Depends(require_premium)):
+    feature = "MBT" if bartender else "MPS" if shopping else "BMMS" if batch else "MMS"
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:
@@ -78,7 +92,7 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
     text = ""
     usage = None
     try:
-        msg = UserMessage(text=BAR_PROMPT if bartender else PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
+        msg = UserMessage(text=BAR_PROMPT if bartender else SHOP_PROMPT if shopping else PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
         async for ev in chat.stream_message(msg):
             if isinstance(ev, TextDelta):
                 text += ev.content
