@@ -52,12 +52,17 @@ const Review = ({ rows, onPatch }) => (
   </ul>
 );
 
-const Progress = ({ q }) => (
-  <p className="flex items-center gap-2 rounded-md bg-sky-50 px-3 py-2 text-sm font-bold text-sky-900" role="status" data-testid="paper-scan-progress">
-    {q.position ? <><Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Processing {q.position} of {q.pages.length}{q.pending > 1 ? ` · ${q.pending - 1} waiting` : ""}</>
-      : <><CheckCircle2 className="h-4 w-4 shrink-0" /> All {q.pages.length} {q.pages.length === 1 ? "page" : "pages"} processed</>}
-  </p>
-);
+const Progress = ({ q }) => {
+  const failed = q.pages.filter((p) => p.status === "error").length;
+  const read = q.pages.filter((p) => p.status === "done").length;
+  return (
+    <p className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold ${failed && !q.position ? "bg-amber-50 text-amber-900" : "bg-sky-50 text-sky-900"}`} role="status" data-testid="paper-scan-progress">
+      {q.position ? <><Loader2 className="h-4 w-4 shrink-0 animate-spin" /> Processing {q.position} of {q.pages.length}{q.pending > 1 ? ` · ${q.pending - 1} waiting` : ""}</>
+        : failed ? <><RotateCw className="h-4 w-4 shrink-0" /> {read} read · {failed} didn&apos;t work (tap Try again)</>
+          : <><CheckCircle2 className="h-4 w-4 shrink-0" /> All {q.pages.length} {q.pages.length === 1 ? "page" : "pages"} processed</>}
+    </p>
+  );
+};
 
 // Photos of paper log pages: reading starts straight away in the background while the skipper titles and dates each page, then a review step adds the rows.
 export const PaperLogScanDialog = ({ boatId, onAdd, onClose }) => {
@@ -70,7 +75,10 @@ export const PaperLogScanDialog = ({ boatId, onAdd, onClose }) => {
     q.add([...(e.target.files || [])].filter((f) => f.type.startsWith("image/")).slice(0, MAX - q.pages.length));
     e.target.value = "";
   };
-  const close = () => { if (!done.length || window.confirm(`Discard ${done.length} scanned ${done.length === 1 ? "page" : "pages"}? The Magic uses can't be given back.`)) onClose(); };
+  const close = () => {
+    const parts = [done.length && `${done.length} scanned ${done.length === 1 ? "page" : "pages"}`, q.position && "the page being read now (its Magic use is already spent)"].filter(Boolean);
+    if (!parts.length || window.confirm(`Discard ${parts.join(" and ")}? The Magic uses can't be given back.`)) onClose();
+  };
   const commit = () => {
     if (done.some((p) => !p.title.trim() || !p.date)) { setError("Give every log row a title and a date."); return; }
     onAdd(done.map((p, k) => ({ id: Date.now() + k, label: `${p.title.trim()} - ${niceDate(p.date)}: ${p.text.trim()}`.slice(0, 2000), log_date: p.date, paper: true, checked: false })));

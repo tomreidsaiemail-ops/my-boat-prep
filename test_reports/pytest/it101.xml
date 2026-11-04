@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="11" time="6.432" timestamp="2026-11-04T21:47:28.725767+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_missing_title_and_date_200" time="4.278" /><testcase classname="tests.test_it99_export_folders.TestTemplateListCap" name="test_admin_list_ok" time="0.420" /><testcase classname="tests.test_it99_export_folders.TestTemplateListCap" name="test_cap_in_code" time="0.000" /><testcase classname="tests.test_it99_export_folders.TestShipLogEmailFolders" name="test_email_folder_layout_and_pdf" time="1.940"><failure message="assert ('TEST log A ...ar', 0, False) == (&quot;2024 Ship's Logs&quot;, 0, True)&#10;  &#10;  At index 0 diff: 'TEST log A 2024 Mar' != &quot;2024 Ship's Logs&quot;&#10;  &#10;  Full diff:&#10;    (&#10;  -     &quot;2024 Ship's Logs&quot;,&#10;  +     'TEST log A 2024 Mar',...&#10;  &#10;  ...Full output truncated (4 lines hidden), use '-vv' to show">tests/test_it99_export_folders.py:90: in test_email_folder_layout_and_pdf
+    assert got[0] == ("2024 Ship's Logs", 0, True)
+E   assert ('TEST log A ...ar', 0, False) == ("2024 Ship's Logs", 0, True)
+E     
+E     At index 0 diff: 'TEST log A 2024 Mar' != "2024 Ship's Logs"
+E     
+E     Full diff:
+E       (
+E     -     "2024 Ship's Logs",
+E     +     'TEST log A 2024 Mar',...
+E     
+E     ...Full output truncated (4 lines hidden), use '-vv' to show</failure></testcase><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_bad_date_format_422" time="0.183" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_impossible_date_422" time="0.137" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_long_title_422" time="0.148" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_no_auth_still_401" time="0.152" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_unknown_boat_404" time="0.128" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_non_image_400" time="0.336" /><testcase classname="tests.test_it99_export_folders.TestPaperLogOptional" name="test_fake_png_400" time="0.189" /></testsuite></testsuites>

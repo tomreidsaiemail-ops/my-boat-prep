@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, Flag, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ClampText, ExpandButton } from "@/components/boat/shipslog/ClampText";
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
 import { MpaText } from "@/components/boat/MpaBadges";
@@ -30,7 +32,11 @@ const FoldButton = ({ id, folded, onFold }) => (
   </button>
 );
 
-const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0 }) => (
+const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0, clamp }) => {
+  const [long, setLong] = useState(false);
+  const open = !!clamp?.open.includes(item.id);
+  const expand = clamp && (long || open) ? <ExpandButton id={item.id} open={open} onToggle={() => clamp.toggle(item.id)} /> : null;
+  return (
   <li className={`checklist-row flex-wrap ${pick ? "is-pick" : ""} ${item.checked ? "is-checked" : ""} ${item.flagged ? "is-flagged" : ""} ${info?.shade ? "is-shaded" : ""} ${info?.child ? "is-child" : ""}`}
     data-testid={`checklist-item-${item.id}`} data-shaded={info?.shade ? "true" : "false"} data-indented={info?.child ? "true" : "false"}>
     {depth > 0 && <div className="shrink-0 border-r-2 border-sky-200" style={{ width: depth * 18 }} aria-hidden="true" data-testid={`checklist-item-depth-${item.id}`} />}
@@ -41,7 +47,8 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
         className={`flex min-h-[56px] flex-1 items-start gap-3 py-3 text-left ${number ? "pl-2" : "pl-3"}`}>
         <span className={`tick-box ${emergency ? `tick-${emergency}` : ""}`}>{item.checked && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
-          <span className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} data-testid={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></span>
+          <ClampText on={!!clamp} open={open} onLong={setLong} title={typeof text === "string" ? text : undefined}
+            className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} testId={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></ClampText>
           {item.checked && !pick && <span className="tick-badge" data-testid={`checklist-item-ticked-${item.id}`}><CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Done</span>}
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
           {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
@@ -51,8 +58,9 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
       {tools}
     </div>
     {fold && <div className="flex shrink-0 items-start pt-2"><FoldButton id={item.id} folded={fold.folded} onFold={fold.onFold} /></div>}
-    {tickOnly && photo && <div className="flex shrink-0 items-center self-center pr-2">{photo}</div>}
+    {tickOnly && (photo || expand) && <div className="flex shrink-0 items-center self-center pr-2">{expand}{photo}</div>}
     {!tickOnly && <div className="flex shrink-0 items-center pr-1">
+      {expand}
       {photo}
       <button type="button" className="icon-btn" aria-label="Edit item" onClick={onEdit} data-testid={`checklist-item-edit-${item.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
       <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete item" onClick={onDelete} data-testid={`checklist-item-delete-${item.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
@@ -61,10 +69,11 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
     {item.detail && <MmdLogAnswer id={item.id} answer={item.detail} kind="depart" />}
     {logPhotoUrl && item.weather_photos?.length > 0 && <LogPhotos id={item.id} photos={item.weather_photos} urlFor={logPhotoUrl} />}
   </li>
-);
+  );
+};
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow }) => {
+export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow, clamp }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.ancestors?.some((a) => folded.includes(a));
@@ -94,7 +103,7 @@ export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDele
         const inf = info[item.id];
         if (item.folder && folderRow) return folderRow(item);
         return (
-          <Row key={item.id} item={item} depth={depthOf ? depthOf(item.id) : 0} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
+          <Row key={item.id} item={item} clamp={clamp} depth={depthOf ? depthOf(item.id) : 0} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}

@@ -74,6 +74,7 @@ import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
+import { ExpandAllButton } from "@/components/boat/shipslog/ClampText";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
@@ -280,6 +281,9 @@ export default function BoatPrep({ boatId, boats }) {
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
+  // Ship's Log rows open to their full text one by one or all at once; they start at 3 lines each visit.
+  const [logOpen, setLogOpen] = useState([]);
+  useEffect(() => { setLogOpen([]); }, [active.id]);
   const [promptDelete, setPromptDelete] = useListSetting("mbp_prompt_delete", active.id, true);
   const [hideArea, setHideArea] = useListSetting("mbp_hide_area", active.id, true);
   const isTips = active.id === TIPS_ID;
@@ -830,10 +834,14 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
             help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
+          {active.id === "shipsLog" && shown.length > 0 && (
+            <ExpandAllButton anyOpen={logOpen.length > 0} onAll={(on) => setLogOpen(on ? (logOn ? logFolders.visible : shown).filter((i) => !i.folder).map((i) => i.id) : [])} />
+          )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold} />)}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold}
+            clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (
             <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}

@@ -1,4 +1,4 @@
-# Iteration 99: paper-log title/date required (422), Ship's Log email/PDF folder layout, admin template-list cap
+# Iteration 99/101: paper-log title/date optional (it101), Ship's Log email/PDF folder layout, admin template-list cap
 import os
 import io
 import pytest
@@ -29,19 +29,31 @@ def post(png, data):
     return requests.post(f"{BASE_URL}/api/boats/main/paper-log", headers=H(OWNER), files={"file": ("p.png", png, "image/png")}, data=data)
 
 
-# Paper log: title and date are required now
-class TestPaperLogRequired:
-    def test_missing_title_422(self, png):
-        assert post(png, {"date": "2024-03-01"}).status_code == 422
+# Paper log (it101): title/date optional (reading starts before naming); format/real-date still validated
+class TestPaperLogOptional:
+    def test_missing_title_and_date_200(self):
+        # one real OCR call with readable text
+        from PIL import ImageDraw
+        b = io.BytesIO()
+        im = Image.new("RGB", (600, 200), "white")
+        d = ImageDraw.Draw(im)
+        d.text((20, 40), "0800 Departed Auckland wind SW 15kn", fill="black")
+        d.text((20, 90), "1200 Off Tiritiri baro 1015", fill="black")
+        im.save(b, "PNG")
+        r = requests.post(f"{BASE_URL}/api/boats/main/paper-log", headers=H(OWNER), files={"file": ("p.png", b.getvalue(), "image/png")}, timeout=120)
+        if r.status_code == 429:
+            pytest.skip("daily magic limit")
+        assert r.status_code == 200, r.text
+        j = r.json()
+        assert isinstance(j["text"], str) and j["text"].strip()
+        assert "scans_left" in j
 
-    def test_empty_title_422(self, png):
-        assert post(png, {"title": "", "date": "2024-03-01"}).status_code == 422
-
-    def test_missing_date_422(self, png):
-        assert post(png, {"title": "T"}).status_code == 422
-
-    def test_bad_date_422(self, png):
+    def test_bad_date_format_422(self, png):
         assert post(png, {"title": "T", "date": "2024/03/01"}).status_code == 422
+
+    def test_impossible_date_422(self, png):
+        r = post(png, {"date": "2024-13-45"})
+        assert r.status_code == 422 and "real date" in r.text
 
     def test_long_title_422(self, png):
         assert post(png, {"title": "x" * 121, "date": "2024-03-01"}).status_code == 422
@@ -49,6 +61,18 @@ class TestPaperLogRequired:
     def test_no_auth_still_401(self, png):
         r = requests.post(f"{BASE_URL}/api/boats/main/paper-log", files={"file": ("p.png", png, "image/png")}, data={})
         assert r.status_code == 401
+
+    def test_unknown_boat_404(self, png):
+        r = requests.post(f"{BASE_URL}/api/boats/nosuchboat/paper-log", headers=H(OWNER), files={"file": ("p.png", png, "image/png")})
+        assert r.status_code == 404
+
+    def test_non_image_400(self):
+        r = requests.post(f"{BASE_URL}/api/boats/main/paper-log", headers=H(OWNER), files={"file": ("a.txt", b"hello", "text/plain")})
+        assert r.status_code == 400
+
+    def test_fake_png_400(self):
+        r = requests.post(f"{BASE_URL}/api/boats/main/paper-log", headers=H(OWNER), files={"file": ("a.png", b"notapng", "image/png")})
+        assert r.status_code == 400
 
 
 # Ship's Log email + PDF with folders

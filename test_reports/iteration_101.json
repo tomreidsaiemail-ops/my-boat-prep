@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 101: Tested the async Ship's Log Batch Magic Scan (background queue, live status, review and confirm) on both backend and frontend. Backend: I updated test_it99_export_folders.py (the paper-log tests still asserted 422 for a missing title or date). 11/11 pass, including one real Gemini OCR call with no title or date (200, non-empty text). Frontend: Playwright with paper-log mocked at a 2-2.5 s delay, run at 1920 and 390. Every requested flow works. Three minor issues found, none blocking.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/boats/{id}/paper-log", "issue": "Aborting on the client (removing a page mid-scan, or closing the dialog) doesn't stop the server. The request has already been received, so quota.consume plus the LLM call still run and a Magic use is spent without a result. The close confirm only counts pages that are 'done', so closing during an in-flight scan silently spends one use."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PaperLogScanDialog Progress", "issue": "When pages fail (503 or 429), the banner still says 'All 3 pages processed' while 2 pages show Didn't work. It should say something like '1 read · 2 didn't work'.", "selector": "[data-testid='paper-scan-progress']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Paper scan dialog footer", "issues": ["The disabled paper-scan-review-btn ('Processing...' / 'Review 0 log rows') looks exactly like an enabled btn-solid. App.css has no .btn-solid:disabled rule (no opacity or cursor change), so it looks clickable. Add .btn-solid:disabled{opacity:.5;cursor:not-allowed}."]}
+    ]
+  },
+  "verified": [
+    "Selecting 3 images queues them at once. Calls go out one at a time, about 2.5 s apart, carrying only the file (no title or date fields).",
+    "Banner sequence: 'Processing 1 of 3 · 2 waiting' → '2 of 3 · 1 waiting' → '3 of 3' → 'All 3 pages processed'. data-status moves queued → scanning → done, with labels Waiting / Processing... / Read.",
+    "During processing, the title, date and remove controls for every page and paper-scan-add-btn stay enabled. Titles and dates typed mid-scan are kept.",
+    "Removing page 0 while it is scanning aborts it, and the next page starts ('1 of 2 · 1 waiting'). Adding a page plus a .txt mid-scan adds only the image ('1 of 3'). That run made 4 calls in total.",
+    "20-page cap: adding 21 more gives 20 pages and hides the Add button. Removing one brings back 'Add more pages (19 of 20)'.",
+    "Review button reads 'Processing...' (disabled) and then 'Review 3 log rows'. The review step shows 3 rows with thumbnail, title, date and text. Edited text survives Back and returning to Review.",
+    "OK with one row missing a title or date shows paper-scan-error 'Give every log row a title and a date.' Once filled in: the dialog closes, a toast appears, and the rows read 'TEST_it101 Day one - Feb 10, 2025: 0800 TEST edited text one'. The DB has log_date 2025-02-10 and paper:true. Fold a year 2025 counts 5 items, so the 3 new rows are included.",
+    "503 on a page → Didn't work + message + Try again. Retry re-queues it and it ends as done.",
+    "429 on call 2 → pages 2 and 3 both show the error 'Daily Magic limit reached', and no third call is made. Review 1 log row is enabled, and retrying a single page works.",
+    "Cancel or Esc with read pages → window.confirm 'Discard 3 scanned pages? ...'. Dismissing keeps the dialog open; accepting closes it. Esc with no read pages closes straight away with no confirm, and the queue stops (no further calls).",
+    "390px: documentElement.scrollWidth is 390 on both the pages and review steps; the layout is clean.",
+    "Backend: no title or date → 200 (real OCR); 2024/03/01 → 422; 2024-13-45 → 422 'real date'; title over 120 characters → 422; no auth → 401; unknown boat → 404; text/plain → 400; fake png → 400."
+  ],
+  "test_report_links": ["/app/backend/tests/test_it99_export_folders.py", "/app/test_reports/pytest/it101.xml"],
+  "action_items": [
+    "Optional: show failed pages in the progress banner instead of 'All N pages processed' when some pages errored.",
+    "Optional: add .btn-solid:disabled styling so the disabled Review button looks disabled.",
+    "Optional: when closing or removing while a scan is in flight, warn that its Magic use may already be spent (or count the in-flight page in the confirm)."
+  ],
+  "critical_code_review_comments": [
+    "Client-side abort can't refund quota: the backend consumes a use before calling the LLM and never checks request.is_disconnected().",
+    "Review only lists pages that are done and have non-empty text. Errored pages are silently left out of 'OK, add N rows' with no reminder that they weren't added. This is acceptable, but worth a note in the review description."
+  ],
+  "updated_files": ["/app/backend/tests/test_it99_export_folders.py"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "100% of requested flows (3 minor UX notes)"},
+  "seed_data_creation": "Seeded TEST_it98_log with manual_it98_shipslog_seed.py (and briefly manual_it99_folders_seed.py for the email test), then re-seeded it98. Cleaned with 'manual_it98_shipslog_seed.py clean' at the end (user, session and boat deleted). One real OCR call used TEST_it98_log's quota.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with REACT_APP_BACKEND_URL exported. The email folder test needs manual_it99_folders_seed.py applied after the it98 seed. test_missing_title_and_date_200 makes one real Gemini call. For the UI, mock '**/api/boats/*/paper-log' with asyncio.sleep in the handler. Open the Ship's Log via list-selector → list-option-shipsLog (force click). Use page.on('dialog') to handle window.confirm."
+}

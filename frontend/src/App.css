@@ -43,6 +43,7 @@ body {
 }
 .btn-solid { background: var(--navy); color: #fff; }
 .btn-solid:hover { background: #1e293b; }
+.btn-solid:disabled, .btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 .btn-ghost { background: #fff; color: var(--navy); border-color: var(--line); }
 .btn-ghost:hover { border-color: var(--navy); }
 .btn-solid:active, .btn-ghost:active { transform: scale(.97); }
