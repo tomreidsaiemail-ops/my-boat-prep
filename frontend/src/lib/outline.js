@@ -122,6 +122,47 @@ export const restoreLevels = (list, shifts) => list.map((i) => {
   return { ...rest, ...(was.indent ? { indent: true } : {}), ...(was.level ? { level: was.level } : {}) };
 });
 
+// Typing a full number like 10.2.1 moves an item (with everything under it) to that spot: first sub-item of 10.2.
+// Returns { items } or { error } when 10.2 doesn't exist, is inside the item itself, or the branch would go deeper than 4 levels.
+export const moveToPath = (items, id, path) => {
+  const segs = String(path).trim().split(".").map((s) => Number(s));
+  if (!segs.length || segs.some((n) => !Number.isInteger(n) || n < 1)) return { error: "Type a number like 3, 3.2 or 10.2.1" };
+  if (segs.length > MAX_DEPTH + 1) return { error: "Lists go 4 levels deep at most" };
+  const i = at(items, id);
+  if (i < 0) return { items };
+  const info = outlineInfo(items);
+  const parentNum = segs.slice(0, -1).join(".");
+  const parent = parentNum ? items.find((x) => info[x.id].num === parentNum) : null;
+  if (parentNum && !parent) return { error: `There's no item ${parentNum} to go under` };
+  const d = depthsOf(items);
+  const end = subtreeEnd(d, i);
+  const branch = items.slice(i, end);
+  if (parent && branch.some((x) => x.id === parent.id)) return { error: "An item can't go under itself" };
+  if (parent?.folder) return { error: "Use the folder tools to put logs in a folder" };
+  const newDepth = segs.length - 1;
+  const deepest = Math.max(...d.slice(i, end)) - d[i];
+  if (newDepth + deepest > MAX_DEPTH) return { error: "That would go deeper than 4 levels" };
+  const moved = branch.map((x, k) => withDepth(x, d[i + k] - d[i] + newDepth));
+  const rest = [...items.slice(0, i), ...items.slice(end)];
+  const rd = depthsOf(rest);
+  // Spots among the new siblings: each sibling's start index, then the end of the parent's branch.
+  let starts;
+  let tail;
+  if (parent) {
+    const p = at(rest, parent.id);
+    const pEnd = subtreeEnd(rd, p);
+    starts = [];
+    for (let k = p + 1; k < pEnd; k += 1) if (rd[k] === rd[p] + 1) starts.push(k);
+    tail = pEnd;
+  } else {
+    starts = rd.map((x, k) => (x === 0 ? k : -1)).filter((k) => k >= 0);
+    tail = rest.length;
+  }
+  const pos = segs[segs.length - 1];
+  const insertAt = pos - 1 < starts.length ? starts[pos - 1] : tail;
+  return { items: [...rest.slice(0, insertAt), ...moved, ...rest.slice(insertAt)] };
+};
+
 // Re-levels items after a deletion so stored levels match what's shown (no item more than one level below the one above).
 export const normalizeLevels = (items) => {
   const d = depthsOf(items);

@@ -73,7 +73,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
 };
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow, clamp }) => {
+export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow, clamp, onPlacePath }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.ancestors?.some((a) => folded.includes(a));
@@ -107,7 +107,8 @@ export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDele
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}
-            number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} onPlace={(n) => onPlace(item.id, n)} />}
+            number={tools && inf && <OrderNumber key={`${item.id}-${inf.num}`} id={item.id} pos={inf.pos} label={inf.num} total={inf.total} onPlace={(n) => onPlace(item.id, n)}
+              onPath={onPlacePath ? (p) => onPlacePath(item.id, p) : undefined} />}
             tools={tools && inf && <PriorityTools item={item} info={inf} onFlag={() => onFlag(item.id)} onMove={(d) => onMove(item.id, d)} onIndent={(v) => indent(item.id, v)} />} />
         );
       })}

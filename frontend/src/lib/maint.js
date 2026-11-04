@@ -8,6 +8,18 @@ export const MAINT_CATEGORY = "Boat Maintenance";
 export const CUSTOM = "custom";
 export const LAST_KEY = "last_service_date";
 export const DUE_KEY = "next_service_date";
+// Log Rigging Check on the rigging lists, Log Service on the others; all go into the Rigging Service History.
+const RIGGING = ["runningRigging", "standingRigging", "sparsHardware"];
+export const serviceWording = (key) => (RIGGING.includes(key)
+  ? { button: "Log Rigging Check", who: "Rigger's name", placeholder: "e.g. Jo Mast", notes: "Rigger notes", notesHint: "e.g. retensioned cap shrouds, swage on lower ok" }
+  : { button: "Log Service", who: key === "sailLoft" ? "Sailmaker's name" : "Serviced by", placeholder: key === "sailLoft" ? "e.g. North Sails loft" : "e.g. Sam (owner)",
+    notes: "Service notes", notesHint: key === "groundTackle" ? "e.g. chain end-for-ended, shackle moused" : "e.g. winches stripped and greased" });
+// Sets the picked items' service dates and keeps a short history on each item.
+export const withService = (items, { ids, by, date, notes, due }) => items.map((i) => (ids.includes(i.id) ? {
+  ...i,
+  attrs: { ...i.attrs, [LAST_KEY]: date, ...(due ? { [DUE_KEY]: due } : {}) },
+  service: [...(i.service || []), { date, by, ...(notes ? { notes } : {}), ...(due ? { due } : {}) }].slice(-20),
+} : i));
 export const MAINT_LISTS = [
   { key: "deckHardware", name: "Deck Hardware" },
   { key: "sailLoft", name: "Sail Loft" },

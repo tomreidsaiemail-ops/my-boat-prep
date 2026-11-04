@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRightLeft, ChevronRight, X } from "lucide-react";
+import { ArrowRightLeft, ChevronRight, Wrench, X } from "lucide-react";
 import { AttrField } from "@/components/boat/maint/AttrField";
 import { DUE_KEY, LAST_KEY, attrText, dueTone, localDate } from "@/lib/maint";
 
@@ -77,6 +77,19 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
             <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 rounded-md border-[1.5px] border-[var(--line)] bg-white p-2.5">
               {defs.map((d) => <AttrField key={d.key} def={d} attrs={attrs} onChange={setAttrs} ctx={ctx} itemId={id} />)}
               {!defs.length && <p className="col-span-2 text-xs text-[var(--muted)]">No attributes set up for this list yet.</p>}
+              {ctx.onService && !ctx.readOnly && (
+                <button type="button" onClick={() => ctx.onService(item)} className="btn-ghost col-span-2 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid={`maint-service-item-${id}`}>
+                  <Wrench className="h-4 w-4" /> Log service for this item...
+                </button>
+              )}
+              {item.service?.length > 0 && (
+                <ul className="col-span-2 flex flex-col gap-1 rounded-md bg-[var(--panel)] p-2 text-xs" data-testid={`maint-service-history-${id}`}>
+                  <li className="field-label">Service history</li>
+                  {[...item.service].reverse().slice(0, 5).map((s, n) => (
+                    <li key={n}><b>{s.date.split("-").reverse().join("/")}</b> · {s.by}{s.notes ? ` · ${s.notes}` : ""}{s.due ? ` · next due ${s.due.split("-").reverse().join("/")}` : ""}</li>
+                  ))}
+                </ul>
+              )}
               {ctx.onMove && !ctx.readOnly && (
                 <button type="button" onClick={() => ctx.onMove(item)} className="btn-ghost col-span-2 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid={`maint-move-${id}`}>
                   <ArrowRightLeft className="h-4 w-4" /> Move to another list...

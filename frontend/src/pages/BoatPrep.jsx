@@ -84,7 +84,7 @@ import { MealTypePicker } from "@/components/boat/MealTypePicker";
 import { DESCRIPTION_MAX } from "@/components/boat/ListDraftTools";
 import { FoldAllButton } from "@/components/boat/FoldAllButton";
 import { First5000Banner } from "@/components/boat/First5000Banner";
-import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, levelShifts, linesToItems, moveOutline, normalizeLevels, outlineInfo, placeOutline, removeOutline, restoreLevels, setIndent, tickDeparture } from "@/lib/outline";
+import { ITEM_MAX, departureTicked, flagOutline, insertSuggestions, levelShifts, linesToItems, moveOutline, moveToPath, normalizeLevels, outlineInfo, placeOutline, removeOutline, restoreLevels, setIndent, tickDeparture } from "@/lib/outline";
 import { DeleteListDialog } from "@/components/boat/DeleteListDialog";
 import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
@@ -100,7 +100,7 @@ import { ImportDialog } from "@/components/boat/import/ImportDialog";
 import { MoveItemDialog } from "@/components/boat/import/MoveItemDialog";
 import { moveInto, movedRow } from "@/lib/sheetImport";
 import { CustomListBuilder } from "@/components/boat/maint/CustomListBuilder";
-import { CUSTOM, MAINT_CATEGORY, MAINT_KIND, MAINT_LISTS, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
+import { CUSTOM, DUE_KEY, MAINT_CATEGORY, MAINT_KIND, MAINT_LISTS, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue, withService } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
@@ -412,6 +412,39 @@ export default function BoatPrep({ boatId, boats }) {
     };
   });
   const place = (id, pos) => guard() && setItems((list) => placeOutline(list, id, pos));
+  const placePath = (id, path) => {
+    if (!guard()) return;
+    const res = moveToPath(items, id, path);
+    if (res.error) { toast.error(`Can't move it to ${path}: ${res.error}`); return; }
+    const parent = path.split(".").slice(0, -1).join(".");
+    if (parent) { const p = items.find((x) => outlineInfo(items)[x.id]?.num === parent); if (p) setFold(p.id, false); }
+    setItems((list) => moveToPath(list, id, path).items || list);
+  };
+  // Log Rigging Check / Log Service from a Boat Maintenance list: item dates + history, Rigging Service History, Ship's Log and a To Do reminder.
+  const logMaintService = (entry) => {
+    if (!guard()) return false;
+    const listId = active.id;
+    const name = active.name;
+    const labels = items.filter((i) => entry.ids.includes(i.id)).map((i) => i.label);
+    const dmy = (iso) => iso.split("-").reverse().join("/");
+    const after = withService(items, entry);
+    const dues = after.map((i) => i.attrs?.[DUE_KEY]).filter(Boolean).sort();
+    const remind = entry.due && registry.some((l) => l.id === "myTodo");
+    const todoId = `due_maint_${listId}`;
+    mutate((s) => {
+      const log = { id: Date.now(), date: entry.date, rigger: entry.by, notes: entry.notes, items: labels, list: name, ...(entry.due ? { due: entry.due } : {}) };
+      const line = { id: Date.now() + 1, label: `${name}: ${serviceLogLine("rigging_log", log, labels)}${entry.due ? ` - Next due ${dmy(entry.due)}` : ""}`.slice(0, 2000), checked: false };
+      const todo = (s.data.myTodo || []).filter((i) => i.id !== todoId);
+      return {
+        ...s, rigging_log: [...(s.rigging_log || []), log],
+        data: { ...s.data, [listId]: withService(s.data[listId] || [], entry), shipsLog: [...(s.data.shipsLog || []), line],
+          ...(remind ? { myTodo: [...todo, { id: todoId, label: `${name} service due ${dmy(dues[0])}`, due: dues[0], checked: false }] } : {}) },
+      };
+    });
+    toast.success(`Logged for ${labels.length} ${labels.length === 1 ? "item" : "items"} in the Rigging Service History${remind ? ", reminder in My To Do List" : ""}`);
+    if (entry.due && !remind) toast.info("Bring back My To Do List with Reset All... to get service reminders");
+    return true;
+  };
   const setServiceDue = (listId, date) => {
     if (!registry.some((l) => l.id === "myTodo")) { toast.error("Bring back My To Do List with Reset All... to get service reminders"); return; }
     const id = `due_${listId}`;
@@ -814,6 +847,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
         : active.kind === MAINT_KIND ? <MaintList key={active.id} list={active} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
+            onLogService={logMaintService}
             ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
             ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
@@ -840,7 +874,7 @@ export default function BoatPrep({ boatId, boats }) {
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={crew} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onIndent={indent} folded={folded} onFold={setFold}
+            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (

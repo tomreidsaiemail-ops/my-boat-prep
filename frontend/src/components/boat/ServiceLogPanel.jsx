@@ -29,6 +29,7 @@ const Entry = ({ e, k, onDelete }) => (
   <li className="flex items-center gap-2 pl-3" data-testid={`${k.prefix}-log-entry-${e.id}`}>
     <div className="min-w-0 flex-1 py-2 text-sm">
       {k.summary(e)}
+      {e.list && <span className="block text-xs font-bold text-sky-900" data-testid={`${k.prefix}-log-list-${e.id}`}>{e.list}{e.due ? ` · next due ${fmtDate(e.due)}` : ""}</span>}
       {e.items?.length > 0 && <span className="block font-semibold" data-testid={`${k.prefix}-log-items-${e.id}`}>{e.items.join(" · ")}</span>}
       {e.notes && <span className="block text-[var(--muted)]">{e.notes}</span>}
     </div>
