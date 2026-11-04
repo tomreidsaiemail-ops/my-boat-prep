@@ -301,7 +301,14 @@ export default function BoatPrep({ boatId, boats }) {
     return false;
   };
   const setItems = (fn) => mutate((s) => ({ ...s, data: { ...s.data, [active.id]: fn(s.data[active.id] || []) } }));
-  const isDup = (text, exceptId) => !mealLists.some((l) => l.id === active.id) && items.some((i) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase());
+  // The same item can sit under different groups (e.g. a wind check under each departure type); duplicates only clash within one group or at the top level.
+  const parentOf = (list, k) => { if (k <= 0 || !list[k]?.indent) return null; for (let j = k - 1; j >= 0; j -= 1) if (!list[j].indent) return list[j].id; return null; };
+  const isDup = (text, exceptId) => {
+    if (mealLists.some((l) => l.id === active.id)) return false;
+    const at = items.findIndex((i) => i.id === exceptId);
+    const scope = at >= 0 ? parentOf(items, at) : null;
+    return items.some((i, k) => i.id !== exceptId && i.label.toLowerCase() === text.toLowerCase() && parentOf(items, k) === scope);
+  };
   const logMmd = (item) => {
     if (crew) { toast.success("Question and answer logged in the skipper's Ship's Log"); return; }
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), item] } }));
