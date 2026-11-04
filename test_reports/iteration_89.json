@@ -1,0 +1,36 @@
+{
+  "summary": "Frontend-only test of Import Spreadsheet + Move to another list (Playwright at 390px and 1920px, pro skipper test_session_pro_1, crew test_session_free_1). Used real openpyxl .xlsx files: Refit.xlsx (tabs Equipment with 7 rows, real Excel date cells, numbers and '1,200' text; Projects with a '15/03/2026' text date and a real date; Big Upgrades; an empty Notes tab), Boat.xlsx (tabs A, B), Shed.xlsx (tab A), Projects.csv, bad.txt and 11 CSVs. Almost everything works: menu position, crew hiding, file type toast, the columns step (Text default, 11 types, row counts, empty tab note), naming (single file, multiple files, CSV, ' (2)'/' (3)' suffixes), name validation (empty, existing, duplicate in the batch), the preview (cards, '...and 2 more', empty tabs skipped, 'Import 3 lists'), Back keeping the chosen types, the import result (kind maint/custom/imported, one category per tab, 2 table columns, Excel dates converted to ISO, m/kg/USD units, '1,200' -> 1200, Picklist options collected), the first list becoming active, Move to My To Do List / a custom maint list / an imported list / Boat Budget, Undo, no Move button on non-imported custom lists or Deck Hardware, no Move button or import menu item for crew, Excel export of an imported list, the Builder opening, and no horizontal overflow at 390px. 1 real bug: a dd/mm text date with a day over 12 in an en-US browser is saved as an invalid date. 2 medium data-visibility issues with Move. All test data was removed through the UI afterwards (only the main agent's earlier 'Imported - Equipment' list is left).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "sheetImport.js isoOf", "issue": "Text date '15/03/2026' in an en-US (month-first) browser is saved as '2026-15-03', which is not a real date. The list shows the raw string '2026-15-03' and the item's date input is empty. isoOf never checks month <= 12 or day <= 31. Fix: if the month is over 12 and the day is 12 or less, swap them; otherwise build a Date and check it is valid, and leave the cell empty or keep it as text if it isn't.", "selector": "import-preview-list-1 / Imported - Projects 'Antifoul' Due", "priority": "HIGH"}
+    ],
+    "integration_issues": [
+      {"flow": "Move imported item to a maintenance/custom list with different attributes", "issue": "movedRow copies item.attrs by key without checking them against the target's attribute defs. Moving 'Dinghy' (brand, length, purchased, cost, weight, status) to 'Lines and Ropes' (line_type, line_material, diameter, length, condition, last_inspected) only shows Length. Brand, Purchased, Cost, Weight and Status are stored but never shown. Moving 'Life raft' to 'Imported - Big Upgrades' (only 'estimate') shows none of its details. The user sees the details as lost. Suggest matching attributes by name or type, or adding the unmatched values to the label ('Description - Name: value') like the checklist path does.", "affected_selectors": ["move-item-target-select", "move-item-confirm-btn"]},
+      {"flow": "Move to Boat Budget", "issue": "Works (budget row label=description, Product='Brand: Yamaha, Purchased: 07/04/2021, Cost: 3100 USD, ...'), but the cost value isn't put into the budget row's cost field, so the totals stay $0. Optional improvement: fill cost from the first 'decimal cost' attribute.", "affected_selectors": ["move-item-confirm-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Import dialog at 390px", "issues": ["Validation error toasts (bottom-center) stack over the dialog footer and block the Preview/Back buttons for about 4s. Playwright reported that the toast intercepted the click. Consider toast position top for this dialog, or inline errors under the name input."]},
+      {"screen": "Import file picker", "issues": ["Choosing more than 10 files silently keeps the first 10 with no toast (11 CSVs gave 10 tabs). Add a toast such as 'Only the first 10 files were imported'."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix isoOf in frontend/src/lib/sheetImport.js so invalid month/day text dates are handled (swap when month > 12, check validity, otherwise leave blank or keep as text).",
+    "Move to a maint/custom list: map attributes by name/type to the target's defs, or put unmatched values into the label so no details are hidden.",
+    "Optional: Move to Boat Budget could fill the cost field from a cost attribute.",
+    "Optional: toast when more than 10 files are chosen; stop error toasts covering the import dialog footer on mobile."
+  ],
+  "critical_code_review_comments": [
+    "numOf uses Math.abs, so negative numbers become positive without any warning (e.g. a -50 cost adjustment turns into 50).",
+    "Move Undo restores a snapshot of both lists, so any edits made to either list within the 6s toast window are lost.",
+    "Intra-batch duplicate names show 'You already have a list called X', which is a little misleading when the clash is with another tab in the same import.",
+    "Exported Excel puts 'Category' as the first column, so re-importing an exported list makes the category the item description. Consider detecting a 'Category'+'Description' header pair on import."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "~93% (1 bug + 2 medium issues across ~30 checks)"},
+  "seed_data_creation": "Imported 3 lists (Imported - Equipment (2), Imported - Projects, Imported - Big Upgrades) on pro boat main and moved items into My To Do List, Lines and Ropes, Boat Budget. All were deleted afterwards through the UI. Verified via GET /api/me/boat that the state is back to baseline.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Test files are in /tmp/imp (make.py builds Refit.xlsx with tabs Equipment/Projects/Big Upgrades/Notes(empty), Boat.xlsx A,B, Shed.xlsx A, Projects.csv, bad.txt, many/F1..F11.csv). The browser locale is en-US with UTC timezone, so the dd/mm bug shows there. The import-dialog footer buttons can be blocked by toasts, so use JS el.click(). Switch lists with list-selector -> list-option-{id}. Pro boat already has the main agent's 'Imported - Equipment' (maint_custom_1793779972169), so a new Equipment import is named '(2)'. Crew: boat-selector -> boat-option-c_test-user-pro_main."
+}

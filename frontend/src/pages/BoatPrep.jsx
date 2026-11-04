@@ -185,7 +185,7 @@ export default function BoatPrep({ boatId, boats }) {
     const from = active.id;
     const before = { [from]: data[from] || [], [toId]: data[toId] || [] };
     const id = Math.max(Date.now(), ...before[toId].map((i) => Number(i.id) || 0)) + 1;
-    const row = movedRow(item, attrsForList(maintDefs, active), target, id);
+    const row = movedRow(item, attrsForList(maintDefs, active), target, id, target.kind === MAINT_KIND ? attrsForList(maintDefs, target) : []);
     mutate((s) => ({ ...s, data: { ...s.data, [from]: (s.data[from] || []).filter((i) => i.id !== item.id), [toId]: moveInto(s.data[toId] || [], row, target) } }));
     setDialog(null);
     toast(`Moved "${item.label}" to ${target.name}`, { duration: 6000, action: { label: "Undo", onClick: () => mutate((s) => ({ ...s, data: { ...s.data, ...before } })) } });

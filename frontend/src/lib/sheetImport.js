@@ -47,18 +47,24 @@ const isoOf = (v) => {
   const m = String(v).match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
   if (m) {
     const dayFirst = new Intl.DateTimeFormat(undefined).formatToParts(new Date(2020, 11, 31))[0].type === "day";
-    const [d, mo] = dayFirst ? [m[1], m[2]] : [m[2], m[1]];
-    const y = m[3].length === 2 ? `20${m[3]}` : m[3];
-    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    let [d, mo] = (dayFirst ? [m[1], m[2]] : [m[2], m[1]]).map(Number);
+    if (mo > 12 && d <= 12) [d, mo] = [mo, d];
+    const y = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+    const date = new Date(y, mo - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return "";
+    return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
   const iso = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
   return iso ? iso.slice(1).join("-") : "";
 };
-const numOf = (v, whole) => {
+const numOf = (v, whole, positive) => {
   const m = String(v).replace(/,/g, "").match(/-?\d+(\.\d+)?/);
   if (!m) return "";
-  const n = Math.abs(Number(m[0]));
-  return whole ? String(Math.min(99999999, Math.round(n))) : String(Math.min(999999.99, Math.round(n * 100) / 100));
+  const raw = Number(m[0]);
+  const n = positive ? Math.abs(raw) : raw;
+  const cap = whole ? 99999999 : 999999.99;
+  const r = whole ? Math.round(n) : Math.round(n * 100) / 100;
+  return String(Math.max(-cap, Math.min(cap, r)));
 };
 const text = (v) => (v instanceof Date ? isoOf(v) : String(v));
 
@@ -81,7 +87,7 @@ const valueOf = (def, v, ctx) => {
   if (v === "") return {};
   if (def.type === "date") { const d = isoOf(v); return d ? { [def.key]: d } : {}; }
   if (def.type.startsWith("integer") || def.type.startsWith("decimal")) {
-    const n = numOf(v, def.type.startsWith("integer"));
+    const n = numOf(v, def.type.startsWith("integer"), ["integer age", "decimal length", "decimal area", "decimal weight"].includes(def.type));
     if (!n) return {};
     const unit = def.type === "decimal cost" ? ctx.currency : defaultUnit(def.type, def.key, ctx.units);
     return { [def.key]: n, ...(unit ? { [`${def.key}__unit`]: unit } : {}) };
@@ -99,11 +105,30 @@ export const itemsFor = (t, defs, ctx, idBase) => [
 ];
 
 // Move one item out of an imported list. Checklists get "Description - Name: value, ..." so no detail is lost.
-export const movedRow = (item, defs, target, id) => {
-  if (target.kind === "maint") return { id, label: item.label, checked: false, maint: true, indent: true, attrs: { ...(item.attrs || {}) } };
-  const details = defs.map((d) => { const v = attrText(d, item.attrs || {}); return v && `${d.name}: ${v}`; }).filter(Boolean).join(", ");
-  const label = (details ? `${item.label} - ${details}` : item.label).slice(0, 1000);
-  return target.kind === BUDGET_KIND ? { ...newBudgetItem(id, item.label.slice(0, 200)), product: details.slice(0, 300) } : { id, label, checked: false };
+const SUFFIXES = ["", "__unit", "__est", "__name"];
+const detailText = (defs, attrs) => defs.map((d) => { const v = attrText(d, attrs); return v && `${d.name}: ${v}`; }).filter(Boolean).join(", ");
+
+export const movedRow = (item, defs, target, id, targetDefs = []) => {
+  const attrs = item.attrs || {};
+  if (target.kind === "maint") {
+    // Values go into the target's matching attribute (same name, or same key); anything else stays readable in the description.
+    const out = {};
+    const left = [];
+    defs.forEach((d) => {
+      if (!attrs[d.key]) return;
+      const t = targetDefs.find((x) => x.name.trim().toLowerCase() === d.name.trim().toLowerCase()) || targetDefs.find((x) => x.key === d.key);
+      if (t) SUFFIXES.forEach((s) => { if (attrs[d.key + s]) out[t.key + s] = attrs[d.key + s]; });
+      else left.push(d);
+    });
+    const extra = detailText(left, attrs);
+    return { id, label: (extra ? `${item.label} - ${extra}` : item.label).slice(0, 1000), checked: false, maint: true, indent: true, attrs: out };
+  }
+  const details = detailText(defs, attrs);
+  if (target.kind === BUDGET_KIND) {
+    const cost = defs.find((d) => d.type === "decimal cost" && attrs[d.key]);
+    return { ...newBudgetItem(id, item.label.slice(0, 200)), product: details.slice(0, 300), cost: cost ? attrs[cost.key] : "" };
+  }
+  return { id, label: (details ? `${item.label} - ${details}` : item.label).slice(0, 1000), checked: false };
 };
 export const moveInto = (dest, row, target) => {
   if (target.kind !== "maint" || dest.some((i) => !i.indent)) return [...dest, row];

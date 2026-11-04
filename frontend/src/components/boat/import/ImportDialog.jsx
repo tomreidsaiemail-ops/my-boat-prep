@@ -8,6 +8,7 @@ import { defsFor, itemsFor, planImport, readFiles } from "@/lib/sheetImport";
 
 const MAX_FILES = 10;
 const MAX_MB = 10;
+const warn = (msg) => toast.error(msg, { position: "top-center" });
 
 export const ImportDialog = ({ names, ctx, onImport, onClose }) => {
   const input = useRef(null);
@@ -17,28 +18,31 @@ export const ImportDialog = ({ names, ctx, onImport, onClose }) => {
   const [built, setBuilt] = useState([]);
 
   const pick = async (e) => {
-    const files = [...(e.target.files || [])].slice(0, MAX_FILES);
+    const all = [...(e.target.files || [])];
+    const files = all.slice(0, MAX_FILES);
     e.target.value = "";
     if (!files.length) return;
-    if (files.some((f) => !/\.(xlsx|xlsm|xls|csv)$/i.test(f.name))) { toast.error("Please choose .xlsx or .csv files"); return; }
-    if (files.some((f) => f.size > MAX_MB * 1024 * 1024)) { toast.error(`Each file must be under ${MAX_MB} MB`); return; }
+    if (files.some((f) => !/\.(xlsx|xlsm|xls|csv)$/i.test(f.name))) { warn("Please choose .xlsx or .csv files"); return; }
+    if (files.some((f) => f.size > MAX_MB * 1024 * 1024)) { warn(`Each file must be under ${MAX_MB} MB`); return; }
+    if (all.length > MAX_FILES) warn(`Only the first ${MAX_FILES} files are used. Import the rest next time.`);
     setBusy(true);
     try {
       setPlan(planImport(await readFiles(files), names));
       setStep("columns");
-    } catch { toast.error("Couldn't read that spreadsheet. Is it a valid .xlsx or .csv file?"); }
+    } catch { warn("Couldn't read that spreadsheet. Is it a valid .xlsx or .csv file?"); }
     setBusy(false);
   };
   const change = (n, patch) => setPlan((p) => p.map((t, k) => (k === n ? { ...t, ...patch } : t)));
   const toPreview = () => {
     const live = plan.filter((t) => !t.empty);
-    if (!live.length) { toast.error("Every tab is empty, so there's nothing to import"); return; }
+    if (!live.length) { warn("Every tab is empty, so there's nothing to import"); return; }
     const taken = new Set(names.map((x) => x.toLowerCase()));
     const seen = new Set();
     for (const t of live) {
       const nm = t.name.trim().toLowerCase();
-      if (!nm) { toast.error("Every list needs a name"); return; }
-      if (taken.has(nm) || seen.has(nm)) { toast.error(`You already have a list called ${t.name.trim()}`); return; }
+      if (!nm) { warn("Every list needs a name"); return; }
+      if (taken.has(nm)) { warn(`You already have a list called ${t.name.trim()}`); return; }
+      if (seen.has(nm)) { warn(`Two tabs would both be called ${t.name.trim()}. Please rename one.`); return; }
       seen.add(nm);
     }
     const now = Date.now();
