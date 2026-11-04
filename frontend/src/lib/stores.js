@@ -40,8 +40,9 @@ export const applyShopping = (areas, rows) => {
     const dest = next.find((a) => a.id === r.dest);
     if (!dest) return;
     const at = dest.items.findIndex((i) => norm(i.name) === key);
-    if (at >= 0) dest.items[at] = { ...dest.items[at], qty: (Number(dest.items[at].qty) || 0) + r.qty, removed: false };
-    else dest.items.push({ id: newAreaItemId(), name: r.name, qty: r.qty });
+    const unit = r.weight > 0 && r.qty > 0 ? { unit_g: Math.round((r.weight / r.qty) * 10) / 10 } : {};
+    if (at >= 0) dest.items[at] = { ...dest.items[at], qty: (Number(dest.items[at].qty) || 0) + r.qty, removed: false, ...unit };
+    else dest.items.push({ id: newAreaItemId(), name: r.name, qty: r.qty, ...unit });
     if (r.dest === r.setArea && moved.has(key)) return;
     next.forEach((a) => { a.learned = a.learned.filter((k) => k !== key); });
     if (r.dest !== r.setArea) dest.learned = [...dest.learned, key].slice(-300);

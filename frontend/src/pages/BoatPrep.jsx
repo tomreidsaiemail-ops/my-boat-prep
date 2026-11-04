@@ -70,6 +70,8 @@ import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
+import { WeightsContext } from "@/components/boat/weights/WeightsContext";
+import { weighUp } from "@/lib/weights";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
@@ -731,7 +733,9 @@ export default function BoatPrep({ boatId, boats }) {
     );
   }
 
+  const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType });
   return (
+    <WeightsContext.Provider value={weights}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
@@ -899,5 +903,6 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={() => { indent(dialog.id, true); setDialog(null); }} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>
+    </WeightsContext.Provider>
   );
 }

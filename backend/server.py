@@ -95,7 +95,7 @@ class Battery(BaseModel):
     notes: str = Field(default="", max_length=200)
 
 
-TANK_FIELDS = ("fuel_tank", "fuel_jerry", "fuel_jerry_size", "water_tank", "water_jerry", "water_jerry_size", "gas_bottles", "gas_kg", "gas_extra", "cruise_kn")
+TANK_FIELDS = ("fuel_tank", "fuel_jerry", "fuel_jerry_size", "water_tank", "water_jerry", "water_jerry_size", "gas_bottles", "gas_kg", "gas_extra", "cruise_kn", "boat_weight", "crew_weight")
 
 
 class BoatDetails(BaseModel):
@@ -137,6 +137,8 @@ class BoatDetails(BaseModel):
     gas_kg: str = ""
     gas_extra: str = ""
     cruise_kn: str = "6"
+    boat_weight: str = ""
+    crew_weight: str = ""
     batteries: List[Battery] = Field(default_factory=list, max_length=12)
     depart: Dict[str, Any] = Field(default_factory=dict)
     arrive: Dict[str, Any] = Field(default_factory=dict)

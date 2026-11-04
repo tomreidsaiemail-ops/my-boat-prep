@@ -7,6 +7,7 @@ import { TelemetrySection } from "@/components/boat/telemetry/TelemetrySection";
 import { PetsSection } from "@/components/boat/PetsSection";
 import { ColourField } from "@/components/boat/telemetry/ColourField";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
+import { WeightPanel } from "@/components/boat/weights/WeightPanel";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -147,6 +148,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <DimField id="mast-height" label="Mast height" value={boat.mast_height} unit={unit} onChange={(v) => onChange("mast_height", v)} />
           </DetailsSection>
           <TelemetrySection boat={boat} onChange={onChange} />
+          <WeightPanel boat={boat} onChange={onChange} />
           <IntField id="trip-days" label="Trip duration (days)" value={boat.trip_days || ""} min={0} max={365} placeholder="Optional" onChange={(n) => onChange("trip_days", n)} />
           <PetsSection pets={boat.pets || []} units={unit} onChange={(p) => onChange("pets", p)} onMakeKit={onMakeKit && (async () => { if (await onMakeKit()) onClose(); })} />
         </div>
