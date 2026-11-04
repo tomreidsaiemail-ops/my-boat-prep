@@ -90,6 +90,9 @@ import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
 import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
 import { boatRows, crewRows, inventoryRows, listRows, serviceRows, zoneRows } from "@/lib/excelExport";
 import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
+import { ImportDialog } from "@/components/boat/import/ImportDialog";
+import { MoveItemDialog } from "@/components/boat/import/MoveItemDialog";
+import { moveInto, movedRow } from "@/lib/sheetImport";
 import { CustomListBuilder } from "@/components/boat/maint/CustomListBuilder";
 import { CUSTOM, MAINT_CATEGORY, MAINT_KIND, MAINT_LISTS, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
@@ -169,6 +172,24 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => setDialog({ type: "maint", auto: true }), 250);
   };
   const dismissMaint = () => { localStorage.setItem(OFFERS, JSON.stringify([...offered(), offerKey(boatId, boat)].slice(-50))); setDialog(null); };
+  const importLists = (built) => {
+    const now = Date.now();
+    const add = built.map((b, n) => ({ id: `maint_${CUSTOM}_${now + n}`, name: b.name, isSystem: false, kind: MAINT_KIND, maint: CUSTOM, imported: true, attrs: b.defs, columns: b.defs.slice(0, 2).map((d) => d.key) }));
+    mutate((s) => ({ ...s, registry: [...s.registry, ...add], data: { ...s.data, ...Object.fromEntries(add.map((l, n) => [l.id, built[n].items])) } }));
+    setDialog(null);
+    pickList(add[0].id);
+    toast.success(`${add.length} ${add.length === 1 ? "list" : "lists"} imported: ${add.map((l) => l.name).join(", ")}`.slice(0, 300));
+  };
+  const moveImported = (item, toId) => {
+    const target = registry.find((l) => l.id === toId);
+    const from = active.id;
+    const before = { [from]: data[from] || [], [toId]: data[toId] || [] };
+    const id = Math.max(Date.now(), ...before[toId].map((i) => Number(i.id) || 0)) + 1;
+    const row = movedRow(item, attrsForList(maintDefs, active), target, id);
+    mutate((s) => ({ ...s, data: { ...s.data, [from]: (s.data[from] || []).filter((i) => i.id !== item.id), [toId]: moveInto(s.data[toId] || [], row, target) } }));
+    setDialog(null);
+    toast(`Moved "${item.label}" to ${target.name}`, { duration: 6000, action: { label: "Undo", onClick: () => mutate((s) => ({ ...s, data: { ...s.data, ...before } })) } });
+  };
   const createCustom = ({ name, attrs, columns }) => {
     const id = `maint_${CUSTOM}_${Date.now()}`;
     mutate((s) => ({ ...s, registry: [...s.registry, { id, name, isSystem: false, kind: MAINT_KIND, maint: CUSTOM, attrs, columns }],
@@ -671,6 +692,7 @@ export default function BoatPrep({ boatId, boats }) {
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
         onShopScan={crew ? undefined : () => openStores("shopScan")} onSyncStores={crew ? undefined : () => openStores("syncStores")}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
+        onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
@@ -730,7 +752,7 @@ export default function BoatPrep({ boatId, boats }) {
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
         : active.kind === MAINT_KIND ? <MaintList key={active.id} list={active} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
             ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
-            ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew }} />
+            ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
@@ -799,6 +821,8 @@ export default function BoatPrep({ boatId, boats }) {
         onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
       {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} onDone={doneUsed} onClose={() => setDialog(null)} />}
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
+      {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}
+      {dialog?.type === "moveItem" && <MoveItemDialog item={dialog.item} lists={registry.filter((l) => l.id !== active.id && !hiddenLists.includes(l.id))} onMove={(to) => moveImported(dialog.item, to)} onClose={() => setDialog(null)} />}
       {dialog?.type === "builder" && <CustomListBuilder master={maintDefs.filter((d, n, a) => a.findIndex((x) => x.key === d.key) === n)} names={registry.map((l) => l.name)}
         onCreate={createCustom} onClose={() => setDialog(null)} />}
       {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto} have={haveMaint}
