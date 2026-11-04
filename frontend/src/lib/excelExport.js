@@ -4,6 +4,7 @@ import JSZip from "jszip";
 import { DUE_KEY, LAST_KEY, MAINT_KIND, effectiveDue } from "@/lib/maint";
 import { costOf, ledgerYear } from "@/lib/budget";
 import { areaZones, mapLabel } from "@/lib/zoneColours";
+import { arrangeLog } from "@/lib/logFolders";
 
 export const stamp = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const fileSafe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "List";
@@ -18,14 +19,22 @@ const pretty = (k) => k.replace(/__/g, " ").replace(/_/g, " ").replace(/^./, (c)
 const headOf = (items, n) => { if (!items[n].indent) return ""; let h = n; while (h > 0 && items[h].indent) h -= 1; return items[h].label || ""; };
 const isHeading = (items, n) => !items[n].indent && !!items[n + 1]?.indent;
 
-const checklistRows = (items, labelFor, areaName) => items.map((i, n) => ({
-  Group: isHeading(items, n) ? "" : headOf(items, n),
-  Item: labelFor(i),
-  Heading: yes(isHeading(items, n)),
-  Ticked: yes(i.checked),
-  Flagged: yes(i.flagged),
-  "Boat area": areaName?.(i) || "",
-}));
+const checklistRows = (raw, labelFor, areaName) => {
+  const folders = raw.some((i) => i.folder);
+  const rows = folders ? arrangeLog(raw).rows : raw.map((item) => ({ item, depth: 0 }));
+  const items = rows.map((r) => r.item);
+  const byId = new Map(raw.map((i) => [i.id, i]));
+  const path = (i) => { const out = []; let p = byId.get(i.in); while (p?.folder && out.length < 5) { out.unshift(p.label); p = byId.get(p.in); } return out.join(" > "); };
+  return items.map((i, n) => ({
+    ...(folders ? { Folder: path(i), "Folder row": yes(!!i.folder) } : {}),
+    Group: isHeading(items, n) ? "" : headOf(items, n),
+    Item: labelFor(i),
+    Heading: yes(isHeading(items, n)),
+    Ticked: i.folder ? "" : yes(i.checked),
+    Flagged: yes(i.flagged),
+    "Boat area": areaName?.(i) || "",
+  }));
+};
 
 const budgetRows = (items, currency) => [...items].sort((a, b) => ledgerYear(a) - ledgerYear(b)).map((i) => ({
   Year: ledgerYear(i), Description: i.label || "", Product: i.product || "", "Web link": i.url || "", "Date paid": asDate(i.paid), [`Cost${currency ? ` (${currency})` : ""}`]: String(i.cost || "").trim() ? costOf(i) : "",
@@ -129,7 +138,7 @@ export const exportOne = (sheet, date = stamp()) => {
   return name;
 };
 export const exportMaster = (sheets, title, date = stamp()) => {
-  const name = fileName(`${title} master`, date);
+  const name = `Boat_Lists_Export_${date}.xlsx`;
   save(new Blob([bytes(book(sheets))], { type: XLSX_TYPE }), name);
   return name;
 };

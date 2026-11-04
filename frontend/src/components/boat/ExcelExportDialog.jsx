@@ -7,7 +7,7 @@ import { exportMaster, exportOne, exportZip, stamp } from "@/lib/excelExport";
 const OPTIONS = [
   { id: "one", Icon: FileSpreadsheet, title: "This list", text: (n) => `"${n}" as one spreadsheet` },
   { id: "zip", Icon: FolderArchive, title: "Every list, separate spreadsheets", text: () => "One zip file with a spreadsheet for each list and your boat data" },
-  { id: "master", Icon: Table2, title: "Every list, one master spreadsheet", text: () => "A tab for each list and your boat data" },
+  { id: "master", Icon: Table2, title: "Every list, one master spreadsheet", text: () => `A tab for each list and your boat data, saved as Boat_Lists_Export_${stamp()}.xlsx` },
 ];
 
 // buildSheets(all) returns [{ name, rows }]: just the current list, or every list plus boat details, inventory, service history, zone maps and crew.

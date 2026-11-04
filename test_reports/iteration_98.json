@@ -1,0 +1,46 @@
+{
+  "summary": "Iteration 98: tested Admin template list Sort/Filter, editable Ship's Log help, Passage folders (group/rename/ungroup/undo/persist), Fold a year (nested year>passage>logs), Batch Magic Scan Paper Logs (real Gemini OCR, 2 calls total), crew read-only folders, regression (tick/edit/delete/add logs, Export Current, Email Ship's Log 200, 390px no overflow). Backend 10/10 pytest pass. All requested flows work end to end. Found 1 functional UX bug (Open/Close all label), export/email ignores folder structure, and a few design issues. Fixed 1 trivial CSS bug (search icon overlapping text in template-list-search).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{boat_id}/paper-log", "issue": "title is optional server-side (Form default ''), only the frontend requires it; date may also be empty. Consider requiring both (min_length=1) to match the UI contract."},
+      {"endpoint": "GET /api/admin/template-lists", "issue": "Hard cap .to_list(200): as the list keeps growing (the reason for this feature), lists beyond 200 silently disappear from the admin page and from the filter count. /api/admin-lists has the same cap."},
+      {"endpoint": "POST /api/me/email-log (server PDF via render_items)", "issue": "Ship's Log PDF/email has no folder awareness: passage/year folder rows are rendered as ordinary tickable entries, no nesting/indent, and logs added to a folder later (e.g. paper scan rows folded into an existing 2024 folder) print at the end of the list, outside their folder."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ShipsLogTools 'Open/Close all folders'", "issue": "Label uses anyOpen = any folder with open:true, including folders hidden inside a CLOSED parent. After folding a year whose passage folder was open, every visible folder is closed yet the button says 'Close all folders'; first tap closes (no visible change), second tap opens. Base anyOpen on visible (non-hidden) folders, or on top-level folders.", "selector": "[data-testid='log-folders-all-btn']", "priority": "MEDIUM"},
+      {"component": "Export Current / PrintView (Ship's Log)", "issue": "Same as email: folder rows print as checkbox items in flat array order; contents not grouped/indented under their folder; order not the arranged display order (arrangeLog).", "selector": "[data-testid='print-list-shipsLog']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ship's Log year folder row", "issues": ["Rename/Ungroup icon buttons (icon-btn) on the dark navy year folder render in muted grey: low contrast; give them text-white/hover style when item.folder==='year'"]},
+      {"screen": "Year folder count", "issues": ["'2024 Ship's Logs - 2 entries' counts direct children only (1 passage folder + 1 log) although it holds 4 logs; consider showing total logs or 'N passages, M logs'"]},
+      {"screen": "Group a passage / Batch Magic Scan dialogs", "issues": ["From/To and per-page date use native <input type=date> instead of the shadcn Calendar picker"]},
+      {"screen": "Admin > Template lists at 390px", "issues": ["Search box is cramped (placeholder truncated to 'Search lis') beside the sort select; list names truncate heavily ('Admin - Boa...') so similar Admin - lists are indistinguishable; consider stacking search and sort or wrapping names"]},
+      {"screen": "Batch Magic Scan Paper Logs", "issues": ["Cancel/close after pages were scanned discards the OCR text (Magic uses already spent) with no confirm", "On daily_limit 429 the loop keeps trying every remaining page (each fails with 'Daily Magic limit reached.' and fires the top-up event); stop the loop on the first daily_limit"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_paper_log_it98.py", "/app/backend/tests/manual_it98_shipslog_seed.py", "/app/test_reports/pytest/pytest_it98.xml"],
+  "action_items": [
+    "Fix log-folders-all-btn label: compute anyOpen from visible folders (rows where !hidden) so the label matches what the user sees",
+    "Make Ship's Log Export Current/PrintView and the emailed PDF folder-aware (use arrangeLog order, render folder rows as headings without a checkbox, indent contents)",
+    "Raise contrast of rename/ungroup icons on the navy year folder row",
+    "Optional: year folder count showing total logs; require title on paper-log endpoint; remove/raise 200 cap on /api/admin/template-lists; stop batch scan on daily_limit; confirm before discarding scanned pages"
+  ],
+  "critical_code_review_comments": [
+    "useLogFolders.anyOpen = folders.some(f => f.open) ignores nesting -> stale Open/Close label (reproduced).",
+    "PrintView.jsx and backend render_items have no `folder`/`in` handling; folder rows become ordinary log entries in PDF/email.",
+    "TemplateListsAdmin: `.field-input` padding in App.css overrode Tailwind `pl-9` so the search icon overlapped typed text; fixed with `!pl-9`.",
+    "Sync debounce is 700 ms (useBoatStore): changes made <1 s before closing the tab without localStorage persist only locally; not a bug on a real device but explains flaky 'did not persist' observations in automation (wait >=2 s before reload).",
+    "PassageGroupDialog start/end options include existing passage folders, so a passage folder can be grouped into another passage folder (passage-in-passage); probably acceptable but not documented."
+  ],
+  "updated_files": ["/app/frontend/src/components/admin/TemplateListsAdmin.jsx (search input pl-9 -> !pl-9)", "/app/backend/tests/test_paper_log_it98.py", "/app/backend/tests/manual_it98_shipslog_seed.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "~92% (all requested flows pass; 1 label bug + export/print folder handling)"},
+  "seed_data_creation": "TEST_it98_log user/session/boat seeded via manual_it98_shipslog_seed.py and removed with 'clean'. TEST_it98 Zebra List template created and deleted via UI. 'Admin - Help Panel - Ships Log' temporarily edited (2 TEST lines) and restored to its original 2 items. test-user-pro shipsLog temporarily got a TEST_crew Folder for crew testing and was restored from backup. Side effect: one real OCR call made with test_session_free_1 on its own boat (1 Magic use consumed).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Seed: python3 backend/tests/manual_it98_shipslog_seed.py (user TEST_it98_log, token test_session_it98_log, logs ids 1,2,3 (Mar 2024),4 (Nov 2024),1735700000000 (2025 via timestamp),6 (Jun 2025),7 undated; route Auckland->Russell); clean with 'clean'. Open Ship's Log via list-selector -> list-option-shipsLog. Wait >=2 s after a change before reload (700 ms sync debounce). Free user (crew) shows crew-agreement-dialog first: click 'Not now'. Edit Item dialog input is edit-item-input. Pro user's Magic is used up (429 daily_limit). Font for PIL: use ImageFont.load_default(size=44) (no DejaVu installed).",
+  "rca of the issue": "Open/Close-all label: useLogFolders returns anyOpen: folders.some(f => f.open) over all folders; foldYear creates the year folder closed but leaves the inner passage folder open:true, so anyOpen stays true while nothing is visibly open. Repro: group logs into a passage, open it, Fold a year -> button reads 'Close all folders' with everything collapsed. Fix: anyOpen = rows.some(r => !r.hidden && r.item.folder && r.item.open)."
+}

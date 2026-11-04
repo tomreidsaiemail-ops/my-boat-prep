@@ -101,7 +101,7 @@ async def _check_name(name: str, exclude: Optional[str] = None) -> str:
 @router.get("/templates")
 async def get_templates(_: dict = Depends(get_current_user)):
     # Private admin lists are system lists: they never reach any boat.
-    docs = await db.list_templates.find({"private": {"$ne": True}}, {"_id": 0, "updated_by": 0}).to_list(200)
+    docs = await db.list_templates.find({"private": {"$ne": True}}, {"_id": 0, "updated_by": 0}).to_list(1000)
     return {"templates": {d["list_id"]: {"items": d["items"], "updated_at": d["updated_at"], "note": d.get("note", ""),
                                          **({"custom": True, "name": d["name"], "description": d.get("description", ""), "created_at": d["created_at"]} if d.get("custom") else {})} for d in docs}}
 
@@ -112,7 +112,7 @@ MPA_RULE_LISTS = {"synonyms": "admin - food synonyms", "noise": "admin - food no
 @router.get("/mpa/rules")
 async def mpa_rules(_: dict = Depends(get_current_user)):
     """Items of the private admin lists the Provisioning Assistant matches with; empty lists when they don't exist."""
-    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(200)
+    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(1000)
     by_name = {d["name"].strip().lower(): d["items"] for d in docs}
     return {k: [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in by_name.get(n, [])] for k, n in MPA_RULE_LISTS.items()}
 
@@ -120,7 +120,7 @@ async def mpa_rules(_: dict = Depends(get_current_user)):
 @router.get("/list-categories")
 async def list_categories(_: dict = Depends(get_current_user)):
     """Items of the private admin list "Admin - List Categories" (category heading, *Colour* line, then list names)."""
-    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(200)
+    docs = await db.list_templates.find({"custom": True, "private": True}, {"_id": 0, "name": 1, "items": 1}).to_list(1000)
     items = next((d["items"] for d in docs if d["name"].strip().lower() == "admin - list categories"), [])
     return {"items": [{"label": i["label"]} for i in items]}
 
@@ -134,14 +134,14 @@ async def admin_lists(prefix: str, _: dict = Depends(get_current_user)):
     p = " ".join(prefix.lower().split()) + " "
     if p not in ADMIN_LIST_PREFIXES:
         raise HTTPException(status_code=400, detail="Unknown admin list prefix")
-    docs = await db.list_templates.find({"custom": True}, {"_id": 0, "name": 1, "items": 1}).sort("created_at", 1).to_list(200)
+    docs = await db.list_templates.find({"custom": True}, {"_id": 0, "name": 1, "items": 1}).sort("created_at", 1).to_list(1000)
     return {"lists": [{"name": d["name"].strip(), "items": [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in d["items"]]}
                       for d in docs if (n := " ".join(d["name"].lower().split())) == p.strip() or n.startswith(p)]}
 
 
 @router.get("/admin/template-lists")
 async def list_template_lists(_: dict = Depends(require_admin)):
-    docs = await db.list_templates.find({"custom": True}, {"_id": 0}).sort("created_at", 1).to_list(200)
+    docs = await db.list_templates.find({"custom": True}, {"_id": 0}).sort("created_at", 1).to_list(1000)
     return [_custom_out(d) for d in docs]
 
 

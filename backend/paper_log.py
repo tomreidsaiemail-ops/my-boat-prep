@@ -23,7 +23,7 @@ SYSTEM = ("You transcribe handwritten and printed paper Ship's Log pages for the
 
 
 @router.post("/boats/{boat_id}/paper-log")
-async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str = Form(default="", max_length=120), date: str = Form(default="", pattern=r"^(\d{4}-\d{2}-\d{2})?$"),
+async def paper_log(boat_id: BoatPath, file: UploadFile = File(...), title: str = Form(min_length=1, max_length=120), date: str = Form(pattern=r"^\d{4}-\d{2}-\d{2}$"),
                     user: dict = Depends(require_premium)):
     """Batch Magic Scan Paper Logs: reads one photographed page into text for a Ship's Log row."""
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):

@@ -53,14 +53,18 @@ export const PaperLogScanDialog = ({ boatId, onAdd, onClose }) => {
         form.append("date", p.date);
         const { data } = await api.post(`/boats/${boatId}/paper-log`, form, { timeout: 90000 });
         patch(p.key, { status: "done", text: data.text });
-      } catch (err) { patch(p.key, { status: "error", error: apiError(err, "Couldn't read that page. Try a clearer photo.") }); }
+      } catch (err) {
+        patch(p.key, { status: "error", error: apiError(err, "Couldn't read that page. Try a clearer photo.") });
+        if (err?.response?.status === 429) break;
+      }
     }
     setRunning(false);
   };
   const done = pages.filter((p) => p.status === "done" && p.text.trim());
+  const close = () => { if (!done.length || window.confirm(`Discard ${done.length} scanned ${done.length === 1 ? "page" : "pages"}? The Magic uses can't be given back.`)) onClose(); };
   const add = () => onAdd(done.map((p, k) => ({ id: Date.now() + k, label: `${p.title.trim()} - ${niceDate(p.date)}: ${p.text.trim()}`.slice(0, 2000), log_date: p.date, paper: true, checked: false })));
   return (
-    <Dialog open onOpenChange={(o) => !o && !running && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && !running && close()}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="paper-scan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Batch Magic Scan Paper Logs</DialogTitle>
@@ -77,7 +81,7 @@ export const PaperLogScanDialog = ({ boatId, onAdd, onClose }) => {
         )}
         {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid="paper-scan-error">{error}</p>}
         <DialogFooter className="flex-row flex-wrap justify-end gap-2">
-          <button type="button" className="btn-ghost px-4" disabled={running} onClick={onClose} data-testid="paper-scan-cancel-btn">Cancel</button>
+          <button type="button" className="btn-ghost px-4" disabled={running} onClick={close} data-testid="paper-scan-cancel-btn">Cancel</button>
           {pages.some((p) => p.status !== "done") && <button type="button" className="btn-solid px-4" disabled={running} onClick={scan} data-testid="paper-scan-run-btn">{running ? "Scanning..." : "Scan pages"}</button>}
           {done.length > 0 && !running && <button type="button" className="btn-solid px-4" onClick={add} data-testid="paper-scan-add-logs-btn">Add {done.length} {done.length === 1 ? "log" : "logs"}</button>}
         </DialogFooter>

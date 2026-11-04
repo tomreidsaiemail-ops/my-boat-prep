@@ -1,4 +1,5 @@
 import { mpaPrintText } from "@/lib/mpa";
+import { arrangeLog } from "@/lib/logFolders";
 import { ArrowLeft, CheckCircle2, Flag, Loader2, Lock, Mail, Printer } from "lucide-react";
 
 const Meta = ({ boat, verboseDate }) => (
@@ -12,23 +13,30 @@ const Meta = ({ boat, verboseDate }) => (
   </div>
 );
 
-const ListPage = ({ list, items, labelFor, boat, verboseDate, index }) => (
+const ListPage = ({ list, items: raw, labelFor, boat, verboseDate, index }) => {
+  const folders = raw.some((i) => i.folder);
+  const rows = folders ? arrangeLog(raw).rows : raw.map((item, n) => ({ item, depth: item.indent && n > 0 ? 1 : 0 }));
+  return (
   <section className={`print-page ${index > 0 ? "page-break" : ""}`} data-testid={`print-list-${list.id}`}>
     <div className="print-head">
       <h2 className="print-title">{list.name}</h2>
       <span className="print-brand">My Boat Prep</span>
     </div>
     <Meta boat={boat} verboseDate={verboseDate} />
-    {items.map((item, n) => (
-      <div key={item.id} className="print-row" style={item.indent && n > 0 ? { marginLeft: "2rem" } : undefined} data-indented={item.indent && n > 0 ? "true" : "false"}>
-        {list.isShared || (list.kind && list.kind !== "mpa") ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
-        <span className={`[overflow-wrap:anywhere] ${item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}`}>
+    {rows.map(({ item, depth: d }, n) => {
+      const depth = d || (item.indent && n > 0 ? 1 : 0);
+      return (
+      <div key={item.id} className="print-row" style={depth ? { marginLeft: `${2 * Math.min(depth, 4)}rem` } : undefined} data-indented={depth ? "true" : "false"} data-testid={item.folder ? `print-folder-${item.id}` : undefined}>
+        {item.folder ? <span className="w-6 shrink-0" /> : list.isShared || (list.kind && list.kind !== "mpa") ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
+        <span className={`[overflow-wrap:anywhere] ${item.folder ? "font-extrabold" : item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}`}>
           {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{mpaPrintText(item, labelFor(item))}
         </span>
       </div>
-    ))}
+      );
+    })}
   </section>
-);
+  );
+};
 
 export const PrintView = ({ lists, data, labelFor, boat, verboseDate, title, onBack, onEmail, online, sending, emailed, locked }) => (
   <div className="mx-auto max-w-3xl p-4 sm:p-8" data-testid="print-view">

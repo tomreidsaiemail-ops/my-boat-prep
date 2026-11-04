@@ -79,8 +79,42 @@ def _with_badges(it: dict, label: str) -> str:
     return f"{label} · {' · '.join(tags)}" if tags else label
 
 
+def _key(v):
+    return str(v) if isinstance(v, (int, float, str)) else None
+
+
+def arrange_log(items: list) -> list:
+    """Ship's Log folders: each passage or year folder is followed by its logs (items point at their folder with `in`)."""
+    if not any(isinstance(it, dict) and it.get("folder") for it in items):
+        return items
+    by = {_key(it.get("id")): it for it in items if _key(it.get("id")) is not None}
+
+    def parent(it):
+        p = _key(it.get("in"))
+        return p if p is not None and p != _key(it.get("id")) and (by.get(p) or {}).get("folder") else None
+    kids, out, seen = {}, [], set()
+    for it in items:
+        if parent(it):
+            kids.setdefault(parent(it), []).append(it)
+
+    def walk(it, depth):
+        if id(it) in seen:
+            return
+        seen.add(id(it))
+        out.append({**it, "_depth": depth})
+        if it.get("folder"):
+            for k in kids.get(_key(it.get("id")), []):
+                walk(k, depth + 1)
+    for it in items:
+        if not parent(it):
+            walk(it, 0)
+    return out
+
+
 def render_items(items: list, ctx: dict) -> list:
+    items = arrange_log(items)
     return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
+             "depth": it.get("_depth") or (1 if it.get("indent") and n > 0 else 0), **({"folder": True} if it.get("folder") else {}),
              **({"answer": str(it.get("mmd_answer") or it.get("detail"))} if it.get("mmd_answer") or it.get("detail") else {}),
              **({"photos": [{"photo_id": str(ph.get("photo_id", "")), "note": str(ph.get("note") or "")[:600]} for ph in it["weather_photos"][:5] if isinstance(ph, dict)]}
                 if isinstance(it.get("weather_photos"), list) and it["weather_photos"] else {})}
@@ -88,6 +122,8 @@ def render_items(items: list, ctx: dict) -> list:
 
 
 def _item_para(i: dict) -> Paragraph:
+    if i.get("folder"):
+        return Paragraph("<b>" + escape(i["label"]) + "</b>", ITEM)
     if i.get("flagged"):
         return Paragraph("FLAGGED: " + escape(i["label"]), FLAG)
     answer = f'<br/><font size="9" color="#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</font>' if i.get("answer") else ""
@@ -119,9 +155,13 @@ def _cell(i: dict, images: dict):
 
 
 def _pdf_row(mark: str, i: dict, images: dict = None) -> list:
-    # Sub-items sit one column in, under their parent item.
-    if i.get("indent"):
-        return [Paragraph("", ITEM), Table([[Paragraph(mark, ITEM), _cell(i, images or {})]], colWidths=[12 * mm, 150 * mm],
+    # Sub-items sit one column in, under their parent item; Ship's Log folder contents step in once per folder level.
+    depth = i.get("depth") or (1 if i.get("indent") else 0)
+    if i.get("folder"):
+        mark = ""
+    if depth:
+        pad = min(depth - 1, 4) * 8 * mm
+        return [Paragraph("", ITEM), Table([["", Paragraph(mark, ITEM), _cell(i, images or {})]], colWidths=[pad, 12 * mm, 150 * mm - pad],
                                            style=[("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)])]
     return [Paragraph(mark, ITEM), _cell(i, images or {})]
 
@@ -167,8 +207,8 @@ def build_email_html(log: dict, pdf_url: str, from_name: str) -> str:
 
 def _item_rows(items: list) -> str:
     return "".join(
-        f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"&#10003;" if i["checked"] else "&#9744;"}</td>'
-        f'<td style="padding:8px 0 8px {"24px" if i.get("indent") else "0"};border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}{_answer_html(i)}</td></tr>'
+        f'<tr><td style="padding:8px 10px 8px 0;border-bottom:1px solid #e2e8f0;width:24px;vertical-align:top;font-weight:bold">{"" if i.get("folder") else "&#10003;" if i["checked"] else "&#9744;"}</td>'
+        f'<td style="padding:8px 0 8px {24 * min(i.get("depth") or (1 if i.get("indent") else 0), 5)}px;border-bottom:1px solid #e2e8f0;font-size:15px;{"color:#b91c1c;font-weight:bold" if i.get("flagged") else "font-weight:bold;color:#0f172a" if i.get("folder") else "color:#0f172a"}">{"&#9873; " if i.get("flagged") else ""}{escape(i["label"])}{_answer_html(i)}</td></tr>'
         for i in items
     )
 

@@ -66,3 +66,8 @@ export const ungroup = (items, folderId) => {
 };
 
 export const setAllOpen = (items, open) => items.map((i) => (i.folder ? { ...i, open } : i));
+export const isInside = (items, item, folderId) => {
+  let p = item.in;
+  for (let n = 0; p && n < 5; n += 1) { if (p === folderId) return true; p = items.find((i) => i.id === p)?.in; }
+  return false;
+};

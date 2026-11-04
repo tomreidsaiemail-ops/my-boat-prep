@@ -37,10 +37,10 @@ const SORTS = {
 
 const Controls = ({ q, setQ, filter, setFilter, sort, setSort, shown, total }) => (
   <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="template-list-controls">
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row">
       <span className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search list names..." aria-label="Search template lists" className="field-input w-full pl-9" data-testid="template-list-search" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search list names..." aria-label="Search template lists" className="field-input w-full !pl-9" data-testid="template-list-search" />
       </span>
       <label className="flex shrink-0 items-center gap-1.5">
         <ArrowDownUp className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
