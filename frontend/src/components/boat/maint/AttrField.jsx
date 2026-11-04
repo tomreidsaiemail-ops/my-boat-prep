@@ -35,10 +35,10 @@ const Control = ({ def, attrs, onChange, ctx, testId }) => {
     const units = UNITS[def.type];
     const unitKey = `${def.key}__unit`;
     const unit = attrs[unitKey] || defaultUnit(def.type, def.key, ctx.units);
-    const suffix = def.type === "integer age" ? "years old" : def.type === "decimal cost" ? ctx.currency : "";
+    const suffix = def.type === "integer age" ? "years old" : def.type === "decimal cost" ? attrs[unitKey] || ctx.currency : "";
     return (
       <span className="flex items-center gap-1">
-        <BlurInput value={value} onSave={set} filter={NUM[def.type] || DEC} inputMode={NUM[def.type] ? "numeric" : "decimal"} placeholder="0" disabled={dis} aria-label={def.name} data-testid={testId} />
+        <BlurInput value={value} onSave={(v) => onChange({ [def.key]: v, ...(def.type === "decimal cost" && ctx.currency ? { [unitKey]: ctx.currency } : units && !attrs[unitKey] ? { [unitKey]: unit } : {}) })} filter={NUM[def.type] || DEC} inputMode={NUM[def.type] ? "numeric" : "decimal"} placeholder="0" disabled={dis} aria-label={def.name} data-testid={testId} />
         {units && <select value={unit} disabled={dis} onChange={(e) => onChange({ [unitKey]: e.target.value })} aria-label={`${def.name} unit`} className="field-input h-10 !w-[70px] shrink-0 !px-1 !text-sm" data-testid={`${testId}-unit`}>
           {units.map((u) => <option key={u} value={u}>{u}</option>)}
         </select>}

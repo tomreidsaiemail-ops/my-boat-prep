@@ -13,7 +13,7 @@ const Cell = ({ value, onSave, testId, bold, readOnly }) => {
   const weight = bold ? "font-extrabold" : "";
   if (!editing) return (
     <button type="button" onClick={() => !readOnly && setEditing(true)} data-testid={testId} title={readOnly ? undefined : "Tap to edit"}
-      className={`budget-cell h-auto min-h-[38px] break-words py-1.5 text-left text-[15px] leading-snug ${weight}`}>{value}</button>
+      className={`budget-cell !h-auto min-h-[38px] break-words py-1.5 text-left text-[15px] leading-snug ${weight}`}>{value}</button>
   );
   return (
     <input value={v} autoFocus onChange={(e) => setV(e.target.value)} maxLength={200} aria-label="Description" placeholder="Description" data-testid={`${testId}-input`}

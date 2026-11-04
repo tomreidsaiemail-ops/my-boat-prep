@@ -1,0 +1,38 @@
+{
+  "summary": "Tested Boat Maintenance lists end to end. Backend: new pytest test_maint_lists.py, 15 passed and 2 skipped. Covers the master attribute admin lists, AI boat-kind (real Gemini: Beneteau Oceanis 38 sloop is a sailboat, Riviera 4400 Motor Cruiser is not, results are cached), AI maint-lists (tailored lists, attrs filtered to the given keys and options, unknown keys ignored, 422), item-file PDF upload/get/delete with 400/422/404 checks and size limit, and item-photo with maint_ list_id. The free-user 403 tests were skipped because the FIRST200 launch promo is running, so every user is premium (/api/auth/me launch_free=true). Frontend at 390px with the Pro user: offer dialog (busy spinner, question naming the boat, guidance, 5 ticked boxes, due date input); Not now remembered in localStorage with no re-prompt; changing the model re-prompts; on-demand maint-setup-open-btn opens the dialog and is hidden once maintenance lists exist; Create lists makes 5 AI-tailored lists under Boat Maintenance. Table: category/item rows, inherited due date in grey italics, item override, category change updates inherited dates, orange/red tones and summary count, last service date. All of these persist after reload. Expand row and expand-all both work. Sail Loft attributes: picklists pre-filled by AI with user values, sqm/sq ft and m/mm/feet/inches units, values persist. Deck Hardware has Winch gear ratios. Ground Tackle has Anchor type and Chain length. Metres/Feet toggle switches default units (m to feet, kg to lb). Also tested: tap-to-edit description; add to a category and as a new category; delete a category or an item with Undo restoring the original order; image upload/thumbnail/delete; PDF upload and open button (GET 200); Export Current print view with readable lines; delete each list. Offline Pro path: starter items for a 3-list subset. Crew view is read-only (no delete/add/date inputs, all attribute fields disabled, no upload buttons). Regression: Magic Bartender is above FAQ, Boat Budget renders, no horizontal overflow at 390px.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/boat-kind, /api/ai/maint-lists", "issue": "The free-user 403 could not be verified because the FIRST200 launch promo makes every user premium. Not a bug, but the free path (local sailboat check plus starter items) could not be run in the UI with test_session_free_1 for the same reason. The offline Pro path, which uses the same starter-item code, was tested instead."},
+      {"endpoint": "POST /api/ai/boat-kind", "issue": "BoatIn.year_built has pattern ^(\\d{4})?$. A partly typed year (e.g. '201') gets a 422, and the frontend then silently falls back to the local sailboat check. Consider sending year_built only when it is 4 digits, or relaxing the pattern."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MaintRow Cell (description)", "issue": "FIXED BY TESTER. Long descriptions wrapped but the row stayed 38px tall, so text overlapped the rows above and below on mobile. Cause: App.css .budget-cell {height:38px} loads after Tailwind and overrode the h-auto class. Changed h-auto to !h-auto; rows now grow correctly.", "selector": "[data-testid^=maint-desc-]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MaintSetupDialog / MaintRow dates", "issues": ["Service due date in the setup dialog uses the browser's native date input (mm/dd/yyyy) rather than a shadcn calendar. Row date cells also use an invisible native picker. This is acceptable on phones, but noted."]},
+      {"screen": "Export Current (maint list)", "issues": ["Cost is exported as 'Cost: 1234.5' with no currency suffix, although the UI shows one (e.g. USD).", "Items show 'due ...' only when they have their own date. The inherited category due date is not shown on item lines."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_maint_lists.py", "/app/backend/tests/ui84_setup.py", "/app/test_reports/pytest/pytest_it84.xml"],
+  "action_items": [
+    "Optional: add the currency to cost and show the inherited due date in maintLabel (lib/maint.js) for Export Current.",
+    "Optional: looksLikeSailboat (lib/maint.js) does not match 'Catamaran' or 'Trimaran'. For free or offline users with those boat types, the auto offer is skipped silently and the dismissal is stored.",
+    "Optional: MaintTable keeps a stale 'under' id after the chosen category is deleted. The next Add then creates a new top-level category instead of an item.",
+    "Optional: send year_built only when it is 4 digits (MaintSetupDialog boatBody), so the AI check isn't skipped with a 422."
+  ],
+  "critical_code_review_comments": [
+    "MaintTable.add uses Date.now() as the id, while maintItems ids are now + n*1000 + k. An item added within a few seconds of creating the lists could in theory get an id that already exists. Low risk.",
+    "AttrFile.remove deletes the file from storage straight away. Deleting a whole item that has a photo or PDF never deletes its files, so they are orphaned in storage. Low risk.",
+    "Edits are saved to the server on a debounce. Edits made in a fresh browser context that was closed within about 1s did not reach the server. Normal users keep localStorage and sync later, so this is probably fine."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/maint/MaintRow.jsx (h-auto -> !h-auto on the description Cell)", "/app/backend/tests/test_maint_lists.py", "/app/backend/tests/ui84_setup.py"],
+  "success_rate": {"backend": "100% (15/15 run, 2 skipped due to the launch promo)", "frontend": "~97% (1 layout bug found and fixed; free-user UI path not testable while FIRST200 is on)"},
+  "seed_data_creation": "Created the TEST_ui84 boat for the Pro user via ui84_setup.py and removed it with teardown; its item_files and item_photos were deleted by boat_id. During the crew test, test-user-free was temporarily crew on TEST_ui84 and its last_boat was set to c_test-user-pro_TEST_ui84; both were restored (last_boat back to c_test-user-pro_TEST_prep). Defect caused by testing: the Pro user's last_boat was unset by the first ui84 teardown and was then set back to 'main', the Pro user's only boat. db.boat_kinds has cache entries for Beneteau Oceanis 38/40.1 and Riviera 4400 (harmless).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run `REACT_APP_BACKEND_URL=... python /app/backend/tests/ui84_setup.py setup|teardown` to create or remove the TEST_ui84 Pro boat with no make/model. The Boat details card is collapsed: click boat-details-summary before additional-details-btn. List picker: list-selector, then list-option-{id} (maint ids look like maint_{key}_{ts}). The delete-list dialog confirm is delete-list-confirm-btn. Go offline with network-status; going back online needs sync-confirm-ok-btn. File inputs are maint-attr-{image|pdf_manual}-{id}-input; use set_input_files. Export button testid is top-export-current-btn. FIRST200 launch is on, so the free user is premium."
+}

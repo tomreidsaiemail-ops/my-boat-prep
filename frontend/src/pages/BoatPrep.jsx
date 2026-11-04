@@ -84,7 +84,7 @@ import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
 import { MaintSetupDialog } from "@/components/boat/maint/MaintSetupDialog";
-import { MAINT_CATEGORY, MAINT_KIND, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey } from "@/lib/maint";
+import { MAINT_CATEGORY, MAINT_KIND, MAINT_PREFIX, attrsForList, maintItems, masterDefs, offerKey, withInheritedDue } from "@/lib/maint";
 import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withBudget } from "@/lib/budget";
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
@@ -611,7 +611,7 @@ export default function BoatPrep({ boatId, boats }) {
     const ids = lists.map((l) => l.id);
     return (
       <>
-        <PrintView lists={lists} data={data} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
+        <PrintView lists={lists} data={withInheritedDue(data, registry)} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
           onEmail={ownerOnly(() => needPro("Email PDF") && mail.requestSend(ids, title))} online={online} sending={mail.sending}
           emailed={mail.sentKey === ids.join(",")} locked={!premium} />
         {emailPrompt}

@@ -86,10 +86,16 @@ export const maintLabel = (item) => {
   const a = item.attrs || {};
   const parts = Object.entries(a).filter(([k, v]) => v && !k.endsWith("__unit") && !k.endsWith("__name") && !FILE_ID.test(v) && k !== LAST_KEY && k !== DUE_KEY)
     .map(([k, v]) => `${pretty(k)}: ${v}${a[`${k}__unit`] ? ` ${a[`${k}__unit`]}` : ""}`);
-  return [item.label, a[LAST_KEY] && `last serviced ${localDate(a[LAST_KEY])}`, a[DUE_KEY] && `due ${localDate(a[DUE_KEY])}`, ...parts].filter(Boolean).join(" - ");
+  const due = a[DUE_KEY] || item.due_from;
+  return [item.label, a[LAST_KEY] && `last serviced ${localDate(a[LAST_KEY])}`, due && `due ${localDate(due)}`, ...parts].filter(Boolean).join(" - ");
 };
+// For exports: items without their own date show their category's due date.
+export const withInheritedDue = (data, registry) => ({ ...data, ...Object.fromEntries(registry.filter((l) => l.kind === MAINT_KIND).map((l) => {
+  const items = data[l.id] || [];
+  return [l.id, items.map((i, n) => { const d = effectiveDue(items, n); return d.inherited && d.date ? { ...i, due_from: d.date } : i; })];
+})) });
 
-const SAIL_WORDS = /\b(yacht|sloop|cutter|ketch|yawl|schooner|sail\w*|dinghy|catboat)\b/i;
+const SAIL_WORDS = /\b(yacht|sloop|cutter|ketch|yawl|schooner|sail\w*|dinghy|catboat|catamaran|trimaran)\b/i;
 export const looksLikeSailboat = (boat) => SAIL_WORDS.test(`${boat.boat_type || ""} ${boat.model || ""}`);
 export const boatTitle = (boat) => [boat.make, boat.model, boat.boat_type].map((x) => (x || "").trim()).filter(Boolean).join(" ");
 export const offerKey = (boatId, boat) => `${boatId}|${normName(boatTitle(boat))}`;

@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { api, apiError } from "@/lib/api";
 import { MAINT_CATEGORY, MAINT_LISTS, STARTER, attrsForList, boatTitle, looksLikeSailboat } from "@/lib/maint";
 
-const boatBody = (b) => ({ make: (b.make || "").trim(), model: (b.model || "").trim(), boat_type: (b.boat_type || "").trim(), year_built: b.year_built || "", loa: String(b.loa || "").slice(0, 8), units: b.units === "ft" ? "ft" : "m" });
+const boatBody = (b) => ({ make: (b.make || "").trim(), model: (b.model || "").trim(), boat_type: (b.boat_type || "").trim(), year_built: /^\d{4}$/.test(b.year_built || "") ? b.year_built : "", loa: String(b.loa || "").slice(0, 8), units: b.units === "ft" ? "ft" : "m" });
 
 // The Magic Mariner checks the boat is a sailboat, then offers the five Boat Maintenance lists (tailored for Pro, starter items otherwise).
 export const MaintSetupDialog = ({ boat, premium, online, defs, auto, onCreate, onDismiss, onClose }) => {

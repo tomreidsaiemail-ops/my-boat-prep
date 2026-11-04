@@ -12,7 +12,7 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
   const [draft, setDraft] = useState("");
   const heads = items.filter((i) => !i.indent);
   const [under, setUnder] = useState("");
-  const target = under || (heads.length ? String(heads[heads.length - 1].id) : NEW_CAT);
+  const target = under === NEW_CAT || heads.some((h) => String(h.id) === under) ? under : heads.length ? String(heads[heads.length - 1].id) : NEW_CAT;
   const kids = items.filter((i) => i.indent);
   const allOpen = kids.length > 0 && kids.every((i) => openIds.includes(i.id));
   const toggleRow = (id) => setOpenIds((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
@@ -30,7 +30,7 @@ export const MaintTable = ({ items, setItems, defs, ctx, guard }) => {
     e.preventDefault();
     const label = draft.trim();
     if (!label || !guard("bottom")) return;
-    const row = { id: Date.now(), label, checked: false, maint: true, attrs: {} };
+    const row = { id: Math.max(Date.now(), ...items.map((i) => Number(i.id) || 0)) + 1, label, checked: false, maint: true, attrs: {} };
     setItems((list) => {
       if (target === NEW_CAT) return [...list, row];
       const n = list.findIndex((i) => String(i.id) === target);
