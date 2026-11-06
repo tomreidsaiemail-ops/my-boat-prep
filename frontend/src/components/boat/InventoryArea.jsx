@@ -74,18 +74,18 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
     <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white ${sub ? "mx-3 mb-2" : ""}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
       data-testid={`inventory-area-${area.id}`} data-sub={sub ? "true" : "false"}>
       <div className="flex items-center">
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] flex-1 items-center gap-3 px-3 text-left" data-testid={`inventory-area-toggle-${area.id}`}>
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] min-w-0 flex-1 items-center gap-2 px-2 text-left sm:gap-3 sm:px-3" data-testid={`inventory-area-toggle-${area.id}`}>
           <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--navy)] [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
           <span className="flex min-w-0 flex-1 flex-col py-2">
             {path && <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-path-${area.id}`}>{path}</span>}
-            <span className="flex items-center gap-1.5 font-bold text-[var(--navy)]" data-testid={`inventory-area-name-${area.id}`}>
+            <span className="flex items-center gap-1.5 break-words font-bold text-[var(--navy)] [overflow-wrap:anywhere]" data-testid={`inventory-area-name-${area.id}`}>
               <Highlight text={area.name} query={query} />
             </span>
             <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {!readOnly && (
-          <div className="flex shrink-0 items-center pr-1">
+          <div className="flex shrink-0 items-center pr-0.5 [&_.icon-btn]:w-[34px] sm:pr-1 sm:[&_.icon-btn]:w-11">
             {onToggleFood && <button type="button" className={`icon-btn ${area.food ? "text-emerald-800" : "text-[var(--muted)]"}`} onClick={onToggleFood} aria-pressed={!!area.food}
               aria-label={area.food ? "Unflag as Food area" : "Flag as Food area"} title={area.food ? "Food area (tap to unflag)" : "Flag as Food area"} data-testid={`inventory-area-food-${area.id}`}>
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.food ? "border-emerald-700 bg-emerald-700 text-white" : "border-current"}`}>F</span>

@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the boat area zone picker and the foldable Zone Map Overview colours, on the backend and the frontend (390x844 and 1920). Backend: 6 of 6 new pytest passed. 4 are unit tests of merge_crew_areas: crew can set the zone of a top-level F&D area; crew can't set it on a non-F&D area or a sub-area; a missing zone from crew keeps the skipper's zone. 2 are API tests: the skipper's PUT saves the zone, and a crew PUT changes the zone of an F&D area but not of a non-F&D area. The regression run of test_crew_fd_areas.py gave 17 passed, 1 failed and 1 skipped. The failure is the known Magic daily-limit 429. Frontend, skipper: every top-level row has the zone icon right after the F and D toggles. With no zone it is greyed (opacity 0.45, grayscale) and data-zone is ''. The dialog lists 9 overview zones as 'Label – Colour' with the right option testids. Picking Galley closes the dialog, shows the toast 'Fridge is now in Galley – Orange', sets data-zone=Orange and turns the left border Orange. The row is regrouped under GALLEY in rainbow order. The change survives a reload and was saved to the DB. A picked zone (Cockpit/Gold) overrides a pin on the Orange zone map photo. The empty state (inventory-area-zone-{id}-empty) shows for a boat with no zones. Frontend, crew (test-user-free on pro boat main): the zone icon shows only on F&D areas and not on TEST_Port Locker. Crew picked Saloon for Pantry, the change synced to the DB and the skipper saw Green. Overview colours toggle: expanded by default. Collapsing hides auto-btn, hint and palette, and remove-btn stays visible. localStorage mbp_overview_colours_folded_main=1 and the collapsed state survives a reload. Expanding sets it back to 0. ONE HIGH issue: on mobile (390px) the row's action icons overflow and the delete button is cut off on every skipper row.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/me/boat (crew) / sync_merge.merge_crew_areas", "issue": "The crew's zone dict is taken without checks: any keys, any colour, any label length. Consider limiting it to {label<=60, colour in the palette}."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InventoryArea row action icons (mobile 390px)", "issue": "Adding the 6th 44px icon (F, D, zone, move, rename, delete = 264px) makes the icons overflow the row's overflow-hidden <li>. On ALL 9 skipper rows the delete button's right edge goes past the row's right edge (row right=374; delete right 376-439). For TEST_Port Locker (419) and TEST_Gantry (439) the trash button is fully or almost fully hidden, so it can't be tapped. On some rows the rename pencil is also partly cut off. For crew it happens only on TEST_Gantry. Cause: the name toggle button is flex-1 without min-w-0, long single words like 'TEST_Gantry' don't shrink, and the icon group is shrink-0. Fix ideas: on mobile make icon-btn narrower (e.g. w-9), give the toggle min-w-0 and break-words, or move rename/delete into an overflow menu or a second line.", "selector": "[data-testid^=inventory-area-delete-]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_area_zone_picker.py", "/app/test_reports/pytest/pytest_it124.xml"],
+  "action_items": [
+    "Fix the mobile row overflow so all 6 icons (F, D, zone, move, rename, delete) fit at 390px and the delete button is visible and tappable on every row, including rows with long unbreakable names",
+    "(minor) Check crew-sent area.zone in merge_crew_areas (colour in the palette, label length)"
+  ],
+  "critical_code_review_comments": [
+    "InventoryArea.jsx: the toggle <button> is flex-1 without min-w-0, so long names push the shrink-0 icon group out of the overflow-hidden row. This is the cause of the clipped delete button.",
+    "zoneColours.areaZones: area.zone keeps its label after the skipper removes that swatch from the overview. The icon stays coloured with a label that no longer exists (acceptable, but worth noting).",
+    "AreaZoneButton: the selected-option check is zone.map === z.label && colour. A pin-derived zone whose map name differs from the overview label (e.g. 'Galley 2') won't show a check mark. This is minor."
+  ],
+  "updated_files": ["/app/backend/tests/test_area_zone_picker.py"],
+  "success_rate": {"backend": "100% (6/6 new; regression 17/18 with the known AI 429)", "frontend": "~90% (all feature flows pass; mobile layout overflow HIGH)"},
+  "seed_data_creation": "Temporarily added a zone_map pin (TEST_pin1 -> Freezer) to test-user-pro boat main to test pin override, and added area TEST_Zone Empty on test-user-beta. Pro boat doc was backed up before testing and restored afterwards; the beta test area was removed by id.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat main areas: Fridge amw1pvdq802hq, Freezer amw1pvdq84cix, Pantry amw1pvdq8s919, non-F&D TEST_Port Locker amvr1vpa6f5jn. The overview map id is cba66e09-3511-4d45-bf60-17224c73d58d (9 swatches: Cockpit Gold, Saloon Green, Galley Orange...). Crew sessions get a Crew walkthrough prompt or a crew agreement dialog if pins exist: click 'Not now'. Owner: press Escape after load. To check the overflow, compare each delete button's getBoundingClientRect().right with its closest('li') right at 390px."
+}

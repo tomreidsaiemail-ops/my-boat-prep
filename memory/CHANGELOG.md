@@ -22,3 +22,10 @@
 - Galley crew can assign; merge_crew_galley now also merges item-level content edits (item ts newer) when list_ts isn't bumped.
 - Tested iteration_122 + retest iteration_123 (100%).
 
+
+
+## 2026-06 Boat area zone picker + foldable overview colours
+- Each top-level boat area row has a zone icon (4 little coloured squares) right of the F/D toggles: greyed when the area has no zone, the zone's colour once picked. Tap opens AreaZoneButton dialog listing boatZones(boat) as "Label – Colour" (no "No zone" option). Saves area.zone {label, colour}; area.zone now wins over zone map photo pins in areaZones.
+- Skipper and crew on Food & Drink areas can change it (sync_merge.merge_crew_areas accepts crew zone on top-level F&D areas, validated label<=60, colour<=20).
+- Zone Map Overview: "Colours" toggle folds Magically Place Colours, hint and palette; Remove this overview stays visible. Folded state in localStorage mbp_overview_colours_folded_{boatId}.
+- Mobile: row action icons are 34px under sm so 6 icons fit at 390px. Tested iteration_124 + self-check.

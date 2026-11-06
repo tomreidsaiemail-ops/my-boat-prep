@@ -687,3 +687,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Later changes
 - See /app/memory/CHANGELOG.md (from 2026-06 Create List options onward).
 
+
+- 2026-06: Boat area zone picker icon (grey = orphan, coloured = in a zone) and foldable Zone Map Overview colours. Details in CHANGELOG.md.
