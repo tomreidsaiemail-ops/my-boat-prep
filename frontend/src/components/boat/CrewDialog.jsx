@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Clock, Loader2, Mail, Pencil, UserMinus, UserPlus, X } from "lucide-react";
+import { ClipboardList, Clock, Loader2, Mail, Pencil, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
@@ -13,6 +13,8 @@ import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
 import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
 import { PrepBadge } from "@/components/boat/CrewPrepProgress";
+import { CrewRegisterDialog } from "@/components/boat/register/CrewRegisterDialog";
+import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
 
 const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
@@ -44,6 +46,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
   const [editing, setEditing] = useState(null);
   const [rota, setRota] = useState(false);
+  const [register, setRegister] = useState(false);
   const openRota = () => {
     if (!premium) { onUpgrade(); return; }
     if (!online) { toast.error("You're offline. Make the watch rota when you have signal."); return; }
@@ -86,6 +89,9 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
           <DialogDescription className="text-left text-sm">Crew see this boat on their own phones and can tick items. Only you can change anything else.</DialogDescription>
         </DialogHeader>
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
+        <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
+          <ClipboardList className="h-4 w-4" /> Crew Registration
+        </button>
         <div className="flex gap-2">
           <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
             <UserPlus className="h-4 w-4" /> Invite crew
@@ -118,6 +124,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
             {sending === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Resend role briefings to all crew
           </button>
         )}
+        <EmailPartiesButton online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
         <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} briefings={briefings} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
@@ -128,6 +135,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
             window.dispatchEvent(new Event("mbp:crew-roles"));
           }} />
         <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
+        <CrewRegisterDialog open={register} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => setRegister(false)} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>

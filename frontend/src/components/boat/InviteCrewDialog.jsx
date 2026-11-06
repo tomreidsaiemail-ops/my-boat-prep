@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
+import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -78,6 +79,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], brie
           <DialogTitle className="font-display text-xl font-extrabold">Invite crew to {name}</DialogTitle>
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
         </DialogHeader>
+        <RegisterPicker open={open} online={online} email={email} onPick={(c) => { setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); }} />
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-[2fr_3fr] items-end gap-2" data-testid="crew-invite-who-row">
             <label className="flex min-w-0 flex-col gap-1.5">

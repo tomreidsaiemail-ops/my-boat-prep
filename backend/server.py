@@ -36,6 +36,7 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
+from crew_register import router as crew_register_router  # noqa: E402
 from templates import add_spars_attributes, seed_budget_template, seed_log_help, seed_master_attributes  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
@@ -547,6 +548,7 @@ app.include_router(stores_ai_router)
 app.include_router(go_decision_router)
 app.include_router(admin_analytics_router)
 app.include_router(quota.router)
+app.include_router(crew_register_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
 
@@ -594,6 +596,9 @@ async def create_indexes():
     await db.user_boats.create_index("crew")
     await db.crew_invites.create_index("token_hash", unique=True)
     await db.crew_invites.create_index("email_key")
+    await db.crew_register.create_index("entry_id", unique=True)
+    await db.crew_register.create_index([("owner_id", 1), ("kind", 1)])
+    await db.crew_register.create_index("email_key")
     await db.invite_sends.create_index("at", expireAfterSeconds=2 * 86400)
     await backfill_invite_keys()
     await db.ai_usage.create_index([("user_id", 1), ("created_at", 1)])

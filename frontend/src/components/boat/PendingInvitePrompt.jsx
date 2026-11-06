@@ -7,17 +7,18 @@ import { api, apiError } from "@/lib/api";
 const LATER_KEY = "mbp_invites_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
 
-export const PendingInvitePrompt = ({ boats }) => {
-  const [invites, setInvites] = useState([]);
+export const PendingInvitePrompt = ({ boats, onIdle }) => {
+  const [invites, setInvites] = useState(null);
   const [busy, setBusy] = useState("");
   const online = navigator.onLine;
 
   useEffect(() => {
-    if (!online) return;
-    api.get("/crew/pending", { timeout: 10000 }).then(({ data }) => setInvites(data.invites.filter((i) => !later().includes(i.invite_id)))).catch(() => {});
+    if (!online) { setInvites([]); return; }
+    api.get("/crew/pending", { timeout: 10000 }).then(({ data }) => setInvites(data.invites.filter((i) => !later().includes(i.invite_id)))).catch(() => setInvites([]));
   }, [online]);
 
-  const inv = invites[0];
+  const inv = invites?.[0];
+  useEffect(() => { if (invites && !invites.length) onIdle?.(); }, [invites, onIdle]);
   if (!inv) return null;
   const next = () => setInvites((l) => l.slice(1));
   const act = async (kind) => {
