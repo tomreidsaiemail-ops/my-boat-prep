@@ -19,8 +19,8 @@ export const AppMenu = ({ onOpenFaq, onBartender, onShopScan, onSyncStores, onBu
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-72" data-testid="app-menu">
-          {onBartender && <>
-            <DropdownMenuItem onSelect={onBartender} data-testid="app-menu-bartender-item"><Martini className="mr-2 h-4 w-4" />Magic Bartender</DropdownMenuItem>
+          {(onBartender || onShopScan || onSyncStores || onBuilder || onImport) && <>
+            {onBartender && <DropdownMenuItem onSelect={onBartender} data-testid="app-menu-bartender-item"><Martini className="mr-2 h-4 w-4" />Magic Bartender</DropdownMenuItem>}
             {onShopScan && <DropdownMenuItem onSelect={onShopScan} data-testid="app-menu-shop-scan-item"><ShoppingBasket className="mr-2 h-4 w-4" />Batch Magic Scan My Shopping...</DropdownMenuItem>}
             {onSyncStores && <DropdownMenuItem onSelect={onSyncStores} data-testid="app-menu-sync-stores-item"><RefreshCw className="mr-2 h-4 w-4" />Sync Food &amp; Drink Boat Areas Magically...</DropdownMenuItem>}
             {onBuilder && <DropdownMenuItem onSelect={onBuilder} data-testid="app-menu-builder-item"><TableProperties className="mr-2 h-4 w-4" />Custom Attribute List Builder...</DropdownMenuItem>}

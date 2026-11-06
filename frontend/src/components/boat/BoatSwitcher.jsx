@@ -24,7 +24,7 @@ const BoatOption = ({ b }) => (
   </span>
 );
 
-export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade }) => {
+export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole }) => {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [crewOpen, setCrewOpen] = useState(false);
@@ -84,7 +84,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         description={`Starts with a copy of ${currentName}'s lists, all unticked. Ship's Log, My To Do List, engine hours and callsign start empty.`}
         onConfirm={confirmAdd} onClose={() => setAdding(false)} />
       {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} name={currentName} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+        <CrewDialog open={crewOpen} boat={cur} name={currentName} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
       )}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>

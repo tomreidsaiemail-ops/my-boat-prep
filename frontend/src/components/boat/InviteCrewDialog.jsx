@@ -9,6 +9,7 @@ import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
+import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -24,7 +25,7 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,10 +36,21 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   const [error, setError] = useState("");
   const [qrFor, setQrFor] = useState("");
   const [askClear, setAskClear] = useState("");
+  const [prompt, setPrompt] = useState(briefingPromptOn);
+  const [queue, setQueue] = useState([]);
+  const pickRoles = (next) => {
+    const added = next.filter((r) => !roles.includes(r));
+    setRoles(next);
+    if (prompt && onSaveBriefing && added.length) setQueue((q) => [...q, ...added.filter((r) => !q.includes(r))]);
+  };
+  const togglePrompt = (on) => { setPrompt(on); localStorage.setItem(BRIEFING_PROMPT_KEY, on ? "1" : "0"); };
+  const asking = queue[0] || "";
+  const nextPrompt = () => setQueue((q) => q.slice(1));
   // The draft from "Change available" stays until the invite is sent or closed, so a second run of this effect still finds it.
   // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
   useEffect(() => {
     if (!open) return;
+    setQueue([]);
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
     setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || info.voyage_notes || plan); setTouched(!!draft?.notes);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,8 +119,16 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
             </div>
           )}
         </div>
-        <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={setRoles}
+        <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={pickRoles}
           onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes }); })} />
+        {onSaveBriefing && (
+          <label className="-mt-2 flex items-start gap-2 text-sm font-semibold text-[var(--navy)]" data-testid="role-briefing-toggle">
+            <input type="checkbox" checked={prompt} onChange={(e) => togglePrompt(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="role-briefing-toggle-input" />
+            As Roles are clicked &amp; added, show Role Briefing
+          </label>
+        )}
+        <RoleBriefingPrompt role={asking} current={briefings[asking.toLowerCase()] || ""} isNew={!!asking && knownRole && !knownRole(asking)} onSkip={nextPrompt}
+          onSave={(text) => { onSaveBriefing(asking, text); nextPrompt(); }} />
         <div className="flex flex-col gap-1.5">
           <div className="flex items-end justify-between gap-2">
             <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>

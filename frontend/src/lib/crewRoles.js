@@ -5,6 +5,25 @@ const clean = (s) => String(s || "").replace(/^\s*\*\s*/, "").replace(/^\d+[.)]\
 
 export const crewRolesList = (state) => state?.registry?.find((l) => CREW_ROLES.test(String(l.name).trim()));
 
+// Sets (or blanks) a role's Role Briefing on the Crew Roles list, adding the role if it isn't there. Null when the boat has no Crew Roles list.
+export const setRoleBriefing = (state, role, text) => {
+  const list = crewRolesList(state);
+  if (!list) return null;
+  const items = state.data?.[list.id] || [];
+  const key = clean(role).toLowerCase();
+  const briefing = String(text || "").trim();
+  const at = items.findIndex((i) => clean(i.label).toLowerCase() === key);
+  const next = at >= 0
+    ? items.map((i, k) => (k === at ? { ...i, briefing } : i))
+    : [...items, { id: Date.now(), label: clean(role), checked: items.some((i) => i.checked), briefing }];
+  return { ...state, data: { ...state.data, [list.id]: next } };
+};
+
+export const hasRole = (state, role) => {
+  const list = crewRolesList(state);
+  return ((list && state.data?.[list.id]) || []).some((i) => clean(i.label).toLowerCase() === clean(role).toLowerCase());
+};
+
 // Role name (lower case) -> the skipper's Role Briefing on the boat's Crew Roles list.
 export const roleBriefings = (state) => {
   const list = crewRolesList(state);

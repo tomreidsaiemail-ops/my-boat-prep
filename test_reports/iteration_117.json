@@ -1,0 +1,42 @@
+{
+  "summary": "Tested crew editing of Food & Drink boat areas, crew Ship's Log entries, and crew use of the Pro skipper's Magic tools (backend pytest plus mobile UI as crew and owner). Found 2 bugs and fixed both: (1) BACKEND: /api/ai/transcribe and /api/ai/mpa/consumed ignored the owner param, so crew always got 404. (2) FRONTEND: the crew app menu hid Batch Magic Scan My Shopping and Sync Food & Drink Boat Areas. After the fixes, 18/18 backend tests pass (1 skipped to save an AI call) and all crew/owner UI flows pass. The boat doc was backed up first and restored exactly (deep-equal check passed).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/ai/transcribe, POST /api/ai/mpa/consumed", "issue": "FIXED by testing agent. stores_ai.py reused one Query() instance (BoatQ) for both boat_id and owner. FastAPI 0.110 then gave both the alias 'boat_id', so owner read 'main' and magic_payer returned 404 'Boat not found' for every crew call. openapi showed only the boat_id param. Fix: BoatQ = Annotated[Optional[str], Query(pattern=...)] and params `boat_id: BoatQ = None, owner: BoatQ = None`.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/boats/{id}/scan (free user, own boat)", "issue": "Could not check the 403 Upgrade case: FIRST200 launch_free makes test-user-free premium, so it gets past the auth check (400 on a fake image). The test now handles both cases."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AppMenu.jsx", "issue": "FIXED by testing agent. The Batch Magic Scan My Shopping and Sync Food & Drink Boat Areas items were nested inside `{onBartender && <>...}`. BoatPrep passes onBartender=undefined for crew, so crew never saw either item. The group now renders if any of the Magic handlers exists, and the bartender item has its own condition.", "selector": "[data-testid=app-menu-shop-scan-item], [data-testid=app-menu-sync-stores-item]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew boat banner", "issues": ["Copy is out of date: 'You're crew on Pro Tester's boat. You can tick items; the skipper looks after everything else.' Crew can now also edit F/D areas and use ShopScan/Sync."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_fd_areas.py", "/app/test_reports/pytest/pytest_crew_fd.xml"],
+  "action_items": [
+    "Review both fixes: backend/stores_ai.py (separate Annotated Query for boat_id/owner) and frontend/src/components/boat/AppMenu.jsx (shop/sync items no longer depend on onBartender)",
+    "Update the crew banner copy to mention F/D area editing and the Magic shopping tools",
+    "Consider merging areas per area for owner PUTs (merge_state areas is last-writer-wins for the whole section): an owner phone that edits areas after the crew, without pulling first, overwrites the crew's F/D changes"
+  ],
+  "critical_code_review_comments": [
+    "stores_ai.py: never share one Query()/FieldInfo instance between params (fixed)",
+    "AppMenu: gating every Magic item on onBartender hid features from crew (fixed)",
+    "sync_merge._born assumes exactly 4 random chars after the timestamp. newAreaItemId uses Math.random().toString(36).slice(2,6), which can rarely give fewer than 4 chars. The id is then parsed wrongly and a new crew area is silently dropped. Pad the suffix, e.g. .padEnd(4,'0').",
+    "merge_crew shipsLog: ids are only checked to be > list_ts.shipsLog with no upper bound, so a crew client could inject far-future ids. Consider capping at now + a few minutes.",
+    "save_boat crew branch is a non-atomic read-modify-write ($set of the whole state). A concurrent owner PUT could be lost (pre-existing pattern).",
+    "Crew get crewFood={crew} whether or not the owner has Pro. The inventory is gated on premium||crewPro, and during FIRST200 every crew member is premium, so crew on a non-Pro boat can also edit F/D areas. Confirm this is intended.",
+    "BoatPrep.jsx is 978 lines (>700). Consider splitting."
+  ],
+  "updated_files": ["/app/backend/stores_ai.py", "/app/frontend/src/components/boat/AppMenu.jsx", "/app/backend/tests/test_crew_fd_areas.py"],
+  "success_rate": {"backend": "100% after fix (18/18, 1 skipped); 4/19 failed before fix (2 real bug, 2 test assumption about launch_free)", "frontend": "100% after fix (crew app menu items missing before fix)"},
+  "seed_data_creation": "None kept. Crew UI edits (TEST_Crew Cheese, TEST_Dry Renamed, TEST_Crew Food Area, Freezer D flag, a 'Sync ... by Free' Ship's Log entry, cauliflower qty 4->2) were made and then reverted by restoring user_boats {owner_id:test-user-pro, boat_id:main} from the backup (/tmp/bk/boat_main.json); a deep-equal check confirmed the restore. Real AI calls: 1 shopping scan + 2 MPA consumed, charged to test-user-pro.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Crew = test_session_free_1 (crew on test-user-pro/main; the free user is premium through FIRST200 launch_free). The crew agreement dialog pops up on load; dismiss it with the 'Not now' button. The crew UI defaults to Boat Inventory. The rename dialog uses a textarea. The owner's add-area input sits inside the ZonePicker because the owner boat has zones. test_crew_fd_areas.py backs up and restores the boat doc via direct Mongo (module fixture). Run it with -n 0.",
+  "rca of the issue": "1) Shared FastAPI Query default: FastAPI copies or mutates the alias on the FieldInfo, so the second param took the first param's alias. Repro: crew POST /api/ai/mpa/consumed?boat_id=main&owner=test-user-pro returned 404; openapi listed only boat_id. 2) AppMenu conditional nesting: crew got onBartender=undefined, so the whole Magic block was hidden. Repro: crew opened app-menu-btn and saw only FAQ/feedback/share/terms."
+}

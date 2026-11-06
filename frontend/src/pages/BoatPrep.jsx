@@ -56,7 +56,7 @@ import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
-import { CREW_ROLES, crewRolesList, INVITE_DRAFT, roleBriefings, roleGroups } from "@/lib/crewRoles";
+import { CREW_ROLES, crewRolesList, hasRole, INVITE_DRAFT, roleBriefings, roleGroups, setRoleBriefing } from "@/lib/crewRoles";
 import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
@@ -595,6 +595,12 @@ export default function BoatPrep({ boatId, boats }) {
   // Magic Mariner builds "First Aid Kit - Pets" sized to the pets; an existing kit list gets its items replaced after asking.
   const showMpa = !crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id));
   const [backToInvite, setBackToInvite] = useState(false);
+  const saveRoleBriefing = (role, text) => {
+    if (!crewRolesList(state)) { toast.error("This boat has no Crew Roles list, so the briefing couldn't be saved. Add a Crew Roles list first."); return; }
+    const isNew = !hasRole(state, role);
+    mutate((s) => setRoleBriefing(s, role, text) || s);
+    toast.success(isNew ? `${role} added to Crew Roles${text.trim() ? " with its briefing" : ""}` : text.trim() ? `${role} briefing saved to Crew Roles` : `${role} briefing removed from Crew Roles`);
+  };
   useEffect(() => {
     const openRoles = () => {
       const list = crewRolesList(state);
@@ -805,7 +811,8 @@ export default function BoatPrep({ boatId, boats }) {
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
-      <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
+      <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
+        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /></>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
@@ -961,7 +968,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
-      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} online={online} premium={premium}
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />

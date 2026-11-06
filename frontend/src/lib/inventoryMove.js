@@ -1,4 +1,4 @@
-export const newAreaItemId = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const newAreaItemId = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6).padEnd(4, "0")}`;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // Moves picked cupboard items (whole or part quantities) and tagged checklist items out of one boat area.

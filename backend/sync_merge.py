@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 
 SECTIONS = ("boat", "registry", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas", "list_hidden")
 
@@ -128,9 +128,10 @@ def merge_crew(prev: dict, inc: dict) -> tuple:
         out["areas"] = merge_crew_areas(prev.get("areas") or [], inc.get("areas") or [], ps.get("areas", ""))
         out["sec_ts"] = {**ps, "areas": is_["areas"]}
     since = _ms((prev.get("list_ts") or {}).get("shipsLog", ""))
+    until = int(datetime.now(timezone.utc).timestamp() * 1000) + 10 * 60 * 1000
     mine = {i.get("id") for i in (prev.get("data") or {}).get("shipsLog") or []}
     added = [deepcopy(i) for i in (inc.get("data") or {}).get("shipsLog") or []
-             if isinstance(i.get("id"), int) and i["id"] not in mine and i["id"] > since][:20]
+             if isinstance(i.get("id"), int) and i["id"] not in mine and since < i["id"] < until][:20]
     if not added or "shipsLog" not in (out.get("data") or {}):
         return out, []
     out["data"]["shipsLog"] += added

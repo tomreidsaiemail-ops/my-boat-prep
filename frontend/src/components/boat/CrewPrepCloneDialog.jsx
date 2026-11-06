@@ -38,7 +38,7 @@ const Picker = ({ people, listName, exists, picked, setPicked }) => (
   </ul>
 );
 
-export const CrewPrepCloneDialog = ({ boat, vessel, plan, roleGroups, briefings, online, premium, onUpgrade, listName, exists, onClone, onClose }) => {
+export const CrewPrepCloneDialog = ({ boat, vessel, plan, roleGroups, briefings, onSaveBriefing, knownRole, online, premium, onUpgrade, listName, exists, onClone, onClose }) => {
   const [info, setInfo] = useState(null);
   const [picked, setPicked] = useState([]);
   const [inviting, setInviting] = useState(false);
@@ -75,7 +75,7 @@ export const CrewPrepCloneDialog = ({ boat, vessel, plan, roleGroups, briefings,
             </button>
           </div>
         </>}
-        <InviteCrewDialog open={inviting} boat={boat} name={vessel} info={info || { crew: [], invites: [], role_options: [] }} plan={plan} roleGroups={roleGroups} briefings={briefings} online={online} premium={premium}
+        <InviteCrewDialog open={inviting} boat={boat} name={vessel} info={info || { crew: [], invites: [], role_options: [] }} plan={plan} roleGroups={roleGroups} briefings={briefings} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium}
           onUpgrade={onUpgrade} onInvited={(p) => { if (p?.name) invited.current.push(p.name); load(); }} onClose={closeInvite} />
       </DialogContent>
     </Dialog>
