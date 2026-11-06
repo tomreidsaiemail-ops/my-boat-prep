@@ -69,7 +69,8 @@ import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { ShoppingCart, Sparkles } from "lucide-react";
+import { ShoppingBasket, ShoppingCart, Sparkles } from "lucide-react";
+import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
@@ -184,6 +185,7 @@ export default function BoatPrep({ boatId, boats }) {
   const [editArea, setEditArea] = useState("");
   const [editMeal, setEditMeal] = useState(null);
   const [editCook, setEditCook] = useState(null);
+  const [editShopper, setEditShopper] = useState(null);
   const [editBriefing, setEditBriefing] = useState("");
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
@@ -577,15 +579,16 @@ export default function BoatPrep({ boatId, boats }) {
     if (isDup(text, item.id)) return `${text} already exists`;
     const mealHead = isMealHead(items, item.id);
     if (mealHead && editCook !== null) text = withCook(text, editCook);
+    const shopper = active.id === "provisions" ? (editShopper ?? item.shopper ?? "").trim() : "";
     const briefing = isRoleItem(item) ? editBriefing.trim() : item.briefing;
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
-      const { dynamic, area, meal_type: mt, meal_type_auto: auto, briefing: _b, ...rest } = i;
+      const { dynamic, area, meal_type: mt, meal_type_auto: auto, briefing: _b, shopper: _s, ...rest } = i;
       const picked = mealHead && editMeal !== null;
       const meal = picked ? editMeal : mt;
       // A blanked briefing stays "" so default Role Briefings from the Crew Roles template never refill it.
       const keep = briefing || (isRoleItem(item) && (item.briefing !== undefined || editBriefing !== (item.briefing || "")));
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(keep ? { briefing: briefing || "" } : {}) };
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(keep ? { briefing: briefing || "" } : {}), ...(shopper ? { shopper } : {}) };
     }));
     setDialog(null);
     return true;
@@ -948,6 +951,11 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {showMpa && <DietBanner />}
           {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
+          {canEditList && active.id === "provisions" && (
+            <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { loadCooks(); setDialog({ type: "shoppers" }); }} data-testid="assign-shoppers-btn">
+              <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
+            </button>
+          )}
           {canEditList && mealLists.some((l) => l.id === active.id) && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
               <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
@@ -960,7 +968,7 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (isMealHead(items, item.id) || active.id === "provisions") loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
@@ -1023,6 +1031,16 @@ export default function BoatPrep({ boatId, boats }) {
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />
+      <AssignShoppersDialog open={dialog?.type === "shoppers"} items={state.data.provisions || []} people={cooks} onClose={() => setDialog(null)}
+        onApply={(ids, who) => {
+          mutate((s) => ({ ...s, data: { ...s.data, provisions: (s.data.provisions || []).map((i) => {
+            if (!ids.includes(i.id)) return i;
+            const { shopper: _s, ...rest } = i;
+            return who ? { ...rest, shopper: who } : rest;
+          }) } }));
+          toast.success(who ? `${ids.length} ${ids.length === 1 ? "item" : "items"} for ${who} to buy` : "Shopper cleared");
+          setDialog(null);
+        }} />
       <CommonMealsDialog open={dialog?.type === "commonMeals"} lists={mealLists} allNames={registry.map((l) => l.name)} activeId={active.id} online={online} onAdd={addMealToPlan} onClose={() => setDialog(null)} />
       {dialog?.type === "magicMeals" && <MagicMealPlanDialog mode={dialog.mode} boat={boat} areas={areas} cooks={cooks} allNames={registry.map((l) => l.name)} online={online}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} onCreate={createMagicPlan} onClose={() => setDialog(null)} />}
@@ -1032,10 +1050,12 @@ export default function BoatPrep({ boatId, boats }) {
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <CookPicker value={editCook ?? cookOf(dialog.item.label)} cooks={cooks} onChange={setEditCook} />}
+        {dialog?.type === "edit" && active.id === "provisions" && <CookPicker value={editShopper ?? dialog.item.shopper ?? ""} cooks={cooks} onChange={setEditShopper} label="Shopper"
+          help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
-      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />

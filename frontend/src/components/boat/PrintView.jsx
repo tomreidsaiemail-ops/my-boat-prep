@@ -1,6 +1,7 @@
 import { mpaPrintText } from "@/lib/mpa";
 import { arrangeLog } from "@/lib/logFolders";
-import { ArrowLeft, CheckCircle2, Flag, Loader2, Lock, Mail, Printer } from "lucide-react";
+import { itemText, shopperGroups } from "@/lib/shoppers";
+import { ArrowLeft, CheckCircle2, Flag, Loader2, Lock, Mail, Printer, ShoppingBasket } from "lucide-react";
 
 const Meta = ({ boat, verboseDate }) => (
   <div className="print-meta">
@@ -30,11 +31,29 @@ const ListPage = ({ list, items: raw, labelFor, boat, verboseDate, index }) => {
         {item.folder ? <span className="w-6 shrink-0" /> : list.isShared || (list.kind && list.kind !== "mpa") ? <span className="w-6 shrink-0 font-mono font-bold">{n + 1}.</span> : <span className={`print-box ${item.checked ? "checked" : ""}`} />}
         <span className={`[overflow-wrap:anywhere] ${item.folder ? "font-extrabold" : item.flagged ? "flex items-start gap-1.5 font-bold text-red-700" : item.checked ? "line-through text-neutral-500" : ""}`}>
           {item.flagged && <Flag className="mt-1 h-4 w-4 shrink-0 fill-current" />}{mpaPrintText(item, labelFor(item))}
+          {String(item.shopper || "").trim() && <b className="ml-1 whitespace-nowrap text-amber-800" data-testid={`print-shopper-${item.id}`}>· <ShoppingBasket className="inline h-3.5 w-3.5" /> {item.shopper}</b>}
         </span>
       </div>
       );
     })}
+    {list.id === "provisions" && <ShopperSummary items={raw} />}
   </section>
+  );
+};
+
+const ShopperSummary = ({ items }) => {
+  const groups = shopperGroups(items);
+  if (!groups.length) return null;
+  return (
+    <div className="mt-6 border-t-2 border-black pt-3" data-testid="print-shopper-summary">
+      <h3 className="mb-2 text-lg font-extrabold uppercase">Who's buying what</h3>
+      {groups.map((g) => (
+        <div key={g.name} className="mb-3" data-testid={`print-shopper-group-${g.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
+          <p className="font-bold"><ShoppingBasket className="inline h-4 w-4" /> {g.name} ({g.items.length})</p>
+          <ul className="ml-6 list-disc">{g.items.map((i) => <li key={i.id} className={i.checked ? "line-through text-neutral-500" : ""}>{itemText(i)}</li>)}</ul>
+        </div>
+      ))}
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, FileText, Flag, MapPin, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, FileText, Flag, MapPin, Pencil, ShoppingBasket, Trash2 } from "lucide-react";
 import { ClampText, ExpandButton } from "@/components/boat/shipslog/ClampText";
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
@@ -53,6 +53,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
           {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
           {String(item.briefing || "").trim() && <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-900" title={item.briefing} data-testid={`checklist-item-briefing-badge-${item.id}`}><FileText className="h-3 w-3" />Role briefing</span>}
+          {String(item.shopper || "").trim() && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900" title={`${item.shopper} is buying this`} data-testid={`checklist-item-shopper-badge-${item.id}`}><ShoppingBasket className="h-3 w-3" />{item.shopper}</span>}
           {fold?.folded && <span className="text-xs font-bold text-sky-900" data-testid={`checklist-item-fold-summary-${item.id}`}>{info.subs} sub-item{info.subs === 1 ? "" : "s"} · {info.subsTicked} ticked</span>}
         </span>
       </button>

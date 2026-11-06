@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { shoppingFor } from "@/lib/shoppers";
 import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
@@ -13,11 +14,12 @@ import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/com
 
 const APP_URL = "https://myboatprep.com";
 
-export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {} }) => [
+export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {}, shopping = [] }) => [
   `*${name ? `Hi ${name}, you're` : "You're"} invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
   ...roles.filter((r) => briefings[r.toLowerCase()]).map((r) => `\n*Role briefing - ${r}*\n${briefings[r.toLowerCase()]}`),
+  shopping.length ? `\n*Food to bring on board*\n${shopping.map((i) => `- ${i}`).join("\n")}` : null,
   notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
   `\nJoin on My Boat Prep: ${APP_URL}`,
   `Sign up or log in with ${email || "your email"} and the app will ask you to join ${vessel}.`,
@@ -25,7 +27,7 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,7 +59,8 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   useEffect(() => { if (open && !touched) setNotes(info.voyage_notes || plan); }, [info.voyage_notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const editNotes = (v) => { setTouched(true); setNotes(v); };
 
-  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings });
+  const shopping = shoppingFor(provisions, crewName);
+  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
   const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
@@ -70,7 +73,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
     const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, send_email: mode === "email" }, { timeout: 30000 });
+      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
       if (mode === "qr") setQrFor(who);

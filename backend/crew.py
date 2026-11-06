@@ -63,18 +63,31 @@ class InviteIn(BaseModel):
     roles: List[str] = Field(default_factory=list, max_length=20)
     notes: str = Field(default="", max_length=1000)
     briefings: Dict[Annotated[str, Field(max_length=60)], Annotated[str, Field(max_length=2000)]] = Field(default_factory=dict, max_length=20)
+    shopping: List[Annotated[str, Field(max_length=200)]] = Field(default_factory=list, max_length=150)
     send_email: bool = True
+
+
+class ShoppingIn(BaseModel):
+    email: str = Field(max_length=254)
+    name: str = Field(default="", max_length=60)
+    items: List[Annotated[str, Field(max_length=200)]] = Field(min_length=1, max_length=150)
 
 
 class NotesIn(BaseModel):
     notes: str = Field(default="", max_length=1000)
 
 
-def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "") -> str:
+def shopping_html(items: List[str]) -> str:
+    rows = "".join(f"<li>{escape(i)}</li>" for i in items)
+    return f'<p><b>Food to bring on board:</b></p><ul style="margin:0 0 12px;padding-left:20px">{rows}</ul>' if items else ""
+
+
+def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "", shopping: List[str] = None) -> str:
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
     for r in roles:
         if (b := (briefings or {}).get(r.lower())):
             extra += f'<p><b>Role briefing - {escape(r)}:</b><br/>{escape(b).replace(chr(10), "<br/>")}</p>'
+    extra += shopping_html(shopping or [])
     if notes.strip():
         extra += f'<p><b>Planned voyage or race:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
     return (
@@ -136,6 +149,31 @@ async def add_racing_roles():
     await db.migrations.insert_one({"_id": "crew_racing_roles", "at": datetime.now(timezone.utc).isoformat()})
 
 
+@router.post("/boats/{boat_id}/crew/shopping")
+async def send_shopping(boat_id: BoatPath, payload: ShoppingIn, user: dict = Depends(get_current_user)):
+    """Emails a crew member (or someone with a pending invite) the Provisions they are buying."""
+    doc = await owned_boat(user, boat_id)
+    key = email_key(payload.email.strip())
+    crew = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "email": 1}).to_list(100)
+    invited = await db.crew_invites.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key}, {"_id": 1})
+    to = next((m["email"] for m in crew if email_key(m.get("email", "")) == key), None) or (payload.email.strip() if invited else None)
+    if not to:
+        raise HTTPException(status_code=404, detail="They aren't crew on this boat")
+    if await db.shopping_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": datetime.now(timezone.utc) - timedelta(days=1)}}) >= 40:
+        raise HTTPException(status_code=429, detail="Daily limit reached, try again tomorrow")
+    vessel = doc.get("boat", {}).get("vessel", "").strip() or "the boat"
+    skipper = user.get("name") or user["email"]
+    name = " ".join(payload.name.split())
+    html = ('<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
+            f'<h2 style="margin:0 0 12px">{f"Hi {escape(name)}, h" if name else "H"}ere\'s your shopping for {escape(vessel)}</h2>'
+            f'<p>{escape(skipper)} has asked you to buy these and bring them on board:</p>'
+            f'{shopping_html([i.strip() for i in payload.items if i.strip()])}'
+            '<p style="font-size:13px;color:#64748b">Sent from My Boat Prep.</p></div>')
+    await send_email(to=[to], subject=f"Your shopping for {vessel}", html=html)
+    await db.shopping_sends.insert_one({"owner_id": user["user_id"], "at": datetime.now(timezone.utc)})
+    return {"ok": True}
+
+
 @router.post("/boats/{boat_id}/invites")
 async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, user: dict = Depends(require_premium)):
     doc = await owned_boat(user, boat_id)
@@ -167,7 +205,8 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
         wanted = {r.lower() for r in roles}
         briefs.update({role_label(k).lower(): str(v).strip()[:2000] for k, v in payload.briefings.items() if role_label(k).lower() in wanted and str(v).strip()})
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
-                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name))
+                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name,
+                                          [s.strip() for s in payload.shopping if s.strip()]))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)

@@ -12,6 +12,7 @@ import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
 import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
+import { SendShoppingButton } from "@/components/boat/SendShoppingButton";
 import { PrepBadge } from "@/components/boat/CrewPrepProgress";
 import { CrewRegisterDialog } from "@/components/boat/register/CrewRegisterDialog";
 import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
@@ -41,7 +42,7 @@ const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, tes
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
+export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
@@ -123,13 +124,15 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} provisions={provisions} online={online} testId={`crew-member-${m.user_id}`} />
               </>}
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
-              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} /></>}
+              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
@@ -140,7 +143,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         )}
         <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
-        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} plan={plan} roleGroups={roleGroups} briefings={briefings} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
+        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} plan={plan} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {
             sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));
