@@ -601,3 +601,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Email crew details dialog: "Include medical details" tick adds an Allergies column (PartiesIn.include_allergies).
 - Maintenance attributes: Purchase Date (key purchase_date, admin master attribute) defaults to 1 January after the boat's Year of manufacture (year_built + 1), shown greyed "From Year of manufacture" until set on an item (clearing returns to default). Age (integer age attrs) is always read-only, calculated in full years from Purchase Date (lib/maint.js withAge), also in table columns, Excel export and item labels.
 - Tested iteration_107 (backend 40/40, frontend 100%); label age consistency fixed after.
+
+## 2026-06 Crew walkthrough prompt + register badge
+- Crew sign-off (POST /me/boat/walkthrough-signoff as crew) also records db.walkthroughs {owner_id, boat_id, user_id, email_key, at} and auto-adds the crew member to the skipper's register (Unregistered) if missing (crew_register.record_walkthrough).
+- GET /api/crew-register/walkthrough?owner_id&boat_id -> {done}. GET /api/crew-register crew rows carry walkthroughs [{boat_id, vessel, at}] -> green "<Vessel> Walkthrough ✓" badge in Crew Registration.
+- WalkthroughPrompt (crew, boat has zone-map pins, not done): "Would you like to do the Crew walkthrough of <BOAT>?" Start (opens CrewWalkthrough) / Not now (asks again next session). Queued after invite -> agreement -> registration (register prompt holds while loading).
+- Tested iteration_108 (backend 11/11 + 40 regression, frontend 100%); race fix, wording and en-NZ date applied after.

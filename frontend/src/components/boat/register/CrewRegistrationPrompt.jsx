@@ -20,18 +20,18 @@ const TextSkipper = ({ skipper }) => (
 // Crew side: shown after sign-in when a skipper has asked them to register (or invited them aboard before they registered).
 export const CrewRegistrationPrompt = () => {
   const free = usePromptsFree(["invite", "agreement"]);
-  const [list, setList] = useState([]);
+  const [list, setList] = useState(null);
   const [values, setValues] = useState(toForm());
   const [errors, setErrors] = useState([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   useEffect(() => {
-    if (!navigator.onLine) return;
-    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => setList(data.requests.filter((r) => !later().includes(r.entry_id)))).catch(() => {});
+    if (!navigator.onLine) { setList([]); return; }
+    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => setList(data.requests.filter((r) => !later().includes(r.entry_id)))).catch(() => setList([]));
   }, []);
-  const req = list[0];
+  const req = list?.[0];
   useEffect(() => { if (req) { setValues(toForm(req)); setErrors([]); } }, [req]);
-  const showing = !!(req || done);
+  const showing = list === null || !!(req || done);
   useEffect(() => { holdPrompt("register", showing); return () => holdPrompt("register", false); }, [showing]);
   if ((!req && !done) || !free) return null;
 
@@ -54,7 +54,7 @@ export const CrewRegistrationPrompt = () => {
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">{done ? "You're registered" : "Crew Registration"}</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-reg-intro">
-            {done ? `${done} can now see your registration.` : `${req.skipper} has asked you to register as crew. You only do this once. Check or correct each field. Every field is needed, so type None if something doesn't apply.`}
+            {done ? `${done} can now see your registration.` : `${req.skipper} would like you to register as crew. You only do this once. Check or correct each field. Every field is needed, so type None if something doesn't apply.`}
           </DialogDescription>
         </DialogHeader>
         {done ? (

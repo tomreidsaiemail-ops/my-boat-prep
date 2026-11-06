@@ -1,0 +1,28 @@
+{
+  "summary": "Tested the Crew walkthrough prompt and the register badge from end to end. Backend: 11/11 new pytest pass. Sign-off as crew adds the Ship's Log row, upserts db.walkthroughs and auto-creates an Unregistered register entry named from crew_names ('TEST Free Crew'). A second sign-off creates no duplicates. Sign-off as the owner creates no record. A non-crew user gets 403/404. GET /crew-register/walkthrough returns done false before and true after, and false for another boat_id. GET /crew-register returns walkthroughs [{boat_id,vessel,at}], parties get [], and email_key is not returned. Frontend (390px mobile): with the test zone map (2 pins), crew login shows the Boat Terms agreement first. After 'Not now' on it, walkthrough-prompt-dialog appears with the correct text and only one dialog is open at a time. walkthrough-prompt-later-btn hides it and sets sessionStorage; on reload in the same session there is no prompt. A new session prompts again. Start -> walkthrough-dialog -> next -> signoff shows the toast and writes to the DB. A new session after sign-off shows no prompt. Skipper: boat-crew-btn -> crew-register-open-btn shows the green 'TEST_Kia Ora Walkthrough' badge with a tick icon (reg-row-<id>-walkthrough-main). Regression: crew-walkthrough-btn in Boat Inventory zone map works for skipper and crew. The old suites test_crew_register, test_crew_diet_parties and test_parties_allergies: 40 passed. They failed (8) only while the auto-created free-user entry existed (expected test-data collision) and passed after cleanup.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew Registration prompt after auto-add", "issues": ["Once a crew member is auto-added by sign-off, their next log on shows crew-reg-dialog saying 'Pro Tester has asked you to register as crew'. The skipper never actually asked. This is caused by the existing asked() rule (crew on the boat == asked). Consider whether this is wanted, or change the wording."]},
+      {"screen": "RegRow badge", "issues": ["The badge title uses toLocaleDateString() with no locale (shows 11/6/2026 US format). Elsewhere the app uses en-NZ."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_walkthrough_badge.py", "/app/test_reports/pytest/pytest_walkthrough.xml"],
+  "action_items": [
+    "Optional: decide whether an auto-added (Unregistered) crew should immediately get the 'skipper has asked you to register' prompt, and adjust the copy if so",
+    "Optional: format the badge title date with en-NZ"
+  ],
+  "critical_code_review_comments": [
+    "Prompt queue race: CrewRegistrationPrompt only holds 'register' once its /crew-register/mine fetch has resolved and it is showing. If /crew-register/walkthrough resolves first, the walkthrough prompt can open and then the crew-reg dialog can open on top, because CrewRegistrationPrompt only waits for invite/agreement. PendingInvitePrompt avoids this by holding while loading (invites === null). Suggest holding 'register' while its list is still null. This was not seen in testing, but it is a real timing window.",
+    "The done check uses user_id but the badge matches by email_key. If a crew member's email changes, or the skipper deletes and re-adds them, the two can disagree. Deleting a register entry leaves orphan db.walkthroughs rows; harmless, since the badge reappears if they are re-added with the same email.",
+    "WalkthroughPrompt only fetches when key/online/has change. If the skipper adds pins mid-session, the prompt shows only on the next load. Fine."
+  ],
+  "updated_files": ["/app/backend/tests/test_walkthrough_badge.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporarily uploaded zone map f5e09bd2 (2 TEST pins) to test-user-pro/main via the API. This created db.walkthroughs, an auto crew_register entry and Ship's Log sign-off rows. All were removed afterwards: zone_maps=0, crew_register for pro=0, walkthroughs=0, shipsLog back to 19 rows. The pytest fixture cleans up its own records.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To test the prompt, the pro boat needs a zone map with pins. Upload one: POST /api/boats/main/zone-maps (multipart file, pro cookie), then PUT the pins. Adding a zone map changes the Boat Terms agreement, so crew see agreement-later-btn first. After a crew sign-off, the auto-created register entry makes test_crew_register.py fail with 'That email is already on your list'; clean it up first. Run test_walkthrough_badge.py with xdist (pytest.ini); it is order-dependent within the class."
+}
