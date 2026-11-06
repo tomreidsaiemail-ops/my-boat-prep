@@ -4,7 +4,7 @@ import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 from html import escape
-from typing import Annotated, List, Literal
+from typing import Annotated, Dict, List, Literal
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
@@ -62,6 +62,7 @@ class InviteIn(BaseModel):
     email: str = Field(max_length=254)
     roles: List[str] = Field(default_factory=list, max_length=20)
     notes: str = Field(default="", max_length=1000)
+    briefings: Dict[str, str] = Field(default_factory=dict, max_length=20)
     send_email: bool = True
 
 
@@ -161,9 +162,12 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     invite = {"invite_id": str(uuid.uuid4()), "token_hash": _hash(token), "owner_id": user["user_id"], "boat_id": boat_id, "email": email, "email_key": key, "name": name,
               "roles": roles, "created_at": now.isoformat(), "expires_at": (now + timedelta(days=INVITE_DAYS)).isoformat()}
     if payload.send_email:
+        # The skipper's phone sends its briefings too, so one typed just before inviting is included even if it hasn't synced yet.
+        briefs = await role_briefings(user["user_id"], boat_id)
+        wanted = {r.lower() for r in roles}
+        briefs.update({role_label(k).lower(): str(v).strip()[:2000] for k, v in payload.briefings.items() if role_label(k).lower() in wanted and str(v).strip()})
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
-                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes,
-                                         await role_briefings(user["user_id"], boat_id), name))
+                         html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)

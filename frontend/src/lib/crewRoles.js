@@ -5,6 +5,12 @@ const clean = (s) => String(s || "").replace(/^\s*\*\s*/, "").replace(/^\d+[.)]\
 
 export const crewRolesList = (state) => state?.registry?.find((l) => CREW_ROLES.test(String(l.name).trim()));
 
+// Role name (lower case) -> the skipper's Role Briefing on the boat's Crew Roles list.
+export const roleBriefings = (state) => {
+  const list = crewRolesList(state);
+  return Object.fromEntries(((list && state.data?.[list.id]) || []).filter((i) => String(i.briefing || "").trim()).map((i) => [clean(i.label).toLowerCase(), String(i.briefing).trim()]));
+};
+
 // [{ name: "Racing Roles", roles: ["Helm", ...] }]; with nothing ticked every role is offered, as before.
 export const roleGroups = (state) => {
   const list = crewRolesList(state);

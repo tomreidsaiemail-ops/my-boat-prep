@@ -56,7 +56,7 @@ import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
-import { CREW_ROLES, crewRolesList, INVITE_DRAFT, roleGroups } from "@/lib/crewRoles";
+import { CREW_ROLES, crewRolesList, INVITE_DRAFT, roleBriefings, roleGroups } from "@/lib/crewRoles";
 import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { ListIntro } from "@/components/boat/ListIntro";
 import { Checklist } from "@/components/boat/Checklist";
@@ -946,7 +946,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
-      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} roleGroups={roleGroups(state)} online={online} premium={premium}
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />

@@ -38,7 +38,7 @@ const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, tes
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
+export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
@@ -119,7 +119,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], startInvite, onl
           </button>
         )}
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
-        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} online={online} premium={premium} onUpgrade={onUpgrade}
+        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} briefings={briefings} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {
             sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));

@@ -11,10 +11,11 @@ import { INVITE_DRAFT } from "@/lib/crewRoles";
 
 const APP_URL = "https://myboatprep.com";
 
-export const crewMessage = ({ vessel, skipper, roles, notes, email, name }) => [
+export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {} }) => [
   `*${name ? `Hi ${name}, you're` : "You're"} invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
+  ...roles.filter((r) => briefings[r.toLowerCase()]).map((r) => `\n*Role briefing - ${r}*\n${briefings[r.toLowerCase()]}`),
   notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
   `\nJoin on My Boat Prep: ${APP_URL}`,
   `Sign up or log in with ${email || "your email"} and the app will ask you to join ${vessel}.`,
@@ -22,7 +23,7 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name }) => [
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], briefings = {}, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,7 +40,9 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
     setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim() });
+  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings });
+  // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
+  const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
   const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
 
   const send = async (mode) => {
@@ -50,7 +53,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], onli
     const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, send_email: mode === "email" }, { timeout: 30000 });
+      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
       if (mode === "qr") setQrFor(who);
