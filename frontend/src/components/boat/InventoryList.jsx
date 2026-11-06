@@ -219,7 +219,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   const [batchZone, setBatchZone] = useState(null);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
   const zoneCounts = {};
-  Object.values(zones).forEach((z) => { zoneCounts[z.colour] = (zoneCounts[z.colour] || 0) + 1; });
+  tops.forEach((a) => { const z = zones[a.id]; if (z) zoneCounts[z.colour] = (zoneCounts[z.colour] || 0) + 1; });
   useEffect(() => {
     if (!batchRequest) return;
     onBatchHandled();

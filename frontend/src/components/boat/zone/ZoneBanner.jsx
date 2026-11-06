@@ -6,12 +6,12 @@ import { Checklist, slug } from "@/components/boat/zone/ZoneDialog";
 import { LIGHT, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 
 // Sticky colour + zone banner while batch scanning; the zone's plan and photos stay folded away until tapped.
-export const ZoneBanner = ({ zone, boat }) => {
+export const ZoneBanner = ({ zone, boat, testId }) => {
   const [open, setOpen] = useState(false);
   const photos = zonePhotos(boat, zone);
   const l = zone.label.toLowerCase();
   const plans = (boat?.zone_maps || []).filter((m) => m.kind === "overview" && (m.swatches || []).some((s) => (s.label || s.colour).toLowerCase() === l));
-  const t = `zone-banner-${slug(zone.label)}`;
+  const t = testId || `zone-banner-${slug(zone.label)}`;
   return (
     <div className="sticky top-0 z-20 -mx-1 rounded-md shadow-md" style={{ background: ZONE_COLOURS[zone.colour], color: LIGHT.has(zone.colour) ? "#0f172a" : "#fff" }} data-testid={t}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2.5 text-left" data-testid={`${t}-toggle`}>

@@ -79,6 +79,10 @@ export const boatZones = (boat) => {
 export const zonePhotos = (boat, zone) => {
   const own = (boat?.zone_maps || []).filter((m) => m.kind !== "overview");
   const l = low(zone.label);
-  const hit = own.filter((m) => low(m.zone) === l || low(m.name) === l || (l && low(m.name).includes(l)));
-  return hit.length ? hit : own.filter((m) => m.colour === zone.colour && !m.zone);
+  const esc = l.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
+  const numbered = (m) => low(m.name) === l || new RegExp("^" + esc + " \\d+$").test(low(m.name));
+  const hit = own.filter((m) => low(m.zone) === l || (!m.zone && numbered(m)));
+  if (hit.length) return hit;
+  const loose = own.filter((m) => !m.zone && l && low(m.name).includes(l));
+  return loose.length ? loose : own.filter((m) => m.colour === zone.colour && !m.zone);
 };

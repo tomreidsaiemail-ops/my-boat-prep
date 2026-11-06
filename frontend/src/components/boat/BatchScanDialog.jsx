@@ -70,7 +70,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
             {entries.length === 1 ? "Done" : "Confirm Batch"}
           </button>
         </div>
-        <BatchAreaForm open={open && form} zone={zone} existing={areas} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
+        <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={areas} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
           onAdd={add} onClose={() => setForm(false)} />
         <ConfirmDelete item={doomed} testId="batch-area-delete" note="Its photo and scanned contents are removed from this batch." cancelLabel="Keep"
           onConfirm={() => { batch.remove(doomed.key); setDoomed(null); }} onClose={() => setDoomed(null)} />

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -52,8 +52,37 @@ async def users_today(since: Optional[str] = None, _: dict = Depends(require_adm
     return {"users": [{"name": d.get("name") or "", "email": d.get("email", ""), "role": d.get("role", "free"), "last_seen": d["last_seen"]} for d in docs]}
 
 
+def _user_row(d: dict, seen: str) -> dict:
+    return {"name": d.get("name") or "", "email": d.get("email", ""), "role": d.get("role", "free"), "last_seen": seen}
+
+
+async def users_between(start: str, end: str) -> list:
+    """Everyone who used the app between start and end: hourly visit records, plus anyone whose latest visit falls in the range."""
+    seen = {}
+    async for a in db.user_activity.find({"last": {"$gte": start}, "first": {"$lt": end}}, {"_id": 0, "user_id": 1, "first": 1, "last": 1}):
+        t = a["last"] if a["last"] < end else a["first"]
+        seen[a["user_id"]] = max(seen.get(a["user_id"], ""), t)
+    async for u in db.users.find({"last_seen": {"$gte": start, "$lt": end}}, {"_id": 0, "user_id": 1, "last_seen": 1}):
+        seen[u["user_id"]] = max(seen.get(u["user_id"], ""), u["last_seen"])
+    docs = await db.users.find({"user_id": {"$in": list(seen)}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1, "role": 1}).to_list(5000)
+    return sorted((_user_row(d, seen[d["user_id"]]) for d in docs), key=lambda r: r["last_seen"], reverse=True)
+
+
+def day_before(since: Optional[str]) -> tuple:
+    end = day_start(since)
+    return (datetime.fromisoformat(end) - timedelta(days=1)).isoformat(), end
+
+
+@router.get("/admin/users-yesterday")
+async def users_yesterday(since: Optional[str] = None, yesterday: Optional[str] = None, _: dict = Depends(require_admin)):
+    """since = the admin's local midnight today; yesterday = local midnight yesterday (24h earlier if missing, e.g. across a DST change)."""
+    end = day_start(since)
+    start = day_start(yesterday) if yesterday else day_before(since)[0]
+    return {"users": await users_between(start, end)}
+
+
 @router.get("/admin/analytics")
-async def analytics(since: Optional[str] = None, _: dict = Depends(require_admin)):
+async def analytics(since: Optional[str] = None, yesterday: Optional[str] = None, _: dict = Depends(require_admin)):
     p, ms = await pricing(), month_start()
     ms_iso = ms.isoformat()
     users = await db.users.count_documents({})
@@ -68,6 +97,7 @@ async def analytics(since: Optional[str] = None, _: dict = Depends(require_admin
         "pricing": p, "month_start": ms_iso, "generated_at": datetime.now(timezone.utc).isoformat(),
         "growth": {"users": users, "users_month": await db.users.count_documents({"created_at": {"$gte": ms_iso}}),
                    "users_today": await db.users.count_documents({"last_seen": {"$gte": day_start(since)}}),
+                   "users_yesterday": len(await users_between(day_start(yesterday) if yesterday else day_before(since)[0], day_start(since))),
                    "pro": await db.users.count_documents({"role": "pro"}),
                    "pro_month": await db.users.count_documents({"role": "pro", "pro_since": {"$gte": ms_iso}})},
         "compute": {"all": total, "month": compute(month_t[0]), "ai_users": len(all_t[0].get("users", [])),

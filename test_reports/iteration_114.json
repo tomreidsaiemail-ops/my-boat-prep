@@ -1,0 +1,39 @@
+{
+  "summary": "Zone-first workflow (tap colour -> Zone dialog -> zone photos -> Scan <zone> cupboards with sticky banner -> zone-tagged areas) tested end to end. Backend: 10/10 pytest pass (zone/colour upload naming Galley N, Orange shared by Galley photos, Saloon+Orange 400, invalid colour 400, whitespace/alias normalisation, no-zone legacy behaviour, unauth 401, meta same_zone no clash, cross-zone clash 400). Frontend (390px + 1920px): short tap on overview square opens zone-dialog-<slug>; long press (800ms) shows remove x instead; Saloon empty state + 5-item checklist open + camera/gallery buttons; gallery upload of 2 images -> toast '2 photos added to Saloon (Green)', 2 thumbnails, Scan Saloon cupboards button; Galley dialog 2 thumbnails, enlarge/close, checklist collapsed by default with 9 galley items; Scan Galley cupboards -> batch-scan-dialog with orange zone-banner-galley (label GALLEY, collapsed, expands to plan with only Galley square + 2 photos + checklist, collapses again); batch-area-form chip 'Galley' and 'New Galley boat area'; real Magic Scan of one area + Done -> toast and area listed under inventory-colour-group-orange (GALLEY), persisted after reload; zone-picker chips with count (Galley 1), zone dialog shows '1 boat area already in Galley'; add form hidden until More options; top 'Batch Magic Scan' button now toasts 'Pick the zone to scan first' and scrolls to picker. Crew (free user on pro boat): no zone dialog, Cockpit -> toast 'No Cockpit photos yet', Galley -> opens zone-map-dialog photo, no zone-picker. Regression: Magically Place Colours, palette, Zone Map Photos list (names Galley/Galley 2) OK; no horizontal overflow at 390px in zone dialog or batch dialog.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{id}/zone-maps", "issue": "Clash auto-recolour of a non-manual map (update_one on clash) runs BEFORE _read_picture/put_object, so an invalid/too-big/failed upload still silently recolours another zone map. Move _read_picture before the clash handling."},
+      {"endpoint": "POST /api/boats/{id}/zone-maps", "issue": "Name numbering uses count of existing zone photos: delete 'Galley' (keep 'Galley 2') then add -> creates a second 'Galley 2'. Use max suffix+1 or first free name."},
+      {"endpoint": "POST /api/boats/{id}/zone-maps", "issue": "Clash exemption uses substring `zone.lower() in name.lower()` - e.g. zone 'Aft' or 'Heads' would be allowed to share a colour with a photo named 'Aft cabin'/'Forward heads'. Prefer exact name/zone match."},
+      {"endpoint": "Magic Scan (batch)", "issue": "Real kitchen photo (unsplash kitchen cupboards) returned 'Ready to review · 0 found'. Not part of this feature, but scan quality may be worth a look."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Scan <zone> cupboards", "issues": ["BatchAreaForm auto-opens on top of the batch dialog, so the zone banner (plan/photos/checklist) can't be expanded while naming the first cupboard; the user must Cancel the form first. Consider showing the banner (or a mini photo strip) inside BatchAreaForm, since the chip alone gives colour+zone but not the photos."]},
+      {"screen": "Zone Map Overview at 390px", "issues": ["Placed squares overlap (Nav station partly hidden behind Heads Aft, Lazarett behind Cockpit/Transom) - hard to tap the right one on phone."]},
+      {"screen": "Inventory list at 390px", "issues": ["Long area names (e.g. 'TEST_Galley port cupboard') push the trash icon partly off the right edge of the row (pre-existing)."]},
+      {"screen": "Zone dialog", "issues": ["area-count counts folders/boxes (sub-areas inherit zone) as 'boat areas'; may overstate the number."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_photos.py", "/app/test_reports/pytest/pytest_zone_photos.xml"],
+  "action_items": [
+    "Backend add_boat_map: validate/read the picture before mutating another map's colour on clash",
+    "Backend add_boat_map: avoid duplicate 'Galley N' names after deletions; tighten substring clash exemption",
+    "Optional UX: make zone photos visible while the BatchAreaForm is open"
+  ],
+  "critical_code_review_comments": [
+    "inventory.py add_boat_map: side effect (recolour clash) before file validation/storage - not transactional",
+    "zonePhotos fallback `low(m.name).includes(l)` can match unrelated photos (e.g. zone 'Aft' matches 'Aft cabin' photo), same substring concern as backend",
+    "ZoneDialog upload loop stops on first error but keeps earlier saved ones - fine; toast reports only saved count"
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_photos.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "None left behind. Created and deleted: zone maps via pytest (auto-cleaned), Saloon photos ec503744-f2e4-40d5-a645-dc848e2f4695 & 5016d44a-9162-4b9a-a3ef-9a38c8716753 (deleted), inventory area 'TEST_Galley port cupboard' amw4vmnaxmh5p (deleted via UI). One accidental Galley photo 8511c47f... on test-user-free's own boat 'main' (free user is premium via launch_free) - deleted. Pro boat main back to overview + Galley + Galley 2. One Magic Scan credit consumed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Tap overview squares with page.mouse down/up at swatch centre (filter swatch by text). test-user-free is premium (launch_free) so require_premium doesn't 403 for it. Crew session shows crew-agreement-dialog - click 'Not now'. Batch area form auto-opens when batch dialog opens; cancel it to reach zone-banner toggle. Area delete confirm button is role=button name 'Delete'."
+}

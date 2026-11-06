@@ -43,6 +43,7 @@ from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
+from template_backup import router as template_backup_router  # noqa: E402
 from folder_cards import router as folder_cards_router  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
@@ -542,6 +543,7 @@ app.include_router(crew_router)
 app.include_router(crew_agreement_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
+app.include_router(template_backup_router)
 app.include_router(folder_cards_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
@@ -605,6 +607,9 @@ async def create_indexes():
     await db.crew_register.create_index("entry_id", unique=True)
     await db.crew_register.create_index([("owner_id", 1), ("kind", 1)])
     await db.crew_register.create_index("email_key")
+    await db.user_activity.create_index([("user_id", 1), ("hour", 1)], unique=True)
+    await db.user_activity.create_index([("last", 1), ("first", 1)])
+    await db.user_activity.create_index("expires", expireAfterSeconds=0)
     await db.zone_schematics.create_index("job_id", unique=True)
     await db.zone_schematics.create_index("expires", expireAfterSeconds=0)
     await db.invite_sends.create_index("at", expireAfterSeconds=2 * 86400)

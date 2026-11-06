@@ -4,12 +4,12 @@ import { Camera, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
-import { ZoneChip } from "@/components/boat/zone/ZoneDialog";
+import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // Name + photo for one boat area in a batch. Nothing is scanned until it's confirmed.
-export const BatchAreaForm = ({ open, zone, existing, batchNames, full, onAdd, onClose }) => {
+export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, onAdd, onClose }) => {
   const [name, setName] = useState("");
   const [blob, setBlob] = useState(null);
   const [preview, setPreview] = useState("");
@@ -40,7 +40,7 @@ export const BatchAreaForm = ({ open, zone, existing, batchNames, full, onAdd, o
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
-          {zone && <ZoneChip zone={zone} className="self-start" testId="batch-area-zone-chip" />}
+          {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} boat area` : "New boat area"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>

@@ -67,6 +67,9 @@ async def mark_seen(user: dict) -> None:
     now = datetime.now(timezone.utc)
     if user.get("last_seen", "") < (now - timedelta(minutes=5)).isoformat():
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_seen": now.isoformat()}})
+        # One record per user per hour, kept 40 days, so Users yesterday still counts people who came back today.
+        await db.user_activity.update_one({"user_id": user["user_id"], "hour": now.strftime("%Y-%m-%dT%H")},
+                                          {"$min": {"first": now.isoformat()}, "$max": {"last": now.isoformat()}, "$setOnInsert": {"expires": now + timedelta(days=40)}}, upsert=True)
 
 
 async def get_current_user(request: Request) -> dict:

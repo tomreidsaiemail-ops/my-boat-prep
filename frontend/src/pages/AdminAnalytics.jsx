@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { todayStart, UsersTodayDialog } from "@/components/admin/UsersTodayDialog";
+import { todayStart, UsersTodayDialog, yesterdayStart } from "@/components/admin/UsersTodayDialog";
 
 const REFRESH_MS = 30000;
 export const fmtTokens = (n = 0) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`);
@@ -63,10 +63,10 @@ const PricingForm = ({ pricing, onSaved }) => {
 export default function AdminAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [today, setToday] = useState(false);
+  const [today, setToday] = useState(null);
   const load = useCallback(() => {
     setLoading(true);
-    api.get("/admin/analytics", { params: { since: todayStart() } }).then(({ data: d }) => setData(d)).catch(() => toast.error("Couldn't load analytics. Check your signal.")).finally(() => setLoading(false));
+    api.get("/admin/analytics", { params: { since: todayStart(), yesterday: yesterdayStart() } }).then(({ data: d }) => setData(d)).catch(() => toast.error("Couldn't load analytics. Check your signal.")).finally(() => setLoading(false));
   }, []);
   useEffect(() => { load(); const t = setInterval(load, REFRESH_MS); return () => clearInterval(t); }, [load]);
 
@@ -85,7 +85,8 @@ export default function AdminAnalytics() {
           <p className="-mt-3 text-xs text-[var(--muted)]" data-testid="analytics-updated">Updates every 30 seconds · last {new Date(data.generated_at).toLocaleTimeString("en-NZ")} · "This month" from {new Date(data.month_start).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}</p>
           <Section title="Growth & monetisation" testId="analytics-growth">
             <Tile label="Total users" value={data.growth.users} testId="tile-users" />
-            <Tile label="Users today" value={data.growth.users_today} sub="opened the app today · tap to see who" onClick={() => setToday(true)} testId="tile-users-today" />
+            <Tile label="Users today" value={data.growth.users_today} sub="opened the app today · tap to see who" onClick={() => setToday("today")} testId="tile-users-today" />
+            <Tile label="Users yesterday" value={data.growth.users_yesterday ?? 0} sub="opened the app yesterday · tap to see who" onClick={() => setToday("yesterday")} testId="tile-users-yesterday" />
             <Tile label="Users this month" value={data.growth.users_month} testId="tile-users-month" />
             <Tile label="Total Pro users" value={data.growth.pro} sub="paid or promo Pro accounts" testId="tile-pro" />
             <Tile label="Pro users this month" value={data.growth.pro_month} testId="tile-pro-month" />
@@ -104,7 +105,7 @@ export default function AdminAnalytics() {
           </Section>
           <p className="text-xs text-[var(--muted)]">Uses before token tracking started are counted, with 0 tokens.</p>
           <PricingForm pricing={data.pricing} onSaved={load} />
-          <UsersTodayDialog open={today} onClose={() => setToday(false)} />
+          <UsersTodayDialog open={!!today} day={today || "today"} onClose={() => setToday(null)} />
         </>
       )}
     </main>

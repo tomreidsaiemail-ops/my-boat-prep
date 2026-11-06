@@ -1,3 +1,4 @@
+import re
 import asyncio
 import uuid
 from datetime import datetime, timezone
@@ -82,16 +83,13 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: st
     zone_colour = colour_name(colour) if zone else None
     if zone and not zone_colour:
         raise HTTPException(status_code=400, detail="Please use one of the zone map colours")
+    clash = None
     if zone_colour:
-        low = zone.lower()
+        same_name = re.compile(rf"^{re.escape(zone.lower())}( \d+)?$")
         clash = next((m for m in maps if m.get("kind") != "overview" and m.get("colour") == zone_colour
-                      and (m.get("zone") or "").lower() != low and low not in (m.get("name") or "").lower()), None)
+                      and (m.get("zone") or "").lower() != zone.lower() and not same_name.match((m.get("name") or "").lower())), None)
         if clash and (clash.get("zone") or clash.get("colour_manual")):
             raise HTTPException(status_code=400, detail=f"{zone_colour} is already used by {clash.get('name') or 'another zone map'}. Rename or recolour that photo first.")
-        if clash:
-            used = {m.get("colour") for m in maps} | {zone_colour}
-            free = next((c for c in PALETTE if c not in used), PALETTE[0])
-            await db.user_boats.update_one({**key, "zone_maps.id": clash["id"]}, {"$set": {"zone_maps.$.colour": free}})
     data = await _read_picture(file)
     map_id = str(uuid.uuid4())
     path = f"{APP_NAME}/boat-zone-maps/{user['user_id']}/{map_id}.{TYPES[file.content_type]}"
@@ -99,10 +97,15 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: st
         await asyncio.to_thread(put_object, path, data, file.content_type)
     except Exception:
         raise HTTPException(status_code=502, detail="Couldn't save the picture right now, please try again")
+    if clash:
+        used = {m.get("colour") for m in maps} | {zone_colour}
+        free = next((c for c in PALETTE if c not in used), PALETTE[0])
+        await db.user_boats.update_one({**key, "zone_maps.id": clash["id"]}, {"$set": {"zone_maps.$.colour": free}})
     entry = {"id": map_id, "path": path, "content_type": file.content_type, "updated_at": datetime.now(timezone.utc).isoformat(), "name": "", "colour": next_colour(doc.get("zone_maps") or [])}
     if zone_colour:
-        count = sum(1 for m in maps if (m.get("zone") or "").lower() == zone.lower())
-        entry.update({"name": zone if not count else f"{zone} {count + 1}", "colour": zone_colour, "colour_manual": True, "zone": zone})
+        names = {(m.get("name") or "").lower() for m in maps}
+        name = next(n for n in [zone, *(f"{zone} {k}" for k in range(2, MAX_BOAT_MAPS + 2))] if n.lower() not in names)
+        entry.update({"name": name, "colour": zone_colour, "colour_manual": True, "zone": zone})
     res = await db.user_boats.update_one({**key, f"zone_maps.{MAX_BOAT_MAPS - 1}": {"$exists": False}}, {"$push": {"zone_maps": entry}})
     if not res.modified_count:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
