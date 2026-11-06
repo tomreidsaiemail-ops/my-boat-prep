@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone, timedelta, date
 from html import escape
 from typing import Annotated, List, Literal, Optional
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
 from db import db
@@ -97,8 +97,31 @@ async def no_duplicate(user: dict, kind: str, email: str, skip: str = ""):
 
 @router.get("")
 async def list_register(user: dict = Depends(get_current_user)):
-    rows = await db.crew_register.find({"owner_id": user["user_id"]}, {"_id": 0, "owner_id": 0, "email_key": 0}).sort("created_at", 1).to_list(500)
+    rows = await db.crew_register.find({"owner_id": user["user_id"]}, {"_id": 0, "owner_id": 0}).sort("created_at", 1).to_list(500)
+    walks = await db.walkthroughs.find({"owner_id": user["user_id"]}, {"_id": 0}).sort("at", 1).to_list(1000)
+    boats = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip() or "Your boat"
+             async for b in db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
+    for r in rows:
+        r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"]} for w in walks if w["email_key"] == r.get("email_key") and w["boat_id"] in boats] if r["kind"] == "crew" else []
+        r.pop("email_key", None)
     return {"crew": [r for r in rows if r["kind"] == "crew"], "parties": [r for r in rows if r["kind"] == "party"]}
+
+
+async def record_walkthrough(owner_id: str, boat_id: str, user: dict):
+    """Crew signed off the boat's Crew walkthrough: keep it for their register badge, adding them to the skipper's register if they aren't on it."""
+    key, now = email_key(user["email"]), datetime.now(timezone.utc).isoformat()
+    await db.walkthroughs.update_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"$set": {"email_key": key, "at": now}}, upsert=True)
+    if not await db.crew_register.find_one({"owner_id": owner_id, "kind": "crew", "email_key": key}, {"_id": 1}):
+        boat = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, f"crew_names.{user['user_id']}": 1})
+        name = ((boat or {}).get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user["email"].split("@")[0]
+        await db.crew_register.insert_one({"entry_id": str(uuid.uuid4()), "owner_id": owner_id, "kind": "crew", **{k: "" for k in TEXT}, "height_cm": None, "weight_kg": None,
+                                           "name": str(name).strip()[:60], "email": user["email"].lower(), "email_key": key, "status": "unregistered", "created_at": now, "updated_at": now})
+
+
+@router.get("/walkthrough")
+async def walkthrough_done(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")], boat_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")],
+                           user: dict = Depends(get_current_user)):
+    return {"done": bool(await db.walkthroughs.find_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 1}))}
 
 
 @router.post("")

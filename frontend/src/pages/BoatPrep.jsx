@@ -73,6 +73,7 @@ import { Sparkles } from "lucide-react";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
+import { WalkthroughPrompt } from "@/components/boat/register/WalkthroughPrompt";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
@@ -801,7 +802,8 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")} />
-      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /></>
+      {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
+        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /></>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}

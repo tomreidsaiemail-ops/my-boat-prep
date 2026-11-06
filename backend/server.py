@@ -36,7 +36,7 @@ from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
 from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
-from crew_register import router as crew_register_router  # noqa: E402
+from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from templates import add_spars_attributes, seed_budget_template, seed_log_help, seed_master_attributes  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
@@ -375,7 +375,7 @@ class SignOffIn(BaseModel):
 
 @api_router.post("/me/boat/walkthrough-signoff")
 async def walkthrough_signoff(payload: SignOffIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
-    key, _ = await boat_access(user, boat_id, owner)
+    key, role = await boat_access(user, boat_id, owner)
     now = datetime.now(timezone.utc)
     name = (user.get("name") or user.get("email") or "crew").strip()[:80]
     when = re.sub(r"[^\w ,:/.\-]", "", payload.when).strip()
@@ -384,6 +384,8 @@ async def walkthrough_signoff(payload: SignOffIn, user: dict = Depends(get_curre
     res = await db.user_boats.update_one(key, {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Boat not found")
+    if role == "crew":
+        await record_walkthrough(key["owner_id"], boat_id, user)
     return {"item": item}
 
 

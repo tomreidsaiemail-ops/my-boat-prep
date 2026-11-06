@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { CREW_FIELDS, missing, toForm, toPayload } from "@/lib/crewRegister";
 import { RegFields } from "@/components/boat/register/RegFields";
-import { usePromptsFree } from "@/lib/promptQueue";
+import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
 
 const LATER_KEY = "mbp_register_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
@@ -31,6 +31,8 @@ export const CrewRegistrationPrompt = () => {
   }, []);
   const req = list[0];
   useEffect(() => { if (req) { setValues(toForm(req)); setErrors([]); } }, [req]);
+  const showing = !!(req || done);
+  useEffect(() => { holdPrompt("register", showing); return () => holdPrompt("register", false); }, [showing]);
   if ((!req && !done) || !free) return null;
 
   const next = () => { setDone(null); setList((l) => l.slice(1)); };
