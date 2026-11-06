@@ -7,6 +7,8 @@ import { buildShopping, foodStock, initialsFor, keyOf, matchRules, mpaWarnings }
 import { MpaWarningsDialog } from "@/components/boat/MpaWarningsDialog";
 import { AISLE_NAMES, OTHER_AISLE, builtInAisle } from "@/lib/aisles";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
+import { DietBanner } from "@/components/boat/register/DietBanner";
+import { useCrewDiet } from "@/lib/crewDiet";
 
 const Fact = ({ label, value, testId, warn }) => (
   <div className={`rounded-md border-[1.5px] px-3 py-2 ${warn ? "border-amber-400 bg-amber-50" : "border-[var(--line)]"}`} data-testid={testId}>
@@ -28,6 +30,7 @@ const useMatchRules = (open, online) => {
 
 export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate }) => {
   const rules = useMatchRules(open, online);
+  const diet = useCrewDiet()?.text || "";
   const [picked, setPicked] = useState([]);
   const [useProv, setUseProv] = useState(true);
   const [byAisle, setByAisle] = useState(true);
@@ -64,7 +67,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
         try {
           const onBoard = Object.fromEntries(prov.map((p) => [p, stock[keyOf(p)]?.qty]).filter(([, q]) => q));
           const { data } = await api.post("/ai/mpa/provisions", { items: prov, on_board: onBoard, adults, children, days: days || 1,
-            pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg" }, { timeout: 90000 });
+            pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg", diet }, { timeout: 90000 });
           amounts = data.amounts;
           petItems = data.pets || [];
         } catch (e) {
@@ -97,6 +100,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> Magic Provisioning Assistant</DialogTitle>
           <DialogDescription>Pick your meal plans. The MPA works out one shopping list for everyone on board, takes off what's already in your Food areas and adds your Provisions.</DialogDescription>
         </DialogHeader>
+        <DietBanner testId="mpa-diet-banner" />
         <div className="flex flex-col gap-2">
           <p className="field-label">Meal plans</p>
           {lists.length === 0 && <p className="rounded-md bg-amber-50 p-3 text-sm" data-testid="mpa-no-lists">No meal plan lists yet. Make a list with numbered meal names (e.g. "1. Curry") so the lines underneath are indented. Put the recipe in square brackets as the first line under each meal, e.g. "[Fry the onion, add rice]", then the ingredients, e.g. "200g rice".</p>}

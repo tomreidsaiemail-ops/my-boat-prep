@@ -37,7 +37,7 @@ export const WeightPanel = ({ boat, onChange }) => {
         </div>
         <WeightInput id="crew-weight" label="Average crew weight" value={boat.crew_weight} unit={u} placeholder={String(w.avg)} onChange={(v) => onChange("crew_weight", v)} />
         <div className="flex min-w-0 flex-col justify-end gap-1 pb-2 text-sm" data-testid="crew-weight-total">
-          <span>{w.pob} on board x {w.avg} {u}{w.avgDefault ? " (typical)" : ""}</span>
+          <span>{w.known ? `${w.known} registered crew ${fmtKg(w.knownKg, u)}${w.pob > w.known ? ` + ${w.pob - w.known} x ${w.avg} ${u}${w.avgDefault ? " (typical)" : ""}` : ""}` : `${w.pob} on board x ${w.avg} ${u}${w.avgDefault ? " (typical)" : ""}`}</span>
           <b className="font-mono">{fmtKg(w.crewKg, u)}</b>
         </div>
       </div>

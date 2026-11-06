@@ -3,6 +3,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { topUpOutline } from "@/lib/outline";
+import { foodDiet, useCrewDiet } from "@/lib/crewDiet";
 
 const Suggestion = ({ s, n, ticked, onTick }) => (
   <label className="flex min-h-[44px] cursor-pointer items-center gap-3 px-3 py-2 text-sm" data-testid={`topup-suggestion-${n}`}>
@@ -24,12 +25,13 @@ const Groups = ({ suggestions, picked, onTick }) => {
 export const TopUpDialog = ({ open, list, items, description, labelFor, onAdd, onClose }) => {
   const [state, setState] = useState({ busy: false, error: "", suggestions: [], left: null });
   const [picked, setPicked] = useState(new Set());
+  const crewDiet = useCrewDiet();
   useEffect(() => {
     if (!open) return;
     setState({ busy: true, error: "", suggestions: [], left: null });
     setPicked(new Set());
     const ctrl = new AbortController();
-    api.post("/ai/list-topup", { name: list.name, description: description || "", items: topUpOutline(items, labelFor).slice(0, 400).map((i) => ({ ...i, label: i.label.slice(0, 300) })) }, { timeout: 90000, signal: ctrl.signal })
+    api.post("/ai/list-topup", { name: list.name, description: description || "", diet: foodDiet(crewDiet, list.name, description, list.id === "provisions" || items.some((i) => /^\s*\[.*\]\s*$/.test(i.label || "")) ? "meal" : ""), items: topUpOutline(items, labelFor).slice(0, 400).map((i) => ({ ...i, label: i.label.slice(0, 300) })) }, { timeout: 90000, signal: ctrl.signal })
       .then(({ data }) => setState({ busy: false, error: "", suggestions: data.suggestions, left: data.drafts_left }))
       .catch((e) => !ctrl.signal.aborted && setState({ busy: false, error: apiError(e, "Magic List Top-Up couldn't do that right now. Please try again."), suggestions: [], left: null }));
     return () => ctrl.abort();

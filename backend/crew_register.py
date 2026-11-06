@@ -10,7 +10,7 @@ from db import db
 from auth import get_current_user, require_premium
 from email_service import send_email
 from urls import public_base
-from crew import email_key
+from crew import email_key, owned_boat, BoatPath
 
 router = APIRouter(prefix="/api/crew-register")
 DAILY_SEND_LIMIT = 60
@@ -184,22 +184,44 @@ def summary_html(skipper: str, crew: list) -> str:
     )
 
 
+class PartiesIn(BaseModel):
+    crew_ids: List[Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")]] = Field(min_length=1, max_length=200)
+    party_id: str = Field(pattern=r"^[a-f0-9-]{36}$")
+
+
 @router.post("/parties-email")
-async def email_parties(user: dict = Depends(require_premium)):
-    rows = await db.crew_register.find({"owner_id": user["user_id"]}, {"_id": 0}).sort("created_at", 1).to_list(500)
-    parties = [r["email"] for r in rows if r["kind"] == "party" and r.get("email")]
-    crew = [r for r in rows if r["kind"] == "crew"]
-    if not parties:
-        raise HTTPException(status_code=400, detail="Add an interested party first")
+async def email_parties(payload: PartiesIn, user: dict = Depends(require_premium)):
+    party = await db.crew_register.find_one({"owner_id": user["user_id"], "kind": "party", "entry_id": payload.party_id}, {"_id": 0})
+    if not party or not party.get("email"):
+        raise HTTPException(status_code=400, detail="Pick the interested party to email")
+    crew = await db.crew_register.find({"owner_id": user["user_id"], "kind": "crew", "entry_id": {"$in": payload.crew_ids}}, {"_id": 0}).sort("created_at", 1).to_list(200)
     if not crew:
-        raise HTTPException(status_code=400, detail="Add crew to your register first")
+        raise HTTPException(status_code=400, detail="Pick the crew to include")
     now = datetime.now(timezone.utc)
-    if await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}}) + len(parties) > DAILY_SEND_LIMIT:
+    if await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}}) >= DAILY_SEND_LIMIT:
         raise HTTPException(status_code=429, detail=f"Daily limit reached ({DAILY_SEND_LIMIT} registration emails), try again tomorrow")
     skipper = user.get("name") or user["email"]
-    await send_email(to=parties, subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew))
-    await db.register_sends.insert_many([{"owner_id": user["user_id"], "at": now} for _ in parties])
-    return {"sent_to": parties, "crew": len(crew), "unregistered": [c["name"] for c in crew if c.get("status") != "registered"]}
+    await send_email(to=[party["email"]], subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew))
+    await db.register_sends.insert_one({"owner_id": user["user_id"], "at": now})
+    return {"sent_to": party["name"], "email": party["email"], "crew": len(crew), "unregistered": [c["name"] for c in crew if c.get("status") != "registered"]}
+
+
+@router.get("/on-board/{boat_id}")
+async def on_board(boat_id: BoatPath, user: dict = Depends(get_current_user)):
+    """Crew on this boat (those who replied 'in', if anyone has) with their registered allergies, food preferences and weight. Skipper only."""
+    doc = await owned_boat(user, boat_id)
+    ids = doc.get("crew") or []
+    rsvp = doc.get("rsvp") or {}
+    if any((rsvp.get(i) or {}).get("status") == "in" for i in ids):
+        ids = [i for i in ids if (rsvp.get(i) or {}).get("status") == "in"]
+    members = await db.users.find({"user_id": {"$in": ids}}, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(100)
+    keys = {email_key(m.get("email", "")): m for m in members}
+    rows = await db.crew_register.find({"owner_id": user["user_id"], "kind": "crew", "email_key": {"$in": list(keys)}}, {"_id": 0}).to_list(100)
+    names = doc.get("crew_names") or {}
+    people = [{"name": r["name"], "allergies": r.get("allergies", ""), "food": r.get("food", ""), "weight_kg": r.get("weight_kg"), "status": r.get("status")} for r in rows]
+    found = {r["email_key"] for r in rows}
+    missing = [names.get(m["user_id"]) or m.get("name") or m.get("email") for k, m in keys.items() if k not in found]
+    return {"people": people, "not_on_register": missing, "rsvp_only": len(ids) != len(doc.get("crew") or [])}
 
 
 async def asked(r: dict, user: dict) -> bool:

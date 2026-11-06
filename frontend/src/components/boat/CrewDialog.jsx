@@ -135,7 +135,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
             window.dispatchEvent(new Event("mbp:crew-roles"));
           }} />
         <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
-        <CrewRegisterDialog open={register} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => setRegister(false)} />
+        <CrewRegisterDialog open={register} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); window.dispatchEvent(new Event("mbp:register-changed")); }} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>

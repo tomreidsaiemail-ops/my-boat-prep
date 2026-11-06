@@ -30,11 +30,19 @@ PROMPT = (
     'Return exactly: {{"groups": [{{"heading": "...", "items": ["..."]}}]}}'
 )
 MAX_LINES = 300
+DIET_RULE = ("\nCrew on board have these allergies and food preferences:\n{diet}\n"
+             "If this list involves food, meals, recipes or provisions, never include anything containing an ingredient someone is allergic to, "
+             "and respect their food preferences.")
+
+
+def with_diet(prompt: str, diet: str) -> str:
+    return prompt + DIET_RULE.format(diet=diet.strip().replace('"""', "'''")) if diet.strip() else prompt
 
 
 class DraftIn(BaseModel):
     name: str = Field(default="", max_length=60)
     description: str = Field(default="", max_length=4000, validate_default=True)
+    diet: str = Field(default="", max_length=3000)
 
     @field_validator("description")
     @classmethod
@@ -107,6 +115,7 @@ async def list_draft(body: DraftIn, user: dict = Depends(require_premium)):
     youtube = wants_youtube(body.name, body.description)
     if youtube:
         prompt += YOUTUBE_RULE
+    prompt = with_diet(prompt, body.diet)
     lines, left = await _run(user, "draft", prompt, to_lines, {"name": body.name.strip(), "description": body.description})
     if not youtube:
         return {"lines": lines, "drafts_left": left}
@@ -131,6 +140,7 @@ class TopUpIn(BaseModel):
     name: str = Field(default="", max_length=60)
     description: str = Field(default="", max_length=4000)
     items: List[TopUpLine] = Field(default_factory=list, max_length=400)
+    diet: str = Field(default="", max_length=3000)
 
 
 def _norm_heading(h: str) -> str:
@@ -160,7 +170,7 @@ async def list_topup(body: TopUpIn, user: dict = Depends(require_premium)):
         raise HTTPException(status_code=422, detail="Add a list name, description or a few items first")
     outline = "\n".join(f"# {i.label.strip()}" if i.heading else f"- {i.label.strip()}" for i in body.items if i.label.strip()) or "(no items yet)"
     desc = f' The user described it as: """{body.description.strip().replace(chr(34) * 3, chr(39) * 3)}"""' if body.description.strip() else ""
-    prompt = TOPUP_PROMPT.format(name=body.name.strip().replace('"', "'") or "My list", description=desc, outline=outline)
+    prompt = with_diet(TOPUP_PROMPT.format(name=body.name.strip().replace('"', "'") or "My list", description=desc, outline=outline), body.diet)
     labels = [i.label.strip() for i in body.items if i.heading]
     headings = {**{_norm_heading(h): h for h in labels if _norm_heading(h)}, **{h.lower(): h for h in labels}}
     existing = {i.label.strip().lower() for i in body.items}
@@ -227,6 +237,7 @@ class ProvisionsIn(BaseModel):
     days: int = Field(ge=1, le=365)
     pets: List[PetIn] = Field(default_factory=list, max_length=20)
     units: str = Field(default="kg", pattern="^(kg|lb)$")
+    diet: str = Field(default="", max_length=3000)
 
     @field_validator("items")
     @classmethod
@@ -287,6 +298,8 @@ async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premiu
                    "Up to 6 items per pet, with shop-friendly amounts. ")
         shape += ', "pets": [{"name": "<item>", "amount": "...", "for": "<pet name exactly as given>"}]'
     prompt += f"Return exactly: {shape}}}"
+    if body.diet.strip():
+        prompt = with_diet(prompt, body.diet) + " Where a provision clashes with an allergy, use 'Avoid - allergy' as its amount."
     result, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items, pet_names), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
     return {"amounts": result["amounts"], "pets": result["pets"], "drafts_left": left}
 

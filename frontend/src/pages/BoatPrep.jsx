@@ -71,6 +71,8 @@ import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { Sparkles } from "lucide-react";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
+import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
+import { DietBanner } from "@/components/boat/register/DietBanner";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
@@ -138,6 +140,8 @@ export default function BoatPrep({ boatId, boats }) {
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
   const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew, loaded } = useBoatStore(user.user_id, boats.current);
+  const onBoard = useOnBoardCrew(boats.current.boat_id, online, !crew);
+  const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
@@ -784,9 +788,10 @@ export default function BoatPrep({ boatId, boats }) {
   }
 
   const helpNamed = (n) => helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ").trim() === n)?.items;
-  const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType });
+  const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
   return (
     <WeightsContext.Provider value={weights}>
+    <CrewDietContext.Provider value={diet}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
@@ -870,6 +875,7 @@ export default function BoatPrep({ boatId, boats }) {
               <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />
             </div>
           )}
+          {showMpa && <DietBanner />}
           {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
             help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
           {active.id === "shipsLog" && shown.length > 0 && (
@@ -957,6 +963,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
       {emailPrompt}
     </main>
+    </CrewDietContext.Provider>
     </WeightsContext.Provider>
   );
 }

@@ -41,16 +41,19 @@ export const fluidsKg = (boat, engineType) => {
 // Scanned shopping keeps each item's weight per unit (unit_g), so stores weigh what's still on board.
 export const provisionsKg = (areas = []) => areas.reduce((s, a) => s + (a.items || []).reduce((t, i) => t + (i.removed ? 0 : num(i.qty) * num(i.unit_g)), 0), 0) / 1000;
 
-export const weighUp = ({ boat, registry, data, defs, areas, engineType }) => {
+export const weighUp = ({ boat, registry, data, defs, areas, engineType, crewWeights }) => {
   const unit = weightUnit(boat);
   const gear = gearTotals(registry, data, defs, unit);
   const gearKg = gear.reduce((s, g) => s + g.kg, 0);
   const fluids = fluidsKg(boat, engineType);
   const fluidKg = fluids.fuel + fluids.water + fluids.gas;
   const provKg = provisionsKg(areas);
-  const pob = boat.pob || 1;
+  const pob = Math.max(boat.pob || 1, (crewWeights || []).filter((k) => num(k) > 0).length);
   const avg = num(boat.crew_weight) || CREW_DEFAULT[unit];
-  const crewKg = pob * inKg(avg, unit);
+  // Registered crew count at their own weight; anyone else on board (you, unregistered crew) at the average.
+  const known = (crewWeights || []).filter((k) => num(k) > 0).map(num);
+  const knownKg = known.reduce((s, k) => s + k, 0);
+  const crewKg = knownKg + (pob - known.length) * inKg(avg, unit);
   const boatKg = inKg(boat.boat_weight, unit);
-  return { unit, gear, gearKg, fluids, fluidKg, provKg, pob, avg, avgDefault: !num(boat.crew_weight), crewKg, boatKg, totalKg: boatKg + gearKg + fluidKg + provKg + crewKg };
+  return { unit, gear, gearKg, fluids, fluidKg, provKg, pob, avg, avgDefault: !num(boat.crew_weight), known: known.length, knownKg, crewKg, boatKg, totalKg: boatKg + gearKg + fluidKg + provKg + crewKg };
 };

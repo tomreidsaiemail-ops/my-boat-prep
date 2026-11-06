@@ -3,6 +3,7 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { amazonSearchLinks, swapBadYouTube } from "@/lib/youtube";
 import { isHeadingLine } from "@/lib/outline";
+import { foodDiet, useCrewDiet } from "@/lib/crewDiet";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
 export const toLines = (text) => {
@@ -61,6 +62,7 @@ export const ListDescriptionField = ({ value, onChange, testId = "create-list" }
 export const AiDraftButton = ({ name, description, online = true, hasText, onDraft, testId = "create-list" }) => {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const crewDiet = useCrewDiet();
   useEffect(() => setNote(""), [description]);
   const draft = async () => {
     if (!description.trim()) { setNote("Describe the list in List Description first, then Magic List Generation can create the items"); return; }
@@ -69,7 +71,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
     setBusy(true);
     setNote("");
     try {
-      const { data } = await api.post("/ai/list-draft", { name: name.trim(), description: description.trim() }, { timeout: 120000 });
+      const { data } = await api.post("/ai/list-draft", { name: name.trim(), description: description.trim(), diet: foodDiet(crewDiet, name, description) }, { timeout: 120000 });
       // Only lists asking for YouTube links come back with a youtube check.
       const bad = data.youtube?.bad || [];
       const before = bad.length ? swapBadYouTube(data.lines, bad) : data.lines;
