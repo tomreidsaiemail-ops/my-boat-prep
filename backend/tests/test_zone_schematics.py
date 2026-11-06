@@ -91,13 +91,15 @@ class TestUse:
         assert r.status_code == 404
 
     def test_use_and_cleanup(self):
+        before = {m["id"] for b in requests.get(f"{API}/me/boats", headers=PRO, timeout=30).json()["boats"] if b["boat_id"] == "main" and not b["crew"] for m in b["zone_maps"]}
         r = requests.post(f"{API}/boats/main/zone-schematics/{JOB}/use", json={"image_ids": ["0", "3"]}, headers=PRO, timeout=30)
         assert r.status_code == 200, r.text
         maps = r.json()["zone_maps"]
-        new = [m for m in maps if m["name"] in ("Deck & cockpit", "Full interior")]
+        new = [m for m in maps if m["id"] not in before]  # only maps this test created
         try:
             assert [m["name"] for m in new] == ["Deck & cockpit", "Full interior"]
-            assert len({m.get("colour") for m in new}) == 2
+            # iteration 112: plans become colourless Zone Map Overviews
+            assert all(m.get("kind") == "overview" and m.get("colour") == "" and m.get("swatches") == [] for m in new)
             for m in new:
                 img = requests.get(f"{API}/boats/main/zone-maps/{m['id']}", headers=PRO, timeout=60)
                 assert img.status_code == 200 and img.content[:3] == b"\xff\xd8\xff"

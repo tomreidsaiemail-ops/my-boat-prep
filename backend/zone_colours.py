@@ -115,6 +115,8 @@ async def save_map_meta(boat_id: BoatPath, map_id: MapPath, payload: MapMetaIn, 
     others = {m.get("colour"): m for m in maps if m["id"] != map_id}
     label = lambda m: (m.get("name") or "another zone map")  # noqa: E731
     if payload.colour is not None:
+        if me.get("kind") == "overview":
+            raise HTTPException(status_code=400, detail="Zone Map Overviews don't have a colour. Drag colours onto the plan instead.")
         colour = colour_name(payload.colour)
         if not colour:
             raise HTTPException(status_code=400, detail="Please pick one of the 20 zone map colours")

@@ -20,6 +20,14 @@ const Square = ({ s, style, selected, onPointerDown, onRemove, testId }) => (
   </span>
 );
 
+// Read-only full-size plan with its colour squares.
+export const OverviewView = ({ src, swatches = [] }) => (
+  <div className="relative mx-auto w-fit max-w-full" data-testid="zone-overview-full">
+    <img src={src} alt="Zone Map Overview" className="block max-h-[80vh] max-w-full" draggable={false} />
+    {swatches.map((s) => <Square key={s.id} s={s} style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%` }} testId={`zone-overview-full-swatch-${s.id}`} />)}
+  </div>
+);
+
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
 export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage }) => {
   const [swatches, setSwatches] = useState(map.swatches || []);
@@ -82,7 +90,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
       <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</p>
       <div ref={box} className={`relative mx-auto w-fit max-w-full ${armed ? "cursor-crosshair" : ""}`} onClick={tapPlan} data-testid={`${t}-plan`}>
-        <img src={src} alt={`${map.name || "Zone Map"} overview`} className="max-h-72 w-full rounded-md object-contain" draggable={false} />
+        <img src={src} alt={`${map.name || "Zone Map"} overview`} className="block max-h-72 max-w-full rounded-md" draggable={false} />
         {swatches.map((s) => (
           <Square key={s.id} s={s} style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%` }} selected={selected === s.id} testId={`${t}-swatch-${s.id}`}
             onPointerDown={(e) => dragOld(e, s)} onRemove={canEdit ? (e) => { e.stopPropagation(); setSelected(null); save(swatches.filter((x) => x.id !== s.id)); } : null} />
@@ -94,6 +102,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
             {presets.map((p) => (
               <span key={p.label} role="button" tabIndex={0} onPointerDown={(e) => dragNew(e, p)} aria-pressed={armed?.label === p.label}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setArmed((a) => (a?.label === p.label ? null : p)); } }}
                 className={`flex cursor-grab touch-none select-none items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold ring-2 ${armed?.label === p.label ? "ring-[var(--navy)]" : "ring-transparent"}`}
                 style={{ background: ZONE_COLOURS[p.colour], color: ink(p.colour) }} data-testid={`${t}-palette-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
                 {p.label}

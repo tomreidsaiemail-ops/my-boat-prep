@@ -12,7 +12,7 @@ import { LinkedText } from "@/components/boat/LinkedText";
 import { MapColourPicker } from "@/components/boat/zone/MapColourPicker";
 import { MapNameField } from "@/components/boat/zone/MapNameField";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
-import { OverviewMap } from "@/components/boat/zone/OverviewMap";
+import { OverviewMap, OverviewView } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
@@ -169,7 +169,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Overviews ({overviews.length})</p>
           {overviews.map((m) => (
             <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps}
-              removing={removing === m.id} onRemove={() => removeMap(m)} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m) })} />
+              removing={removing === m.id} onRemove={() => removeMap(m)} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
           ))}
           {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}
           {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Now take photos of your Cockpit, Saloon, Galley and cabins and add them below as Zone Map Photos. Name each one (e.g. Galley) and it takes the same colour, and every boat area you label on it shows that colour.</p>}
@@ -207,7 +207,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>
-          {open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={pinsFor(open.map?.pins)} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
+          {open?.swatches ? <OverviewView src={open.src} swatches={open.swatches} /> : open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={pinsFor(open.map?.pins)} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
             imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
         </DialogContent>
       </Dialog>

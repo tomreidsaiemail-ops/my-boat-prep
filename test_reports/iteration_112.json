@@ -1,0 +1,39 @@
+{
+  "summary": "Tested Zone Map Overviews (colourless AI plans + draggable admin preset colour squares) on backend and frontend. Backend: 37/37 pass (new test_zone_overviews.py plus the updated zone_schematics and zone_colours regression tests). GET /api/zone-colour-presets returns the presets in admin list order (Cockpit-Gold, Saloon-Green, Galley-Orange...). /use adds kind=overview with colour '' and swatches []. A new photo still takes Gold, so overviews don't use up a palette colour. PUT swatches persists and normalises colour/label. Bad colour gives 400, a photo map or unknown map gives 404, more than 40 swatches or x>1 gives 422, crew PUT gives 404. /api/me/boats returns kind and swatches. Frontend (390px with mouse pointer events, plus layout checks at 768 and 1920) passes 100%. Zone Map Overviews (1) section has title, plan and 12-label palette, with no colour border or picker. Drag palette->plan places the square at the exact drop point and it persists after reload. Tap-arm shows 'Tap the plan where the Heads is.', aria-pressed=true, then tapping the plan places it. Dragging a placed square moves it and persists. Tapping a placed square shows -remove, which deletes it. Tapping the plan with nothing armed opens zone-map-dialog. The plan keeps its aspect ratio at 390, 768 and 1920. Photo flow: upload, name 'Galley' -> Orange border; labelling a new area puts it under the orange 'GALLEY' group with an orange left border. Wording: the button reads 'Create Yacht - Sloop ZONE MAP OVERVIEWS for a Beneteau Oceanis 38...'. With POST intercepted, Continue gives toast '1 Zone Map Overview added. Drag your colours onto them.' and the overview appears. With an overview present the toggle does not auto-open details; the free user's empty own boat does auto-open Additional details. Crew sees squares read-only: no palette, hint, remove button or remove x; the upload button is hidden.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/boats/{id}/zone-maps/{map_id}/meta", "issue": "Accepts a colour for an overview map and returns 200 (colour_manual gets saved), but fill_colours then drops the colour without telling anyone. Should return 400 for kind=overview, or ignore colour there."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ZoneMap full-size dialog for overviews", "issue": "Tapping the plan opens the full-size view without the placed colour squares, so the enlarged plan loses the colour zones", "selector": "[data-testid='zone-map-dialog']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ZoneSchematicsDialog toast", "issues": ["Singular grammar: '1 Zone Map Overview added. Drag your colours onto them.' should say 'onto it' when there is 1"]},
+      {"screen": "Boat Inventory area rows at 390px", "issues": ["Rows with long names (e.g. 'TEST_Galley drawer', 'TEST_Gantry') push the delete/trash icon past the right edge; it is clipped. Looks like this was already there before this change."]},
+      {"screen": "OverviewMap palette", "issues": ["Palette squares have role=button and tabIndex=0 but no onKeyDown (Enter/Space), so keyboard users can't arm a colour"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_overviews.py", "/app/backend/tests/test_zone_schematics.py", "/app/backend/tests/test_zone_colours.py", "/app/test_reports/pytest/pytest_results_112.xml"],
+  "action_items": [
+    "Optional: render the overview swatches in the full-size zone-map-dialog as well",
+    "Fix toast grammar for a single overview ('onto it')",
+    "Optional: reject or ignore colour in PUT .../meta for kind=overview",
+    "Optional: make palette squares keyboard-operable (Enter/Space arms them)"
+  ],
+  "critical_code_review_comments": [
+    "OverviewMap: square x/y are fractions of the <img> element box, and the img uses 'max-h-72 w-full object-contain'. A tall or portrait image would be letterboxed inside the element, so squares would shift between viewports. The current AI plans are landscape (1376x768) and the element aspect matched the image at every width, so the risk is low. Consider sizing the img with w-auto/h-auto so the box always equals the rendered image.",
+    "OverviewMap.save sends the whole list on every change with no serialising, so quick successive drops/moves can race (last response wins) and an earlier PUT response can overwrite newer local state through onMaps. Minor.",
+    "Presets are fetched once (presets.length guard), so admin edits only show after a reload. Acceptable.",
+    "Old regression test test_zone_schematics.py::test_use_and_cleanup picked which maps to delete by name. It removed the pre-existing 'Full interior' overview and failed its colour assertion under the new behaviour. Fixed: it now deletes only the maps it created and asserts the overviews are colourless."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_overviews.py (new)", "/app/backend/tests/test_zone_schematics.py (cleanup by created ids; overview colour assertion)"],
+  "success_rate": {"backend": "100% (37/37, 1 live test skipped)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "None left behind. Temporary items were removed: photo 35c9795f, overview f524c1c5 'Deck & cockpit', area 'TEST_Galley drawer' (amw4qomw38mde), Saloon square smw4qm86tmc2a. 'Full interior' (cba66e09) still has its original Cockpit (Gold) and Galley (Orange) squares. DATA INCIDENT: the old regression test's name-based cleanup briefly deleted overview cba66e09. I restored it in Mongo with the same id, path, updated_at, name, kind and both original swatches, and confirmed it via the API.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat main = 'TEST_Kia Ora' with one overview, 'Full interior' (id in /tmp/mid), and a finished job in /tmp/job. Run backend tests serially: pytest tests/test_zone_overviews.py tests/test_zone_schematics.py tests/test_zone_colours.py -n 0. They share boat state. For the free crew user, dismiss the 'Not now' crew agreement/walkthrough dialogs on load before clicking zone-map-toggle. Touch input was not emulated; drag was tested with mouse pointer events only."
+}

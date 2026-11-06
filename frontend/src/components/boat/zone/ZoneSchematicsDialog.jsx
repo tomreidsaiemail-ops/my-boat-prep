@@ -64,7 +64,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
     setBusy(true);
     try {
       const { data } = await api.post(`/boats/${boatId}/zone-schematics/${job}/use`, { image_ids: picked });
-      toast.success(`${picked.length} Zone Map ${picked.length === 1 ? "Overview" : "Overviews"} added. Drag your colours onto them.`);
+      toast.success(`${picked.length} Zone Map ${picked.length === 1 ? "Overview" : "Overviews"} added. Drag your colours onto ${picked.length === 1 ? "it" : "them"}.`);
       onDone(data.zone_maps);
     } catch (e) { toast.error(apiError(e, "Couldn't add the plans, please try again")); }
     setBusy(false);
