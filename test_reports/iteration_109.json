@@ -1,0 +1,31 @@
+{
+  "summary": "Tested the new trip-timing fields, the Skipper's phone field, the parties email subject and body with boat details, the boat_id sent from both email dialogs, and the LPG rename. Backend: new test_parties_email_boat.py, 15/16 pass. The one failure is a robustness edge case: summary_html crashes if boat.skipper_phone is null. Results: summary_subject is correct with event + date ('TEST Winter Race 3 5 Dec 2026 09:30 - Crew registration details from Tom (TEST_Kia Ora)'), with event name only, with event date only, with no event, with no boat (no brackets), with a blank vessel and with a bad date. summary_html shows 'X is the skipper of V', the Email/Phone lines and the boat table with only the filled facts, escapes input, and keeps the old body when there is no boat. There was 1 real send with boat_id 'main' (200). An invalid boat_id gives 422. Regression: test_crew_register, test_crew_diet_parties, test_parties_allergies and test_boat_weights give 41 passed, 11 skipped. Frontend (390px, pro): the Route Planning fields below 'Why we're going' are in the right order. Labels and datetime-local types are correct, and the meet up box is prefilled with MEETUP_DEFAULT. Departure, event name and event date persist after reload (checked in the DB weather.*), and a cleared meet up stays ''. skipper-phone-input (type tel, label SKIPPER'S PHONE) persists after reload. crew-email-parties-btn and reg-email-parties-btn both POST boat_id 'main' (request intercepted, no real send). LPG: the telemetry group shows 'LPG' / 'LPG bottles'. On Leaving the Dock (admin boat; the pro boat has no Leaving Dock list): the level picker says LPG, the tabs are Fuel/Water/LPG, the panel heading is 'Add or use fuel, water and LPG', and the 'LPG bottles are counted whole' message shows. No visible 'gas' word in the dialog or page text. Racing weight shows 'Fluids (fuel, water, LPG)'. The excelExport labels, the telemetry warning and the Ship's Log swap/add text were checked by code review only.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew-register/parties-email (crew_register.summary_html)", "issue": "boat.get('skipper_phone', '').strip() and boat.get('vessel', '').strip() raise AttributeError (500) if the stored value is null. str(boat.get(f, '')) shows 'None' for null boat facts. Pydantic defaults make this unlikely, but email_parties reads the raw Mongo doc. Use (boat.get(x) or '').strip()."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Route Planning trip timing", "issues": ["Departure and event date/time use the native <input type=datetime-local> picker, not a shadcn date picker. It works, but looks different from one platform to another."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_parties_email_boat.py", "/app/test_reports/pytest/pytest_it109.xml"],
+  "action_items": [
+    "Optional: null-safe skipper_phone/vessel/boat fact handling in summary_html (see the minor issue)"
+  ],
+  "critical_code_review_comments": [
+    "summary_subject: when only event_at is set (no name), the subject starts with just the date, e.g. '2 Jan 2026 18:05 - Crew...'. That is acceptable, but confirm it is intended.",
+    "when_text accepts timezone-aware ISO strings without converting them, so it shows the wall time as stored. That is fine for datetime-local values.",
+    "The test-user-pro 'main' boat has no Leaving Dock list in its registry, so the departure UI cannot be tested on the pro boat. The admin boat was used instead."
+  ],
+  "updated_files": ["/app/backend/tests/test_parties_email_boat.py"],
+  "success_rate": {"backend": "94% (15/16, the failure is a null edge case)", "frontend": "100%"},
+  "seed_data_creation": "Temporarily set boat.skipper_phone and weather.event_name/event_at in the DB for test-user-pro/main, and set depart_at/event_name/event_at/meetup and skipper_phone through the UI. All of these were $unset afterwards, back to the original state (skipper_phone absent, weather has only why/photos/advice/advice_at). The TEST crew_register entries (2 UI, 2 pytest) were deleted by id, so the pro register count is 0 again. One real parties email was sent to delivered@resend.dev.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_parties_email_boat.py imports crew_register directly; it loads backend/.env. Run it with xdist via pytest.ini, without -p no:xdist. The list picker is data-testid list-selector, then list-option-<id>. To test parties dialogs without real sends, intercept **/api/crew-register/parties-email with page.route."
+}

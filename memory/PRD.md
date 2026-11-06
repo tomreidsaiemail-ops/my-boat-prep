@@ -607,3 +607,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - GET /api/crew-register/walkthrough?owner_id&boat_id -> {done}. GET /api/crew-register crew rows carry walkthroughs [{boat_id, vessel, at}] -> green "<Vessel> Walkthrough ✓" badge in Crew Registration.
 - WalkthroughPrompt (crew, boat has zone-map pins, not done): "Would you like to do the Crew walkthrough of <BOAT>?" Start (opens CrewWalkthrough) / Not now (asks again next session). Queued after invite -> agreement -> registration (register prompt holds while loading).
 - Tested iteration_108 (backend 11/11 + 40 regression, frontend 100%); race fix, wording and en-NZ date applied after.
+
+## 2026-06 Trip timing, skipper phone, richer parties email, LPG wording
+- Route Planning (Navigator): below Why we're going -> Departure date and time, Event name (optional), Event date and time (optional), Meet up details (default "Pier X, Berth YYY, be onboard no later than ONE HOUR before DEPARTURE..."), stored in boat.weather depart_at/event_name/event_at/meetup.
+- Boat details: Skipper's phone (boat.skipper_phone).
+- Parties email (boat_id sent): subject "[<Event> <date time> - ]Crew registration details from <Skipper> (<Vessel>)"; body says the skipper of <Vessel>, skipper email (log_email or account) + phone, and Boat type / Make / Model / Year of manufacture / Hull colour.
+- All app wording "Gas" -> "LPG" (data keys unchanged; checklist items untouched); Excel boat rows labelled LPG.
+- Tested iteration_109 (frontend 100%, backend 15/16 -> null-safety fix applied).

@@ -212,9 +212,9 @@ def summary_html(skipper: str, crew: list, allergies: bool = False, boat: Option
         body += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in vals) + "</tr>"
     intro = f'<p>{escape(skipper)} has shared the crew list with you as an interested party.</p>'
     if boat is not None:
-        vessel = boat.get("vessel", "").strip() or "their boat"
-        contact = "".join(f"<b>{k}:</b> {escape(v)}<br/>" for k, v in (("Email", email), ("Phone", boat.get("skipper_phone", "").strip())) if v)
-        facts = "".join(f"<tr><td {cell}><b>{k}</b></td><td {cell}>{escape(str(boat.get(f, '')).strip())}</td></tr>" for k, f in BOAT_FACTS if str(boat.get(f, "")).strip())
+        vessel = (boat.get("vessel") or "").strip() or "their boat"
+        contact = "".join(f"<b>{k}:</b> {escape(v)}<br/>" for k, v in (("Email", email), ("Phone", (boat.get("skipper_phone") or "").strip())) if v)
+        facts = "".join(f"<tr><td {cell}><b>{k}</b></td><td {cell}>{escape(str(boat.get(f) or '').strip())}</td></tr>" for k, f in BOAT_FACTS if str(boat.get(f) or "").strip())
         intro = (f'<p><b>{escape(skipper)} is the skipper of {escape(vessel)}</b> and has shared the crew list with you as an interested party.</p>'
                  + (f"<p>{contact}</p>" if contact else "")
                  + (f'<p style="margin:12px 0 4px"><b>{escape(vessel)}</b></p><table style="border-collapse:collapse;font-size:13px;margin-bottom:12px">{facts}</table>' if facts else ""))
