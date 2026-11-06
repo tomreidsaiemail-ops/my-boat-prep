@@ -1,11 +1,10 @@
 import { useRef, useState } from "react";
-import { Compass, Loader2, X } from "lucide-react";
+import { Compass, Loader2, Users, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
 import { NavigatorIntro, NavigatorReminders, TripTiming, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
 import { stamp } from "@/components/boat/departure/LogCopy";
-import { CrewGoShare } from "@/components/boat/navigator/CrewGoShare";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -85,7 +84,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <NavigatorReminders />
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} />
-      <CrewGoShare boat={boat} boatId={boatId} online={online} onWeather={onWeather} />
+      <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
+        <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status
+      </button>
     </div>
   );
 };

@@ -15,6 +15,7 @@ import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
 import { PrepBadge } from "@/components/boat/CrewPrepProgress";
 import { CrewRegisterDialog } from "@/components/boat/register/CrewRegisterDialog";
 import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
+import { RegStatus } from "@/components/boat/register/RegStatus";
 
 const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
@@ -59,7 +60,19 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
   };
 
   const load = useCallback(() => api.get(`/boats/${boat.boat_id}/crew`).then(({ data }) => setInfo(data)).catch(() => {}), [boat.boat_id]);
-  useEffect(() => { if (open && online) load(); }, [open, online, load]);
+  const [reg, setReg] = useState({});
+  const loadReg = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(Object.fromEntries(data.crew.map((c) => [c.email.toLowerCase(), c])))).catch(() => {}), []);
+  useEffect(() => { if (open && online) { load(); loadReg(); } }, [open, online, load, loadReg]);
+  const regBadge = (email, testId) => {
+    const r = reg[(email || "").toLowerCase()];
+    const walked = r?.walkthroughs?.some((w) => w.boat_id === boat.boat_id);
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <RegStatus status={r?.status || "unregistered"} testId={`${testId}-reg`} />
+        {walked && <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-extrabold text-green-800" data-testid={`${testId}-walkthrough`}>Walkthrough done</span>}
+      </div>
+    );
+  };
   const openInvite = () => {
     if (!premium) { onUpgrade(); return; }
     if (!online) { toast.error("You're offline. Invite crew when you have signal."); return; }
@@ -106,6 +119,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           {info.crew.map((m) => (
             <Row key={m.user_id} title={m.name || m.email} sub={m.email} roles={m.roles} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
               badge={<>
+                {regBadge(m.email, `crew-member-${m.user_id}`)}
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
@@ -115,7 +129,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           ))}
           {info.invites.map((i) => (
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
-              badge={<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />}
+              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
         </ul>
@@ -135,7 +149,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
             window.dispatchEvent(new Event("mbp:crew-roles"));
           }} />
         <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
-        <CrewRegisterDialog open={register} boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); window.dispatchEvent(new Event("mbp:register-changed")); }} />
+        <CrewRegisterDialog open={register} boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); loadReg(); window.dispatchEvent(new Event("mbp:register-changed")); }} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>

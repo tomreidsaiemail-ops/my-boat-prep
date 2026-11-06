@@ -32,8 +32,10 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   // "Back to Invite crew" after changing the available roles reopens the invite where the skipper left it.
   useEffect(() => {
     const reopen = () => { setStartInvite(true); setCrewOpen(true); };
+    const openCrew = () => setCrewOpen(true);
     window.addEventListener("mbp:open-invite", reopen);
-    return () => window.removeEventListener("mbp:open-invite", reopen);
+    window.addEventListener("mbp:open-crew", openCrew);
+    return () => { window.removeEventListener("mbp:open-invite", reopen); window.removeEventListener("mbp:open-crew", openCrew); };
   }, []);
   const cur = boats.current;
   const currentName = nameOf(cur);

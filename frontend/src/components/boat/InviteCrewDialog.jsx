@@ -118,7 +118,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
           </div>
           <textarea id="voyage-notes" value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
-            className="field-input h-auto resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
+            className="field-input !h-auto min-h-[9rem] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
           <p className="text-xs text-[var(--muted)]">Suggested from Route Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>
         </div>
         <RsvpSummary crew={info.crew || []} />

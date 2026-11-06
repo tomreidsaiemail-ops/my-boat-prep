@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend test (390px, pro skipper test_session_pro_1, boat 'main') of the sticky crew invite 'Planned voyage or race notes' that auto-fill from Route Planning. PASS: (1) With no route answers and no saved notes, voyage-notes-input is empty, shows the placeholder, and voyage-notes-fill-btn is hidden. (2) After filling route-start/route-dest, navigator-why, depart-at, event-name, event-at and meetup in Route Planning, the invite notes prefill as: 'Start: TEST Mana / Destination: TEST Picton / Why we're going: TEST Race delivery / Departure: Sat, 5 Dec 2026, 08:30 am / Event: TEST Winter Race 3, Sun, 6 Dec 2026, 10:00 am / Meet up: TEST Pier 5, Berth 12 at 7:30', then a blank line and the ROUTE_NOTE line. The fill button is hidden when the notes match the plan. (3) After editing, the fill button appears. On blur, PUT /api/boats/main/voyage-notes is sent, and GET /api/boats/main/crew returns the edited notes. Closing and reopening the invite, and reloading the page, both keep the edited notes (not the suggestion). (4) The fill button replaces the notes with the plan exactly, then hides. (5) The preview and the copied WhatsApp clipboard text include '*Planned voyage or race*' followed by the notes. (6) Regression: the register picker renders. The role chip toggles and adds 'Your role'. In the Change available round-trip, name, email, role and notes ('TEST Draft notes round trip') all survive, and the notes are saved to the server. routeNotes() unit-checked with node: the meetup default is used when meetup is undefined, an empty meetup leaves out the 'Meet up' line, the Event line is left out when there is no event, a bad date is ignored, meetup alone gives '', and output is capped at 1000 chars. NOT VERIFIED: creating an invite actually saves the notes (backend crew.py create invite). POST /api/boats/main/invites returned 429 'Daily invite limit reached'. The pro user already has 20 invite_sends in the last 24h from earlier runs. This was not bypassed, to avoid changing data. The notes were still saved through the blur PUT. The code review of crew.py shows create invite sets voyage_notes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{id}/invites", "issue": "Sets voyage_notes = notes without .strip(), but PUT voyage-notes strips. This is inconsistent, and the frontend compares notes.trim() with info.voyage_notes, so a trailing newline causes an extra PUT. Cosmetic only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Invite crew dialog - voyage notes textarea", "issues": ["The textarea has rows=6 and h-auto, but it renders 48px tall because .field-input {height:48px} in App.css overrides h-auto. Only about 2 of the ~9 prefilled lines are visible, so the user must scroll or resize. Use !h-auto or min-h-[9rem] on the textarea."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make the voyage-notes textarea actually show ~6 rows (App.css .field-input height:48px overrides Tailwind h-auto; use !h-auto or min-h)",
+    "Optional: strip notes in the create-invite voyage_notes $set to match the PUT endpoint"
+  ],
+  "critical_code_review_comments": [
+    "If the skipper deliberately clears the notes (saved as ''), the next invite falls back to the Route Planning suggestion (info.voyage_notes || plan). That is probably fine, but it means empty notes can't be sticky.",
+    "The test-user-pro daily invite limit (20/24h) is exhausted by earlier test runs, so invite creation from the UI can't be tested on this account today. The error 'Daily invite limit reached, try again tomorrow' displays correctly."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped (frontend only)", "frontend": "100% of tested flows (invite creation persistence blocked by the 429 daily limit)"},
+  "seed_data_creation": "Through the UI, set route_start/route_dest, weather.why/depart_at/event_name/event_at/meetup and voyage_notes on test-user-pro/main. Restored afterwards: voyage_notes '', route_start '', route_dest '', weather.why '', and depart_at/event_name/event_at/meetup $unset (weather keys are again why/photos/advice/advice_at). No invites were created (both POSTs returned 429), and crew_invites for test-user-pro is empty.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Route Planning inputs: route-start-input, route-dest-input, navigator-why-input, navigator-depart-at-input, navigator-event-name-input, navigator-event-at-input, navigator-meetup-input. Boat data is in db.user_boats {owner_id, boat_id}, under .boat.*, with voyage_notes at the top level. The pro user may hit DAILY_INVITE_LIMIT (invite_sends in the last 24h); use another premium account (beta) to test invite creation."
+}
