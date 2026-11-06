@@ -677,3 +677,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Role Briefing popup in Invite crew
 - Checkbox under CREW ROLES "As Roles are clicked & added, show Role Briefing" (default on, remembered in localStorage mbp_role_briefing_prompt). Each added role opens RoleBriefingPrompt (edit/blank/delete, warning it is saved to Crew Roles for future crew); saves via lib/crewRoles.setRoleBriefing (adds unknown roles to Crew Roles). Tested iteration_118 (100%); textarea height + deselected-role queue fix after.
 
+
+
+## 2026-06 Default Role Briefings in the admin Crew Roles template
+- Template items accept `briefing` (max 1000). Admin template editor shows "Default Role Briefings" (RoleBriefingDefaults.jsx) for the Crew Roles list; saved per role.
+- push_role_briefings (on Crew Roles template save/import) fills boats' Crew Roles items that have no `briefing` key; skipper's own and blanked ('' kept by saveEdit / prompt) briefings are never touched. Migration trim_briefings seeded Port Trim + Starboard Trim winch/boom safety text and pushed it to all boats.
+- Backup export/import keeps briefings. Tested iteration_119 (import gap fixed and re-checked by curl).

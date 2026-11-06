@@ -1,0 +1,31 @@
+{
+  "summary": "Tested Default Role Briefings in the admin 'Crew Roles' template, backend and frontend (mobile 390x844). Working: (1) the trim_briefings migration ran. The template's Port Trim and Starboard Trim have the trim text, and all 11 boats with a Crew Roles list have it on both items (checked in Mongo and via GET /api/me/boat as pro). (2) Admin PUT saves the briefing, rejects one over 1000 characters (422) and rejects non-admins. push_role_briefings fills roles that have no briefing key, keeps a skipper's own briefing and does not refill a blanked one (''). A briefing-only save sets template_versions to the new updated_at, so there is no Merge Latest prompt. (3) Admin UI: the section is titled 'Default Role Briefings (2 of 10 roles)' and lists 10 roles with no numbered headings. Port Trim and Starboard Trim have badges. Opening Port Trim shows the text prefilled. Typing a Mainsheet briefing changes the count to 3 of 10, and Save keeps it after reopening. It was pushed to the pro boat and the boat stayed up to date. The section is missing for other lists, as intended. (4) Skipper UI: Role briefing badges show on Port Trim and Starboard Trim (and on the pushed Mainsheet). In Invite crew, adding Port Trim opens 'Role Briefing - Port Trim' with the default text, and the WhatsApp preview includes '*Role briefing - Port Trim*' with the text. (5) Blanking Port Trim via Edit item stored briefing '' in Mongo and removed the badge. A later admin save that changed the Port Trim briefing did not refill it. FAILED: export carries the briefing, but import (template_backup._items) drops it. Restoring a fresh export reports Crew Roles as 'overwrite' instead of 'unchanged', and applying it would remove every default briefing from the template.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/admin/template-lists/import", "issue": "template_backup._items() rebuilds items without 'briefing', so importing removes every Default Role Briefing from the Crew Roles template. A dry run of a fresh export reports action 'overwrite' instead of 'unchanged'. Import also never calls push_role_briefings.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_role_briefing_defaults.py", "/app/test_reports/pytest/pytest_results_119.xml"],
+  "action_items": [
+    "template_backup.py _items(): keep briefing, e.g. **({'briefing': i.briefing.strip()} if (i.briefing or '').strip() else {}), so export -> import round-trips and a re-import shows 'unchanged'",
+    "Optionally, in template_backup._apply, call push_role_briefings when an overwritten or added custom list is named Crew Roles and is not private"
+  ],
+  "critical_code_review_comments": [
+    "template_backup._items drops briefing (see backend_issues), and the same gap means restoring a backup silently wipes the briefings",
+    "TemplateListEditor keys briefings by roleKey(label). If the admin renames a role in the textarea before saving, its briefing is lost. Acceptable, but worth a note in the UI",
+    "push_role_briefings scans every boat with a Crew Roles list on each Crew Roles save that changes something. Fine at the current scale (11 boats)"
+  ],
+  "updated_files": ["/app/backend/tests/test_role_briefing_defaults.py"],
+  "success_rate": {"backend": "86% (6/7)", "frontend": "100%"},
+  "seed_data_creation": "None kept. Backed up the Crew Roles template (tpl_test67crew) and the Crew Roles list, updated_at, template_versions and sec_ts of all 11 boats to /tmp/bk119/*_SAFE.json. Restored them with /tmp/bk119/restore.py and verified an exact match. Also deleted the template_versions history docs created by the test saves (there were 0 before). The template keeps the Port Trim and Starboard Trim default briefings.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Crew Roles template list_id is tpl_test67crew (updated_at 2026-10-31T23:20:31.061183+00:00). Its items 9 and 10 (Port Trim, Starboard Trim) carry the trim briefing. The pro boat main has the same ids and the role chip list in Invite only shows ticked roles, so type 'Port Trim' in crew-role-custom-input to get the popup. test_role_briefing_defaults.py changes the shared template and all 11 boats' Crew Roles: back up and restore around it (see /tmp/bk119/backup_all.py and restore.py). Remaining failing test: test_import_dry_run_unchanged (template_backup drops briefing).",
+  "rca of the issue": "template_backup._items builds each item from id/label/dynamic/indent/level/meal_type only. TemplateItem accepts briefing, but it is never copied into the output, so the planned items differ from the stored ones (plan becomes 'overwrite') and _apply writes items without briefings. Repro: GET /api/admin/template-lists/export, then POST /api/admin/template-lists/import with the Crew Roles entry and dry_run true. The action is 'overwrite'. Fix: copy the stripped briefing in _items."
+}

@@ -33,7 +33,7 @@ export const RoleBriefingDefaults = ({ lines, value, onChange }) => {
   return (
     <section className="flex flex-col gap-2 rounded-lg bg-[var(--bg,#f6f7f9)] p-3" data-testid="template-role-briefings">
       <h3 className="text-sm font-bold">Default Role Briefings <span className="font-normal text-[var(--muted)]">({count} of {roles.length} roles)</span></h3>
-      <p className="text-xs text-[var(--muted)]">Tap a role to write its default briefing. Saving fills it into every boat's Crew Roles where the skipper has no briefing for that role yet. A skipper's own or blanked briefing is never changed.</p>
+      <p className="text-xs text-[var(--muted)]">Tap a role to write its default briefing. Saving fills it into every boat's Crew Roles where the skipper has no briefing for that role yet. A skipper's own or blanked briefing is never changed. If you rename a role in the items above, write its briefing again.</p>
       <ul className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto">
         {roles.map((l) => <Role key={roleKey(l)} label={l} text={value[roleKey(l)] || ""} onChange={set(l)} />)}
       </ul>

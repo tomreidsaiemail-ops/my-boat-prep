@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from db import db
 from auth import require_admin
-from templates import NOTE_MAX, REQUIRED_DYNAMIC, RESERVED_NAMES, TEMPLATE_LISTS, TemplateItem, _keep_version, push_indents
+from templates import CREW_ROLES_NAME, NOTE_MAX, REQUIRED_DYNAMIC, RESERVED_NAMES, TEMPLATE_LISTS, TemplateItem, _keep_version, push_indents, push_role_briefings
 
 router = APIRouter(prefix="/api")
 BACKUP_KIND = "my-boat-prep-template-lists"
@@ -50,7 +50,8 @@ def _items(lst: BackupList) -> list:
             continue
         ids.add(i.id)
         out.append({"id": i.id, "label": label, **({"dynamic": i.dynamic} if i.dynamic else {}), **({"indent": True} if i.indent and out else {}),
-                    **({"level": i.level} if i.level and i.indent and out else {}), **({"meal_type": i.meal_type} if i.meal_type else {})})
+                    **({"level": i.level} if i.level and i.indent and out else {}), **({"meal_type": i.meal_type} if i.meal_type else {}),
+                    **({"briefing": i.briefing.strip()} if (i.briefing or "").strip() else {})})
     return out
 
 
@@ -118,9 +119,13 @@ async def _apply(p: dict, admin_id: str, now: str):
         await db.list_templates.update_one({"list_id": old["list_id"]}, {"$set": upd})
         if changed and not lst.private:
             await push_indents(old["list_id"], old, items, now)
+            if CREW_ROLES_NAME.match(p["name"]):
+                await push_role_briefings(items, now)
         return
     await db.list_templates.insert_one({"list_id": p["new_id"], "custom": True, "name": p["name"], "description": lst.description.strip(), "items": items,
                                         "private": lst.private, "note": note, "created_at": lst.created_at or now, "updated_at": now, "updated_by": admin_id})
+    if not lst.private and CREW_ROLES_NAME.match(p["name"]):
+        await push_role_briefings(items, now)
 
 
 @router.post("/admin/template-lists/import")
