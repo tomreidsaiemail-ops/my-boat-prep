@@ -24,22 +24,26 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], briefings = {}, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState([]);
   const [notes, setNotes] = useState("");
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [qrFor, setQrFor] = useState("");
   const [askClear, setAskClear] = useState("");
   // The draft from "Change available" stays until the invite is sent or closed, so a second run of this effect still finds it.
+  // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
   useEffect(() => {
     if (!open) return;
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || "");
+    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || plan); setTouched(!!draft);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open && !touched) setNotes(info.voyage_notes || plan); }, [info.voyage_notes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const editNotes = (v) => { setTouched(true); setNotes(v); };
 
   const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
@@ -106,11 +110,16 @@ export const InviteCrewDialog = ({ open, boat, name, info, roleGroups = [], brie
         <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={setRoles}
           onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes }); })} />
         <div className="flex flex-col gap-1.5">
-          <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
-          <textarea id="voyage-notes" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={3}
+          <div className="flex items-end justify-between gap-2">
+            <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
+            {plan && notes !== plan && (
+              <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => { editNotes(plan); }} data-testid="voyage-notes-fill-btn">Fill from Route Planning</button>
+            )}
+          </div>
+          <textarea id="voyage-notes" value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
             className="field-input h-auto resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
-          <p className="text-xs text-[var(--muted)]">Saved with the boat, ready for your next invite. Crew who have joined see these notes and can reply.</p>
+          <p className="text-xs text-[var(--muted)]">Suggested from Route Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>
         </div>
         <RsvpSummary crew={info.crew || []} />
         {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}

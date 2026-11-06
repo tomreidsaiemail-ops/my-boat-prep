@@ -21,7 +21,7 @@ export const NavigatorReminders = () => (
   </ul>
 );
 
-export const MEETUP_DEFAULT = "Pier X, Berth YYY, be onboard no later than ONE HOUR before DEPARTURE, as that is when the crew briefing will begin.";
+import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
 const When = ({ id, label, value, onChange }) => (
   <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
