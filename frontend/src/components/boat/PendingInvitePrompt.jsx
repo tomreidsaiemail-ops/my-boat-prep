@@ -3,11 +3,12 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
+import { holdPrompt } from "@/lib/promptQueue";
 
 const LATER_KEY = "mbp_invites_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
 
-export const PendingInvitePrompt = ({ boats, onIdle }) => {
+export const PendingInvitePrompt = ({ boats }) => {
   const [invites, setInvites] = useState(null);
   const [busy, setBusy] = useState("");
   const online = navigator.onLine;
@@ -18,7 +19,7 @@ export const PendingInvitePrompt = ({ boats, onIdle }) => {
   }, [online]);
 
   const inv = invites?.[0];
-  useEffect(() => { if (invites && !invites.length) onIdle?.(); }, [invites, onIdle]);
+  useEffect(() => { holdPrompt("invite", invites === null || !!inv); return () => holdPrompt("invite", false); }, [invites, inv]);
   if (!inv) return null;
   const next = () => setInvites((l) => l.slice(1));
   const act = async (kind) => {

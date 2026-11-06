@@ -581,3 +581,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Role briefings in crew invites
 - WhatsApp invite message/preview now includes "*Role briefing - <role>*" for each selected role with a briefing (lib/crewRoles.js roleBriefings).
 - Invite POST sends the phone's briefings for the selected roles (InviteIn.briefings, max 20, 2000 chars each); server merges them over synced briefings so a just-typed briefing is in the email. Tested iteration_104 (100%).
+
+## 2026-06 Crew Registration
+- Skipper's crew register (one list across all their boats, db.crew_register, backend/crew_register.py): "Crew Registration" button under the boat photo in Photo and crew -> CrewRegisterDialog. Crew: add/edit/delete (name, phone, email, DOB, height cm, weight kg, allergies, food preferences, next of kin name/email/phone, general comments; only name+email needed from skipper). Status Unregistered -> Pending (registration request by email, WhatsApp wa.me link / copied message, or "email everyone not registered") -> Registered (green tick).
+- Crew side: CrewRegistrationPrompt after sign-in (pending request, or invited / already crew on skipper's boat), prefilled, every field mandatory, bold "text the skipper" note, Registered confirmation. Auto pop-ups queued (lib/promptQueue.js): boat invite -> Terms agreement -> registration.
+- Interested parties (name, phone, email) registered straight away; "Email crew details to interested parties" (register + Photo and crew window) sends name, phone, email, age, height, next of kin + status; warns if crew not registered, Send anyway. 60 register emails/day.
+- Invite crew dialog: RegisterPicker chips grouped Registered / Unregistered fill name + email. Details only visible to the skipper.
+- Tested iteration_105 (backend 16/16, frontend 100%); follow-ups (prompt queue, parties limit, /mine eligibility + duplicate check) self-verified.

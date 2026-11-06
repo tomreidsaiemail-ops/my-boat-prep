@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { CREW_FIELDS, missing, toForm, toPayload } from "@/lib/crewRegister";
 import { RegFields } from "@/components/boat/register/RegFields";
+import { usePromptsFree } from "@/lib/promptQueue";
 
 const LATER_KEY = "mbp_register_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
@@ -17,19 +18,20 @@ const TextSkipper = ({ skipper }) => (
 );
 
 // Crew side: shown after sign-in when a skipper has asked them to register (or invited them aboard before they registered).
-export const CrewRegistrationPrompt = ({ ready }) => {
+export const CrewRegistrationPrompt = () => {
+  const free = usePromptsFree(["invite", "agreement"]);
   const [list, setList] = useState([]);
   const [values, setValues] = useState(toForm());
   const [errors, setErrors] = useState([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
   useEffect(() => {
-    if (!ready || !navigator.onLine) return;
+    if (!navigator.onLine) return;
     api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => setList(data.requests.filter((r) => !later().includes(r.entry_id)))).catch(() => {});
-  }, [ready]);
+  }, []);
   const req = list[0];
   useEffect(() => { if (req) { setValues(toForm(req)); setErrors([]); } }, [req]);
-  if (!req && !done) return null;
+  if ((!req && !done) || !free) return null;
 
   const next = () => { setDone(null); setList((l) => l.slice(1)); };
   const notNow = () => { sessionStorage.setItem(LATER_KEY, JSON.stringify([...later(), req.entry_id])); next(); };

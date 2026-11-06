@@ -193,9 +193,22 @@ async def email_parties(user: dict = Depends(require_premium)):
         raise HTTPException(status_code=400, detail="Add an interested party first")
     if not crew:
         raise HTTPException(status_code=400, detail="Add crew to your register first")
+    now = datetime.now(timezone.utc)
+    if await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}}) + len(parties) > DAILY_SEND_LIMIT:
+        raise HTTPException(status_code=429, detail=f"Daily limit reached ({DAILY_SEND_LIMIT} registration emails), try again tomorrow")
     skipper = user.get("name") or user["email"]
     await send_email(to=parties, subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew))
+    await db.register_sends.insert_many([{"owner_id": user["user_id"], "at": now} for _ in parties])
     return {"sent_to": parties, "crew": len(crew), "unregistered": [c["name"] for c in crew if c.get("status") != "registered"]}
+
+
+async def asked(r: dict, user: dict) -> bool:
+    """A crew member can fill in an entry once the skipper has sent a request, invited them, or has them as crew."""
+    if r["status"] == "pending":
+        return True
+    if await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 1}):
+        return True
+    return bool(await db.user_boats.find_one({"owner_id": r["owner_id"], "crew": user["user_id"]}, {"_id": 1}))
 
 
 @router.get("/mine")
@@ -203,10 +216,8 @@ async def my_requests(user: dict = Depends(get_current_user)):
     rows = await db.crew_register.find({"kind": "crew", "email_key": email_key(user["email"]), "status": {"$ne": "registered"}, "owner_id": {"$ne": user["user_id"]}}, {"_id": 0}).to_list(20)
     out = []
     for r in rows:
-        if r["status"] != "pending":
-            invited = await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 1})
-            if not invited and not await db.user_boats.find_one({"owner_id": r["owner_id"], "crew": user["user_id"]}, {"_id": 1}):
-                continue
+        if not await asked(r, user):
+            continue
         owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
         out.append({**public(r), "skipper": owner.get("name") or owner.get("email") or "Your skipper"})
     return {"requests": out}
@@ -216,8 +227,9 @@ async def my_requests(user: dict = Depends(get_current_user)):
 async def submit_mine(entry_id: EntryPath, payload: CrewForm, user: dict = Depends(get_current_user)):
     data = clean(payload, TEXT)
     e = await db.crew_register.find_one({"entry_id": entry_id, "kind": "crew", "email_key": email_key(user["email"])}, {"_id": 0})
-    if not e or e["owner_id"] == user["user_id"]:
+    if not e or e["owner_id"] == user["user_id"] or not await asked(e, user):
         raise HTTPException(status_code=404, detail="This registration request was cancelled. Ask your skipper for a new one.")
+    await no_duplicate({"user_id": e["owner_id"]}, "crew", data["email"], entry_id)
     now = datetime.now(timezone.utc).isoformat()
     upd = {**data, "email_key": email_key(data["email"]), "status": "registered", "registered_at": now, "user_id": user["user_id"], "updated_at": now}
     await db.crew_register.update_one({"entry_id": entry_id}, {"$set": upd})

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronRight, FileCheck2, FileDown, FileWarning, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
 import { downloadAgreement } from "@/lib/agreementPdf";
 import { CrewAgreementDialog } from "@/components/boat/agreement/CrewAgreementDialog";
 
@@ -15,6 +16,8 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
     if (!d.agreement?.accepted_at && !sessionStorage.getItem(seenKey)) { sessionStorage.setItem(seenKey, "1"); setOpen(true); }
   }).catch(() => {}), [boat.owner_id, boat.boat_id, seenKey]);
   useEffect(() => { setData(null); setOpen(false); if (online) load(); }, [online, load]);
+  const free = usePromptsFree(["invite"]);
+  useEffect(() => { holdPrompt("agreement", open); return () => holdPrompt("agreement", false); }, [open]);
   if (!data) return null;
   const accepted = !!data.agreement?.accepted_at;
   const Icon = accepted ? FileCheck2 : FileWarning;
@@ -32,7 +35,7 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
           {pdfBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />} PDF
         </button>
       </div>
-      {open && <CrewAgreementDialog data={data} boat={boat} vessel={vessel} areas={areas} online={online}
+      {open && free && <CrewAgreementDialog data={data} boat={boat} vessel={vessel} areas={areas} online={online}
         onSaved={(a) => setData((d) => ({ ...d, agreement: a }))} onClose={() => setOpen(false)} />}
     </>
   );

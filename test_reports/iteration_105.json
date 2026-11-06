@@ -1,0 +1,37 @@
+{
+  "summary": "Crew Registration feature tested end to end. Backend: new tests/test_crew_register.py has 16 passing tests and 1 skipped. The tests cover owner-scoped CRUD; party entries being registered straight away; validation (missing email -> 400, duplicate email within the same kind -> 400 on add and on edit, bad email/nok_email/dob format/future dob -> 400, height out of range -> 422, party without phone -> 400); other users being blocked (404 on edit, delete has no effect, no visibility); /requests with send_email false setting Pending and skipping Registered people, and entry_ids null meaning all; /mine returning an unregistered entry because the user is crew on the skipper's boat, with skipper name and prefilled fields; /mine for a user whose email doesn't match -> 404 and not listed; PUT /mine with a missing field -> 400 'Please fill in every field' and missing height -> 422; a full PUT -> registered, after which the skipper sees Registered and the entry drops off /mine; parties-email 200 with sent_to/crew/unregistered, plus 400 for no parties and 400 for no crew (beta user). One real email was sent with send_email true to test.mail.reg@example.com (provider 202), and parties-email sent one real email to test.party.mum@example.com. UI at 390px as the Pro skipper: the Crew Registration button sits directly below photo-picker. Tested add (empty save marks the field red), edit (prefilled, saved), WhatsApp with no phone (message copied, toast, status Pending), WhatsApp with a phone (opens wa.me / api.whatsapp.com with the message, status Pending), delete with confirm, the 'Email registration request to all (2)' count, a party with only name/phone/email shown as Registered, the parties warning dialog (Cancel works, and 'Send anyway' from crew-email-parties-btn returned 200 with a toast), and the Invite picker (Unregistered then Registered group, green tick svg, chip fills name and email, parties not listed). Crew side as the free user: with a pending boat invite created from the beta user, pending-invite-dialog showed first and crew-reg-dialog only appeared after 'Not now'. The form was prefilled, an empty submit gave red borders on 8 fields plus a toast, the skipper note is bold (800), 'Not now' hides the dialog for the session (it stays hidden after a reload), and the full submit returned 200 and showed crew-reg-done with Registered. The skipper's register then showed Registered and the Email/WhatsApp buttons and send-all were hidden. I did not edit any app code.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew-register/requests, /parties-email", "issue": "The free test user gets 200, not 403, because launch_free makes every user premium (/auth/me premium:true). This is expected during the launch promo; the 403 test skips while premium is true."},
+      {"endpoint": "POST /api/crew-register/parties-email", "issue": "No daily send limit, unlike /requests (60/day). A skipper can send unlimited emails to the parties list."},
+      {"endpoint": "PUT /api/crew-register/mine/{id}", "issue": "Doesn't check that the entry was actually requested (pending, invited or on a boat). Any user whose email matches can submit. It also doesn't run no_duplicate when the crew changes their email, so the skipper's register can end up with two crew entries with the same email."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Crew-side prompts on load", "issue": "The CrewAgreementDialog (crew-agreement-dialog) opens on its own at the same time as pending-invite-dialog, stacked on top of it, and blocks the invite's buttons until it is dismissed. This was there before this feature. CrewRegistrationPrompt waits for invites to be handled but not for the agreement dialog, so a crew member with no pending invite would get the agreement dialog and the registration form stacked together. Consider queueing the registration prompt after the agreement dialog, or the other way round.", "affected_selectors": ["crew-agreement-dialog", "pending-invite-dialog", "crew-reg-dialog"]}
+    ],
+    "design_issues": [
+      {"screen": "Crew registration form", "issues": ["Date of birth uses the browser's native date input (type=date), not the shadcn calendar. That's acceptable on phones, but it doesn't match the rest of the design."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_register.py", "/app/test_reports/pytest/pytest_results_105.xml"],
+  "action_items": [
+    "Optional: queue CrewRegistrationPrompt (and PendingInvitePrompt) so they don't open together with the auto-opening CrewAgreementDialog",
+    "Optional: add a daily limit to /crew-register/parties-email",
+    "Optional: in PUT /crew-register/mine/{id}, check the email isn't a duplicate when it changes, and require that the entry was pending or invited"
+  ],
+  "critical_code_review_comments": [
+    "crew_register.py is clean: _id, owner_id and email_key are excluded, the entry_id path regex is validated, every query is owner-scoped, and HTML emails are escaped.",
+    "RegisterPicker on(): c.email.toLowerCase() compares exactly. It doesn't use gmail dot-insensitive matching like email_key, so the active-chip highlight could miss for gmail aliases (cosmetic).",
+    "The 'Email registration request to all (n)' count includes Pending crew, and sending re-emails them. This is reasonable as a resend, but the label could say so."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_register.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. All crew_register entries for test-user-pro were deleted (register is empty). The temporary beta -> free crew invite (667fd5d7...) was deleted, and /crew/pending for free is empty.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_crew_register.py (self-cleaning). test_invite_role_briefings.py currently fails 2 tests with 429 'Daily invite limit reached' for test-user-pro (rate limit carried over from iteration 104, not a regression). Browser auth: session_token cookie. The free user gets a crew-agreement-dialog on load (dismiss with its 'Not now'). Use the beta user (test_session_beta_1, boat 'main') to create a pending invite for free with send_email false."
+}

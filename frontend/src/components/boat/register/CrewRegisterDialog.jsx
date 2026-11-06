@@ -79,7 +79,7 @@ export const CrewRegisterDialog = ({ open, online, premium, onUpgrade, onClose }
           <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => add("crew")} data-testid="reg-add-crew-btn"><UserPlus className="h-4 w-4" /> Add crew member</button>
           {waiting > 0 && (
             <button type="button" className="btn-ghost h-11 justify-center gap-2" disabled={!!busy.all} onClick={() => request(null, true, "all")} data-testid="reg-send-all-btn">
-              {busy.all ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Email registration request to all ({waiting})
+              {busy.all ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Email registration request to everyone not registered ({waiting})
             </button>
           )}
         </div>
