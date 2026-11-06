@@ -164,7 +164,7 @@ def merge_crew_galley(out: dict, prev: dict, inc: dict):
     lts = dict(out.get("list_ts") or {})
     for lid in ids:
         if isinstance(idata.get(lid), list) and (lid == "provisions" or is_meal_plan(pdata.get(lid) or [])) and il.get(lid, "") > pl.get(lid, ""):
-            out["data"][lid] = deepcopy(idata[lid])
+            out["data"][lid] = _merge_list(deepcopy(idata[lid]), il[lid], pdata.get(lid) or [], pl.get(lid, ""))
             lts[lid] = il[lid]
     names = {str(r.get("name", "")).strip().lower() for r in reg}
     new = [r for r in inc.get("registry") or [] if r.get("id") not in ids and str(r.get("id", "")).startswith("custom_") and not r.get("kind")

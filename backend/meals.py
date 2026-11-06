@@ -2,16 +2,17 @@ import json
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
 from crew_pro import magic_payer
+from sync_merge import galley_crew
 from ai_lists import PROVISIONER, _run, with_diet
 
 router = APIRouter(prefix="/api")
-BoatQ = Query(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$")
+BoatQ = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
 MY_MEALS_MAX = 200
 
 
@@ -50,7 +51,9 @@ async def add_my_meal(body: MyMealIn, user: dict = Depends(get_current_user)):
 
 @router.delete("/me/meals/{meal_id}")
 async def delete_my_meal(meal_id: str, user: dict = Depends(get_current_user)):
-    await db.user_meals.delete_one({"user_id": user["user_id"], "id": meal_id})
+    res = await db.user_meals.delete_one({"user_id": user["user_id"], "id": meal_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="Meal not found")
     return {"ok": True}
 
 
@@ -86,8 +89,12 @@ def parse_plan(text: str, want: int) -> list:
 
 
 @router.post("/ai/mpa/meal-plan")
-async def magic_meal_plan(body: MealPlanIn, boat_id: Optional[str] = BoatQ, owner: Optional[str] = BoatQ, me: dict = Depends(get_current_user)):
+async def magic_meal_plan(body: MealPlanIn, boat_id: BoatQ = None, owner: BoatQ = None, me: dict = Depends(get_current_user)):
     user = await magic_payer(me, boat_id, owner)
+    if user["user_id"] != me["user_id"]:
+        doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, f"crew_roles.{me['user_id']}": 1})
+        if not galley_crew(((doc or {}).get("crew_roles") or {}).get(me["user_id"])):
+            raise HTTPException(status_code=403, detail="Only crew with a Provision Manager or Galley Lead / Chef role can plan meals")
     want = body.days * len(body.meals)
     prompt = (f"Plan {', '.join(body.meals)} for each of {body.days} days of a boat trip, for {body.adults} adults and {body.children} children. "
               "Boat galleys are small: favour simple one-pan or one-pot meals that keep well, and vary the meals. "

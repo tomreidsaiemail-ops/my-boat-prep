@@ -22,7 +22,7 @@ export const CreateListOptions = ({ open, listName, galleyOnly, onPick, onClose 
         <DialogDescription>Pick how you'd like to make your new list.</DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-2">
-        {!galleyOnly && <Option icon={<Copy className="h-6 w-6" strokeWidth={2.5} />} title="Clone the selected list" sub={listName ? `Makes a copy of ${listName}` : undefined} onClick={() => onPick("clone")} testId="create-option-clone" />}
+        {!galleyOnly && listName && <Option icon={<Copy className="h-6 w-6" strokeWidth={2.5} />} title="Clone the selected list" sub={`Makes a copy of ${listName}`} onClick={() => onPick("clone")} testId="create-option-clone" />}
         {!galleyOnly && <Option icon={<Plus className="h-6 w-6" strokeWidth={3} />} title="Create a standard list using the Create List window" onClick={() => onPick("standard")} testId="create-option-standard" />}
         <Option icon={<UtensilsCrossed className="h-6 w-6" strokeWidth={2.2} />} title="Create a Meal Plan using common meals, and add your own, and remember them" onClick={() => onPick("common")} testId="create-option-common-meals" />
         <Option icon={<MagicProvisionerIcon />} title="Ask the Magic Provisioner to Create a Meal Plan using what is onboard" sub="Uses the food in your Food (F) boat areas" onClick={() => onPick("onboard")} testId="create-option-magic-onboard" />

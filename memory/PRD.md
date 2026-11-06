@@ -683,3 +683,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Template items accept `briefing` (max 1000). Admin template editor shows "Default Role Briefings" (RoleBriefingDefaults.jsx) for the Crew Roles list; saved per role.
 - push_role_briefings (on Crew Roles template save/import) fills boats' Crew Roles items that have no `briefing` key; skipper's own and blanked ('' kept by saveEdit / prompt) briefings are never touched. Migration trim_briefings seeded Port Trim + Starboard Trim winch/boom safety text and pushed it to all boats.
 - Backup export/import keeps briefings. Tested iteration_119 (import gap fixed and re-checked by curl).
+
+## Later changes
+- See /app/memory/CHANGELOG.md (from 2026-06 Create List options onward).
+

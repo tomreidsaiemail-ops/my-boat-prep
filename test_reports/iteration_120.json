@@ -1,0 +1,45 @@
+{
+  "summary": "Tested the Create List options, Common Meals, own meals, Magic meal plans and galley crew rights, on both backend and frontend (mobile 390x844). I found and fixed 2 bugs: (1) backend: crew could not use POST /api/ai/mpa/meal-plan at all (404 'Boat not found'), because boat_id and owner shared one Query() instance and FastAPI gave both the alias 'boat_id'; (2) frontend: in Common Meals, the first bubble tap on 'A new meal plan' closed the dialog, because addMealToPlan called pickList, which runs setDialog(null). After the fixes, every requested flow passed. Backend: 13 of 14 tests pass and 1 is skipped: the free-user 403 cannot be reached while launch_free (FIRST200) makes every user premium. Real AI calls used: 4 (1 extra by accident, from the free-user 403 test before the skip was added).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/ai/mpa/meal-plan?boat_id=main&owner=test-user-pro", "issue": "FIXED by testing agent. Crew always got 404 'Boat not found'. meals.py set BoatQ = Query(default=None, ...) and used it for both boat_id and owner. FastAPI then gave owner the alias 'boat_id', so owner received 'main'. Changed BoatQ to Annotated[Optional[str], Query(pattern=...)] with '= None' defaults, the same as stores_ai.py.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/ai/mpa/meal-plan", "issue": "magic_payer only checks that the caller is crew on the boat. It does not check for a galley role, so any crew member (even with no role) can spend the Pro skipper's Magic credits through the API. The UI hides this, but the server should check galley_crew(crew_roles[user]) when owner != me."},
+      {"endpoint": "PUT /api/me/boat (crew, galley)", "issue": "merge_crew_galley replaces the whole Provisions or meal plan list with the crew's copy when the crew's list_ts is newer. Any changes the owner made to that list since the crew last synced are lost. The owner path uses item-level merging (_merge_list); the galley path should too."},
+      {"endpoint": "DELETE /api/me/meals/{id}", "issue": "Returns 200 {ok:true} even when the id does not exist or belongs to another user. No 404. Harmless, since another user's meal is not deleted."},
+      {"endpoint": "POST /api/ai/mpa/meal-plan (free user)", "issue": "The 403 for a free user cannot be tested at the moment: launch_free (first200) makes every user premium."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CommonMealsDialog / BoatPrep.addMealToPlan", "issue": "FIXED by testing agent. The first tap on a bubble with target 'A new meal plan' created the list but closed the dialog, because pickList runs setDialog(null). Changed it to setActiveId(id). The dialog now stays open, the target switches to the new list, and the user can keep adding meals.", "selector": "[data-testid=meal-bubble-scrambled-eggs]", "priority": "HIGH"},
+      {"component": "CreateListOptions", "issue": "'Clone the selected list' is always shown, e.g. 'Makes a copy of Boat Inventory' (the default list on load). Tapping it only shows a 'cannot be cloned' warning toast. Disable or relabel the option when NO_CLONE[active.id] applies.", "selector": "[data-testid=create-option-clone]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Common Meals dialog (mobile)", "issues": ["The stacked sonner success toasts ('X added to ...') cover the bottom of the dialog (Save and Done buttons) for a few seconds after each tap."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_meal_plans_galley.py", "/app/backend/tests/meal_boat_backup.py", "/app/test_reports/pytest/pytest_meal_plans.xml"],
+  "action_items": [
+    "Check the 2 fixes: meals.py BoatQ (Annotated) and BoatPrep.addMealToPlan (setActiveId instead of pickList).",
+    "Server: require a galley role for crew calling /ai/mpa/meal-plan, so non-galley crew cannot spend the skipper's Magic credits.",
+    "merge_crew_galley: merge items one by one (like _merge_list) instead of replacing the whole list, so the owner's concurrent edits are not lost.",
+    "Optional: hide or disable the Clone option when the active list cannot be cloned.",
+    "Optional: return 404 from DELETE /me/meals/{id} when nothing was deleted."
+  ],
+  "critical_code_review_comments": [
+    "meals.py: one Query() FieldInfo shared by 2 parameters gives both the same alias (fixed). Do not reuse Query objects; use Annotated aliases.",
+    "BoatPrep.jsx is 1036 lines, above the 700-line guideline. The meal plan handlers (openCreate, pickCreate, addMealToPlan, createMagicPlan, cooks) could move to a hook such as useMealPlanCreate.",
+    "Galley role regex is duplicated in the frontend (BoatPrep line 604) and the backend (GALLEY_ROLES). Keep them in sync or expose a galley flag from /me/boats.",
+    "MagicMealPlanDialog: trip days input defaults to 3 when boat.trip_days is 0. 'Trip days entered' could not be checked, because the test boat has trip_days 0."
+  ],
+  "updated_files": ["/app/backend/meals.py", "/app/frontend/src/pages/BoatPrep.jsx", "/app/backend/tests/test_meal_plans_galley.py", "/app/backend/tests/meal_boat_backup.py"],
+  "success_rate": {"backend": "100% after fix (13 passed, 1 skipped: free 403 blocked by launch_free); 86% before fix", "frontend": "100% of requested flows after fix (common meals flow failed before fix)"},
+  "seed_data_creation": "None left behind. The pro boat main fields (registry, data, list_ts, sec_ts, crew_roles, updated_at, areas) were restored from /tmp/pro_boat_meal_backup.json, which removed the UI lists TEST_Meal Plan UI, TEST_Meal Plan UI2, TEST_Magic Plan UI and TEST_Crew Common UI and set crew_roles back to {}. TEST_Pancakes was removed in the UI. 'TEST Nachos' (id 441f0abca8bc) was deleted as requested, so user_meals is now empty.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_meal_plans_galley.py sets crew_roles for test-user-free directly in Mongo and restores the boat fields in a class fixture. It makes 2 real AI calls (pro, 2 days; crew, 1 day). After a crew role change, the free user sees crew-agreement-dialog on load; press Escape to close it. Crew is already on the shared boat TEST_Kia Ora (CREW) on load. Owner cooks list = 'Pro Tester (Skipper)', 'TEST Free Crew'. Common Meals template: private list_templates 'Common Meals', 57 items, 8 meals.",
+  "rca of the issue": "1) Crew Magic meal plan 404: FastAPI uses a FieldInfo default as the param's field info and sets its alias from the first param name (boat_id). Reusing the same object for owner gave it alias boat_id, so owner='main', and magic_payer looked up owner 'main' and found nothing. Repro: POST /api/ai/mpa/meal-plan?boat_id=main&owner=test-user-pro as test_session_free_1 returned 404. Fixed with Annotated. 2) Common Meals dialog closing: addMealToPlan -> pickList(id) -> setDialog(null). Repro: open create-option-common-meals, keep target 'A new meal plan', tap any bubble, and the dialog closes. Fixed by calling setActiveId(id) only."
+}

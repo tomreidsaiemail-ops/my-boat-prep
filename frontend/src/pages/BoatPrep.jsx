@@ -627,8 +627,8 @@ export default function BoatPrep({ boatId, boats }) {
     const n = (mealLists.find((l) => l.id === id)?.meals.length || 0) + 1;
     const rows = mealItems(meal, n, Date.now());
     mutate((s) => ({ ...s, registry: target.id ? s.registry : [...s.registry, { id, name: target.name, isSystem: false }], data: { ...s.data, [id]: [...(s.data[id] || []), ...rows] } }));
-    if (!target.id) pickList(id);
-    toast.success(`${meal.name} added to ${target.name || registry.find((l) => l.id === id)?.name || "your meal plan"}`);
+    if (!target.id) setActiveId(id);
+    toast.success(`${meal.name} added to ${target.name || registry.find((l) => l.id === id)?.name || "your meal plan"}`, { duration: 1500 });
     return id;
   };
   const createMagicPlan = (name, meals) => {
@@ -1006,7 +1006,7 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
-      <CreateListOptions open={dialog?.type === "createOptions"} listName={active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />
+      <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />
       <CommonMealsDialog open={dialog?.type === "commonMeals"} lists={mealLists} allNames={registry.map((l) => l.name)} activeId={active.id} online={online} onAdd={addMealToPlan} onClose={() => setDialog(null)} />
       {dialog?.type === "magicMeals" && <MagicMealPlanDialog mode={dialog.mode} boat={boat} areas={areas} cooks={cooks} allNames={registry.map((l) => l.name)} online={online}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} onCreate={createMagicPlan} onClose={() => setDialog(null)} />}
