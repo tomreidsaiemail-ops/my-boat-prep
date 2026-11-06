@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { AttrFile } from "@/components/boat/maint/AttrFile";
-import { UNITS, defaultUnit } from "@/lib/maint";
+import { PURCHASE_KEY, UNITS, defaultUnit } from "@/lib/maint";
 
 const NUM = { integer: /^-?\d{0,8}$/, "integer age": /^\d{0,3}$/ };
 const DEC = /^\d{0,6}([.,]\d{0,2})?$/;
@@ -22,7 +22,18 @@ const Control = ({ def, attrs, onChange, ctx, testId }) => {
   const value = attrs[def.key] || "";
   const set = (v) => onChange({ [def.key]: v });
   const dis = ctx.readOnly;
+  if (def.type === "date" && def.key === PURCHASE_KEY && attrs[`${PURCHASE_KEY}__default`]) return (
+    <span className="flex flex-col gap-0.5">
+      <input type="date" value={value} disabled={dis} onChange={(e) => set(e.target.value)} className="field-input h-10 !text-sm italic text-slate-500" data-testid={testId} />
+      <span className="text-[10px] font-bold text-[var(--muted)]" data-testid={`${testId}-default`}>From Year of manufacture</span>
+    </span>
+  );
   if (def.type === "date") return <input type="date" value={value} disabled={dis} onChange={(e) => set(e.target.value)} className="field-input h-10 !text-sm" data-testid={testId} />;
+  if (def.type === "integer age") return (
+    <output className="field-input flex h-10 items-center bg-slate-50 !text-sm" aria-readonly="true" title="Worked out from Purchase Date" data-testid={testId}>
+      {value !== "" ? `${value} years old` : <span className="text-slate-400">Set Purchase Date</span>}
+    </output>
+  );
   if (def.type === "picklist") {
     const options = value && !def.options.includes(value) ? [value, ...def.options] : def.options;
     return (

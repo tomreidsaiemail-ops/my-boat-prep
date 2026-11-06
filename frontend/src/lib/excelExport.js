@@ -1,7 +1,7 @@
 // Excel exports built on the phone (works offline): one list, every list as its own file in a zip, or one master workbook with a tab per list.
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
-import { DUE_KEY, LAST_KEY, MAINT_KIND, effectiveDue } from "@/lib/maint";
+import { DUE_KEY, LAST_KEY, MAINT_KIND, effectiveDue, withAge } from "@/lib/maint";
 import { costOf, ledgerYear } from "@/lib/budget";
 import { areaZones, mapLabel } from "@/lib/zoneColours";
 import { arrangeLog } from "@/lib/logFolders";
@@ -41,10 +41,10 @@ const budgetRows = (items, currency) => [...items].sort((a, b) => ledgerYear(a) 
   "Last change": i.history?.length ? `${i.history.at(-1).field}: ${i.history.at(-1).to}`.slice(0, 200) : "",
 }));
 
-const maintRows = (items, defs, custom) => {
+const maintRows = (items, defs, custom, yearBuilt) => {
   const fields = custom ? defs : defs.filter((d) => d.key !== LAST_KEY && d.key !== DUE_KEY);
   return items.map((i, n) => {
-    const a = i.attrs || {};
+    const a = i.indent ? withAge(i.attrs || {}, yearBuilt, fields) : i.attrs || {};
     const due = effectiveDue(items, n);
     const row = { Category: i.indent ? headOf(items, n) : i.label, Description: i.indent ? i.label : "",
       ...(custom ? {} : { "Last service": asDate(a[LAST_KEY]), "Service due": asDate(due.date), "Due date from": due.date ? (due.inherited ? "Category" : "Own") : "" }) };
@@ -64,7 +64,7 @@ const maintRows = (items, defs, custom) => {
 
 export const listRows = (list, items, ctx) => {
   if (list.kind === "budget") return budgetRows(items, ctx.currency);
-  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list), list.maint === "custom");
+  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list), list.maint === "custom", ctx.yearBuilt);
   return checklistRows(items, ctx.labelFor, ctx.areaName);
 };
 

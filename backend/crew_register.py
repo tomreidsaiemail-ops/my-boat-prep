@@ -166,15 +166,16 @@ async def send_requests(payload: RequestIn, request: Request, user: dict = Depen
     return {"sent": sent, "skipped": [r["name"] for r in rows if r not in todo]}
 
 
-def summary_html(skipper: str, crew: list) -> str:
+def summary_html(skipper: str, crew: list, allergies: bool = False) -> str:
     cell = 'style="border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top"'
-    head = "".join(f"<th {cell}>{h}</th>" for h in ("Name", "Phone", "Email", "Age", "Height", "Next of kin", "Status"))
+    cols = ("Name", "Phone", "Email", "Age", "Height", "Next of kin") + (("Allergies",) if allergies else ()) + ("Status",)
+    head = "".join(f"<th {cell}>{h}</th>" for h in cols)
     body = ""
     for c in crew:
         nok = "<br/>".join(escape(x) for x in (c.get("nok_name"), c.get("nok_phone"), c.get("nok_email")) if x)
         status = "Registered" if c.get("status") == "registered" else "Not registered yet"
         vals = [escape(c.get("name", "")), escape(c.get("phone", "")), escape(c.get("email", "")), age(c.get("dob", "")),
-                f'{c["height_cm"]:g} cm' if c.get("height_cm") else "", nok, status]
+                f'{c["height_cm"]:g} cm' if c.get("height_cm") else "", nok] + ([f'<b style="color:#b91c1c">{escape(c.get("allergies") or "Not given")}</b>'] if allergies else []) + [status]
         body += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in vals) + "</tr>"
     return (
         '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.5">'
@@ -187,6 +188,7 @@ def summary_html(skipper: str, crew: list) -> str:
 class PartiesIn(BaseModel):
     crew_ids: List[Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")]] = Field(min_length=1, max_length=200)
     party_id: str = Field(pattern=r"^[a-f0-9-]{36}$")
+    include_allergies: bool = False
 
 
 @router.post("/parties-email")
@@ -201,7 +203,7 @@ async def email_parties(payload: PartiesIn, user: dict = Depends(require_premium
     if await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}}) >= DAILY_SEND_LIMIT:
         raise HTTPException(status_code=429, detail=f"Daily limit reached ({DAILY_SEND_LIMIT} registration emails), try again tomorrow")
     skipper = user.get("name") or user["email"]
-    await send_email(to=[party["email"]], subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew))
+    await send_email(to=[party["email"]], subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew, payload.include_allergies))
     await db.register_sends.insert_one({"owner_id": user["user_id"], "at": now})
     return {"sent_to": party["name"], "email": party["email"], "crew": len(crew), "unregistered": [c["name"] for c in crew if c.get("status") != "registered"]}
 

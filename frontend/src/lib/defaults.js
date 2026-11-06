@@ -248,7 +248,7 @@ const pobWords = (ctx) => {
 
 export const displayLabel = (item, ctx) => {
   if (item.budget) return budgetLabel(item, ctx.currency);
-  if (item.maint) return maintLabel(item);
+  if (item.maint) return maintLabel(item, ctx.yearBuilt);
   if (item.cocktail) return cocktailLabel(item);
   const v = ctx.vessel || "Vessel Name";
   const c = ctx.callsign || "Callsign";

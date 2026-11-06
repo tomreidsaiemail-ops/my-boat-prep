@@ -20,15 +20,16 @@ const Pick = ({ type, checked, onChange, entry, testId }) => (
 export const EmailPartiesDialog = ({ open, reg, onClose }) => {
   const [crew, setCrew] = useState([]);
   const [party, setParty] = useState("");
+  const [medical, setMedical] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setCrew([]); setParty(""); } }, [open]);
+  useEffect(() => { if (open) { setCrew([]); setParty(""); setMedical(false); } }, [open]);
   const toggle = (id) => setCrew((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   const not = reg.crew.filter((c) => crew.includes(c.entry_id) && c.status !== "registered").map((c) => c.name);
 
   const send = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/crew-register/parties-email", { crew_ids: crew, party_id: party }, { timeout: 30000 });
+      const { data } = await api.post("/crew-register/parties-email", { crew_ids: crew, party_id: party, include_allergies: medical }, { timeout: 30000 });
       toast.success(`Details for ${data.crew} crew emailed to ${data.sent_to}`);
       onClose();
     } catch (err) { toast.error(apiError(err, "Couldn't email the crew details, please try again")); }
@@ -40,7 +41,7 @@ export const EmailPartiesDialog = ({ open, reg, onClose }) => {
       <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="email-parties-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Email crew details</DialogTitle>
-          <DialogDescription className="text-left text-sm">Sends each crew member's name, phone, email, age, height and next of kin to one interested party.</DialogDescription>
+          <DialogDescription className="text-left text-sm">Sends each crew member's name, phone, email, age, height and next of kin (and allergies, if you tick medical details) to one interested party.</DialogDescription>
         </DialogHeader>
         <section className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">
@@ -60,6 +61,12 @@ export const EmailPartiesDialog = ({ open, reg, onClose }) => {
               {reg.parties.map((p) => <Pick key={p.entry_id} type="radio" entry={p} checked={party === p.entry_id} onChange={() => setParty(p.entry_id)} testId={`email-parties-party-${p.entry_id}`} />)}
             </div>
           </section>
+        )}
+        {crew.length > 0 && (
+          <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3 py-2" data-testid="email-parties-medical">
+            <input type="checkbox" checked={medical} onChange={(e) => setMedical(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="email-parties-medical-input" />
+            <span className="text-sm"><b>Include medical details</b><span className="block text-xs text-[var(--muted)]">Adds each crew member's allergies, e.g. for the race committee or Coast Guard.</span></span>
+          </label>
         )}
         {not.length > 0 && (
           <p role="alert" className="rounded-md border-[1.5px] border-amber-400 bg-amber-50 p-2.5 text-sm" data-testid="email-parties-unregistered-warn">

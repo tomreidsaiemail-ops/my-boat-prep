@@ -298,7 +298,7 @@ export default function BoatPrep({ boatId, boats }) {
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
   const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
   useEffect(() => { setAreaFilter(""); }, [active.id]);
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat) }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -531,7 +531,7 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${rows.reduce((n, r) => n + r.qty, 0)} items taken out of your stores and written in the Ship's Log`);
   };
   const buildSheets = async (all) => {
-    const sctx = { currency: budgetCurrency(boat), labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l) };
+    const sctx = { currency: budgetCurrency(boat), yearBuilt: boat.year_built, labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l) };
     const sheet = (l) => ({ name: l.name, rows: l.isInventory ? inventoryRows(areas, boats.current) : listRows(l, data[l.id] || [], sctx) });
     if (!all) return [sheet(active)];
     const out = [{ name: "Boat details", rows: boatRows(boat) }, ...registry.map(sheet), { name: "Boat inventory", rows: inventoryRows(areas, boats.current) },
@@ -858,7 +858,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === MAINT_KIND ? <MaintList key={active.id} list={active} items={items} setItems={setItems} defs={attrsForList(maintDefs, active)} guard={guard} onDeleteList={askDeleteList}
             onLogService={logMaintService}
             ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
-            ctx={{ units: boat.units, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
+            ctx={{ units: boat.units, yearBuilt: boat.year_built, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}

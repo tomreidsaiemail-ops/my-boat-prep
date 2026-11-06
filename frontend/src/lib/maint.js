@@ -79,6 +79,24 @@ export const localDate = (iso) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return "";
   try { return new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(`${iso}T00:00:00`)); } catch { return iso; }
 };
+// Purchase Date defaults to 1 January after the boat's Year of manufacture until the skipper sets it; Age is always worked out from it.
+export const PURCHASE_KEY = "purchase_date";
+export const purchaseDefault = (yearBuilt) => (/^\d{4}$/.test(yearBuilt || "") ? `${Number(yearBuilt) + 1}-01-01` : "");
+export const yearsSince = (iso, today = new Date()) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  const before = today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d);
+  return String(Math.max(0, today.getFullYear() - y - (before ? 1 : 0)));
+};
+export const withAge = (attrs = {}, yearBuilt, defs) => {
+  const ageKeys = defs ? defs.filter((d) => d.type === "integer age").map((d) => d.key) : Object.keys(attrs).filter((k) => k === "age");
+  const own = attrs[PURCHASE_KEY];
+  const date = own || purchaseDefault(yearBuilt);
+  const out = { ...attrs };
+  ageKeys.forEach((k) => { out[k] = yearsSince(date); delete out[`${k}__est`]; delete out[`${k}__unit`]; });
+  if (!own && date && defs?.some((d) => d.key === PURCHASE_KEY)) { out[PURCHASE_KEY] = date; out[`${PURCHASE_KEY}__default`] = "1"; }
+  return out;
+};
 
 // A category's due date applies to each of its items unless the item has its own.
 export const effectiveDue = (items, n) => {
@@ -122,8 +140,8 @@ export const attrText = (def, attrs) => {
 };
 const pretty = (k) => k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 const FILE_ID = /^[a-f0-9]{32}$/;
-export const maintLabel = (item) => {
-  const a = item.attrs || {};
+export const maintLabel = (item, yearBuilt) => {
+  const a = withAge(item.attrs || {}, yearBuilt);
   const parts = Object.entries(a).filter(([k, v]) => v && !k.endsWith("__unit") && !k.endsWith("__name") && !k.endsWith("__est") && !FILE_ID.test(v) && k !== LAST_KEY && k !== DUE_KEY)
     .map(([k, v]) => `${pretty(k)}: ${v}${a[`${k}__unit`] ? ` ${a[`${k}__unit`]}` : ""}${a[`${k}__est`] ? " (est.)" : ""}`);
   const due = a[DUE_KEY] || item.due_from;

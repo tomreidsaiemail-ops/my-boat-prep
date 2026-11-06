@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRightLeft, ChevronRight, Wrench, X } from "lucide-react";
 import { AttrField } from "@/components/boat/maint/AttrField";
-import { DUE_KEY, LAST_KEY, attrText, dueTone, localDate } from "@/lib/maint";
+import { DUE_KEY, LAST_KEY, attrText, dueTone, localDate, withAge } from "@/lib/maint";
 
 const TONES = { orange: "bg-orange-100", red: "bg-red-100" };
 
@@ -36,6 +36,7 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
   const id = item.id;
   const head = !item.indent;
   const attrs = item.attrs || {};
+  const shown = withAge(attrs, ctx.yearBuilt, defs);
   const setAttrs = (patch) => onChange({ attrs: { ...attrs, ...patch } });
   const tone = dueTone(due.date);
   const filled = defs.some((d) => attrs[d.key]);
@@ -58,7 +59,7 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
         {cols ? cols.map((c) => (
           <td key={c.key} className="p-1">
             {!head && <button type="button" onClick={onOpen} title={`${c.name} (tap to edit)`} data-testid={`maint-col-${c.key}-${id}`}
-              className="block w-full break-words px-1 py-1.5 text-left text-[13px] leading-snug">{attrText(c, attrs) || <span className="text-slate-400">-</span>}</button>}
+              className="block w-full break-words px-1 py-1.5 text-left text-[13px] leading-snug">{attrText(c, shown) || <span className="text-slate-400">-</span>}</button>}
           </td>
         )) : <>
           <td className="p-1">{!head && <DateCell value={attrs[LAST_KEY]} label="Last service date" readOnly={ctx.readOnly} testId={`maint-last-${id}`} onChange={(v) => setAttrs({ [LAST_KEY]: v })} />}</td>
@@ -75,7 +76,7 @@ export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ct
         <tr className={TONES[tone] || ""} data-testid={`maint-details-${id}`}>
           <td colSpan={span} className="px-2 pb-3 pt-1">
             <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 rounded-md border-[1.5px] border-[var(--line)] bg-white p-2.5">
-              {defs.map((d) => <AttrField key={d.key} def={d} attrs={attrs} onChange={setAttrs} ctx={ctx} itemId={id} />)}
+              {defs.map((d) => <AttrField key={d.key} def={d} attrs={shown} onChange={setAttrs} ctx={ctx} itemId={id} />)}
               {!defs.length && <p className="col-span-2 text-xs text-[var(--muted)]">No attributes set up for this list yet.</p>}
               {ctx.onService && !ctx.readOnly && (
                 <button type="button" onClick={() => ctx.onService(item)} className="btn-ghost col-span-2 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid={`maint-service-item-${id}`}>
