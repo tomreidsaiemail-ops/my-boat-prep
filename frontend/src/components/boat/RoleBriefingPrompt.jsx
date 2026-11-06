@@ -20,7 +20,7 @@ export const RoleBriefingPrompt = ({ role, current = "", isNew, onSave, onSkip }
         </DialogHeader>
         <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, BRIEFING_MAX))} rows={5} maxLength={BRIEFING_MAX} autoFocus
           placeholder="e.g. Local race channel is RPNYC VHF channel 77. Monitor 16 at all times."
-          className="field-input h-auto resize-y py-2 text-base leading-snug" aria-label={`Role Briefing for ${role}`} data-testid="role-briefing-prompt-input" />
+          className="field-input !h-auto min-h-[7rem] resize-y py-2 text-base leading-snug" aria-label={`Role Briefing for ${role}`} data-testid="role-briefing-prompt-input" />
         <p className="flex gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" role="note" data-testid="role-briefing-prompt-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>Saved to this boat's Crew Roles{isNew ? `, where ${role} is added as a new role` : ""}. Any future crew member given {role} gets this briefing too.</span>

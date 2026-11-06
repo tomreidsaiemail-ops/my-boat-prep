@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend test (mobile 390x844) of the 'As Roles are clicked & added, show Role Briefing' checkbox and the Role Briefing popup in Invite crew (pro test_session_pro_1, boat main 'TEST_Kia Ora'). Everything in the request works. Checkbox is ticked by default with the right label. Clicking Helm opens 'Role Briefing - Helm' with the current briefing filled in and the warning line. Save writes to Crew Roles: confirmed in Mongo, the list shows the badge checklist-item-briefing-badge-12, and the Edit item dialog shows the new text. The WhatsApp preview shows '*Role briefing - Helm*' with the text. 'Blank the briefing' turns the button into 'Delete briefing from Crew Roles', which removes the briefing (toast shown, preview line gone). 'Keep as it is' and Escape change nothing and keep the role on the invite. Adding two roles quickly queues the popups (Skipper, then First Aider). A typed custom role gets the 'added as a new role' warning: Save adds it to Crew Roles with its briefing, and the no-briefing case 'Save role without a briefing' also works. 'Skip, don't add to Crew Roles' leaves Crew Roles unchanged but keeps the role on the invite. Unticking sets localStorage mbp_role_briefing_prompt='0' and stops popups, and it stays unticked after close and reload. Re-ticking sets '1' and popups come back. Regressions: 'Change available' opens the Crew Roles list with the back-to-invite bar and reopens the invite with the draft kept. The crew banner for test_session_free_1 on Pro's boat mentions the F/D areas, Batch Magic Scan My Shopping and Sync Food & Drink Boat Areas. 'Copy link only' returned 429 'Daily invite limit reached' because earlier test runs used up the daily invite limit (invite_sends). This is expected, the error shows inline in crew-invite-error, and no invite was created.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "RoleBriefingPrompt", "issues": ["The briefing textarea (role-briefing-prompt-input) is only 48px tall, about one line, even though rows=5. The fixed height from .field-input wins over the 'h-auto' class. Use '!h-auto min-h-[7rem]' as voyage-notes-input does, so a multi-line briefing can be read."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "RoleBriefingPrompt.jsx textarea: change 'h-auto' to '!h-auto min-h-[7rem]' (or similar) so the briefing box shows several lines."
+  ],
+  "critical_code_review_comments": [
+    "InviteCrewDialog pickRoles: a role queued for its popup that is then deselected still gets its popup. This is harmless but could be skipped (drop queue entries no longer in roles).",
+    "RolePicker toggle uses the selected list from the last render, so two chip clicks in the same tick lose one. This only happens with synthetic clicks; real taps are fine.",
+    "setRoleBriefing adds a new role with no indent at the end of the list, so it sits in its own unnamed group after the last heading. This is acceptable, but the skipper might expect it inside a group.",
+    "BoatPrep.saveRoleBriefing calls hasRole on the state from the last render. Fine for prompts done one after another."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of the requested flows (1 minor design issue)"},
+  "seed_data_creation": "None kept. The pro boat main Crew Roles list (data.tpl_test67crew) was backed up to /tmp/bk/crew_roles_backup.json and restored at the end; the TEST_Bosun and TEST_Deckie roles and the Helm briefing are gone. No invites were created (429), so crew_invites still has 1 document, as before.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Crew Roles list id on test-user-pro/main is tpl_test67crew. Ticked roles are Skipper, First Aider and Helm (ids 2, 6, 12). The pro user has hit the daily invite limit (invite_sends in the last 24h), so invite POSTs return 429 until it expires. Testing the briefing popup does not need an invite to be sent. The checkbox setting is localStorage mbp_role_briefing_prompt."
+}

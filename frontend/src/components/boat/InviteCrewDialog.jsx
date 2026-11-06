@@ -41,7 +41,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   const pickRoles = (next) => {
     const added = next.filter((r) => !roles.includes(r));
     setRoles(next);
-    if (prompt && onSaveBriefing && added.length) setQueue((q) => [...q, ...added.filter((r) => !q.includes(r))]);
+    if (prompt && onSaveBriefing) setQueue((q) => [...q.filter((r) => next.includes(r)), ...added.filter((r) => !q.includes(r))]);
   };
   const togglePrompt = (on) => { setPrompt(on); localStorage.setItem(BRIEFING_PROMPT_KEY, on ? "1" : "0"); };
   const asking = queue[0] || "";

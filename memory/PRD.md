@@ -668,3 +668,12 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Batch Magic Scan My Shopping: "Review" chip removed; solid "Review Matches (N items)" button under the area steps (shop-review-matches-btn), "Reviewing matches" label on the review step, last-step button "Review Matches".
 - Tested iteration_116 (backend 10/10, frontend 100%); help placement + review label added after.
 
+
+## 2026-06 Crew edit Food & Drink areas + crew Magic provisioning
+- sync_merge.merge_crew: crew PUTs keep ticks, plus F/D areas (and their folders) changes/deletes/new (fresh newAreaItemId only, F/D only, can't drop both labels, zone/parent kept); non-F/D areas ignored; new crew Ship's Log entries (id ms > list_ts, < now+10min) appended + pushed_items. /me/boats crew entries include owner_pro.
+- crew_pro.magic_payer: crew on a Pro skipper's boat can use shopping scan (/boats/{id}/scan?shopping=true&owner=), /ai/mpa/consumed and /ai/transcribe (?boat_id&owner); skipper's quota is charged. Plain cupboard scan stays skipper-only.
+- Frontend: InventoryList crewFood (F/D areas editable, Food-area add form, note), InventoryArea optional toggles/move, AppMenu items for crew, ShopScan crew targets F/D only, log labels "... by <Crew first name>", crew banner copy. Tested iteration_117.
+
+## 2026-06 Role Briefing popup in Invite crew
+- Checkbox under CREW ROLES "As Roles are clicked & added, show Role Briefing" (default on, remembered in localStorage mbp_role_briefing_prompt). Each added role opens RoleBriefingPrompt (edit/blank/delete, warning it is saved to Crew Roles for future crew); saves via lib/crewRoles.setRoleBriefing (adds unknown roles to Crew Roles). Tested iteration_118 (100%); textarea height + deselected-role queue fix after.
+
