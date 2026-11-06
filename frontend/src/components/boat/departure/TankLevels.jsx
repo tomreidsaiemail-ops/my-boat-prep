@@ -9,7 +9,7 @@ export const TankLevels = ({ boat, levels, onLevel, details = {}, prefix = "", a
   return (
   <>
     <LevelPicker id={`${prefix}fuel`} label="Fuel" value={levels.fuel} onChange={(v) => onLevel("fuel", v)} hint={arrival ? "" : FUEL_HINT} detail={details.fuel} lowText={lowText} />
-    <LevelPicker id={`${prefix}gas`} label="Gas" value={levels.gas} onChange={(v) => onLevel("gas", v)} detail={details.gas} lowText={lowText} />
+    <LevelPicker id={`${prefix}gas`} label="LPG" value={levels.gas} onChange={(v) => onLevel("gas", v)} detail={details.gas} lowText={lowText} />
     <LevelPicker id={`${prefix}water`} label="Water" value={levels.water} onChange={(v) => onLevel("water", v)} detail={details.water} lowText={lowText} />
     {batteriesOf(boat).map((b) => (
       <LevelPicker key={b.id} id={`${prefix}bat-${b.id}`} label={batteryName(b)} value={levels[`bat_${b.id}`]} onChange={(v) => onLevel(`bat_${b.id}`, v)} lowText={lowText} />

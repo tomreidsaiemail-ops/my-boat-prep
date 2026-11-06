@@ -21,6 +21,33 @@ export const NavigatorReminders = () => (
   </ul>
 );
 
+export const MEETUP_DEFAULT = "Pier X, Berth YYY, be onboard no later than ONE HOUR before DEPARTURE, as that is when the crew briefing will begin.";
+
+const When = ({ id, label, value, onChange }) => (
+  <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
+    <span className="field-label">{label}</span>
+    <input id={id} type="datetime-local" value={value || ""} onChange={(e) => onChange(e.target.value)} className="field-input w-full !text-sm" data-testid={`${id}-input`} />
+  </label>
+);
+
+// Departure, optional race/event and where crew meet, kept with the passage plan.
+export const TripTiming = ({ weather = {}, onChange }) => (
+  <div className="flex flex-col gap-3" data-testid="trip-timing">
+    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={(v) => onChange({ depart_at: v })} />
+    <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
+      <span className="field-label">Event name (optional)</span>
+      <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. RPNYC Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
+        className="field-input text-base normal-case tracking-normal" data-testid="navigator-event-name-input" />
+    </label>
+    <When id="navigator-event-at" label="Event date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} />
+    <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
+      <span className="field-label">Meet up details</span>
+      <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}
+        className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-meetup-input" />
+    </label>
+  </div>
+);
+
 export const WhyGoing = ({ value, onChange }) => (
   <label className="flex flex-col gap-1.5">
     <span className="field-label">Why we're going</span>

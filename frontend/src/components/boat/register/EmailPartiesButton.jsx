@@ -5,7 +5,7 @@ import { api, apiError } from "@/lib/api";
 import { EmailPartiesDialog } from "@/components/boat/register/EmailPartiesDialog";
 
 // Opens the pick-crew, pick-party window for emailing crew details to an interested party.
-export const EmailPartiesButton = ({ online, premium, onUpgrade, testId = "email-parties-btn" }) => {
+export const EmailPartiesButton = ({ boatId, online, premium, onUpgrade, testId = "email-parties-btn" }) => {
   const [busy, setBusy] = useState(false);
   const [reg, setReg] = useState(null);
 
@@ -27,7 +27,7 @@ export const EmailPartiesButton = ({ online, premium, onUpgrade, testId = "email
       <button type="button" className="btn-ghost h-11 w-full justify-center gap-2" disabled={busy} onClick={start} data-testid={testId}>
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Email crew details to interested parties
       </button>
-      <EmailPartiesDialog open={!!reg} reg={reg || { crew: [], parties: [] }} onClose={() => setReg(null)} />
+      <EmailPartiesDialog open={!!reg} boatId={boatId} reg={reg || { crew: [], parties: [] }} onClose={() => setReg(null)} />
     </>
   );
 };

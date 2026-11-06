@@ -23,7 +23,7 @@ const UnitPick = ({ value, onChange }) => (
 );
 
 const summaryOf = (boat, u) => [num(boat.fuel_tank) && `Fuel ${num(boat.fuel_tank)} ${u}`, num(boat.water_tank) && `Water ${num(boat.water_tank)} ${u}`,
-  num(boat.gas_bottles) && `Gas ${num(boat.gas_bottles)} x ${num(boat.gas_kg)} kg`, `${batteriesOf(boat).length} batteries`].filter(Boolean).join(" · ");
+  num(boat.gas_bottles) && `LPG ${num(boat.gas_bottles)} x ${num(boat.gas_kg)} kg`, `${batteriesOf(boat).length} batteries`].filter(Boolean).join(" · ");
 
 // Stays open until the tanks and every battery are set up.
 export const TelemetrySection = ({ boat, onChange }) => {
@@ -37,8 +37,8 @@ export const TelemetrySection = ({ boat, onChange }) => {
         <NumField id="fuel-jerry" label="Extra jerry cans" {...f("fuel_jerry")} />
         <NumField id="fuel-jerry-size" label="Each can" unit={u} placeholder={u === "gal" ? "5" : "20"} {...f("fuel_jerry_size")} />
       </Group>
-      <Group title="Gas" testId="telemetry-gas">
-        <NumField id="gas-bottles" label="Gas bottles" {...f("gas_bottles")} />
+      <Group title="LPG" testId="telemetry-gas">
+        <NumField id="gas-bottles" label="LPG bottles" {...f("gas_bottles")} />
         <NumField id="gas-kg" label="Each bottle" unit="kg" placeholder="4.5" {...f("gas_kg")} />
         <NumField id="gas-extra" label="Extra bottles" {...f("gas_extra")} />
       </Group>

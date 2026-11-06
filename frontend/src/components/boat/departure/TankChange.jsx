@@ -4,7 +4,7 @@ import { gasChange, num, tankChange, tankUnit } from "@/lib/telemetry";
 
 const AMOUNT_RE = /^\d{0,4}([.,]\d{0,1})?$/;
 const COUNT_RE = /^\d{0,2}$/;
-const TABS = [["fuel", Fuel, "Fuel"], ["water", Droplets, "Water"], ["gas", Flame, "Gas"]];
+const TABS = [["fuel", Fuel, "Fuel"], ["water", Droplets, "Water"], ["gas", Flame, "LPG"]];
 
 const Tab = ({ k, Icon, label, on, onPick, prefix }) => (
   <button type="button" onClick={() => onPick(k)} aria-pressed={on} data-testid={`${prefix}tank-change-${k}`}
@@ -39,12 +39,12 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
   const p = `${prefix}tank-change`;
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-[var(--panel)] p-3" data-testid={p}>
-      <p className="field-label">Add or use fuel, water and gas</p>
+      <p className="field-label">Add or use fuel, water and LPG</p>
       <div className="flex gap-2">{TABS.map(([k, Icon, label]) => <Tab key={k} k={k} Icon={Icon} label={label} on={tank === k} onPick={pick} prefix={prefix} />)}</div>
       <div className="flex flex-wrap gap-2">
         <span className="relative min-w-[110px] flex-1">
-          <input type="text" inputMode={gas ? "numeric" : "decimal"} value={amount} placeholder={gas ? "1" : "20"} aria-label={gas ? "Number of gas bottles" : `Amount of ${tank}`} className="field-input w-full pr-16" data-testid={`${p}-amount`}
-            onChange={(e) => { const v = e.target.value; if (gas && /[.,]/.test(v)) { setError("Gas bottles are counted whole, e.g. 1 or 2."); return; } if ((gas ? COUNT_RE : AMOUNT_RE).test(v)) setAmount(v.replace(",", ".")); }} />
+          <input type="text" inputMode={gas ? "numeric" : "decimal"} value={amount} placeholder={gas ? "1" : "20"} aria-label={gas ? "Number of LPG bottles" : `Amount of ${tank}`} className="field-input w-full pr-16" data-testid={`${p}-amount`}
+            onChange={(e) => { const v = e.target.value; if (gas && /[.,]/.test(v)) { setError("LPG bottles are counted whole, e.g. 1 or 2."); return; } if ((gas ? COUNT_RE : AMOUNT_RE).test(v)) setAmount(v.replace(",", ".")); }} />
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[var(--muted)]">{u}</span>
         </span>
         <div className={`flex gap-2 ${gas ? "w-full [&>button]:flex-1" : ""}`}>
@@ -55,7 +55,7 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
       </div>
       {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid={`${p}-error`}>{error}</p>}
       <p className="text-xs text-[var(--muted)]" data-testid={`${p}-hint`}>
-        {gas ? `Swapped: empty bottles swapped for full ones${levels.gas && num(boat.gas_bottles) ? " (the gas level above goes up)" : ""}. Added or Removed: full spare bottles brought on board or taken off (spare bottles now ${num(boat.gas_extra)}). ` : ""}
+        {gas ? `Swapped: empty bottles swapped for full ones${levels.gas && num(boat.gas_bottles) ? " (the LPG level above goes up)" : ""}. Added or Removed: full spare bottles brought on board or taken off (spare bottles now ${num(boat.gas_extra)}). ` : ""}
         Goes into the Ship&apos;s Log straight away with the estimated weight change{!gas && levels[tank] ? ", and the level above is updated" : ""}.
       </p>
     </div>

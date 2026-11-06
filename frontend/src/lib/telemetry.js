@@ -66,7 +66,7 @@ export const passagePlan = (boat, depart) => {
     else if (fuelNeed > fuel / 3) warnings.push({ level: "amber", key: "fuel", text: `Beyond the 1/3 rule: about ${round(fuelNeed)} ${unit} of your ${round(fuel)} ${unit}${jerry} gets you there with a reserve, but not back without refuelling.` });
   }
   if (distance && setUp.water && water < waterNeed) warnings.push({ level: "red", key: "water", text: `Water is short: ${pob} ${pob === 1 ? "person" : "people"} on board for ${days} ${days === 1 ? "day" : "days"} needs about ${round(waterNeed)} ${unit}; you have about ${round(water)} ${unit}${num(boat.water_jerry) ? " including jerry cans" : ""}.` });
-  if (distance && setUp.gas && gas < gasNeed) warnings.push({ level: "amber", key: "gas", text: `Gas is low: about ${round(gas)} kg on board${num(boat.gas_extra) ? " including spare bottles" : ""} for an estimated ${round(gasNeed)} kg of cooking.` });
+  if (distance && setUp.gas && gas < gasNeed) warnings.push({ level: "amber", key: "gas", text: `LPG is low: about ${round(gas)} kg on board${num(boat.gas_extra) ? " including spare bottles" : ""} for an estimated ${round(gasNeed)} kg of cooking.` });
   return { unit, speed, rate, distance, hours, fuelNeed, fuel, range, water, gas, warnings, missing };
 };
 
@@ -76,7 +76,7 @@ export const departureSummary = (boat, depart, plan, when) => {
   const parts = [
     `Departure check ${when}: Fuel ${levelLabel(l.fuel)} (about ${round(plan.fuel)} ${unit}${num(boat.fuel_jerry) ? ` incl. ${num(boat.fuel_jerry)} jerry cans` : ""})`,
     `Water ${levelLabel(l.water)} (about ${round(plan.water)} ${unit})`,
-    `Gas ${levelLabel(l.gas)} (about ${round(plan.gas)} kg)`,
+    `LPG ${levelLabel(l.gas)} (about ${round(plan.gas)} kg)`,
     `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)}${batterySpec(b) ? ` ${batterySpec(b)}` : ""} ${levelLabel(l[`bat_${b.id}`])}`).join(", ")}`,
   ];
   if (plan.distance && plan.rate) {
@@ -114,9 +114,9 @@ export const arrivalSummary = (boat, depart, arrive, use, when, listName) => {
   const parts = [
     `Arrival check (${listName}) ${when}: Fuel ${levelLabel(l.fuel)} (about ${round(use.fuelNow)} ${u} left)`,
     `Water ${levelLabel(l.water)} (about ${round(use.waterNow)} ${u} left)`,
-    `Gas ${levelLabel(l.gas)} (about ${round(use.gasNow)} kg left)`,
+    `LPG ${levelLabel(l.gas)} (about ${round(use.gasNow)} kg left)`,
     `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)} ${levelLabel(l[`bat_${b.id}`])}${depart.levels?.[`bat_${b.id}`] ? ` (was ${levelLabel(depart.levels[`bat_${b.id}`])})` : ""}`).join(", ")}`,
-    `Used on the passage${boat.route_start && boat.route_dest ? ` ${boat.route_start} to ${boat.route_dest}` : ""}: fuel ${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${round(use.plan.fuelNeed)} ${u})` : ""}, water ${usedText(use.waterUsed, u)}, gas ${usedText(use.gasUsed, "kg")}`,
+    `Used on the passage${boat.route_start && boat.route_dest ? ` ${boat.route_start} to ${boat.route_dest}` : ""}: fuel ${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${round(use.plan.fuelNeed)} ${u})` : ""}, water ${usedText(use.waterUsed, u)}, LPG ${usedText(use.gasUsed, "kg")}`,
   ];
   if (use.actualRate) parts.push(`Actual fuel use about ${round(use.actualRate)} ${u}/h against ${round(use.plan.rate)} ${u}/h planned`);
   return `${parts.join(". ")}.`;
@@ -156,12 +156,12 @@ export const gasChange = (boat, count, mode, levels = {}) => {
   const s = (n) => (n === 1 ? "bottle" : "bottles");
   const when = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   if (mode === "swap") {
-    if (inUse && count > inUse) return { error: `You have ${inUse} gas ${s(inUse)} in use, so you can swap up to ${inUse}.` };
+    if (inUse && count > inUse) return { error: `You have ${inUse} LPG ${s(inUse)} in use, so you can swap up to ${inUse}.` };
     const level = levels.gas && inUse ? nearestLevel(Math.min(1, BY_KEY[levels.gas].value + count / inUse)) : null;
-    return { level, text: `Gas ${s(count)} swapped: ${count} empty for full (${round(kg)} kg each), estimated weight added ${w(count * kg)} of gas, ${when}.${level ? ` Gas in use now ${levelLabel(level)}.` : ""}` };
+    return { level, text: `LPG ${s(count)} swapped: ${count} empty for full (${round(kg)} kg each), estimated weight added ${w(count * kg)} of LPG, ${when}.${level ? ` LPG in use now ${levelLabel(level)}.` : ""}` };
   }
-  if (mode === "remove" && count > spares) return { error: spares ? `There ${spares === 1 ? "is" : "are"} only ${spares} spare gas ${s(spares)} on board.` : "There are no spare gas bottles on board to take off." };
+  if (mode === "remove" && count > spares) return { error: spares ? `There ${spares === 1 ? "is" : "are"} only ${spares} spare LPG ${s(spares)} on board.` : "There are no spare LPG bottles on board to take off." };
   const extra = mode === "add" ? spares + count : spares - count;
   const verb = mode === "add" ? "added" : "removed";
-  return { extra, text: `Gas ${s(count)} ${verb}: ${count} full spare ${s(count)} of ${round(kg)} kg ${mode === "add" ? "brought on board" : "taken off"}, estimated weight ${verb} ${w(count * kg * 2)} (gas ${w(count * kg)} plus about ${w(count * kg)} of bottle), ${when}. Spare bottles now ${extra}.` };
+  return { extra, text: `LPG ${s(count)} ${verb}: ${count} full spare ${s(count)} of ${round(kg)} kg ${mode === "add" ? "brought on board" : "taken off"}, estimated weight ${verb} ${w(count * kg * 2)} (LPG ${w(count * kg)} plus about ${w(count * kg)} of bottle), ${when}. Spare bottles now ${extra}.` };
 };

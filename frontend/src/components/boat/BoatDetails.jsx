@@ -89,6 +89,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp
         <Field id="callsign" label="Callsign" value={boat.callsign} placeholder="Call..." onChange={(v) => onChange("callsign", v)} />
         <Field id="skipper" label="Skipper" value={boat.skipper} placeholder="Name..." onChange={(v) => onChange("skipper", v)} />
         <Field id="email" type="email" label="Email" value={boat.log_email || ""} placeholder="you@email.com" onChange={(v) => onChange("log_email", v)} />
+        <Field id="skipper-phone" type="tel" label="Skipper's phone" value={boat.skipper_phone || ""} placeholder="+64 21 555 1234" onChange={(v) => onChange("skipper_phone", v.slice(0, 30))} />
         <MoreButton boat={boat} btnRef={moreRef} onClick={() => setMore(true)} />
       </div>
       {batchBtn}

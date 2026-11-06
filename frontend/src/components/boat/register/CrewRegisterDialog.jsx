@@ -23,7 +23,7 @@ const Section = ({ title, hint, empty, rows, testId, children }) => (
   </section>
 );
 
-export const CrewRegisterDialog = ({ open, online, premium, onUpgrade, onClose }) => {
+export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, onClose }) => {
   const { user } = useAuth();
   const [reg, setReg] = useState({ crew: [], parties: [] });
   const [editing, setEditing] = useState(null);
@@ -88,7 +88,7 @@ export const CrewRegisterDialog = ({ open, online, premium, onUpgrade, onClose }
         </Section>
         <div className="flex flex-col gap-2">
           <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => add("party")} data-testid="reg-add-party-btn"><UserPlus className="h-4 w-4" /> Add interested party</button>
-          {reg.parties.length > 0 && <EmailPartiesButton online={online} premium={premium} onUpgrade={onUpgrade} testId="reg-email-parties-btn" />}
+          {reg.parties.length > 0 && <EmailPartiesButton boatId={boatId} online={online} premium={premium} onUpgrade={onUpgrade} testId="reg-email-parties-btn" />}
         </div>
         <RegEntryDialog entry={editing} onSaved={load} onClose={() => setEditing(null)} />
         <ConfirmDelete item={deleting} title={`Remove ${deleting?.name || ""}?`} note="They're removed from your register. Crew already on a boat stay on it." testId="reg-delete" confirmLabel="Remove" onConfirm={remove} onClose={() => setDeleting(null)} />

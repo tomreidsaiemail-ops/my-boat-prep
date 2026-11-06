@@ -3,7 +3,7 @@ import { Compass, Loader2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
-import { NavigatorIntro, NavigatorReminders, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
+import { NavigatorIntro, NavigatorReminders, TripTiming, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
 import { stamp } from "@/components/boat/departure/LogCopy";
 import { CrewGoShare } from "@/components/boat/navigator/CrewGoShare";
 
@@ -84,6 +84,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} />
       <NavigatorReminders />
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} />
+      <TripTiming weather={boat.weather || {}} onChange={onWeather} />
       <CrewGoShare boat={boat} boatId={boatId} online={online} onWeather={onWeather} />
     </div>
   );

@@ -17,7 +17,7 @@ const Pick = ({ type, checked, onChange, entry, testId }) => (
 );
 
 // Step 1: tick today's crew. Step 2: pick the one interested party to email their details to.
-export const EmailPartiesDialog = ({ open, reg, onClose }) => {
+export const EmailPartiesDialog = ({ open, boatId, reg, onClose }) => {
   const [crew, setCrew] = useState([]);
   const [party, setParty] = useState("");
   const [medical, setMedical] = useState(false);
@@ -29,7 +29,7 @@ export const EmailPartiesDialog = ({ open, reg, onClose }) => {
   const send = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/crew-register/parties-email", { crew_ids: crew, party_id: party, include_allergies: medical }, { timeout: 30000 });
+      const { data } = await api.post("/crew-register/parties-email", { crew_ids: crew, party_id: party, include_allergies: medical, boat_id: boatId }, { timeout: 30000 });
       toast.success(`Details for ${data.crew} crew emailed to ${data.sent_to}`);
       onClose();
     } catch (err) { toast.error(apiError(err, "Couldn't email the crew details, please try again")); }

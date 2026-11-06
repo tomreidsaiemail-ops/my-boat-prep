@@ -124,7 +124,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
             {sending === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Resend role briefings to all crew
           </button>
         )}
-        <EmailPartiesButton online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
+        <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
         <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} roleGroups={roleGroups} briefings={briefings} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
@@ -135,7 +135,7 @@ export const CrewDialog = ({ open, boat, name, roleGroups = [], briefings = {}, 
             window.dispatchEvent(new Event("mbp:crew-roles"));
           }} />
         <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
-        <CrewRegisterDialog open={register} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); window.dispatchEvent(new Event("mbp:register-changed")); }} />
+        <CrewRegisterDialog open={register} boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); window.dispatchEvent(new Event("mbp:register-changed")); }} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
       </DialogContent>
     </Dialog>

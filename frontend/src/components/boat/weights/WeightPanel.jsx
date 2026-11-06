@@ -48,7 +48,7 @@ export const WeightPanel = ({ boat, onChange }) => {
       <div className="flex flex-col gap-1 rounded-md bg-white p-2.5" data-testid="displacement-breakdown">
         <p className="field-label">All-Up Racing Displacement</p>
         <Row label="Boat" value={fmtKg(w.boatKg, u)} testId="disp-boat" />
-        <Row label={`Fluids (fuel, water, gas)${w.fluids.fromLevels ? "" : " - full tanks"}`} value={fmtKg(w.fluidKg, u)} testId="disp-fluids" />
+        <Row label={`Fluids (fuel, water, LPG)${w.fluids.fromLevels ? "" : " - full tanks"}`} value={fmtKg(w.fluidKg, u)} testId="disp-fluids" />
         <Row label="Provisions (scanned food and drink)" value={fmtKg(w.provKg, u)} testId="disp-provisions" />
         <Row label="On deck gear" value={fmtKg(w.gearKg, u)} testId="disp-gear" />
         <Row label="Crew" value={fmtKg(w.crewKg, u)} testId="disp-crew" />

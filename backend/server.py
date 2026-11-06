@@ -104,6 +104,7 @@ WEIGHT_FIELDS = ("boat_weight", "crew_weight")
 class BoatDetails(BaseModel):
     vessel: str = ""
     skipper: str = ""
+    skipper_phone: str = Field(default="", max_length=30)
     callsign: str = ""
     log_email: str = ""
     shore_email: str = ""

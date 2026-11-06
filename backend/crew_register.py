@@ -189,7 +189,17 @@ async def send_requests(payload: RequestIn, request: Request, user: dict = Depen
     return {"sent": sent, "skipped": [r["name"] for r in rows if r not in todo]}
 
 
-def summary_html(skipper: str, crew: list, allergies: bool = False) -> str:
+BOAT_FACTS = (("Boat type", "boat_type"), ("Make", "make"), ("Model", "model"), ("Year of manufacture", "year_built"), ("Hull colour", "hull_colour"))
+
+
+def when_text(v: str) -> str:
+    try:
+        return datetime.fromisoformat(v).strftime("%-d %b %Y %H:%M")
+    except (TypeError, ValueError):
+        return ""
+
+
+def summary_html(skipper: str, crew: list, allergies: bool = False, boat: Optional[dict] = None, email: str = "") -> str:
     cell = 'style="border:1px solid #cbd5e1;padding:6px 8px;text-align:left;vertical-align:top"'
     cols = ("Name", "Phone", "Email", "Age", "Height", "Next of kin") + (("Allergies",) if allergies else ()) + ("Status",)
     head = "".join(f"<th {cell}>{h}</th>" for h in cols)
@@ -200,18 +210,33 @@ def summary_html(skipper: str, crew: list, allergies: bool = False) -> str:
         vals = [escape(c.get("name", "")), escape(c.get("phone", "")), escape(c.get("email", "")), age(c.get("dob", "")),
                 f'{c["height_cm"]:g} cm' if c.get("height_cm") else "", nok] + ([f'<b style="color:#b91c1c">{escape(c.get("allergies") or "Not given")}</b>'] if allergies else []) + [status]
         body += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in vals) + "</tr>"
+    intro = f'<p>{escape(skipper)} has shared the crew list with you as an interested party.</p>'
+    if boat is not None:
+        vessel = boat.get("vessel", "").strip() or "their boat"
+        contact = "".join(f"<b>{k}:</b> {escape(v)}<br/>" for k, v in (("Email", email), ("Phone", boat.get("skipper_phone", "").strip())) if v)
+        facts = "".join(f"<tr><td {cell}><b>{k}</b></td><td {cell}>{escape(str(boat.get(f, '')).strip())}</td></tr>" for k, f in BOAT_FACTS if str(boat.get(f, "")).strip())
+        intro = (f'<p><b>{escape(skipper)} is the skipper of {escape(vessel)}</b> and has shared the crew list with you as an interested party.</p>'
+                 + (f"<p>{contact}</p>" if contact else "")
+                 + (f'<p style="margin:12px 0 4px"><b>{escape(vessel)}</b></p><table style="border-collapse:collapse;font-size:13px;margin-bottom:12px">{facts}</table>' if facts else ""))
     return (
         '<div style="font-family:Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.5">'
-        f'<h2 style="margin:0 0 12px">Crew registration details from {escape(skipper)}</h2>'
-        f'<p>{escape(skipper)} has shared the crew list with you as an interested party.</p>'
+        f'<h2 style="margin:0 0 12px">Crew registration details from {escape(skipper)}</h2>{intro}'
         f'<table style="border-collapse:collapse;font-size:13px"><tr style="background:#f1f5f9">{head}</tr>{body}</table></div>'
     )
+
+
+def summary_subject(skipper: str, boat: Optional[dict]) -> str:
+    vessel = ((boat or {}).get("vessel") or "").strip()
+    w = (boat or {}).get("weather") or {}
+    event = " ".join(x for x in (str(w.get("event_name") or "").strip()[:100], when_text(w.get("event_at") or "")) if x)
+    return f"{event + ' - ' if event else ''}Crew registration details from {skipper}{f' ({vessel})' if vessel else ''}"
 
 
 class PartiesIn(BaseModel):
     crew_ids: List[Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")]] = Field(min_length=1, max_length=200)
     party_id: str = Field(pattern=r"^[a-f0-9-]{36}$")
     include_allergies: bool = False
+    boat_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,40}$")
 
 
 @router.post("/parties-email")
@@ -225,8 +250,13 @@ async def email_parties(payload: PartiesIn, user: dict = Depends(require_premium
     now = datetime.now(timezone.utc)
     if await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}}) >= DAILY_SEND_LIMIT:
         raise HTTPException(status_code=429, detail=f"Daily limit reached ({DAILY_SEND_LIMIT} registration emails), try again tomorrow")
-    skipper = user.get("name") or user["email"]
-    await send_email(to=[party["email"]], subject=f"Crew registration details from {skipper}", html=summary_html(skipper, crew, payload.include_allergies))
+    boat = None
+    if payload.boat_id:
+        doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": payload.boat_id}, {"_id": 0, "boat": 1})
+        boat = (doc or {}).get("boat")
+    skipper = ((boat or {}).get("skipper") or "").strip() or user.get("name") or user["email"]
+    email = ((boat or {}).get("log_email") or "").strip() or user["email"]
+    await send_email(to=[party["email"]], subject=summary_subject(skipper, boat), html=summary_html(skipper, crew, payload.include_allergies, boat, email))
     await db.register_sends.insert_one({"owner_id": user["user_id"], "at": now})
     return {"sent_to": party["name"], "email": party["email"], "crew": len(crew), "unregistered": [c["name"] for c in crew if c.get("status") != "registered"]}
 

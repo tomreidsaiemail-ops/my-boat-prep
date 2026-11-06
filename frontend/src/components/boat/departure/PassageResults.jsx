@@ -25,7 +25,7 @@ export const PassageResults = ({ plan }) => (
     ))}
     {!plan.warnings.length && !plan.missing.length && (
       <p className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1.5 text-sm font-bold text-emerald-800" data-testid="passage-ok">
-        <CheckCircle2 className="h-4 w-4 shrink-0" /> Within the 1/3 rule, with water and gas for the trip.
+        <CheckCircle2 className="h-4 w-4 shrink-0" /> Within the 1/3 rule, with water and LPG for the trip.
       </p>
     )}
   </div>

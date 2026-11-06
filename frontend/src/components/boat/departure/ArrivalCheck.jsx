@@ -45,7 +45,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
         <div className="grid grid-cols-3 gap-2" data-testid="arrival-spares">
           {num(boat.fuel_jerry) > 0 && <Count id="arrival-fuel-jerry" label="Fuel cans still full" value={arrive.fuel_jerry_left} max={num(boat.fuel_jerry)} onChange={(v) => setArrive({ fuel_jerry_left: v })} />}
           {num(boat.water_jerry) > 0 && <Count id="arrival-water-jerry" label="Water cans still full" value={arrive.water_jerry_left} max={num(boat.water_jerry)} onChange={(v) => setArrive({ water_jerry_left: v })} />}
-          {num(boat.gas_extra) > 0 && <Count id="arrival-gas-extra" label="Spare gas still full" value={arrive.gas_extra_left} max={num(boat.gas_extra)} onChange={(v) => setArrive({ gas_extra_left: v })} />}
+          {num(boat.gas_extra) > 0 && <Count id="arrival-gas-extra" label="Spare LPG still full" value={arrive.gas_extra_left} max={num(boat.gas_extra)} onChange={(v) => setArrive({ gas_extra_left: v })} />}
         </div>
       )}
       {depart.levels && (
@@ -53,7 +53,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
           <p className="field-label">Used on the passage</p>
           <Used label="Fuel" value={`${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${r(use.plan.fuelNeed)} ${u})` : ""}`} testId="arrival-fuel-used" />
           <Used label="Water" value={usedText(use.waterUsed, u)} testId="arrival-water-used" />
-          <Used label="Gas" value={usedText(use.gasUsed, "kg")} testId="arrival-gas-used" />
+          <Used label="LPG" value={usedText(use.gasUsed, "kg")} testId="arrival-gas-used" />
           {use.actualRate > 0 && <Used label="Actual fuel use" value={`about ${r(use.actualRate)} ${u}/h (planned ${r(use.plan.rate)} ${u}/h)`} testId="arrival-actual-rate" />}
         </div>
       )}
