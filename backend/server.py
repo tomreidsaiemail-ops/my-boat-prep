@@ -34,7 +34,7 @@ from feedback import router as feedback_router  # noqa: E402
 from templates import router as templates_router  # noqa: E402
 from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
-from sync_merge import keep_pushed, merge_state, merge_crew  # noqa: E402
+from sync_merge import galley_crew, keep_pushed, merge_state, merge_crew  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from zone_schematics import router as zone_schematics_router  # noqa: E402
@@ -44,6 +44,7 @@ from crew_agreement import router as crew_agreement_router, seed_terms_template 
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
 from template_backup import router as template_backup_router  # noqa: E402
+from meals import router as meals_router, seed_common_meals  # noqa: E402
 from folder_cards import router as folder_cards_router  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
@@ -353,7 +354,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
     if role == "crew":
         if not prev:
             raise HTTPException(status_code=404, detail="Boat not found")
-        merged, crew_log = merge_crew(prev, payload.model_dump())
+        merged, crew_log = merge_crew(prev, payload.model_dump(), galley_crew((prev.get("crew_roles") or {}).get(user["user_id"])))
         have = []
     else:
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
@@ -419,13 +420,14 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
 
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, f"crew_roles.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
     owners = {u["user_id"]: u for u in await db.users.find(
         {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "password_hash": 0}).to_list(200)}
-    return {"boats": [boat_summary(d, False, owners) for d in mine] + [boat_summary(d, True, owners) for d in shared], "last": user.get("last_boat")}
+    return {"boats": [boat_summary(d, False, owners) for d in mine]
+            + [{**boat_summary(d, True, owners), "my_roles": (d.get("crew_roles") or {}).get(user["user_id"]) or []} for d in shared], "last": user.get("last_boat")}
 
 
 @api_router.delete("/me/boats/{boat_id}")
@@ -548,6 +550,7 @@ app.include_router(crew_agreement_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
 app.include_router(template_backup_router)
+app.include_router(meals_router)
 app.include_router(folder_cards_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
@@ -639,6 +642,8 @@ async def create_indexes():
     await _upgrade_pob_lines()
     await add_racing_roles()
     await seed_trim_briefings()
+    await seed_common_meals()
+    await db.user_meals.create_index([("user_id", 1), ("id", 1)], unique=True)
     await seed_budget_template()
     await seed_master_attributes()
     await add_spars_attributes()

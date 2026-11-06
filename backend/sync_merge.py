@@ -1,3 +1,4 @@
+import re
 from copy import deepcopy
 from datetime import datetime, timezone
 
@@ -120,13 +121,15 @@ def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
     return out
 
 
-def merge_crew(prev: dict, inc: dict) -> tuple:
+def merge_crew(prev: dict, inc: dict, galley: bool = False) -> tuple:
     """Crew changes: ticks, Food & Drink boat areas, and new Ship's Log entries. Returns the merged copy and the log entries they added."""
     out = merge_crew_ticks(prev, inc)
+    if galley:
+        merge_crew_galley(out, prev, inc)
     ps, is_ = prev.get("sec_ts") or {}, inc.get("sec_ts") or {}
     if is_.get("areas", "") > ps.get("areas", ""):
         out["areas"] = merge_crew_areas(prev.get("areas") or [], inc.get("areas") or [], ps.get("areas", ""))
-        out["sec_ts"] = {**ps, "areas": is_["areas"]}
+        out["sec_ts"] = {**(out.get("sec_ts") or ps), "areas": is_["areas"]}
     since = _ms((prev.get("list_ts") or {}).get("shipsLog", ""))
     until = int(datetime.now(timezone.utc).timestamp() * 1000) + 10 * 60 * 1000
     mine = {i.get("id") for i in (prev.get("data") or {}).get("shipsLog") or []}
@@ -136,4 +139,43 @@ def merge_crew(prev: dict, inc: dict) -> tuple:
         return out, []
     out["data"]["shipsLog"] += added
     return out, added
+
+
+
+GALLEY_ROLES = re.compile(r"provision manager|galley lead|chef", re.I)
+RECIPE_LINE = re.compile(r"^\s*\[.*\]\s*$", re.S)
+
+
+def galley_crew(roles) -> bool:
+    """Crew with a Provision Manager or Galley Lead / Chef role look after the Provisions list and the meal plans."""
+    return any(GALLEY_ROLES.search(str(r)) for r in roles or [])
+
+
+def is_meal_plan(items: list) -> bool:
+    return any(not a.get("indent") and b.get("indent") and RECIPE_LINE.match(str(b.get("label", ""))) for a, b in zip(items, items[1:]))
+
+
+def merge_crew_galley(out: dict, prev: dict, inc: dict):
+    """Galley crew may edit the Provisions list and existing meal plans, and add new meal plan lists."""
+    pl, il = prev.get("list_ts") or {}, inc.get("list_ts") or {}
+    pdata, idata = prev.get("data") or {}, inc.get("data") or {}
+    reg = prev.get("registry") or []
+    ids = {r.get("id") for r in reg}
+    lts = dict(out.get("list_ts") or {})
+    for lid in ids:
+        if isinstance(idata.get(lid), list) and (lid == "provisions" or is_meal_plan(pdata.get(lid) or [])) and il.get(lid, "") > pl.get(lid, ""):
+            out["data"][lid] = deepcopy(idata[lid])
+            lts[lid] = il[lid]
+    names = {str(r.get("name", "")).strip().lower() for r in reg}
+    new = [r for r in inc.get("registry") or [] if r.get("id") not in ids and str(r.get("id", "")).startswith("custom_") and not r.get("kind")
+           and str(r.get("name", "")).strip() and str(r.get("name", "")).strip().lower() not in names and is_meal_plan(idata.get(r.get("id")) or [])][:10]
+    if new:
+        out["registry"] = list(out.get("registry") or []) + [{"id": r["id"], "name": str(r["name"]).strip()[:60], "isSystem": False,
+                                                              **({"category": r["category"]} if r.get("category") else {})} for r in new]
+        for r in new:
+            out["data"][r["id"]] = deepcopy(idata[r["id"]])
+            lts[r["id"]] = il.get(r["id"]) or datetime.now(timezone.utc).isoformat()
+        ps, is_ = prev.get("sec_ts") or {}, inc.get("sec_ts") or {}
+        out["sec_ts"] = {**(out.get("sec_ts") or {}), "registry": max(ps.get("registry", ""), is_.get("registry", ""), datetime.now(timezone.utc).isoformat())}
+    out["list_ts"] = lts
 
