@@ -112,6 +112,7 @@ class BoatDetails(BaseModel):
     boat_type: str = ""
     pob: int = Field(default=1)
     children: int = 0
+    pob_manual: bool = False
     mmsi: str = ""
     units: Literal["m", "ft"] = "m"
     loa: str = ""

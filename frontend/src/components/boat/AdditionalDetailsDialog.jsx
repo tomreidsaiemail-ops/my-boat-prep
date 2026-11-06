@@ -9,6 +9,7 @@ import { ColourField } from "@/components/boat/telemetry/ColourField";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeightPanel } from "@/components/boat/weights/WeightPanel";
 import { switchWeights } from "@/lib/weights";
+import { useCrewDiet } from "@/lib/crewDiet";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -94,6 +95,13 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
+  // Persons on board follows the crew who replied "I'm in" plus the skipper, until the skipper types their own number.
+  const inCount = useCrewDiet()?.in_count || 0;
+  const crewPob = inCount ? inCount + 1 : 0;
+  useEffect(() => { if (open) window.dispatchEvent(new Event("mbp:register-changed")); }, [open]);
+  useEffect(() => { if (open && crewPob && !boat.pob_manual && pob !== crewPob) setPob(crewPob); }, [open, crewPob]); // eslint-disable-line react-hooks/exhaustive-deps
+  const typePob = (n) => { setPob(n); if (crewPob) onChange("pob_manual", true); };
+  const useCrew = () => { setPob(crewPob); onChange("pob_manual", false); };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
@@ -125,13 +133,21 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             </label>
           </div>
           <div className="col-span-2 grid grid-cols-3 items-end gap-2.5" data-testid="pob-row">
-            <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={setPob} />
+            <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={typePob} />
             <IntField id="children" label="Children" value={children || ""} min={0} max={Math.max(0, pob - 1)} placeholder="None" onChange={(n) => onChange("children", n)} />
             <div className="flex min-w-0 flex-col justify-end gap-1 pb-2" data-testid="pob-split">
               <span className="text-sm"><b data-testid="pob-adults">{adults}</b> {adults === 1 ? "adult" : "adults"}</span>
               <span className="text-sm text-[var(--muted)]"><b data-testid="pob-children">{children}</b> {children === 1 ? "child" : "children"}</span>
             </div>
           </div>
+          {crewPob > 0 && (
+            <div className="col-span-2 -mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]" data-testid="pob-crew-hint">
+              {boat.pob_manual || pob !== crewPob
+                ? <><span>{inCount} crew replied "I'm in" + you = {crewPob}.</span>
+                    <button type="button" className="font-bold text-[var(--navy)] underline underline-offset-2" onClick={useCrew} data-testid="pob-use-crew-btn">Use crew count ({crewPob})</button></>
+                : <span>Worked out from {inCount} crew who replied "I'm in" + you. Type a number to change it.</span>}
+            </div>
+          )}
           <label htmlFor="mmsi" className="col-span-2 flex min-w-0 flex-col gap-1">
             <span className="field-label">MMSI number</span>
             <input id="mmsi" type="text" inputMode="numeric" maxLength={9} value={boat.mmsi || ""} placeholder="9 digits, optional" data-testid="mmsi-input" className="field-input font-mono"

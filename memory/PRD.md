@@ -618,3 +618,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Sticky voyage notes from Route Planning; crew status button
 - Invite "Planned voyage or race notes": stays editable, saved with the boat (voyage_notes) so the next invite starts identical; when none saved, suggested from Route Planning (lib/routeNotes.js: Start, Destination, Why, Departure, Event, Meet up + "These planning details and more are on the Route Planning list when you log into My Boat Prep."). "Fill from Route Planning" button refreshes. Textarea shows ~6 lines. Tested iteration_110 (100%).
 - Route Planning: "Send to crew" (Crew decision to go share) removed; replaced by "Open Crew Registration and Trip Acceptance Status" (event mbp:open-crew -> BoatSwitcher opens Photo and crew). Crew rows there now show registration status + "Walkthrough done" alongside RSVP replies. Self-tested by screenshot.
+
+## 2026-06 Persons on board from crew replies
+- Additional details: Persons on board auto = crew who replied "I'm in" + skipper (on-board endpoint now returns in_count), applied when the dialog opens while boat.pob_manual is false and at least one crew is in. Typing a number sets pob_manual; "Use crew count (N)" restores. Self-tested by screenshot.

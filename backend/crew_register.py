@@ -276,7 +276,8 @@ async def on_board(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     people = [{"name": r["name"], "allergies": r.get("allergies", ""), "food": r.get("food", ""), "weight_kg": r.get("weight_kg"), "status": r.get("status")} for r in rows]
     found = {r["email_key"] for r in rows}
     missing = [names.get(m["user_id"]) or m.get("name") or m.get("email") for k, m in keys.items() if k not in found]
-    return {"people": people, "not_on_register": missing, "rsvp_only": len(ids) != len(doc.get("crew") or [])}
+    return {"people": people, "not_on_register": missing, "rsvp_only": len(ids) != len(doc.get("crew") or []),
+            "in_count": sum(1 for i in doc.get("crew") or [] if (rsvp.get(i) or {}).get("status") == "in")}
 
 
 async def asked(r: dict, user: dict) -> bool:
