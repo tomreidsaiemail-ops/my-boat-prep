@@ -689,3 +689,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 
 - 2026-06: Boat area zone picker icon (grey = orphan, coloured = in a zone) and foldable Zone Map Overview colours. Details in CHANGELOG.md.
+- 2026-06: ++ button asks for one zone to Batch Magic Scan, with a whole-boat warning. Details in CHANGELOG.md.

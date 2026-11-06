@@ -29,3 +29,6 @@
 - Skipper and crew on Food & Drink areas can change it (sync_merge.merge_crew_areas accepts crew zone on top-level F&D areas, validated label<=60, colour<=20).
 - Zone Map Overview: "Colours" toggle folds Magically Place Colours, hint and palette; Remove this overview stays visible. Folded state in localStorage mbp_overview_colours_folded_{boatId}.
 - Mobile: row action icons are 34px under sm so 6 icons fit at 390px. Tested iteration_124 + self-check.
+
+## 2026-06 ++ Batch Magic Scan zone prompt
+- The ++ button (Add boat areas by zone > More options) opens BatchZonePrompt: pick exactly one zone (e.g. Galley – Orange), then BatchScanDialog opens tagged to that zone. "Scan the whole boat instead" shows a warning about using the 4 square picker later, then "Scan whole boat anyway". Other Batch Magic Scan buttons unchanged (user choice). No zones -> ++ opens the batch scan directly as before. Self-tested via screenshot flow.

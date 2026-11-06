@@ -18,6 +18,7 @@ import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
 import { AreaZoneButton } from "@/components/boat/zone/AreaZoneButton";
+import { BatchZonePrompt } from "@/components/boat/zone/BatchZonePrompt";
 import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
 import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
@@ -228,6 +229,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [batchOpen, setBatchOpen] = useState(false);
   const [zone, setZone] = useState(null);
   const [batchZone, setBatchZone] = useState(null);
+  const [zonePrompt, setZonePrompt] = useState(false);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
   const pickZones = boat ? boatZones(boat) : [];
   const zoneCounts = {};
@@ -366,8 +368,10 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} />}
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
-        ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={openBatch} /></ZonePicker>
+        ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={() => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"))} /></ZonePicker>
         : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
+      <BatchZonePrompt open={zonePrompt} zones={boatZoneList} onClose={() => setZonePrompt(false)}
+        onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps} onScan={scanZone} onClose={() => setZone(null)} />
       {admin && !readOnly && areas.length > 0 && (
