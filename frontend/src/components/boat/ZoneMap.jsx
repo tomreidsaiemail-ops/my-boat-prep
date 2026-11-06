@@ -110,6 +110,17 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   const pics = own.length ? own.map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))
     : version && !failed.admin ? [{ key: "admin", src: mapUrl(version) }] : [];
   const steps = walkSteps(pics.filter((p) => p.map));
+  const sectionRef = useRef(null);
+  useEffect(() => {
+    const show = () => { setExpanded(true); setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); };
+    window.addEventListener("mbp:show-zone-map", show);
+    return () => window.removeEventListener("mbp:show-zone-map", show);
+  }, []);
+  // A skipper opening an empty Zone Map is taken to Additional details, where the Magic Mariner can draw layout plans.
+  const toggle = () => {
+    if (!expanded && canEdit && !admin && !own.length) window.dispatchEvent(new Event("mbp:open-details"));
+    setExpanded((x) => !x);
+  };
   if (!pics.length && !admin && !canEdit) return null;
   const removeMap = async (m) => {
     if (!online) { toast.error("You need a signal to remove a zone map"); return; }
@@ -118,8 +129,8 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
     catch (e) { toast.error(apiError(e, "Couldn't remove the zone map")); } finally { setRemoving(null); }
   };
   return (
-    <section className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-map">
-      <button type="button" onClick={() => setExpanded((x) => !x)} aria-expanded={expanded} className="flex items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
+    <section ref={sectionRef} className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-map">
+      <button type="button" onClick={toggle} aria-expanded={expanded} className="flex items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
         <Map className="h-4 w-4" /> {own.length > 1 ? `Zone maps (${own.length})` : "Zone map"}
         <ChevronDown className={`ml-auto h-5 w-5 [transition:transform_.15s] ${expanded ? "rotate-180" : ""}`} />
       </button>

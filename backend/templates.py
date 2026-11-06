@@ -330,20 +330,25 @@ LOG_HELP = [
         "Check the Source, Destination and dates; the folder is named Source - Destination - Date range.",
         "Everything from the Start log to the End log goes into the folder. Tap the folder to open or close it, or Ungroup to put the logs back.",
         "Fold a year puts every passage folder and log from one year into a single folder, e.g. 2024 Ship's Logs."]),
+    ("Admin - Help Panel - Zone Map Selection", "Instructions at the top of the Magic Mariner 'Create ZONE MAP' layout plans popup. Top-level lines are paragraphs, indented lines are bullets.", [
+        "The Magic Mariner is drawing top-down layout plans of your boat's make and model.",
+        "Select a couple of plans that help you map out your cockpit, saloon, galley and cabins, then tap Continue.",
+        "Your selections are added to Zone Map, where you can label each area so crew know exactly where things live."]),
 ]
 
 
 async def seed_log_help():
-    """Runs once: adds the editable Ship's Log help panels, if they aren't there already."""
-    if await db.migrations.find_one({"_id": "ships_log_help"}):
-        return
+    """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for name, description, lines in LOG_HELP:
-        if await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 1}):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:])):
+        if await db.migrations.find_one({"_id": mig}):
             continue
-        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
-                                            "items": [{"id": n + 1, "label": t, **({"indent": True} if name.endswith("Folders") and n else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
-    await db.migrations.insert_one({"_id": "ships_log_help", "at": now})
+        for name, description, lines in panels:
+            if await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 1}):
+                continue
+            await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
+                                                "items": [{"id": n + 1, "label": t, **({"indent": True} if name.endswith("Folders") and n else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
+        await db.migrations.insert_one({"_id": mig, "at": now})
 
 
 async def add_spars_attributes():

@@ -10,6 +10,7 @@ import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeightPanel } from "@/components/boat/weights/WeightPanel";
 import { switchWeights } from "@/lib/weights";
 import { useCrewDiet } from "@/lib/crewDiet";
+import { zoneMapLabel } from "@/components/boat/zone/ZoneSchematicsDialog";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
@@ -91,7 +92,7 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, onZoneMap }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -119,6 +120,12 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
               <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onMaintSetup() : toast.error("Please fill in Make and Model first"))}
                 className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
+              </button>
+            )}
+            {onZoneMap && (
+              <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onZoneMap() : toast.error("Please fill in Make and Model first"))}
+                className="btn-ghost col-span-3 h-auto min-h-10 justify-start gap-1.5 px-3 py-2 text-left text-sm" data-testid="zone-map-create-btn">
+                <Sparkles className="h-4 w-4 shrink-0" /> {zoneMapLabel(boat)}
               </button>
             )}
           </div>

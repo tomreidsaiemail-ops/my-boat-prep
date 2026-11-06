@@ -37,6 +37,7 @@ from service_history import router as service_history_router  # noqa: E402
 from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
+from zone_schematics import router as zone_schematics_router  # noqa: E402
 from templates import add_spars_attributes, seed_budget_template, seed_log_help, seed_master_attributes  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
@@ -553,6 +554,7 @@ app.include_router(go_decision_router)
 app.include_router(admin_analytics_router)
 app.include_router(quota.router)
 app.include_router(crew_register_router)
+app.include_router(zone_schematics_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
 

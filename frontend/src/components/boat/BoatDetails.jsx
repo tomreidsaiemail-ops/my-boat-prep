@@ -4,6 +4,8 @@ import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
+import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const petCount = (boat) => (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim()).length;
 
@@ -46,13 +48,32 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
+  const [plans, setPlans] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const creating = useRef(false);
   const moreRef = useRef(null);
-  const dialog = <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={() => { setMore(false); onDetailsClosed?.(); }} returnFocus={moreRef} onMakeKit={onMakeKit}
-    onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} />;
+  useEffect(() => {
+    const show = () => { setOpen(true); setMore(true); };
+    window.addEventListener("mbp:open-details", show);
+    return () => window.removeEventListener("mbp:open-details", show);
+  }, []);
+  const ready = !!(boat.make?.trim() && boat.model?.trim());
+  // Closing without a zone map: remind once per close; "Not now" carries on as before.
+  const closeMore = () => { setMore(false); if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.(); };
+  const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
+  const dialog = <>
+    <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={closeMore} returnFocus={moreRef} onMakeKit={onMakeKit}
+      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
+    {zone && <ZoneSchematicsDialog open={plans} boat={boat} boatId={zone.boatId} online={zone.online} onDone={plansDone} onClose={() => setPlans(false)} />}
+    <ConfirmDelete item={ask ? [1] : null} danger={false} title="Create a zone map?" confirmLabel="Create zone map" cancelLabel="Not now" testId="zone-map-ask"
+      note={`Your boat doesn't have a zone map yet. The Magic Mariner can draw layout plans of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}
+      onConfirm={() => { creating.current = true; setAsk(false); setMore(true); setPlans(true); }}
+      onClose={() => { setAsk(false); if (!creating.current) onDetailsClosed?.(); creating.current = false; }} />
+  </>;
   const focused = useRef(false);
   useEffect(() => { if (complete && !focused.current) setOpen(false); }, [complete]);
   const onBlur = (e) => {
