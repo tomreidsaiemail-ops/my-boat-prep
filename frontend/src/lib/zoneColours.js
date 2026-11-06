@@ -40,13 +40,14 @@ export const mapLabel = (m, n) => m.name || `Zone map ${n + 1}`;
 // Area id -> the colour and name of the zone map it's pinned on; folders and boxes take their cupboard's.
 export const areaZones = (boat, areas) => {
   const out = {};
+  // A zone picked for the boat area itself wins over a pin on a Zone Map Photo.
+  areas.forEach((a) => {
+    const z = a.zone;
+    if (z && ZONE_COLOURS[z.colour]) out[a.id] = { colour: z.colour, hex: ZONE_COLOURS[z.colour], map: z.label, rank: RAINBOW.indexOf(z.colour) };
+  });
   (boat?.zone_maps || []).forEach((m, n) => (m.pins || []).forEach((p) => {
     if (p.area_id && !out[p.area_id] && ZONE_COLOURS[m.colour]) out[p.area_id] = { colour: m.colour, hex: ZONE_COLOURS[m.colour], map: m.zone || mapLabel(m, n), rank: RAINBOW.indexOf(m.colour) };
   }));
-  areas.forEach((a) => {
-    const z = a.zone;
-    if (!out[a.id] && z && ZONE_COLOURS[z.colour]) out[a.id] = { colour: z.colour, hex: ZONE_COLOURS[z.colour], map: z.label, rank: RAINBOW.indexOf(z.colour) };
-  });
   areas.forEach((a) => { if (a.parent_id && out[a.parent_id]) out[a.id] = out[a.parent_id]; });
   return out;
 };

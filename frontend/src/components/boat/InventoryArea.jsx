@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -94,6 +94,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
               aria-label={area.drinks ? "Unflag as Drinks area" : "Flag as Drinks area"} title={area.drinks ? "Drinks area (tap to unflag)" : "Flag as Drinks area"} data-testid={`inventory-area-drinks-${area.id}`}>
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.drinks ? "border-purple-700 bg-purple-700 text-white" : "border-current"}`}>D</span>
             </button>}
+            {zoneButton}
             {onMove && <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>}
             <button type="button" className="icon-btn" aria-label="Rename cupboard" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete cupboard" onClick={onDelete} data-testid={`inventory-area-delete-${area.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>

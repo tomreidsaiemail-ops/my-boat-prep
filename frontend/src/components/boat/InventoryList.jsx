@@ -17,6 +17,7 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
+import { AreaZoneButton } from "@/components/boat/zone/AreaZoneButton";
 import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
 import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
@@ -228,6 +229,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [zone, setZone] = useState(null);
   const [batchZone, setBatchZone] = useState(null);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
+  const pickZones = boat ? boatZones(boat) : [];
   const zoneCounts = {};
   tops.forEach((a) => { const z = zones[a.id]; if (z) zoneCounts[z.colour] = (zoneCounts[z.colour] || 0) + 1; });
   useEffect(() => {
@@ -314,7 +316,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onDeleteItem={(i) => deleteItem(a, i)}
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={readOnly ? undefined : () => startMove(a)}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
-        onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}>
+        onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
+        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>
         {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
         {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
           onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}

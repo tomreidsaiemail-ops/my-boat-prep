@@ -107,7 +107,7 @@ def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
         if a.get("id") not in pfd:
             out.append(a)
         elif t is not None:
-            t = {**t, "parent_id": a.get("parent_id"), "zone": a.get("zone")}
+            t = {**t, "parent_id": a.get("parent_id"), "zone": (t.get("zone") if not a.get("parent_id") else None) or a.get("zone")}
             if not a.get("parent_id") and not (t.get("food") or t.get("drinks")):
                 t.update(food=bool(a.get("food")), drinks=bool(a.get("drinks")))
             out.append({k: v for k, v in t.items() if v is not None})

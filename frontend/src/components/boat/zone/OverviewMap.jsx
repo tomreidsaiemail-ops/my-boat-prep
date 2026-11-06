@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Loader2, Palette, Sparkles, Trash2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
@@ -37,6 +37,9 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   const box = useRef(null);
   useEffect(() => setSwatches(map.swatches || []), [map.swatches]);
   const t = `zone-overview-${map.id}`;
+  const foldKey = `mbp_overview_colours_folded_${boat.boat_id}`;
+  const [folded, setFolded] = useState(() => localStorage.getItem(foldKey) === "1");
+  const toggleTools = () => { const f = !folded; localStorage.setItem(foldKey, f ? "1" : "0"); setFolded(f); if (f) setArmed(null); };
   const save = async (next) => {
     setSwatches(next);
     if (!online) { toast.error("You need a signal to save the colours"); return; }
@@ -121,6 +124,11 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       </div>
       {canEdit && (
         <>
+          <button type="button" onClick={toggleTools} aria-expanded={!folded} className="flex min-h-9 items-center gap-2 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`${t}-colours-toggle`}>
+            <Palette className="h-4 w-4" /> Colours ({swatches.length} placed)
+            <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${folded ? "" : "rotate-180"}`} />
+          </button>
+          {!folded && <>
           <button type="button" className="btn-solid min-h-10 justify-center gap-2 text-sm" disabled={placing || !presets.length} onClick={autoPlace} data-testid={`${t}-auto-btn`}>
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
@@ -142,6 +150,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             ))}
             {!presets.length && <span className="text-xs text-[var(--muted)]">No colours set up in Admin - Zone Map Predetermined Colours yet.</span>}
           </div>
+          </>}
           <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
             {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this overview
           </button>
