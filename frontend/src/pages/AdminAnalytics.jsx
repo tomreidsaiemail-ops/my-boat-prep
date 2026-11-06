@@ -84,9 +84,9 @@ export default function AdminAnalytics() {
         <>
           <p className="-mt-3 text-xs text-[var(--muted)]" data-testid="analytics-updated">Updates every 30 seconds · last {new Date(data.generated_at).toLocaleTimeString("en-NZ")} · "This month" from {new Date(data.month_start).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" })}</p>
           <Section title="Growth & monetisation" testId="analytics-growth">
-            <Tile label="Total users" value={data.growth.users} testId="tile-users" />
             <Tile label="Users today" value={data.growth.users_today} sub="opened the app today · tap to see who" onClick={() => setToday("today")} testId="tile-users-today" />
             <Tile label="Users yesterday" value={data.growth.users_yesterday ?? 0} sub="opened the app yesterday · tap to see who" onClick={() => setToday("yesterday")} testId="tile-users-yesterday" />
+            <Tile label="Total users" value={data.growth.users} testId="tile-users" />
             <Tile label="Users this month" value={data.growth.users_month} testId="tile-users-month" />
             <Tile label="Total Pro users" value={data.growth.pro} sub="paid or promo Pro accounts" testId="tile-pro" />
             <Tile label="Pro users this month" value={data.growth.pro_month} testId="tile-pro-month" />

@@ -88,6 +88,7 @@ export const TemplateBackup = ({ onRestored }) => {
         {busy === "import" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Restore from backup
       </button>
       <input ref={input} type="file" accept="application/json,.json" className="hidden" onChange={pick} data-testid="template-import-input" />
+      <p className="col-span-2 text-xs text-[var(--muted)]" data-testid="template-backup-note">Saves every admin list and every built-in master you have edited. Built-in lists you never edited come with the app, so they don't need a backup.</p>
       {plan && <Preview plan={plan} busy={busy === "restore"} onConfirm={restore} onClose={() => { setPlan(null); setBackup(null); }} />}
     </div>
   );

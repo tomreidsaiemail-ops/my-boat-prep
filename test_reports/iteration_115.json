@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 115: Users yesterday analytics, template lists export/import (backup/restore), template list search across names+lines, and zone follow-ups. Backend 20/21 pytest pass (new file test_it115_yesterday_backup_zone.py). Frontend all tested flows pass: Users yesterday tile and dialog (seeded activity row shown, 9:03 AM FREE), Users today dialog still works; Export all lists downloads my-boat-prep-template-lists-2026-11-06.json with toast '19 template lists exported'; invalid JSON gives error toast; restore preview groups add/unchanged/skip correctly, Cancel changes nothing, Confirm 'Restore 1 list' gives toast '1 template list restored', the list reloads (19->20) and the new list keeps its backup list_id; search 'tomato' -> 'Showing 2 of 19 lists' with hit lines, marks, '+ 3 more matching lines'; no-match state works; Batch area form for Galley zone shows batch-area-zone-banner (label Galley), toggle expands plan + 2 photos. All test data cleaned up: admin lists exactly match the original export (19 lists, identical items/desc/private/name), no leavingDock override created, pro boat zone maps back to Full interior/Galley/Galley 2, seeded user_activity and TEST user/session deleted.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/template-lists/import", "issue": "A custom list in the backup with a blank or whitespace-only name (e.g. '   ') gets action 'add' and would be inserted as a nameless template list. BackupList.name has no min_length and _plan doesn't check for an empty name. Fix: skip with reason 'has no name' (or add min_length=1 after strip)."},
+      {"endpoint": "GET /api/admin/template-lists/export", "issue": "Built-in masters are only exported if an admin-edited doc exists in list_templates. Right now none exist, so the backup holds 0 built-ins. That's probably fine because unedited built-ins come from the code defaults, but it means 'export all lists' only covers custom lists plus edited masters. Worth stating in the UI or exporting the defaults too."},
+      {"endpoint": "POST /api/admin/template-lists/import", "issue": "The duplicate check for built-in entries goes by name, not list_id. Two entries with the same list_id but different names would both be applied, and the last one wins. Edge case."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin template lists search hits", "issues": ["The highlighted <mark> has a visible gap or padding before the rest of the word ('Tomato es', 'tomato es'), so words look split. Remove horizontal padding or margin on the mark in Highlight."]},
+      {"screen": "Admin analytics (390px)", "issues": ["The 2-column grid puts Users yesterday under Total users rather than beside Users today. It's still readable, but consider ordering the tiles so Users today and Users yesterday share a row."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_it115_yesterday_backup_zone.py", "/app/test_reports/pytest/it115.xml"],
+  "action_items": [
+    "Skip backup lists with blank or whitespace names in template_backup._plan (reason e.g. 'has no name')",
+    "Optional: remove mark padding in the Highlight component so highlighted words don't look split",
+    "Optional: say clearly whether unedited built-in masters are included in Export all lists"
+  ],
+  "critical_code_review_comments": [
+    "admin_analytics.users_between: logic is correct for hour buckets that straddle the start or end boundary (tested a straddle at the start). The ISO string comparisons hold because all values are UTC isoformat with +00:00.",
+    "auth.mark_seen: the user_activity upsert only runs when last_seen is more than 5 minutes old, which matches the design. The TTL index on expires (a datetime) is set up correctly in create_indexes.",
+    "template_backup._apply overwrite always writes updated_by even when only description/private change (fine). _keep_version runs before overwrites, which is good for undo.",
+    "Template import validates the whole payload with Pydantic. One bad list (e.g. >300 items or a label over the limit) rejects the whole file with 422 instead of skipping that list. Acceptable but harsher than the skip semantics."
+  ],
+  "updated_files": ["/app/backend/tests/test_it115_yesterday_backup_zone.py"],
+  "success_rate": {"backend": "95% (20/21)", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Temporary user_activity docs (hour 'TEST_*'), a TEST_act_* user + session, TEST_ template lists and TEST zone maps. All were removed by id and verified afterwards. The original admin export is saved at /tmp/orig_export.json.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the backend tests with: export REACT_APP_BACKEND_URL=...; pytest tests/test_it115_yesterday_backup_zone.py -n 0. The file cleans up after itself and restores the original template lists by re-importing the export. Built-in master import was only tested as a dry run (leavingDock -> 'add'), not applied, to avoid creating a master override. The zone dialog area count (top-level areas only) was checked by code review only: Galley currently has 0 areas, so the count element isn't shown. To open the Galley zone on the pro boat: go to /, then Boat Inventory, then zone-picker-galley (force click), then the dialog button 'Scan Galley cupboards'."
+}

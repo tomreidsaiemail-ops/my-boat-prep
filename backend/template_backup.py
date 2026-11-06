@@ -62,9 +62,12 @@ async def _plan(lists: List[BackupList]) -> list:
     plan, seen = [], set()
     for lst in lists:
         name = " ".join(lst.name.split())
-        key = name.lower()
+        key = name.lower() if lst.custom else f"builtin:{lst.list_id}"
         items = _items(lst)
         step = {"name": name, "lst": lst, "items": items}
+        if lst.custom and not name:
+            plan.append({**step, "name": "(no name)", "action": "skip", "reason": "has no name"})
+            continue
         if key in seen:
             plan.append({**step, "action": "skip", "reason": "appears twice in the backup"})
             continue
@@ -83,7 +86,7 @@ async def _plan(lists: List[BackupList]) -> list:
             same = old and old.get("items") == items
             plan.append({**step, "name": TEMPLATE_LISTS[lst.list_id], "old": old, "action": "unchanged" if same else "overwrite" if old else "add"})
             continue
-        if key in RESERVED_NAMES:
+        if lst.custom and key in RESERVED_NAMES:
             plan.append({**step, "action": "skip", "reason": "uses a built-in list name"})
             continue
         old = by_name.get(key)

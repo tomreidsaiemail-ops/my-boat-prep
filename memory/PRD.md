@@ -648,3 +648,17 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Admin TemplateListEditor shows "Test palette" (PaletteTest.jsx) only for "Admin - Zone Map Predetermined Colours": per-line ok/warn/bad (format, unknown colour + "Did you mean", colour reused, zone repeated, aliases "read as"), then all 100 colours with used zones / free.
 - Colours 50 -> 100 (frontend ZONE_COLOURS/RAINBOW/LIGHT + colourName, backend PALETTE); MAX_BOAT_MAPS 100; swatches max 100.
 - Tested iteration_113 (backend 34/34, frontend 90% -> z-index, crew tap, contrast, multi-zone tile fixed; z-index fix self-verified).
+
+## 2026-06 Zone-first workflow (colour -> zone photos -> scan cupboards)
+- Tapping a placed overview colour (owner) opens ZoneDialog (zone/ZoneDialog.jsx): "No <Zone> photos yet" card or thumbnails, "Make sure you capture" checklist (lib/zoneChecklist.js; Galley longest), Take photos / Choose from gallery (multiple), then "Scan <Zone> cupboards". Crew: opens photo or toast.
+- POST /api/boats/{id}/zone-maps accepts form zone + colour: name "Galley", "Galley 2"... (first free), colour shared within a zone, clash 400 if another zone/manual photo holds it, otherwise that photo is recoloured (after the upload is stored). boat_maps returns `zone`. Meta colour: same-zone photos aren't a clash.
+- Zone batch scan: BatchScanDialog/BatchAreaForm show sticky ZoneBanner (colour + zone, tap to expand plan square + photos + checklist); confirmed areas get area.zone {label, colour}; areaZones falls back to area.zone.
+- Inventory bottom: ZonePicker "Add boat areas by zone" chips (boatZones from overview swatches + zone photos, top-level counts); plain add/++ under "More options". Top Batch Magic Scan asks to pick a zone first when zones exist.
+- Tested iteration_114 (backend 10/10, frontend 100%); follow-ups fixed and re-tested in iteration_115.
+
+## 2026-06 Users yesterday, template backup/restore, template search
+- auth.mark_seen also upserts db.user_activity (user + UTC hour, first/last, TTL 40 days). GET /api/admin/users-yesterday?since&yesterday; analytics growth.users_yesterday. Analytics tile "Users yesterday" + dialog (UsersTodayDialog day prop). Exact from the day after release.
+- backend/template_backup.py: GET /api/admin/template-lists/export (custom lists + edited built-in masters, kind my-boat-prep-template-lists), POST /api/admin/template-lists/import {kind, lists, dry_run}: same name overwritten (built-ins by list_id), missing added (keeps backup list_id), others kept; skip reasons (no name/items, reserved, duplicate, missing Mayday lines). Frontend TemplateBackup.jsx: Export all lists / Restore from backup with preview + confirm.
+- Admin template list search matches names, descriptions and lines; shows up to 3 matching lines highlighted.
+- Tested iteration_115 (backend 21/21 after fixes, frontend 100%).
+
