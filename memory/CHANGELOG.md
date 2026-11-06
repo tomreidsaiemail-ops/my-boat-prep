@@ -14,3 +14,11 @@
 - Common Meals bubbles grouped Breakfast/Lunch/Dinner/Any time (mealGroup guess from name; own meals can pick meal_type, stored in /me/meals; re-save keeps the id).
 - Tested iteration_121; rota name/duplicate fixes self-verified by screenshot; backend tests 8 passed.
 
+
+## 2026-06 Provisions shoppers
+- Provisions items carry `shopper` (name). Edit dialog Shopper picker (CookPicker with label/testId), Assign shoppers dialog (tick several), amber basket badge in Checklist. Names: skipper, crew_names, pending invites.
+- Invites: crewMessage + email add "Food to bring on board" (InviteIn.shopping, crew.shopping_html). Crew dialog rows: SendShoppingButton (email via POST /boats/{id}/crew/shopping, or copy for WhatsApp).
+- Print view: "· basket Name" per item + "Who's buying what" summary on Provisions.
+- Galley crew can assign; merge_crew_galley now also merges item-level content edits (item ts newer) when list_ts isn't bumped.
+- Tested iteration_122 + retest iteration_123 (100%).
+

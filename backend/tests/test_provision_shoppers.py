@@ -174,3 +174,72 @@ class TestGalleyShopperSync:
         crew_put(st)
         saved = next(i for i in boat_doc()["data"]["provisions"] if i["id"] == target["id"])
         assert saved.get("shopper") != "TEST NoRole"
+
+
+# ---- Iteration 123: item-level edits by galley crew without a list_ts bump ----
+def _edit(st, target_id, **fields):
+    st["data"]["provisions"] = [{**i, **fields, "ts": future()} if i["id"] == target_id else i for i in st["data"]["provisions"]]
+    return st
+
+
+class TestGalleyItemEditNoListTs:
+    def test_shopper_only_edit_persists(self):
+        set_roles(["Provision Manager"])
+        st = crew_get()
+        lts_before = (st.get("list_ts") or {}).get("provisions")
+        target = [i for i in st["data"]["provisions"] if not i.get("checked")][0]
+        crew_put(_edit(st, target["id"], shopper="TEST Item Shopper"))
+        doc = boat_doc()
+        saved = next(i for i in doc["data"]["provisions"] if i["id"] == target["id"])
+        assert saved.get("shopper") == "TEST Item Shopper"
+        assert doc["list_ts"].get("provisions") == lts_before
+
+    def test_text_edit_persists(self):
+        set_roles(["Galley Lead"])
+        st = crew_get()
+        target = [i for i in st["data"]["provisions"] if not i.get("checked")][1]
+        crew_put(_edit(st, target["id"], label="TEST_Edited label"))
+        saved = next(i for i in boat_doc()["data"]["provisions"] if i["id"] == target["id"])
+        assert saved.get("label") == "TEST_Edited label"
+
+    def test_older_item_ts_ignored(self):
+        set_roles(["Chef"])
+        st = crew_get()
+        target = [i for i in st["data"]["provisions"] if not i.get("checked")][0]
+        st["data"]["provisions"] = [{**i, "shopper": "TEST Stale", "ts": "2000-01-01T00:00:00.000Z"} if i["id"] == target["id"] else i for i in st["data"]["provisions"]]
+        crew_put(st)
+        saved = next(i for i in boat_doc()["data"]["provisions"] if i["id"] == target["id"])
+        assert saved.get("shopper") != "TEST Stale"
+
+    def test_no_add_delete_without_list_ts(self):
+        set_roles(["Provision Manager"])
+        st = crew_get()
+        before = [i["id"] for i in boat_doc()["data"]["provisions"]]
+        items = st["data"]["provisions"]
+        st["data"]["provisions"] = items[1:] + [{"id": 999999123, "label": "TEST_Added", "checked": False, "ts": future()}]
+        crew_put(st)
+        after = [i["id"] for i in boat_doc()["data"]["provisions"]]
+        assert after == before
+
+    def test_no_role_item_edit_ignored(self):
+        set_roles(["Helm"])
+        st = crew_get()
+        target = [i for i in st["data"]["provisions"] if not i.get("checked")][-1]
+        crew_put(_edit(st, target["id"], shopper="TEST NoRole2", label="TEST_NoRole label"))
+        saved = next(i for i in boat_doc()["data"]["provisions"] if i["id"] == target["id"])
+        assert saved.get("shopper") != "TEST NoRole2" and saved.get("label") != "TEST_NoRole label"
+
+    def test_no_role_crew_empty_roles_ignored(self):
+        mongo(lambda db: db.user_boats.update_one(KEY, {"$unset": {"crew_roles.test-user-free": ""}}))
+        st = crew_get()
+        target = [i for i in st["data"]["provisions"] if not i.get("checked")][-1]
+        crew_put(_edit(st, target["id"], shopper="TEST NoRole3"))
+        saved = next(i for i in boat_doc()["data"]["provisions"] if i["id"] == target["id"])
+        assert saved.get("shopper") != "TEST NoRole3"
+
+
+class TestShoppingBlank:
+    @pytest.mark.parametrize("items", [["  "], ["", "   "], ["\t"]])
+    def test_blank_items_422(self, items):
+        r = requests.post(f"{BASE_URL}/api/boats/main/crew/shopping", json={"email": "test.user.free@example.com", "items": items}, headers=h(PRO))
+        assert r.status_code == 422, r.text

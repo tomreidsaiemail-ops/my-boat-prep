@@ -1,0 +1,17 @@
+{
+  "summary": "Retest of the iteration_122 CRITICAL bug (galley crew shopper edits lost after sync), plus the new pending-invite names in the picker, the blank-items 422, and an owner/Cook regression, on mobile 390x844. The bug is FIXED. Backend: 22 of 22 pytest passed (13 old tests and 9 new ones). The new tests cover: a shopper-only item edit and a text edit by galley crew without a list_ts bump both persist, with list_ts unchanged; an older item ts is ignored; no adds or deletes are taken without a list_ts bump; a Helm-only crew or a crew member with no role can't change Provisions; blank-only items return 422 (3 cases). Frontend, crew with Provision Manager: Assign shoppers 'Give 1 to Pro Tester' and the edit-dialog Shopper 'TEST Free Crew' both keep their badges after waiting 10 s and after a reload. A text edit ('TEST_Lime Juice edited') also persists. All three were confirmed in the DB. Crew with only the Helm role gets no Assign shoppers button and no edit buttons, but does see the badges. Owner: the Shopper picker options are [Pro Tester, TEST Free Crew, TEST Pending Pat]. The pending invite shows and the declined invite (TEST Declined Dan) does not. Owner Assign shoppers and edit-dialog shopper changes persist after a reload. The meal plan Cook picker works and lists the same names, including the pending invite. No shopper picker appears on the meal plan.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_provision_shoppers.py", "/app/test_reports/pytest/pytest_results_iter123.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "merge_crew_galley's item-level path trusts the client's item ts. If a galley crew phone clock is far ahead, that item's crew copy wins over later owner edits until the real time catches up. This is low risk. Optionally clamp the incoming ts to the server's now.",
+    "The item-level path replaces the whole item, including checked, label and area, with the crew copy when its ts is newer. This is acceptable for galley crew, noted only."
+  ],
+  "updated_files": ["/app/backend/tests/test_provision_shoppers.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary only. crew_roles['test-user-free'] was set to Provision Manager and then Helm. Two crew_invites were added (test-inv-pend-123 pending, test-inv-decl-123 declined) and deleted by id afterwards. The pro boat main (data, list_ts, crew_roles={}, updated_at, sec_ts) was restored from a backup taken before testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "In a fresh browser the free crew user opens on the shared boat 'TEST_Kia Ora' (key c_test-user-pro_main) but the list defaults to Boat Inventory, so pick list-option-provisions. The edit dialog testids are edit-item-dialog, edit-item-input, edit-item-confirm-btn and edit-item-cancel-btn. On owner reload a help popover can cover the list selector, so press Escape first. Provisions item ids are 1793574303219 to 1793574303226."
+}
