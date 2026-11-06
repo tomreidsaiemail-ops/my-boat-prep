@@ -20,7 +20,7 @@ const HELP_NAME = "admin - help panel - zone map help";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
-const MAX_MAPS = 20;
+const MAX_MAPS = 50;
 export const boatMapUrl = (b, m) => `${API}/boats/${b.boat_id}/zone-maps/${m.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(m.v)}`;
 
 const pickPicture = async (e) => {

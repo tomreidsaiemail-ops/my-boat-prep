@@ -633,3 +633,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - OverviewMap.jsx: palette squares drag (pointer events, touch + mouse) or tap-to-arm then tap the plan; placed squares draggable, tap to remove; full-size view shows the squares (OverviewView). Crew read-only. Zone Map Photos unchanged (named photos take preset colours; labelled areas get that colour icon).
 - Wording: "Create <type> ZONE MAP OVERVIEWS for a <make> <model>..."; help panel line 3 updated.
 - Tested iteration_112 (backend 37/37, frontend 100%); full-view squares, toast grammar, keyboard arm, overview colour 400 fixed after.
+
+## 2026-06 One of each colour per overview; 50 zone colours
+- Each predetermined colour (label) can be placed once per Zone Map Overview: used palette squares dim + strike-through; backend 400 on duplicate labels. Swatches max 50.
+- Zone colour palette expanded 20 -> 50 named colours (frontend ZONE_COLOURS/RAINBOW/LIGHT, backend PALETTE + ALIASES incl. "Oilve" -> Olive, multi-word names like Light Red / Lime Green / Sky Blue parsed from the admin list). MAX_BOAT_MAPS 20 -> 50 so every photo can keep its own colour.
+- Self-tested: pytest zone_overviews + zone_colours 20/20, screenshot of 32-colour palette.

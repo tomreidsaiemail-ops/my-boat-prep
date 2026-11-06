@@ -67,11 +67,11 @@ class TestSwatches:
         assert t == {"id": "TEST_s1", "x": 0.6, "y": 0.5, "colour": "Green", "label": "Saloon"}
 
     def test_bad_colour_400(self, original_swatches):
-        r = requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": [{"id": "a", "x": 0.1, "y": 0.1, "colour": "Chartreuse"}]}, headers=PRO, timeout=30)
+        r = requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": [{"id": "a", "x": 0.1, "y": 0.1, "colour": "Notacolour"}]}, headers=PRO, timeout=30)
         assert r.status_code == 400
 
     def test_too_many_422(self, original_swatches):
-        sw = [{"id": f"a{i}", "x": 0.1, "y": 0.1, "colour": "Gold"} for i in range(41)]
+        sw = [{"id": f"a{i}", "x": 0.1, "y": 0.1, "colour": "Gold"} for i in range(51)]
         assert requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": sw}, headers=PRO, timeout=30).status_code == 422
 
     def test_out_of_range_422(self, original_swatches):

@@ -7,9 +7,13 @@ from db import db
 from auth import get_current_user
 
 router = APIRouter(prefix="/api")
-# The sequence new zone map photos take their colour from; a boat can have 20 maps, so each gets its own.
+# The sequence new zone map photos take their colour from; a boat can have 50 maps, so each gets its own.
 PALETTE = ["Gold", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "Brown", "Gray", "Teal",
-           "Maroon", "Navy", "Turquoise", "Lavender", "Magenta", "Lime", "Coral", "Olive", "Beige", "Red"]
+           "Maroon", "Navy", "Turquoise", "Lavender", "Magenta", "Lime", "Coral", "Olive", "Beige", "Red",
+           "Light Red", "Lime Green", "Copper", "Emerald", "Peach", "Mint", "Tan", "Sepia", "Chartreuse", "Sky Blue",
+           "Crimson", "Plum", "Amber", "Violet", "Salmon", "Silver", "Indigo", "Aqua", "Khaki", "Rust",
+           "Mustard", "Cream", "Charcoal", "Rose", "Jade", "Cobalt", "Lilac", "Burgundy", "Ochre", "Slate"]
+ALIASES = {"grey": "gray", "oilve": "olive", "lightred": "light red", "limegreen": "lime green", "skyblue": "sky blue", "light grey": "gray", "light gray": "silver"}
 PRESET_LIST = "Admin - Zone Map Predetermined Colours"
 PRESET_LINES = ["Cockpit - Gold", "Saloon - Green", "Galley - Orange", "Nav station - Navy", "Forward cabin - Blue", "Aft cabin - Purple",
                 "Heads - Teal", "Engine room - Red", "Lazarette - Brown", "Anchor locker - Gray", "Deck - Yellow", "Fridge - Turquoise"]
@@ -18,7 +22,9 @@ MapPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 
 
 def colour_name(v: str) -> Optional[str]:
-    return next((c for c in PALETTE if c.lower() == str(v or "").strip().lower().replace("grey", "gray")), None)
+    low = re.sub(r"\s+", " ", str(v or "").strip().lower())
+    low = ALIASES.get(low, low)
+    return next((c for c in PALETTE if c.lower() == low), None)
 
 
 def fill_colours(maps: list) -> list:
@@ -47,7 +53,7 @@ async def presets() -> list:
     doc = await db.list_templates.find_one({"name": {"$regex": f"^{re.escape(PRESET_LIST)}$", "$options": "i"}}, {"_id": 0, "items": 1})
     pairs = []
     for i in (doc or {}).get("items") or []:
-        m = re.match(r"^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+)\s*\*?\s*$", str(i.get("label", "")))
+        m = re.match(r"^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+(?: [A-Za-z]+)?)\s*\*?\s*$", str(i.get("label", "")))
         if m and colour_name(m.group(2)):
             pairs.append((m.group(1).strip("* ").lower(), colour_name(m.group(2))))
     return sorted(pairs, key=lambda p: -len(p[0]))
@@ -64,7 +70,7 @@ async def colour_presets(_: dict = Depends(get_current_user)):
     doc = await db.list_templates.find_one({"name": {"$regex": f"^{re.escape(PRESET_LIST)}$", "$options": "i"}}, {"_id": 0, "items": 1})
     out = []
     for i in (doc or {}).get("items") or []:
-        m = re.match(r"^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+)\s*\*?\s*$", str(i.get("label", "")))
+        m = re.match(r"^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+(?: [A-Za-z]+)?)\s*\*?\s*$", str(i.get("label", "")))
         if m and colour_name(m.group(2)):
             out.append({"label": m.group(1).strip("* ")[:40], "colour": colour_name(m.group(2))})
     return {"presets": out}
@@ -79,7 +85,7 @@ class Swatch(BaseModel):
 
 
 class SwatchesIn(BaseModel):
-    swatches: List[Swatch] = Field(max_length=40)
+    swatches: List[Swatch] = Field(max_length=50)
 
 
 @router.put("/boats/{boat_id}/zone-maps/{map_id}/swatches")
@@ -87,10 +93,15 @@ async def save_swatches(boat_id: BoatPath, map_id: MapPath, payload: SwatchesIn,
     from inventory import boat_maps
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     out = []
+    seen = set()
     for s in payload.swatches:
         colour = colour_name(s.colour)
         if not colour:
             raise HTTPException(status_code=400, detail="Please use one of the zone map colours")
+        tag = (s.label.strip() or colour).lower()
+        if tag in seen:
+            raise HTTPException(status_code=400, detail=f"{s.label.strip() or colour} is already on this plan. Each colour goes on once.")
+        seen.add(tag)
         out.append({**s.model_dump(), "colour": colour, "label": s.label.strip()})
     res = await db.user_boats.update_one({**key, "zone_maps": {"$elemMatch": {"id": map_id, "kind": "overview"}}}, {"$set": {"zone_maps.$.swatches": out}})
     if not res.matched_count:
@@ -119,7 +130,7 @@ async def save_map_meta(boat_id: BoatPath, map_id: MapPath, payload: MapMetaIn, 
             raise HTTPException(status_code=400, detail="Zone Map Overviews don't have a colour. Drag colours onto the plan instead.")
         colour = colour_name(payload.colour)
         if not colour:
-            raise HTTPException(status_code=400, detail="Please pick one of the 20 zone map colours")
+            raise HTTPException(status_code=400, detail="Please pick one of the 50 zone map colours")
         if colour in others:
             raise HTTPException(status_code=400, detail=f"{colour} is already used by {label(others[colour])}. Each zone map needs its own colour.")
         me.update({"colour": colour, "colour_manual": True})

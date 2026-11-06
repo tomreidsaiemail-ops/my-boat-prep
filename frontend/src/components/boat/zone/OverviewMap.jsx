@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Trash2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { ZONE_COLOURS } from "@/lib/zoneColours";
+import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const ink = (c) => (["Yellow", "Beige", "Lime", "Turquoise", "Lavender", "Gold"].includes(c) ? "#0f172a" : "#fff");
+const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 
 const Square = ({ s, style, selected, onPointerDown, onRemove, testId }) => (
   <span className="absolute z-10 -translate-x-1/2 -translate-y-1/2 touch-none select-none" style={style} onClick={(e) => e.stopPropagation()} data-testid={testId}>
@@ -48,7 +48,11 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     if (!r || x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
     return { x: clamp((x - r.left) / r.width), y: clamp((y - r.top) / r.height) };
   };
-  const place = (p, pos) => { save([...swatches, { id: newId(), x: pos.x, y: pos.y, colour: p.colour, label: p.label }]); setArmed(null); };
+  const place = (p, pos) => {
+    if (swatches.some((s) => s.label === p.label)) { toast.error(`${p.label} is already on this plan`); setArmed(null); return; }
+    save([...swatches, { id: newId(), x: pos.x, y: pos.y, colour: p.colour, label: p.label }]); setArmed(null);
+  };
+  const used = new Set(swatches.map((s) => s.label));
   // Drag a palette square onto the plan; a tap arms it so the next tap on the plan drops it there.
   const dragNew = (e, p) => {
     e.preventDefault();
@@ -100,7 +104,12 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
         <>
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to remove it."}</p>
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
-            {presets.map((p) => (
+            {presets.map((p) => used.has(p.label) ? (
+              <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"
+                style={{ background: ZONE_COLOURS[p.colour], color: ink(p.colour) }} data-testid={`${t}-palette-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-used`}>
+                {p.label}
+              </span>
+            ) : (
               <span key={p.label} role="button" tabIndex={0} onPointerDown={(e) => dragNew(e, p)} aria-pressed={armed?.label === p.label}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setArmed((a) => (a?.label === p.label ? null : p)); } }}
                 className={`flex cursor-grab touch-none select-none items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold ring-2 ${armed?.label === p.label ? "ring-[var(--navy)]" : "ring-transparent"}`}

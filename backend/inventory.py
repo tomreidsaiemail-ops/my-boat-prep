@@ -11,7 +11,7 @@ from zone_colours import fill_colours, next_colour
 
 router = APIRouter(prefix="/api")
 INVENTORY_ID = "boatInventory"
-MAX_BOAT_MAPS = 20
+MAX_BOAT_MAPS = 50
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 MapPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 OwnerQ = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
