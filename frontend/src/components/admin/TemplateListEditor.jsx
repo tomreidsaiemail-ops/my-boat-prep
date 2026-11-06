@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { isHeadingLine, linesToItems } from "@/lib/outline";
 import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 import { PaletteTest } from "@/components/admin/PaletteTest";
+import { RoleBriefingDefaults, roleKey } from "@/components/admin/RoleBriefingDefaults";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
 const LINE_MAX = 4000;
@@ -18,6 +19,8 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [briefings, setBriefings] = useState(() => Object.fromEntries((initial?.items || []).filter((i) => i.briefing).map((i) => [roleKey(i.label), i.briefing])));
+  const crewRoles = /^\s*crew roles\s*$/i.test(name);
   const lines = toLines(text);
   const headings = lines.filter(isHeadingLine).length;
   const area = useRef(null);
@@ -31,7 +34,10 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
     if (long >= 0) { setError(`Line ${long + 1} has ${lines[long].length} characters. Please keep each line under ${LINE_MAX}, or split it into two lines.`); return; }
     setBusy(true);
     setError("");
-    const items = linesToItems(lines, autoIndent, 0, LINE_MAX).map((i) => ({ label: i.label, indent: !!i.indent }));
+    const items = linesToItems(lines, autoIndent, 0, LINE_MAX).map((i) => {
+      const b = crewRoles ? (briefings[roleKey(i.label)] || "").trim() : "";
+      return { label: i.label, indent: !!i.indent, ...(b ? { briefing: b } : {}) };
+    });
     try { await onSave({ name: name.trim(), description: description.trim(), items, private: priv, note: note.trim() }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
@@ -48,6 +54,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
       {/zone map predetermined colours/i.test(name) && <PaletteTest lines={lines} />}
+      {crewRoles && <RoleBriefingDefaults lines={lines} value={briefings} onChange={setBriefings} />}
       <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} headings={headings} hasLines={!!lines.length} testId="template-list" />
       {initial && !priv && (
         <label className="flex flex-col gap-1 text-sm font-bold">Why this changed (optional)

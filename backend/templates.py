@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user, require_admin
 
+BRIEFING_MAX = 1000
+
 router = APIRouter(prefix="/api")
 
 TEMPLATE_LISTS = {
@@ -31,6 +33,7 @@ class TemplateItem(BaseModel):
     indent: Optional[bool] = None
     level: Optional[int] = Field(default=None, ge=2, le=3)
     meal_type: Optional[Literal["breakfast", "lunch", "dinner", "dessert", "snack"]] = None
+    briefing: Optional[str] = Field(default=None, max_length=BRIEFING_MAX)
 
 
 NOTE_MAX = 300
@@ -48,6 +51,7 @@ RESERVED_NAMES = {n.lower() for n in TEMPLATE_LISTS.values()} | {
 class TemplateLine(BaseModel):
     label: str = Field(max_length=TEMPLATE_LINE_MAX)
     indent: bool = False
+    briefing: Optional[str] = Field(default=None, max_length=BRIEFING_MAX)
 
 
 class TemplateListIn(BaseModel):
@@ -83,7 +87,8 @@ def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[lis
         if iid is None or iid in used:
             iid, nxt = nxt, nxt + 1
         used.add(iid)
-        out.append({"id": iid, "label": label, **({"indent": True} if line.indent and out else {})})
+        brief = (line.briefing or "").strip()
+        out.append({"id": iid, "label": label, **({"indent": True} if line.indent and out else {}), **({"briefing": brief} if brief else {})})
     if not out:
         raise HTTPException(status_code=400, detail="Add at least one item before publishing")
     return out
@@ -170,7 +175,47 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
     if changed and not upd["private"]:
         await push_indents(list_id, doc, items, upd["updated_at"])
+        if CREW_ROLES_NAME.match(name):
+            await push_role_briefings(items, upd["updated_at"])
     return _custom_out({**doc, **upd})
+
+
+CREW_ROLES_NAME = re.compile(r"^\s*crew roles\s*$", re.I)
+
+
+def _role_key(label: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"^\s*\*\s*", "", re.sub(r"^\s*\d+[.)]\s*", "", str(label)))).strip().lower()
+
+
+async def push_role_briefings(items: list, now: str):
+    """Default Role Briefings reach every boat's Crew Roles list, only on roles the skipper has never given a briefing (a blanked one stays blank)."""
+    want = {_role_key(i["label"]): i["briefing"] for i in items if i.get("briefing")}
+    if not want:
+        return
+    async for b in db.user_boats.find({"registry.name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}}, {"_id": 1, "registry": 1, "data": 1}):
+        lid = next((r["id"] for r in b.get("registry") or [] if CREW_ROLES_NAME.match(str(r.get("name", "")))), None)
+        cur = (b.get("data") or {}).get(lid) or []
+        nxt = [{**i, "briefing": want[_role_key(i.get("label", ""))], "ts": now} if "briefing" not in i and _role_key(i.get("label", "")) in want else i for i in cur]
+        if nxt != cur:
+            await db.user_boats.update_one({"_id": b["_id"]}, {"$set": {f"data.{lid}": nxt, "updated_at": now}})
+
+
+TRIM_BRIEFING = ("Watch out for the boom at all times! Re trimming, put 3 to 4 wraps clockwise on the drum, keep your thumbs out and palms facing the winch, "
+                 "and hold the tail clear of the pinch area without wrapping it around your hand or body.")
+
+
+async def seed_trim_briefings():
+    """Runs once: default Role Briefings for Port Trim and Starboard Trim in the admin Crew Roles list, then onto boats without one."""
+    if await db.migrations.find_one({"_id": "trim_briefings"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}}, {"_id": 1, "items": 1})
+    if tpl:
+        items = [{**i, "briefing": TRIM_BRIEFING} if _role_key(i.get("label", "")) in ("port trim", "starboard trim") and not i.get("briefing") else i for i in tpl.get("items") or []]
+        if items != tpl.get("items"):
+            await db.list_templates.update_one({"_id": tpl["_id"]}, {"$set": {"items": items}})
+        await push_role_briefings(items, now)
+    await db.migrations.insert_one({"_id": "trim_briefings", "at": now})
 
 
 async def push_indents(list_id: str, old: dict, items: list, now: str):

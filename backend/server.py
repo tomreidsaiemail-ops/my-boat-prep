@@ -38,7 +38,7 @@ from sync_merge import keep_pushed, merge_state, merge_crew  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from zone_schematics import router as zone_schematics_router  # noqa: E402
-from templates import add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes  # noqa: E402
+from templates import add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes, seed_trim_briefings  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
@@ -638,6 +638,7 @@ async def create_indexes():
     await db.password_reset_tokens.create_index("token_hash", unique=True)
     await _upgrade_pob_lines()
     await add_racing_roles()
+    await seed_trim_briefings()
     await seed_budget_template()
     await seed_master_attributes()
     await add_spars_attributes()

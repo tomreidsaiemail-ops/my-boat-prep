@@ -575,7 +575,9 @@ export default function BoatPrep({ boatId, boats }) {
       const { dynamic, area, meal_type: mt, meal_type_auto: auto, briefing: _b, ...rest } = i;
       const picked = mealHead && editMeal !== null;
       const meal = picked ? editMeal : mt;
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(briefing ? { briefing } : {}) };
+      // A blanked briefing stays "" so default Role Briefings from the Crew Roles template never refill it.
+      const keep = briefing || (isRoleItem(item) && (item.briefing !== undefined || editBriefing !== (item.briefing || "")));
+      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(keep ? { briefing: briefing || "" } : {}) };
     }));
     setDialog(null);
     return true;
