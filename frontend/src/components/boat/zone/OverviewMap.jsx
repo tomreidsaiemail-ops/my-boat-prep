@@ -115,7 +115,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
         <>
           <button type="button" className="btn-solid min-h-10 justify-center gap-2 text-sm" disabled={placing || !presets.length} onClick={autoPlace} data-testid={`${t}-auto-btn`}>
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {placing ? "Magic Mariner is finding your areas..." : "Magically Place Colours"}
+            {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
           </button>
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to remove it."}</p>
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
