@@ -142,6 +142,7 @@ export default function BoatPrep({ boatId, boats }) {
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
   const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew, loaded } = useBoatStore(user.user_id, boats.current);
+  const crewPro = crew && !!boats.current.owner_pro;
   const onBoard = useOnBoardCrew(boats.current.boat_id, online, !crew);
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
@@ -514,12 +515,14 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${dialog.list.name} deleted`);
   };
   const openStores = (type) => {
-    if (!needPro(type === "shopScan" ? "Batch Magic Scan My Shopping" : "Sync Food & Drink Boat Areas")) return;
+    if (!crew && !needPro(type === "shopScan" ? "Batch Magic Scan My Shopping" : "Sync Food & Drink Boat Areas")) return;
     if (!online) { toast.error("The Magic Provisioning Assistant needs a signal"); return; }
     setDialog({ type });
   };
+  const crewName = (user.name || user.email || "crew").trim().split(/\s+/)[0];
+  const byCrew = (label) => (crew ? label.replace(/^([^,]+),/, `$1 by ${crewName},`) : label);
   const areaLabel = (id) => areas.find((a) => a.id === id)?.name || "Boat area";
-  const logStores = (label) => ({ id: Date.now(), label: label.slice(0, 2000), checked: false });
+  const logStores = (label) => ({ id: Date.now(), label: byCrew(label).slice(0, 2000), checked: false });
   const doneShopping = (rows) => {
     const entry = logStores(shopLog(rows.map((r) => ({ ...r, areaName: areaLabel(r.dest) })), (r) => r.areaName, boat.units));
     mutate((s) => ({ ...s, areas: applyShopping(s.areas || [], rows), data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] } }));
@@ -797,7 +800,7 @@ export default function BoatPrep({ boatId, boats }) {
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       <BoatWatermark boat={boats.current} />
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
-        onShopScan={crew ? undefined : () => openStores("shopScan")} onSyncStores={crew ? undefined : () => openStores("syncStores")}
+        onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
@@ -851,8 +854,8 @@ export default function BoatPrep({ boatId, boats }) {
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
         : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering} onDeleteList={askDeleteList}
             store={ownMediaStore(items, online, (fn) => guard() && setItems(fn))} />
-        : active.isInventory ? (premium
-          ? <InventoryList areas={areas} vessel={boat.vessel} readOnly={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
+        : active.isInventory ? (premium || crewPro
+          ? <InventoryList areas={areas} vessel={boat.vessel} readOnly={crew} crewFood={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
@@ -937,9 +940,9 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "merge" && <MergeDialog open list={active} local={items} master={templateItems(active.id, templates)} masterAt={templates?.[active.id]?.updated_at}
         syncedAt={state.template_versions?.[active.id]} fallbackBase={DEFAULT_DATA[active.id] || null} masterNote={templates?.[active.id]?.note || ""} online={online}
         onMerge={mergeLatest} onTakeMaster={takeMaster} onKeepMine={() => { keepMineOnly(); toast.success(`Kept your ${active.name}. The master updates were set aside`); }} onClose={() => setDialog(null)} />}
-      {dialog?.type === "shopScan" && <ShopScanDialog boatId={boats.current.boat_id} areas={areas} units={boat.units} onDone={doneShopping} onClose={() => setDialog(null)}
+      {dialog?.type === "shopScan" && <ShopScanDialog boatId={boats.current.boat_id} owner={crew ? boats.current.owner_id : undefined} areas={areas} units={boat.units} onDone={doneShopping} onClose={() => setDialog(null)}
         onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
-      {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} onDone={doneUsed} onClose={() => setDialog(null)} />}
+      {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} onDone={doneUsed} onClose={() => setDialog(null)} />}
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
       {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}
       {dialog?.type === "moveItem" && <MoveItemDialog item={dialog.item} lists={registry.filter((l) => l.id !== active.id && !hiddenLists.includes(l.id))} onMove={(to) => moveImported(dialog.item, to)} onClose={() => setDialog(null)} />}

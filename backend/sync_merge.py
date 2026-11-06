@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime
 
 SECTIONS = ("boat", "registry", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "log_sent", "areas", "list_hidden")
 
@@ -72,3 +73,66 @@ def merge_crew_ticks(prev: dict, inc: dict) -> dict:
                 items[n] = {**it, "checked": bool(t.get("checked")), "ts": t.get("ts") or il.get(lid, "")}
     out["updated_at"] = max(prev.get("updated_at", ""), inc.get("updated_at", ""))
     return out
+
+
+def _ms(iso: str) -> int:
+    try:
+        return int(datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp() * 1000)
+    except ValueError:
+        return 0
+
+
+def _born(area_id) -> int:
+    """Area ids start with 'a' + base-36 milliseconds (see newAreaItemId)."""
+    try:
+        return int(str(area_id)[1:-4], 36)
+    except ValueError:
+        return 0
+
+
+def fd_ids(areas: list) -> set:
+    """Food (F) and Drink (D) boat areas, and the folders and boxes inside them."""
+    fd = {a.get("id") for a in areas if a.get("food") or a.get("drinks")}
+    return fd | {a.get("id") for a in areas if a.get("parent_id") in fd}
+
+
+def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
+    """Crew may add, change and delete Food & Drink boat areas; every other area stays as the skipper left it."""
+    pfd, ifd = fd_ids(prev_areas), fd_ids(inc_areas)
+    theirs = {a.get("id"): a for a in inc_areas}
+    out = []
+    for a in prev_areas:
+        t = theirs.get(a.get("id"))
+        if a.get("id") not in pfd:
+            out.append(a)
+        elif t is not None:
+            t = {**t, "parent_id": a.get("parent_id"), "zone": a.get("zone")}
+            if not a.get("parent_id") and not (t.get("food") or t.get("drinks")):
+                t.update(food=bool(a.get("food")), drinks=bool(a.get("drinks")))
+            out.append({k: v for k, v in t.items() if v is not None})
+    known, since = {a.get("id") for a in prev_areas}, _ms(prev_ts)
+    for t in inc_areas:
+        if t.get("id") in known or t.get("id") not in ifd or _born(t.get("id")) <= since:
+            continue
+        if t.get("parent_id") and t["parent_id"] not in fd_ids(out):
+            continue
+        out.append(t)
+    return out
+
+
+def merge_crew(prev: dict, inc: dict) -> tuple:
+    """Crew changes: ticks, Food & Drink boat areas, and new Ship's Log entries. Returns the merged copy and the log entries they added."""
+    out = merge_crew_ticks(prev, inc)
+    ps, is_ = prev.get("sec_ts") or {}, inc.get("sec_ts") or {}
+    if is_.get("areas", "") > ps.get("areas", ""):
+        out["areas"] = merge_crew_areas(prev.get("areas") or [], inc.get("areas") or [], ps.get("areas", ""))
+        out["sec_ts"] = {**ps, "areas": is_["areas"]}
+    since = _ms((prev.get("list_ts") or {}).get("shipsLog", ""))
+    mine = {i.get("id") for i in (prev.get("data") or {}).get("shipsLog") or []}
+    added = [deepcopy(i) for i in (inc.get("data") or {}).get("shipsLog") or []
+             if isinstance(i.get("id"), int) and i["id"] not in mine and i["id"] > since][:20]
+    if not added or "shipsLog" not in (out.get("data") or {}):
+        return out, []
+    out["data"]["shipsLog"] += added
+    return out, added
+

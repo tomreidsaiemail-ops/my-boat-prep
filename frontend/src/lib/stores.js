@@ -10,13 +10,15 @@ const norm = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
 export const itemKey = norm;
 
 // Suggested areas first (existing or to be created), then any other area already flagged F or D.
-export const shopTargets = (areas) => {
+// Crew only see Food & Drink areas, so a suggestion matching one of the skipper's other areas is left out.
+export const shopTargets = (areas, crew = false) => {
   const tops = areas.filter((a) => !a.parent_id);
   const out = SHOP_DEFAULTS.map((d) => {
     const a = tops.find((x) => norm(x.name) === norm(d.name));
+    if (a && crew && !(a.food || a.drinks)) return null;
     return a ? { id: a.id, name: a.name, food: !!(a.food || d.food), drinks: !!(a.drinks || d.drinks), use: true, isNew: false }
       : { id: newAreaItemId(), name: d.name, food: !!d.food, drinks: !!d.drinks, use: true, isNew: true };
-  });
+  }).filter(Boolean);
   tops.filter((a) => (a.food || a.drinks) && !out.some((o) => o.id === a.id)).forEach((a) => out.push({ id: a.id, name: a.name, food: !!a.food, drinks: !!a.drinks, use: true, isNew: false }));
   return out;
 };

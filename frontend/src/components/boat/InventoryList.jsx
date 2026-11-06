@@ -45,7 +45,7 @@ const InventoryInstructions = ({ searching }) => {
   );
 };
 
-const AddArea = ({ onAdd, onBatch }) => {
+const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g. Aft starboard lazarette" }) => {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const submit = (e) => {
@@ -57,7 +57,7 @@ const AddArea = ({ onAdd, onBatch }) => {
   return (
     <form onSubmit={submit} className="flex flex-col gap-1" data-testid="inventory-add-area-form">
       <div className="flex gap-2">
-        <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder="Add a cupboard or locker, e.g. Aft starboard lazarette"
+        <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={placeholder}
           aria-label="Cupboard or locker name" className="field-input h-12 min-w-0 flex-1" data-testid="inventory-add-area-input" />
         <button type="submit" className="btn-solid h-12 w-12 shrink-0 justify-center p-0" aria-label="Add cupboard" data-testid="inventory-add-area-btn"><Plus className="h-5 w-5" /></button>
         {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-14 shrink-0 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several boat areas with photos" title="Batch Magic Scan"
@@ -68,7 +68,7 @@ const AddArea = ({ onAdd, onBatch }) => {
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "" }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "" }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -191,13 +191,23 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     toast.success(`Moved ${count} ${count === 1 ? "item" : "items"} from ${area.name}`);
   };
 
-  const addArea = (name) => {
+  const addArea = (name, extra = {}) => {
     if (!name) return "Please enter a cupboard or locker name";
     if (tops.some((a) => same(a.name, name))) return `${name} is already on your list`;
     const id = newId();
     setFresh(id);
-    onChange((list) => [...list, { id, name, items: [] }]);
+    onChange((list) => [...list, { id, name, items: [], ...extra }]);
     return true;
+  };
+  // Crew can change Food (F) and Drink (D) boat areas, and the folders and boxes inside them.
+  const fdTop = new Set(tops.filter((a) => a.food || a.drinks).map((a) => a.id));
+  const crewCan = (a) => crewFood && (fdTop.has(a.id) || fdTop.has(a.parent_id));
+  const locked = (a) => readOnly && !crewCan(a);
+  const flag = (a, key, on, off) => () => {
+    const next = { ...a, [key]: !a[key] };
+    if (readOnly && !next.food && !next.drinks) { toast.error(`${a.name} must stay a Food or Drinks area. Ask the skipper to change it.`); return; }
+    setArea(a.id, (x) => ({ ...x, [key]: !x[key] }));
+    toast.success(a[key] ? off : on);
   };
   const addSuggested = (names) => onChange((list) => [...list, ...names.map((name) => ({ id: newId(), name, items: [] }))]);
   const addAreasNamed = (names) => {
@@ -290,8 +300,10 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   const renderArea = ({ area: a, visible, visibleLinked, subs = [] }, parent) => {
     const kids = parent ? [] : subsOf(a.id);
     const pin = pinFor[a.id] || (parent && pinFor[parent.id]);
+    const ro = locked(a);
+    const crewSub = readOnly && !!parent;
     return (
-      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={readOnly} onAdd={addItem(a)} query={q} visible={visible}
+      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={ro} onAdd={addItem(a)} query={q} visible={visible}
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
         onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
@@ -300,9 +312,9 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
         onDeleteItem={(i) => deleteItem(a, i)}
-        onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={() => startMove(a)}
-        onToggleFood={() => { setArea(a.id, (x) => ({ ...x, food: !x.food })); toast.success(a.food ? `${a.name} is no longer a Food area` : `${a.name} is now a Food area. Its items count as stock for the MPA.`); }}
-        onToggleDrinks={() => { setArea(a.id, (x) => ({ ...x, drinks: !x.drinks })); toast.success(a.drinks ? `${a.name} is no longer a Drinks area` : `${a.name} is now a Drinks area for the Magic Bartender.`); }}>
+        onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={readOnly ? undefined : () => startMove(a)}
+        onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
+        onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}>
         {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
         {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
           onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}
@@ -331,7 +343,10 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
             {results.length ? `${found} found in ${results.length} ${results.length === 1 ? "cupboard" : "cupboards"}${out ? ` · ${out} removed for now` : ""}` : `Nothing matches "${query.trim()}"`}</p>}
         </div>
       )}
-      {readOnly ? areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p> : (
+      {readOnly ? <>
+        {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p>}
+        {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) boat areas. The skipper looks after the rest.</p>}
+      </> : (
         <InventoryInstructions searching={!!q} />
       )}
       <ul className="flex flex-col gap-2" data-testid="inventory-areas">
@@ -346,6 +361,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         ])}
       </ul>
       {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} />}
+      {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
         ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={openBatch} /></ZonePicker>
         : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
@@ -364,7 +380,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => setDialog(null)} />
       <MergeAreaDialog area={dialog?.type === "merge" ? dialog.area : null} onMerge={mergeInto} onClose={() => setDialog(null)}
         parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id).map((t) => ({ id: t.id, name: t.name, colour: zones[t.id]?.hex })) : []} />
-      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={labelled} onConfirm={saveItem} onClose={() => setDialog(null)} />
+      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={readOnly ? labelled.filter(crewCan) : labelled} onConfirm={saveItem} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note={`Everything listed inside it${dialog?.type === "delete" && subsOf(dialog.area.id).length ? ", including its folders and boxes," : ""} is removed too, and checklist items tagged with it lose their tag.`}
         onClose={() => setDialog(null)} onConfirm={() => { deleteArea(dialog.area); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />

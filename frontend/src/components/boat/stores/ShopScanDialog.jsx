@@ -30,12 +30,12 @@ const useRows = (entries, areas) => {
   return [rows, setRows];
 };
 
-export const ShopScanDialog = ({ boatId, areas, units, onApplyTargets, onDone, onClose }) => {
-  const [targets, setTargets] = useState(() => shopTargets(areas));
+export const ShopScanDialog = ({ boatId, owner, areas, units, onApplyTargets, onDone, onClose }) => {
+  const [targets, setTargets] = useState(() => shopTargets(areas, !!owner));
   const [sets, setSets] = useState([]);
   const [step, setStep] = useState(-1);
   const [discard, setDiscard] = useState(false);
-  const batch = useBatchScan(boatId, PARAMS);
+  const batch = useBatchScan(boatId, owner ? { ...PARAMS, owner } : PARAMS);
   const [rows, setRows] = useRows(batch.entries, areas);
   const dests = useMemo(() => {
     const out = [...sets];
@@ -43,7 +43,7 @@ export const ShopScanDialog = ({ boatId, areas, units, onApplyTargets, onDone, o
     return out;
   }, [sets, areas]);
   const scanning = batch.entries.some((e) => e.status === "queued" || e.status === "scanning");
-  const others = areas.filter((a) => !a.parent_id && !targets.some((t) => t.id === a.id));
+  const others = owner ? [] : areas.filter((a) => !a.parent_id && !targets.some((t) => t.id === a.id));
   const tagOther = (a, p) => setTargets((ts) => [...ts, { id: a.id, name: a.name, food: !!p.food, drinks: !!p.drinks, use: true, isNew: false }]);
   const review = step === sets.length && step >= 0;
 

@@ -34,7 +34,7 @@ from feedback import router as feedback_router  # noqa: E402
 from templates import router as templates_router  # noqa: E402
 from promo_codes import router as promo_codes_router  # noqa: E402
 from service_history import router as service_history_router  # noqa: E402
-from sync_merge import keep_pushed, merge_state, merge_crew_ticks  # noqa: E402
+from sync_merge import keep_pushed, merge_state, merge_crew  # noqa: E402
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from zone_schematics import router as zone_schematics_router  # noqa: E402
@@ -353,7 +353,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
     if role == "crew":
         if not prev:
             raise HTTPException(status_code=404, detail="Boat not found")
-        merged = merge_crew_ticks(prev, payload.model_dump())
+        merged, crew_log = merge_crew(prev, payload.model_dump())
         have = []
     else:
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
@@ -368,6 +368,8 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
     update = {"$set": state.to_mongo(), "$setOnInsert": {"created_at": state.synced_at, "crew": []}}
     if role != "crew" and have:
         update["$pull"] = {"pushed_items": {"item.id": {"$in": have}}}
+    if role == "crew" and crew_log:
+        update["$push"] = {"pushed_items": {"$each": [{"list": "shipsLog", "item": i} for i in crew_log]}}
     await db.user_boats.update_one(key, update, upsert=True)
     return to_out(state, role)
 
@@ -405,9 +407,11 @@ async def set_last_boat(payload: LastBoatIn, user: dict = Depends(get_current_us
 
 def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
     photo = d.get("photo") or {}
+    owner = owners.get(d["owner_id"]) or {}
     return {
         "boat_id": d.get("boat_id", "main"), "vessel": d.get("boat", {}).get("vessel", ""), "crew": crew_role,
-        "owner_id": d["owner_id"] if crew_role else None, "owner_name": owners.get(d["owner_id"], "") if crew_role else "",
+        "owner_id": d["owner_id"] if crew_role else None, "owner_name": (owner.get("name") or owner.get("email", "")) if crew_role else "",
+        "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
         "zone_maps": boat_maps(d),
     }
@@ -419,8 +423,8 @@ async def list_boats(user: dict = Depends(get_current_user)):
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
-    owners = {u["user_id"]: u.get("name") or u.get("email", "") for u in await db.users.find(
-        {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(200)}
+    owners = {u["user_id"]: u for u in await db.users.find(
+        {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "password_hash": 0}).to_list(200)}
     return {"boats": [boat_summary(d, False, owners) for d in mine] + [boat_summary(d, True, owners) for d in shared], "last": user.get("last_boat")}
 
 

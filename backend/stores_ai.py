@@ -3,11 +3,12 @@ import json
 import logging
 import os
 import re
-from typing import List
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from typing import List, Optional
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from emergentintegrations.llm.openai import OpenAISpeechToText
-from auth import require_premium
+from auth import get_current_user
+from crew_pro import magic_payer
 from ai_lists import _run
 
 router = APIRouter(prefix="/api")
@@ -15,11 +16,13 @@ log = logging.getLogger(__name__)
 AUDIO_MAX = 8 * 1024 * 1024
 AUDIO_TYPES = ("audio/webm", "audio/mp4", "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/ogg", "audio/m4a", "audio/x-m4a", "audio/aac", "video/webm", "video/mp4")
 EXT = {"webm": "webm", "mp4": "mp4", "mpeg": "mp3", "mp3": "mp3", "wav": "wav", "x-wav": "wav", "ogg": "ogg", "m4a": "m4a", "x-m4a": "m4a", "aac": "m4a"}
+BoatQ = Query(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$")
 
 
 @router.post("/ai/transcribe")
-async def transcribe(file: UploadFile = File(...), user: dict = Depends(require_premium)):
+async def transcribe(file: UploadFile = File(...), boat_id: Optional[str] = BoatQ, owner: Optional[str] = BoatQ, me: dict = Depends(get_current_user)):
     """Short voice note -> text (Whisper). Does not use a Magic; the following Magic step does."""
+    await magic_payer(me, boat_id, owner)
     ctype = (file.content_type or "").split(";")[0].strip().lower()
     if ctype not in AUDIO_TYPES:
         raise HTTPException(status_code=400, detail="That recording format isn't supported")
@@ -82,7 +85,8 @@ def parse_consumed(stock: List[StockItem]):
 
 
 @router.post("/ai/mpa/consumed")
-async def consumed(body: ConsumedIn, user: dict = Depends(require_premium)):
+async def consumed(body: ConsumedIn, boat_id: Optional[str] = BoatQ, owner: Optional[str] = BoatQ, me: dict = Depends(get_current_user)):
+    user = await magic_payer(me, boat_id, owner)
     lines = "\n".join(f"{n}. {s.name} x{s.qty}" + (f" ({s.area})" if s.area else "") for n, s in enumerate(body.stock, 1))
     prompt = (f"The skipper says this was used:\n\"\"\"{body.text}\"\"\"\n\nFood and drink stores on board (number. name xquantity (area)):\n{lines}\n\n"
               "Match each thing used to the best store line. qty is how many of that line were used (whole units, never more than on board; "

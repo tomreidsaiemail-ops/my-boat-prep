@@ -26,7 +26,7 @@ const UsedRows = ({ rows, setRows, units }) => {
 };
 
 // Say or type what was eaten or drunk; the MPA matches it to the Food/Drink areas and, after a check, takes it out.
-export const SyncStoresDialog = ({ areas, units, onDone, onClose }) => {
+export const SyncStoresDialog = ({ areas, units, params, onDone, onClose }) => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState(null);
@@ -37,7 +37,7 @@ export const SyncStoresDialog = ({ areas, units, onDone, onClose }) => {
     setBusy(true);
     const snap = stock.slice(0, 600);
     try {
-      const { data } = await api.post("/ai/mpa/consumed", { text: text.trim(), stock: snap.map((s) => ({ name: s.name.slice(0, 80), qty: Math.min(9999, s.qty), area: s.area.slice(0, 120) })) }, { timeout: 90000 });
+      const { data } = await api.post("/ai/mpa/consumed", { text: text.trim(), stock: snap.map((s) => ({ name: s.name.slice(0, 80), qty: Math.min(9999, s.qty), area: s.area.slice(0, 120) })) }, { params, timeout: 90000 });
       setRows(data.items.map((u) => { const s = snap[u.n - 1]; return { key: `${s.areaId}-${s.itemId}`, ...s, stock: s.qty, qty: String(u.qty), unitW: u.weight_g / u.qty, keep: true }; }));
       setUnknown(data.unknown || []);
     } catch (err) { if (err?.response?.data?.code !== "daily_limit") toast.error(apiError(err, "The MPA couldn't work that out, please try again")); }
@@ -61,7 +61,7 @@ export const SyncStoresDialog = ({ areas, units, onDone, onClose }) => {
               <textarea value={text} maxLength={2000} rows={4} onChange={(e) => setText(e.target.value)} className="field-input h-auto py-2 !text-sm" data-testid="stores-text-input"
                 placeholder="e.g. We had 4 beers from the bilge, 2 steaks from the freezer and finished the milk" aria-label="What was used" />
               <div className="flex items-center gap-2">
-                <MicButton disabled={busy} onText={(t) => setText((v) => (v.trim() ? `${v.trim()} ${t}` : t))} />
+                <MicButton disabled={busy} params={params} onText={(t) => setText((v) => (v.trim() ? `${v.trim()} ${t}` : t))} />
                 <span className="text-xs text-[var(--muted)]">Tap Speak, say what was used, then Stop.</span>
               </div>
             </div>

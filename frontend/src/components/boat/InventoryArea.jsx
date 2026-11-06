@@ -86,15 +86,15 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
         </button>
         {!readOnly && (
           <div className="flex shrink-0 items-center pr-1">
-            <button type="button" className={`icon-btn ${area.food ? "text-emerald-800" : "text-[var(--muted)]"}`} onClick={onToggleFood} aria-pressed={!!area.food}
+            {onToggleFood && <button type="button" className={`icon-btn ${area.food ? "text-emerald-800" : "text-[var(--muted)]"}`} onClick={onToggleFood} aria-pressed={!!area.food}
               aria-label={area.food ? "Unflag as Food area" : "Flag as Food area"} title={area.food ? "Food area (tap to unflag)" : "Flag as Food area"} data-testid={`inventory-area-food-${area.id}`}>
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.food ? "border-emerald-700 bg-emerald-700 text-white" : "border-current"}`}>F</span>
-            </button>
-            <button type="button" className={`icon-btn ${area.drinks ? "text-purple-800" : "text-[var(--muted)]"}`} onClick={onToggleDrinks} aria-pressed={!!area.drinks}
+            </button>}
+            {onToggleDrinks && <button type="button" className={`icon-btn ${area.drinks ? "text-purple-800" : "text-[var(--muted)]"}`} onClick={onToggleDrinks} aria-pressed={!!area.drinks}
               aria-label={area.drinks ? "Unflag as Drinks area" : "Flag as Drinks area"} title={area.drinks ? "Drinks area (tap to unflag)" : "Flag as Drinks area"} data-testid={`inventory-area-drinks-${area.id}`}>
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.drinks ? "border-purple-700 bg-purple-700 text-white" : "border-current"}`}>D</span>
-            </button>
-            <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>
+            </button>}
+            {onMove && <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>}
             <button type="button" className="icon-btn" aria-label="Rename cupboard" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete cupboard" onClick={onDelete} data-testid={`inventory-area-delete-${area.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
           </div>

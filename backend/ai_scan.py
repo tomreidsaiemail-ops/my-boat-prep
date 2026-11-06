@@ -6,12 +6,13 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
-from auth import require_premium
+from auth import get_current_user
+from crew_pro import magic_payer
 import quota
 from usage import record_usage
 from photos import MAX_BYTES, TYPES
@@ -72,8 +73,12 @@ def parse_items(text: str) -> list:
 
 @router.post("/boats/{boat_id}/scan")
 async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), bartender: bool = Query(default=False),
-                       shopping: bool = Query(default=False), user: dict = Depends(require_premium)):
+                       shopping: bool = Query(default=False), owner: Optional[str] = Query(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$"),
+                       me: dict = Depends(get_current_user)):
     feature = "MBT" if bartender else "MPS" if shopping else "BMMS" if batch else "MMS"
+    if owner and owner != me["user_id"] and not shopping:
+        raise HTTPException(status_code=403, detail="Only the skipper can Magic Scan this boat's cupboards")
+    user = await magic_payer(me, boat_id, owner)
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if file.content_type not in TYPES:

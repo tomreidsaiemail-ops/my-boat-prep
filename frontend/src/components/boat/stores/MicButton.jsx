@@ -7,7 +7,7 @@ const LIMIT_MS = 60000;
 const pickType = () => ["audio/webm", "audio/mp4", "audio/ogg"].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || "";
 
 // Record a short voice note; the AI turns it into text for onText.
-export const MicButton = ({ onText, disabled }) => {
+export const MicButton = ({ onText, disabled, params }) => {
   const [state, setState] = useState("idle");
   const rec = useRef(null);
   const timer = useRef(null);
@@ -17,7 +17,7 @@ export const MicButton = ({ onText, disabled }) => {
     const form = new FormData();
     form.append("file", blob, `note.${blob.type.includes("mp4") ? "mp4" : blob.type.includes("ogg") ? "ogg" : "webm"}`);
     try {
-      const { data } = await api.post("/ai/transcribe", form, { timeout: 60000 });
+      const { data } = await api.post("/ai/transcribe", form, { params, timeout: 60000 });
       if (data.text) onText(data.text); else toast.info("Didn't catch anything, please try again");
     } catch (err) { toast.error(apiError(err, "Couldn't turn that into text")); }
     setState("idle");
