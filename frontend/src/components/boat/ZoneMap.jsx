@@ -12,6 +12,7 @@ import { LinkedText } from "@/components/boat/LinkedText";
 import { MapColourPicker } from "@/components/boat/zone/MapColourPicker";
 import { MapNameField } from "@/components/boat/zone/MapNameField";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
+import { OverviewMap } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
@@ -106,9 +107,16 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   };
   const [failed, setFailed] = useState({});
   const [removing, setRemoving] = useState(null);
-  const own = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
+  const all = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
+  const overviews = all.filter((m) => m.kind === "overview");
+  const own = all.filter((m) => m.kind !== "overview");
+  const [presets, setPresets] = useState([]);
+  useEffect(() => {
+    if (!expanded || !canEdit || !overviews.length || presets.length || !online) return;
+    api.get("/zone-colour-presets").then(({ data }) => setPresets(data.presets)).catch(() => {});
+  }, [expanded, canEdit, overviews.length, online]); // eslint-disable-line react-hooks/exhaustive-deps
   const pics = own.length ? own.map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))
-    : version && !failed.admin ? [{ key: "admin", src: mapUrl(version) }] : [];
+    : version && !failed.admin && !overviews.length ? [{ key: "admin", src: mapUrl(version) }] : [];
   const steps = walkSteps(pics.filter((p) => p.map));
   const sectionRef = useRef(null);
   useEffect(() => {
@@ -118,10 +126,10 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   }, []);
   // A skipper opening an empty Zone Map is taken to Additional details, where the Magic Mariner can draw layout plans.
   const toggle = () => {
-    if (!expanded && canEdit && !admin && !own.length) window.dispatchEvent(new Event("mbp:open-details"));
+    if (!expanded && canEdit && !admin && !all.length) window.dispatchEvent(new Event("mbp:open-details"));
     setExpanded((x) => !x);
   };
-  if (!pics.length && !admin && !canEdit) return null;
+  if (!pics.length && !overviews.length && !admin && !canEdit) return null;
   const removeMap = async (m) => {
     if (!online) { toast.error("You need a signal to remove a zone map"); return; }
     setRemoving(m.id);
@@ -131,7 +139,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
   return (
     <section ref={sectionRef} className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-map">
       <button type="button" onClick={toggle} aria-expanded={expanded} className="flex items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
-        <Map className="h-4 w-4" /> {own.length > 1 ? `Zone maps (${own.length})` : "Zone map"}
+        <Map className="h-4 w-4" /> {all.length > 1 ? `Zone maps (${all.length})` : "Zone map"}
         <ChevronDown className={`ml-auto h-5 w-5 [transition:transform_.15s] ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && <>
@@ -156,6 +164,17 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           {foodOnly ? "Showing Food areas only" : "Show Food areas only"}
         </button>
       )}
+      {overviews.length > 0 && (
+        <div className="flex flex-col gap-2" data-testid="zone-overviews">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Overviews ({overviews.length})</p>
+          {overviews.map((m) => (
+            <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps}
+              removing={removing === m.id} onRemove={() => removeMap(m)} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m) })} />
+          ))}
+          {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}
+          {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Now take photos of your Cockpit, Saloon, Galley and cabins and add them below as Zone Map Photos. Name each one (e.g. Galley) and it takes the same colour, and every boat area you label on it shows that colour.</p>}
+        </div>
+      )}
       {pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1 rounded-md border-l-[6px] pl-2" style={{ borderLeftColor: p.map ? ZONE_COLOURS[p.map.colour] || "transparent" : "transparent" }} data-testid={`zone-map-item-${p.key}`}>
           {p.map && !canEdit && p.map.name && <p className="text-sm font-bold text-[var(--navy)]" data-testid={`boat-zone-map-title-${p.key}`}>{p.map.name}</p>}
@@ -175,9 +194,9 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           )}
         </div>
       ))}
-      {!pics.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
+      {!pics.length && !overviews.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
       {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with boat areas, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that boat area. You can do that after taking the boat inventory. You can rename boat areas later should the zone map photo have a better name.</p>}
-      {canEdit && <OwnerTools boat={boat} count={own.length} online={online} onMaps={onBoatMaps} />}
+      {canEdit && <OwnerTools boat={boat} count={all.length} online={online} onMaps={onBoatMaps} />}
       {admin && (
         <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-2">
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Default map for skippers without their own</p>

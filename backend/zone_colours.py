@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from db import db
@@ -22,10 +22,13 @@ def colour_name(v: str) -> Optional[str]:
 
 
 def fill_colours(maps: list) -> list:
-    """Every map gets a colour; maps without one take the next unused colour in the sequence."""
-    used = {m.get("colour") for m in maps if colour_name(m.get("colour"))}
+    """Every zone map photo gets a colour; photos without one take the next unused colour. Zone Map Overviews stay colourless."""
+    used = {m.get("colour") for m in maps if colour_name(m.get("colour")) and m.get("kind") != "overview"}
     out = []
     for m in maps:
+        if m.get("kind") == "overview":
+            out.append({**m, "colour": ""})
+            continue
         if not colour_name(m.get("colour")):
             free = next((c for c in PALETTE if c not in used), PALETTE[0])
             used.add(free)
@@ -53,6 +56,46 @@ async def presets() -> list:
 async def preset_for(name: str) -> Optional[str]:
     low = name.lower()
     return next((c for word, c in await presets() if word and word in low), None)
+
+
+@router.get("/zone-colour-presets")
+async def colour_presets(_: dict = Depends(get_current_user)):
+    """The admin's predetermined colours as draggable squares for Zone Map Overviews, in list order."""
+    doc = await db.list_templates.find_one({"name": {"$regex": f"^{re.escape(PRESET_LIST)}$", "$options": "i"}}, {"_id": 0, "items": 1})
+    out = []
+    for i in (doc or {}).get("items") or []:
+        m = re.match(r"^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+)\s*\*?\s*$", str(i.get("label", "")))
+        if m and colour_name(m.group(2)):
+            out.append({"label": m.group(1).strip("* ")[:40], "colour": colour_name(m.group(2))})
+    return {"presets": out}
+
+
+class Swatch(BaseModel):
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    colour: str = Field(max_length=20)
+    label: str = Field(default="", max_length=40)
+
+
+class SwatchesIn(BaseModel):
+    swatches: List[Swatch] = Field(max_length=40)
+
+
+@router.put("/boats/{boat_id}/zone-maps/{map_id}/swatches")
+async def save_swatches(boat_id: BoatPath, map_id: MapPath, payload: SwatchesIn, user: dict = Depends(get_current_user)):
+    from inventory import boat_maps
+    key = {"owner_id": user["user_id"], "boat_id": boat_id}
+    out = []
+    for s in payload.swatches:
+        colour = colour_name(s.colour)
+        if not colour:
+            raise HTTPException(status_code=400, detail="Please use one of the zone map colours")
+        out.append({**s.model_dump(), "colour": colour, "label": s.label.strip()})
+    res = await db.user_boats.update_one({**key, "zone_maps": {"$elemMatch": {"id": map_id, "kind": "overview"}}}, {"$set": {"zone_maps.$.swatches": out}})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Zone Map Overview not found")
+    return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
 
 
 class MapMetaIn(BaseModel):

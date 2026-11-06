@@ -333,7 +333,7 @@ LOG_HELP = [
     ("Admin - Help Panel - Zone Map Selection", "Instructions at the top of the Magic Mariner 'Create ZONE MAP' layout plans popup. Top-level lines are paragraphs, indented lines are bullets.", [
         "The Magic Mariner is drawing top-down layout plans of your boat's make and model.",
         "Select a couple of plans that help you map out your cockpit, saloon, galley and cabins, then tap Continue.",
-        "Your selections are added to Zone Map, where you can label each area so crew know exactly where things live."]),
+        "Your selections are added to Zone Map as Zone Map Overviews, where you can drag your colours (e.g. Cockpit - Gold, Galley - Orange) onto each area."]),
 ]
 
 

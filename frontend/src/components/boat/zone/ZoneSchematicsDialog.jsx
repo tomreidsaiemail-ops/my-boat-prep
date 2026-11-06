@@ -8,7 +8,7 @@ import useAdminLists from "@/hooks/useAdminLists";
 
 const HELP_NAME = "admin - help panel - zone map selection";
 const boatName = (b) => [b.make, b.model].map((s) => (s || "").trim()).filter(Boolean).join(" ");
-export const zoneMapLabel = (b) => `Create ${(b.boat_type || "").trim() || "boat"} ZONE MAP for a ${boatName(b)}...`;
+export const zoneMapLabel = (b) => `Create ${(b.boat_type || "").trim() || "boat"} ZONE MAP OVERVIEWS for a ${boatName(b)}...`;
 
 const Help = ({ online, boat }) => {
   const help = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === HELP_NAME)?.items;
@@ -16,7 +16,7 @@ const Help = ({ online, boat }) => {
     <div className="flex flex-col gap-1 rounded-md bg-sky-50 p-3 text-sm" data-testid="zone-plans-help">
       {help?.length ? help.map((i, k) => (
         <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""}><LinkedText text={i.label} testId={`zone-plans-help-link-${k}`} /></p>
-      )) : <p data-testid="zone-plans-help-default">The Magic Mariner is drawing top-down layout plans of a {boatName(boat)}. Select a couple that help you map out your cockpit, saloon, galley and cabins, then tap Continue. You can label each area on them in Zone Map afterwards.</p>}
+      )) : <p data-testid="zone-plans-help-default">The Magic Mariner is drawing top-down layout plans of a {boatName(boat)}. Select a couple that help you map out your cockpit, saloon, galley and cabins, then tap Continue. They become Zone Map Overviews, where you drag your colours onto each area.</p>}
     </div>
   );
 };
@@ -64,7 +64,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
     setBusy(true);
     try {
       const { data } = await api.post(`/boats/${boatId}/zone-schematics/${job}/use`, { image_ids: picked });
-      toast.success(`${picked.length} layout ${picked.length === 1 ? "plan" : "plans"} added to your Zone Map`);
+      toast.success(`${picked.length} Zone Map ${picked.length === 1 ? "Overview" : "Overviews"} added. Drag your colours onto them.`);
       onDone(data.zone_maps);
     } catch (e) { toast.error(apiError(e, "Couldn't add the plans, please try again")); }
     setBusy(false);

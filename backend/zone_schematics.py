@@ -15,7 +15,6 @@ from auth import get_current_user, require_premium
 import quota
 from photos import APP_NAME, get_object, put_object
 from inventory import MAX_BOAT_MAPS, boat_maps
-from zone_colours import next_colour
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -150,6 +149,6 @@ async def use_schematics(boat_id: BoatPath, job_id: JobPath, payload: UseIn, use
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
     now = datetime.now(timezone.utc).isoformat()
     for i in picked:
-        maps.append({"id": str(uuid.uuid4()), "path": i["path"], "content_type": "image/jpeg", "updated_at": now, "name": i["title"], "colour": next_colour(maps)})
+        maps.append({"id": str(uuid.uuid4()), "path": i["path"], "content_type": "image/jpeg", "updated_at": now, "name": i["title"], "kind": "overview", "swatches": []})
     await db.user_boats.update_one(key, {"$set": {"zone_maps": maps}})
     return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
