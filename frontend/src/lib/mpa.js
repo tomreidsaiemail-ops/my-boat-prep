@@ -17,7 +17,7 @@ const groupsOf = (items) => items.reduce((gs, it, i) => {
   else gs.push([it]);
   return gs;
 }, []);
-const tidy = (s) => String(s || "").replace(/^\s*\d+[.)]\s*/, "").trim();
+const tidy = (s) => String(s || "").replace(/^\s*\d+[.)]\s*/, "").replace(/\s*\(Cook:[^)]*\)\s*$/i, "").trim();
 
 export const parseMeals = (items = []) => groupsOf(items)
   .filter((g) => g.length >= 2 && g[1].indent && BRACKET.test(g[1].label || ""))

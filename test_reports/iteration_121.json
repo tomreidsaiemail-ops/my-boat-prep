@@ -1,0 +1,52 @@
+{
+  "summary": "Tested Cook storage/Cook picker, Cook's Rota (owner + crew), the Make shopping list button (owner, galley crew, crew with no role), galley crew access to the MPA endpoints, crew MPA list merge (kind mpa), the Common Meals groups and own meal meal_type. Backend: 8 passed, 1 skipped (the galley-crew aisles AI call returned 200 on the first run; on the rerun the skipper's daily Magic limit of 20 was used up, so it was skipped). Frontend mostly works. Two bugs: the crew never sees the 'Your turns' badge, and the crew sees the Cook's Rota twice on meal plan lists. The pro boat main was restored exactly and all TEST own meals were deleted.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/me/meals", "issue": "The upsert by name puts a new uuid 'id' (and created_at) in $set on every save, so saving a meal again with the same name changes its id. A client holding the old id can no longer delete it; the delete returns ok but nothing is deleted. Fix: put id and created_at in $setOnInsert and return the stored id."},
+      {"endpoint": "POST /api/me/meals", "issue": "The MY_MEALS_MAX count check runs before the upsert, so a user at the limit gets a 400 when they re-save one of their existing meals."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CooksRota 'Your turns' badge", "issue": "Never shows for the crew. The skipper's Cook picker uses the crew's crew_names name ('TEST Free Crew', from /boats/{id}/crew), but CooksRota matches the first word of the cook against user.name ('Free Tester'). The crew's own picker also offers 'Pro Tester' and 'Free Tester', while the skipper's offers 'Pro Tester, Skipper' and 'TEST Free Crew', so the same person can end up in two rota sections. Fix: match on the crew's crew_names entry or user_id, or save one name per person.", "selector": "[data-testid='cooks-rota-you']", "priority": "HIGH"},
+      {"component": "CooksRota on crew meal plan lists", "issue": "The crew sees the rota twice on a meal plan list: once in the crew home section (BoatPrep line 872) and again above the list (line 950). Both are visible on the same scroll. Hide the home copy while a meal plan list is open, or show only one.", "selector": "[data-testid='cooks-rota']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MPA Shopping List", "issues": ["Meal lines copied into the shopping list keep the ' (Cook: Name)' suffix, e.g. 'Day 1 Lunch: Ham and cheese wraps (Cook: TEST Free Crew)'. This may be wanted, but it is noisy in a shopping list."]}
+    ]
+  },
+  "passed_items": [
+    "Edit on a meal heading shows the Meal type picker and edit-item-cook-select (Not assigned, 'Pro Tester, Skipper', 'TEST Free Crew'). An ingredient line shows no picker.",
+    "Choosing a cook adds ' (Cook: TEST Free Crew)' to the label. Not assigned removes it. The value persists after a reload.",
+    "The Cook's Rota groups meals per cook (cooks-rota-pro-tester-skipper, cooks-rota-test-free-crew) with the meal plan name. A ticked meal gets line-through. The rota shows on both meal plan lists and not on Provisions.",
+    "meal-plan-shopping-btn shows on Meal Plan, Meal Plan - Sample and a new TEST plan for the owner. It opens mpa-dialog with only that list ticked.",
+    "The crew sees the rota on the boat home (crew section) and on meal plan lists.",
+    "Galley crew (Galley Lead / Chef) see the shopping button and can edit. The MPA run with Provisions and aisles unticked saved 'MPA Shopping List' (kind mpa, 117 rows) to the owner's boat on the server.",
+    "Crew with no role: no shopping button and no edit buttons.",
+    "Backend: aisles and provisions return 403 for crew with no galley role (or the Helm role). Galley crew get 200 on aisles (first run). Owner gets 422 for a bad body and 401 without auth.",
+    "merge_crew_galley: galley crew can update the existing kind mpa list and create one when none exists. Crew with no role are ignored.",
+    "Common Meals groups: Breakfast = Scrambled Eggs, Porridge, Bacon Butties. Lunch = Ham and Cheese Wraps, Tuna Pasta Salad (the guess gives Lunch because 'salad' matches lunch before 'pasta' matches dinner). Dinner = Chilli Con Carne, Spaghetti Bolognese, Thai Green Curry.",
+    "Own meal with the Breakfast group picked (name 'TEST_Nachos Night', which the name guess would put under Lunch) appears in my-meals-group-breakfast. meal_type persists via /api/me/meals. Invalid meal_type gives 422.",
+    "Added meal headings carry meal_type: Scrambled Eggs = breakfast, Tuna Pasta Salad = lunch, own meal = breakfast."
+  ],
+  "test_report_links": ["/app/backend/tests/test_cooks_rota_mpa_galley.py", "/app/test_reports/pytest/it121.xml"],
+  "action_items": [
+    "Fix the 'Your turns' match in CooksRota. The cook names come from crew_names (skipper side) or user.name (crew side). Use one consistent name per person, e.g. crew_names for the crew and owner_name for the skipper, and match on that rather than on the account's first name.",
+    "Make the Cook picker names the same for the skipper and the crew. Today it is 'Pro Tester, Skipper' / 'TEST Free Crew' for the skipper and 'Pro Tester' / 'Free Tester' for the crew, which splits the rota.",
+    "Avoid showing the Cook's Rota twice in the crew's view when a meal plan list is open.",
+    "POST /api/me/meals: move id and created_at to $setOnInsert so the id stays the same when a meal is re-saved. Allow re-saving an existing name at MY_MEALS_MAX."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx is 1053 lines. loadCooks duplicates the cook-list building in pickCreate (lines 623-625 vs 628-630); extract a helper.",
+    "CooksRota 'mine' takes the first word of the cook, split on spaces or '('. Two crew with the same first name both get 'Your turns', and the skipper suffix ', Skipper' is fragile.",
+    "Owner home: CooksRota is passed me=user.name only in the crew branch, which is fine. On the list, me is '' for the owner, so the skipper never gets a highlight; this looks intended."
+  ],
+  "updated_files": ["/app/backend/tests/test_cooks_rota_mpa_galley.py"],
+  "success_rate": {"backend": "100% (8/8 run, 1 skipped for the skipper's daily AI limit)", "frontend": "85% (2 rota bugs)"},
+  "seed_data_creation": "None kept. The pro boat main was backed up to /tmp/it121_backup.json and restored (all fields verified equal). TEST own meals were deleted by id. crew_roles were restored to {}.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the new backend file with -n 0 (its classes share crew_roles state; xdist causes races): pytest tests/test_cooks_rota_mpa_galley.py -n 0. test-user-pro reached the daily limit of 20 Magic generations on 2026-11-06, so the AI test skips on 429. Crew user.name is 'Free Tester'; crew_names is 'TEST Free Crew'. Meal Plan heading ids are 3000 (Day 1 Breakfast) and 3006 (Day 1 Lunch); ingredient id 3002. Backup helper: tests/meal_boat_backup.py backup|restore."
+}

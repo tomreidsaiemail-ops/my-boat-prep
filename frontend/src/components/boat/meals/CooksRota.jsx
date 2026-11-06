@@ -7,7 +7,7 @@ const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-");
 export const CooksRota = ({ lists, data, me = "" }) => {
   const rota = cooksRota(lists, data);
   if (!rota.length) return null;
-  const mine = (cook) => !!me && cook.toLowerCase().split(/[\s(]/)[0] === me.toLowerCase().split(/\s/)[0];
+  const mine = (cook) => !!me.trim() && cook.trim().toLowerCase() === me.trim().toLowerCase();
   return (
     <section className="flex flex-col gap-2 rounded-lg border-2 border-[var(--navy)] bg-white p-3" data-testid="cooks-rota">
       <h3 className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-tight"><ChefHat className="h-5 w-5" /> Cook's Rota</h3>

@@ -622,12 +622,12 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog({ type: "magicMeals", mode: how });
     const me = (user.name || "").trim();
     const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
-    setCooks([...new Set([crew ? boats.current.owner_name : me ? `${me}, Skipper` : "Skipper", ...(crew ? [me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+    setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const loadCooks = async () => {
     const me = (user.name || "").trim();
     const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
-    setCooks([...new Set([crew ? boats.current.owner_name : me ? `${me}, Skipper` : "Skipper", ...(crew ? [me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+    setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
   const addMealToPlan = (target, meal) => {
@@ -869,7 +869,7 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
-        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /><CooksRota lists={mealLists} data={state.data} me={user.name || ""} /></>
+        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, online, premium, onUpgrade: () => needPro("Zone maps"),
@@ -947,7 +947,7 @@ export default function BoatPrep({ boatId, boats }) {
             </div>
           )}
           {showMpa && <DietBanner />}
-          {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? user.name || "" : ""} />}
+          {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
           {canEditList && mealLists.some((l) => l.id === active.id) && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
               <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list

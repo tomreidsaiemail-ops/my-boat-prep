@@ -41,12 +41,15 @@ async def my_meals(user: dict = Depends(get_current_user)):
 @router.post("/me/meals")
 async def add_my_meal(body: MyMealIn, user: dict = Depends(get_current_user)):
     name = " ".join(body.name.split())
-    if await db.user_meals.count_documents({"user_id": user["user_id"]}) >= MY_MEALS_MAX:
+    key = {"user_id": user["user_id"], "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}
+    old = await db.user_meals.find_one(key, {"_id": 0, "id": 1})
+    if not old and await db.user_meals.count_documents({"user_id": user["user_id"]}) >= MY_MEALS_MAX:
         raise HTTPException(status_code=400, detail=f"You can keep up to {MY_MEALS_MAX} of your own meals")
-    doc = {"user_id": user["user_id"], "id": uuid.uuid4().hex[:12], "name": name, "recipe": " ".join(body.recipe.split()).strip("[] "),
-           "ingredients": [i.strip()[:120] for i in body.ingredients if i.strip()], "meal_type": body.meal_type, "created_at": datetime.now(timezone.utc).isoformat()}
-    await db.user_meals.update_one({"user_id": user["user_id"], "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}, {"$set": doc}, upsert=True)
-    return _meal_out(doc)
+    doc = {"user_id": user["user_id"], "name": name, "recipe": " ".join(body.recipe.split()).strip("[] "),
+           "ingredients": [i.strip()[:120] for i in body.ingredients if i.strip()], "meal_type": body.meal_type}
+    mid = old["id"] if old else uuid.uuid4().hex[:12]
+    await db.user_meals.update_one(key, {"$set": doc, "$setOnInsert": {"id": mid, "created_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    return _meal_out({**doc, "id": mid})
 
 
 @router.delete("/me/meals/{meal_id}")

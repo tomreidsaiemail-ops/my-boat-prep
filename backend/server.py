@@ -420,14 +420,15 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
 
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, f"crew_roles.{user['user_id']}": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
     owners = {u["user_id"]: u for u in await db.users.find(
         {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "password_hash": 0}).to_list(200)}
     return {"boats": [boat_summary(d, False, owners) for d in mine]
-            + [{**boat_summary(d, True, owners), "my_roles": (d.get("crew_roles") or {}).get(user["user_id"]) or []} for d in shared], "last": user.get("last_boat")}
+            + [{**boat_summary(d, True, owners), "my_roles": (d.get("crew_roles") or {}).get(user["user_id"]) or [],
+                "my_name": (d.get("crew_names") or {}).get(user["user_id"]) or user.get("name") or ""} for d in shared], "last": user.get("last_boat")}
 
 
 @api_router.delete("/me/boats/{boat_id}")
