@@ -297,9 +297,9 @@ async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premiu
                    "(e.g. dry food, wet food, treats, drinking water, poo bags or litter, a lifejacket for dogs, any regular medication reminder). "
                    "Up to 6 items per pet, with shop-friendly amounts. ")
         shape += ', "pets": [{"name": "<item>", "amount": "...", "for": "<pet name exactly as given>"}]'
-    prompt += f"Return exactly: {shape}}}"
     if body.diet.strip():
-        prompt = with_diet(prompt, body.diet) + " Where a provision clashes with an allergy, use 'Avoid - allergy' as its amount."
+        prompt = with_diet(prompt, body.diet) + " Where a provision clashes with an allergy, use 'Avoid - allergy' as its amount.\n"
+    prompt += f"Return exactly: {shape}}}"
     result, left = await _run(user, "mpa", prompt, lambda t: parse_provisions(t, body.items, pet_names), {"name": "MPA provisions"}, PROVISIONER, "Magic Provisioning")
     return {"amounts": result["amounts"], "pets": result["pets"], "drafts_left": left}
 

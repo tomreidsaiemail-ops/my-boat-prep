@@ -121,10 +121,12 @@ class TestCrewRegister:
         assert r.status_code == 200 and "TEST Free Crew" in d["skipped"] and "TEST Second Edited" in d["sent"]
 
     def test_14_parties_email(self):
-        r = requests.post(f"{R}/parties-email", headers=PRO)
+        # iteration 106: body {crew_ids, party_id}; one party only, only the picked crew
+        r = requests.post(f"{R}/parties-email", json={"crew_ids": [self.crew_id, self.crew2_id], "party_id": self.party_id}, headers=PRO)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert "test.party@example.com" in d["sent_to"] and d["crew"] >= 2 and "TEST Second Edited" in d["unregistered"]
+        assert d["sent_to"] == "TEST Party" and d["email"] == "test.party@example.com" and d["crew"] == 2
+        assert d["unregistered"] == ["TEST Second Edited"]
 
     def test_15_delete(self):
         assert requests.delete(f"{R}/{self.crew2_id}", headers=PRO).status_code == 200
@@ -137,7 +139,7 @@ class TestPartiesEmailEmpty:
         lst = requests.get(R, headers=BETA).json()
         if lst["parties"]:
             pytest.skip("beta has parties")
-        r = requests.post(f"{R}/parties-email", headers=BETA)
+        r = requests.post(f"{R}/parties-email", json={"crew_ids": ["00000000-0000-0000-0000-000000000001"], "party_id": "00000000-0000-0000-0000-000000000000"}, headers=BETA)
         assert r.status_code == 400 and "interested party" in r.json()["detail"]
 
     def test_no_crew_400(self):
@@ -146,7 +148,8 @@ class TestPartiesEmailEmpty:
             pytest.skip("beta has entries")
         p = requests.post(R, json={"kind": "party", "name": "TEST P", "phone": "+6421", "email": "tp@example.com"}, headers=BETA).json()
         try:
-            r = requests.post(f"{R}/parties-email", headers=BETA)
+            r = requests.post(f"{R}/parties-email", json={"crew_ids": ["00000000-0000-0000-0000-000000000001"], "party_id": p["entry_id"]}, headers=BETA)
             assert r.status_code == 400 and "crew" in r.json()["detail"].lower()
+            assert requests.post(f"{R}/parties-email", json={"crew_ids": [], "party_id": p["entry_id"]}, headers=BETA).status_code == 422
         finally:
             requests.delete(f"{R}/{p['entry_id']}", headers=BETA)

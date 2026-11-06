@@ -48,7 +48,7 @@ export const weighUp = ({ boat, registry, data, defs, areas, engineType, crewWei
   const fluids = fluidsKg(boat, engineType);
   const fluidKg = fluids.fuel + fluids.water + fluids.gas;
   const provKg = provisionsKg(areas);
-  const pob = Math.max(boat.pob || 1, (crewWeights || []).filter((k) => num(k) > 0).length);
+  const pob = Math.max(boat.pob || 1, (crewWeights || []).filter((k) => num(k) > 0).length + 1);
   const avg = num(boat.crew_weight) || CREW_DEFAULT[unit];
   // Registered crew count at their own weight; anyone else on board (you, unregistered crew) at the average.
   const known = (crewWeights || []).filter((k) => num(k) > 0).map(num);

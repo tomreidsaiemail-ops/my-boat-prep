@@ -588,3 +588,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Interested parties (name, phone, email) registered straight away; "Email crew details to interested parties" (register + Photo and crew window) sends name, phone, email, age, height, next of kin + status; warns if crew not registered, Send anyway. 60 register emails/day.
 - Invite crew dialog: RegisterPicker chips grouped Registered / Unregistered fill name + email. Details only visible to the skipper.
 - Tested iteration_105 (backend 16/16, frontend 100%); follow-ups (prompt queue, parties limit, /mine eligibility + duplicate check) self-verified.
+
+## 2026-06 Crew allergies, real crew weights, pick-and-send crew details, role briefing badge
+- GET /api/crew-register/on-board/{boat_id} (skipper only): crew on the boat (only RSVP 'in' crew if anyone replied in) matched to the register by email -> allergies, food, weight_kg. Cached per boat (lib/crewDiet.js useOnBoardCrew, CrewDietContext in BoatPrep), refreshed when Crew Registration closes.
+- DietBanner (amber) on Provisions / meal plan / MPA lists and inside the Magic Provisioning Assistant; 'None' values ignored. Diet text sent as `diet` to /ai/list-draft and /ai/list-topup (food-related lists only) and /ai/mpa/provisions; prompts avoid allergens.
+- Racing weight: registered crew at their own weight + rest of persons on board (skipper always counted) x average crew weight.
+- Email crew details: EmailPartiesDialog - tick crew, then pick exactly one interested party (radio); warning + 'Send anyway' for unregistered crew. POST /parties-email {crew_ids, party_id}.
+- Crew Roles items with a Role Briefing show a 'Role briefing' badge.
+- Tested iteration_106 (backend 26/26, frontend 100%); pob/skipper and prompt-order tweaks applied after.

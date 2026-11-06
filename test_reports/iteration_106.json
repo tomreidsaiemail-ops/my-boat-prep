@@ -1,0 +1,30 @@
+{
+  "summary": "Iteration 106: tested Allergy Alerts, crew weights in the Racing Displacement, the new email-parties dialog (pick crew, then one party) and the Role Briefing badge. Backend: 26 of 26 relevant tests pass. One test failed first because of how the test was written (it relied on TEST Tom); fixed. Covers the new parties-email shape {crew_ids, party_id} (422 for empty or missing crew, 400 when the party isn't the skipper's, 400 for a crew id sent as party_id and the reverse, 400 for another user's party, 200 with sent_to/email/crew/unregistered) and on-board (401 when logged out, people with allergies/food/weight_kg, no data leaks across owners). Diet: 422 when over 3000 characters on list-draft and list-topup; one live list-draft call with a peanut allergy returned 200, the meals were vegetarian and it said 'Peanut-free granola bars'. Frontend (390px phone viewport, pro skipper): all requested flows pass. The amber diet-banner shows on Provisions and on Meal Plan, with diet-banner-allergy-0 'Allergic to peanuts' and food 'Prefers vegetarian'. It is hidden on non-food lists (My To Do, Crew Roles) and when allergies/food are 'None'/'nil'. It updates after the Crew Registration dialog closes (mbp:register-changed) without a reload. mpa-diet-banner shows inside the MPA. The weight panel shows '1 registered crew 92 kg + 2 x 85 kg (typical)' = 262 kg with pob=3; disp-crew is 262 and disp-total is 639 (377 gear + 262). The email-parties dialog opens from both crew-email-parties-btn and reg-email-parties-btn. Step 2 is hidden until crew are ticked. Radios allow only one party. The send button label goes 'Tick the crew first' -> 'Pick who to send to' -> 'Send anyway' when crew aren't registered. The warning lists the unregistered names, and tick all / clear works. A real send gave the toast 'Details for 1 crew emailed to TEST UI RPNYC'. Esc on the email dialog leaves Crew Registration open. Role briefing badge: it appears after adding a briefing, is still there after a reload, and goes when the briefing is cleared (whitespace-only counts as cleared). Regression: the free crew user gets the crew-agreement dialog, then crew-reg-dialog with Tom's prefilled weight/allergies/food, and no diet banner is shown to crew.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew-register/parties-email", "issue": "crew_ids that aren't on the register (or belong to someone else) are silently dropped; the 'crew' count shows what was actually sent. Acceptable, but the UI toast count could differ from what was ticked if an entry was deleted in another tab."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_diet_parties.py", "/app/backend/tests/test_crew_register.py", "/app/test_reports/pytest/iter106_regression.xml", "/app/test_reports/pytest/iter106_diet_parties.xml"],
+  "action_items": [
+    "Optional: in weighUp (lib/weights.js) pob = max(boat.pob, registeredCount). If the skipper leaves pob at 1 (or at the crew count) and registered crew are on board, the skipper's own average weight is dropped. Consider max(boat.pob, known + 1), since the skipper is never on the register."
+  ],
+  "critical_code_review_comments": [
+    "ai_lists.py MPA provisions: with_diet() is appended after the 'Return exactly: {shape}' instruction, so the JSON-format instruction is no longer last. It worked in testing, but putting the diet rule before 'Return exactly' is safer for strict JSON parsing.",
+    "summary_html (parties email) does not include allergies, food or weight. This matches the dialog description (name, phone, email, age, height, NOK). Flagging in case interested parties (e.g. race committee or medical) should get allergies.",
+    "PUT /api/crew-register/{id} replaces the whole record: any field left out resets to its default (e.g. weight_kg -> null). The frontend sends full records, but API clients sending partial bodies would wipe data.",
+    "The on-board RSVP-only narrowing (rsvp status 'in') was only code-reviewed, not exercised live, to avoid changing the pro boat's RSVP data."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_register.py (parties-email tests moved to the {crew_ids, party_id} body)", "/app/backend/tests/test_crew_diet_parties.py (new)"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary register entries were created for test-user-pro (TEST UI RPNYC, TEST UI Coastguard, TEST UI Dick, plus pytest TEST_ entries) and all were deleted by id. As the main agent asked, the main agent's 'TEST Tom' entry (7ea5d57c-...) was also deleted at the end; GET /api/crew-register for pro now returns empty crew and parties. The 'Foredeck (headsail/spinnaker)' item (id 13) in the pro Crew Roles list (tpl_test67crew) got a temporary briefing, which was then cleared. About 4 real emails went to example.com party addresses via Resend.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro skipper boat 'main' has crew test-user-free. The Crew Roles list id is tpl_test67crew; the list selector testid is list-selector and options are list-option-<id> (provisions, mealPlan). The on-board TestOnBoard::test_pro_main is skipped unless a pro register entry 'TEST Tom' exists for test.user.free@example.com. Run with: pytest tests/test_crew_register.py tests/test_crew_diet_parties.py -p no:xdist -o addopts='' -k 'not live' (the live test makes a real AI call). Each parties-email test sends a real email."
+}
