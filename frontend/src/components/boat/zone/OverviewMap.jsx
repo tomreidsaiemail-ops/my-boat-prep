@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Trash2, X } from "lucide-react";
+import { Loader2, Sparkles, Trash2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
@@ -53,6 +53,17 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     save([...swatches, { id: newId(), x: pos.x, y: pos.y, colour: p.colour, label: p.label }]); setArmed(null);
   };
   const used = new Set(swatches.map((s) => s.label));
+  const [placing, setPlacing] = useState(false);
+  const autoPlace = async () => {
+    if (!online) { toast.error("You need a signal for the Magic Mariner"); return; }
+    setPlacing(true);
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/zone-maps/${map.id}/auto-swatches`, {}, { timeout: 90000 });
+      onMaps(data.zone_maps);
+      toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}. Drag any that need nudging.`);
+    } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't place the colours")); }
+    finally { setPlacing(false); }
+  };
   // Drag a palette square onto the plan; a tap arms it so the next tap on the plan drops it there.
   const dragNew = (e, p) => {
     e.preventDefault();
@@ -102,6 +113,10 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       </div>
       {canEdit && (
         <>
+          <button type="button" className="btn-solid min-h-10 justify-center gap-2 text-sm" disabled={placing || !presets.length} onClick={autoPlace} data-testid={`${t}-auto-btn`}>
+            {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {placing ? "Magic Mariner is finding your areas..." : "Magically Place Colours"}
+          </button>
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to remove it."}</p>
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (

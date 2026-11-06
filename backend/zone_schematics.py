@@ -1,15 +1,17 @@
 import asyncio
 import base64
 import io
+import json
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from pydantic import BaseModel, Field
 from PIL import Image
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 from db import db
 from auth import get_current_user, require_premium
 import quota
@@ -152,3 +154,57 @@ async def use_schematics(boat_id: BoatPath, job_id: JobPath, payload: UseIn, use
         maps.append({"id": str(uuid.uuid4()), "path": i["path"], "content_type": "image/jpeg", "updated_at": now, "name": i["title"], "kind": "overview", "swatches": []})
     await db.user_boats.update_one(key, {"$set": {"zone_maps": maps}})
     return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
+
+
+PLACE_PROMPT = """This is a top-down layout plan of a boat (a {boat}). Find where each of these areas is on the plan:
+{labels}
+Only include areas you can actually see or confidently locate on this plan; skip the rest. Port is the boat's left side and starboard its right side when facing the bow.
+Give the centre of each area as x and y fractions of the image width and height (0 = left/top, 1 = right/bottom). Each area at most once.
+Reply with JSON only: {{"places": [{{"label": "<exact label from the list>", "x": 0.42, "y": 0.37}}]}}"""
+
+
+@router.post("/boats/{boat_id}/zone-maps/{map_id}/auto-swatches")
+async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")], user: dict = Depends(require_premium)):
+    """Magic Mariner looks at a Zone Map Overview and drops every predetermined colour it can find onto it, replacing the squares already there."""
+    from zone_colours import colour_presets
+    key = {"owner_id": user["user_id"], "boat_id": boat_id}
+    doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1, "boat": 1})
+    m = next((z for z in (doc or {}).get("zone_maps") or [] if z["id"] == map_id and z.get("kind") == "overview"), None)
+    if not m:
+        raise HTTPException(status_code=404, detail="Zone Map Overview not found")
+    presets = (await colour_presets(user))["presets"]
+    if not presets:
+        raise HTTPException(status_code=400, detail="Add colours to Admin - Zone Map Predetermined Colours first")
+    try:
+        data = get_object(m["path"])
+    except Exception:
+        raise HTTPException(status_code=503, detail="Couldn't load that plan. Please try again.")
+    b = doc.get("boat") or {}
+    name = " ".join(x for x in (b.get("make"), b.get("model"), b.get("boat_type")) if x) or "boat"
+    by_label = {p["label"].lower(): p for p in presets}
+    source = await quota.consume(user["user_id"])
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"zoneplace-{uuid.uuid4()}",
+                   system_message="You locate named areas on boat layout plans and reply with strict JSON.").with_model("gemini", "gemini-3-flash-preview")
+    try:
+        reply = await chat.send_message(UserMessage(text=PLACE_PROMPT.format(boat=name, labels="\n".join(f"- {p['label']}" for p in presets)),
+                                                    file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())]))
+        raw = json.loads(re.search(r"\{.*\}", str(reply), re.S).group(0)).get("places") or []
+    except Exception as e:
+        log.error(f"Auto-place colours failed: {e}")
+        await quota.refund(user["user_id"], source)
+        raise HTTPException(status_code=503, detail="The Magic Mariner couldn't read that plan. Please try again.")
+    out, seen = [], set()
+    for i, p in enumerate(raw):
+        pre = by_label.get(str(p.get("label", "")).strip().lower())
+        try:
+            x, y = min(1.0, max(0.0, float(p["x"]))), min(1.0, max(0.0, float(p["y"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if pre and pre["label"] not in seen:
+            seen.add(pre["label"])
+            out.append({"id": f"a{uuid.uuid4().hex[:10]}", "x": x, "y": y, "colour": pre["colour"], "label": pre["label"]})
+    if not out:
+        await quota.refund(user["user_id"], source)
+        raise HTTPException(status_code=422, detail="The Magic Mariner couldn't find any of your zone colours on this plan. Drag them on yourself.")
+    await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {"$set": {"zone_maps.$.swatches": out[:50]}})
+    return {"placed": len(out), "zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1})), "scans_left": await quota.left(user["user_id"])}

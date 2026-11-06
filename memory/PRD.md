@@ -638,3 +638,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Each predetermined colour (label) can be placed once per Zone Map Overview: used palette squares dim + strike-through; backend 400 on duplicate labels. Swatches max 50.
 - Zone colour palette expanded 20 -> 50 named colours (frontend ZONE_COLOURS/RAINBOW/LIGHT, backend PALETTE + ALIASES incl. "Oilve" -> Olive, multi-word names like Light Red / Lime Green / Sky Blue parsed from the admin list). MAX_BOAT_MAPS 20 -> 50 so every photo can keep its own colour.
 - Self-tested: pytest zone_overviews + zone_colours 20/20, screenshot of 32-colour palette.
+
+## 2026-06 Magically Place Colours
+- POST /api/boats/{id}/zone-maps/{map_id}/auto-swatches (premium, 1 Magic use, refunded on failure/none found): Gemini 3 Flash vision locates every "Admin - Zone Map Predetermined Colours" label on the overview and REPLACES its squares (one per label, max 50). ~15-20s.
+- OverviewMap button "Magically Place Colours" (testid zone-overview-<id>-auto-btn). Self-tested: curl placed 9 areas; UI click placed 9 squares.
