@@ -577,3 +577,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Typing a full number (e.g. 10.2.1) in an item's number badge moves it (with its branch) there if valid (lib/outline.js moveToPath): parent must exist, not itself/its own branch, max 4 levels; error toast otherwise; opens folded ancestors; toast when the final number shifts.
 - Boat Maintenance lists (6 core): "Log Rigging Check" (rigging/spars) / "Log Service" (deck, sails, ground tackle) button + per-item "Log service for this item..." (MaintServiceDialog). Sets Last service / Service due on picked items, keeps per-item service history, adds a Rigging Service History entry (with list name/next due), a Ship's Log row and a My To Do reminder (due_maint_<listId>, earliest due).
 - Tested iteration_103 (96%; ancestor unfold, error clearing and move toast fixed after).
+
+## 2026-06 Role briefings in crew invites
+- WhatsApp invite message/preview now includes "*Role briefing - <role>*" for each selected role with a briefing (lib/crewRoles.js roleBriefings).
+- Invite POST sends the phone's briefings for the selected roles (InviteIn.briefings, max 20, 2000 chars each); server merges them over synced briefings so a just-typed briefing is in the email. Tested iteration_104 (100%).

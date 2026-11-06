@@ -62,7 +62,7 @@ class InviteIn(BaseModel):
     email: str = Field(max_length=254)
     roles: List[str] = Field(default_factory=list, max_length=20)
     notes: str = Field(default="", max_length=1000)
-    briefings: Dict[str, str] = Field(default_factory=dict, max_length=20)
+    briefings: Dict[Annotated[str, Field(max_length=60)], Annotated[str, Field(max_length=2000)]] = Field(default_factory=dict, max_length=20)
     send_email: bool = True
 
 

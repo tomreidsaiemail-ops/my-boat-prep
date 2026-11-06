@@ -1,0 +1,20 @@
+{
+  "summary": "Verified the Role Briefing fix for crew invites (WhatsApp preview/copy + invite email). Backend: 8/8 pytest pass (new file test_invite_role_briefings.py), including a direct call to crew.invite_crew with send_email mocked: a briefing sent only in payload.briefings for a selected role (Port Trim) is used, the server-side Starboard Trim briefing is still included, a payload briefing for an unselected role (Mainsheet) is ignored, and the order follows the roles. Real POST /api/boats/main/invites with roles ['Starboard Trim'] + briefings + send_email true returned 200 (email provider gave 202). Invites with no roles/briefings, send_email false (the invite is saved and shows in GET /crew), >20 briefing keys -> 422, POST /briefings resend (404 for a non-crew member, 200 {sent, skipped}) and GET /crew/agreement role briefing all still work. UI (390px, Pro): edited Starboard Trim via checklist-item-edit-10 -> edit-item-briefing-input -> edit-item-confirm-btn, then Crew -> Invite. Starboard Trim was not ticked so it was typed into the RolePicker, plus the Helm chip. crew-message-preview showed '*Role briefing - Starboard Trim*' followed by the 2-line briefing, and nothing for Helm (no briefing). crew-invite-message-btn copied text identical to the preview, and the POST payload had briefings {'Starboard Trim': ...} with send_email false. Typing the role in lower case ('starboard trim') still matched, and the email mode POST returned 200 with the briefing in the payload. No bugs found.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/boats/{id}/invites", "issue": "InviteIn.briefings values have no per-value max_length (they are only cut to 2000 chars server-side after parsing), so very large strings are accepted. Consider Dict[str, constr(max_length=2000)]."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_invite_role_briefings.py", "/app/test_reports/pytest/pytest_results_104.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "crew.py create invite merge is correct: it only takes payload keys whose role_label(k).lower() is in the selected roles, and phone values override server values (intended, since the phone copy is newer).",
+    "Optional: add a per-value length limit to the InviteIn.briefings values in the Pydantic model.",
+    "Existing tests/test_crew_invites_v2.py fails at collection when REACT_APP_BACKEND_URL isn't exported (no load_dotenv). This is a test-harness issue only."
+  ],
+  "updated_files": ["/app/backend/tests/test_invite_role_briefings.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. The test module sets the Starboard Trim (tpl_test67crew id 10) briefing at the start and removes it at the end, temporarily sets crew_roles for test-user-free (restored to {}), and deletes its own invites by email. After the run: Starboard Trim briefing empty, crew_invites for test-user-pro = 0, voyage_notes ''.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "db.invite_sends for test-user-pro is about 19 in the last 24h and DAILY_INVITE_LIMIT is 20, so further invite POSTs may get 429 until the records age out. Run tests with: cd /app/backend && python -m pytest tests/test_invite_role_briefings.py (works with xdist). Browser auth: session_token cookie test_session_pro_1."
+}
