@@ -623,14 +623,13 @@ export default function BoatPrep({ boatId, boats }) {
     if (!crew && !needPro("The Magic Provisioner")) return;
     if (crew && !crewPro) { toast.error("The Magic Provisioner needs the skipper to have Pro"); return; }
     setDialog({ type: "magicMeals", mode: how });
-    const me = (user.name || "").trim();
-    const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
-    setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+    loadCooks();
   };
   const loadCooks = async () => {
     const me = (user.name || "").trim();
     const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
-    setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+    const people = [...(info?.crew || []), ...(info?.invites || []).filter((i) => !i.declined_at)].map((m) => m.name);
+    setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...people].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
   const addMealToPlan = (target, meal) => {

@@ -153,6 +153,8 @@ async def add_racing_roles():
 async def send_shopping(boat_id: BoatPath, payload: ShoppingIn, user: dict = Depends(get_current_user)):
     """Emails a crew member (or someone with a pending invite) the Provisions they are buying."""
     doc = await owned_boat(user, boat_id)
+    if not any(i.strip() for i in payload.items):
+        raise HTTPException(status_code=422, detail="There's nothing on the shopping list")
     key = email_key(payload.email.strip())
     crew = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "email": 1}).to_list(100)
     invited = await db.crew_invites.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key}, {"_id": 1})

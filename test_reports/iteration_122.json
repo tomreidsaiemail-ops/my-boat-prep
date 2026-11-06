@@ -1,0 +1,38 @@
+{
+  "summary": "Tested Provisions shoppers on mobile 390x844 (backend and frontend). Backend: 13 of 13 pytest passed (shopping_html and invite_html output, POST invites with shopping and send_email false, POST /crew/shopping returning 200/404/422/401, galley crew shopper merge when list_ts is bumped by hand). Frontend owner flows all work: the edit-item Shopper picker, the basket badge, Not assigned, the Assign shoppers dialog (Tick all, Tick unassigned, Clear, Give N, Clear shopper), changes kept after reload, the invite preview 'Food to bring on board' (case-insensitive match), Send shopping list (N) and Copy for WhatsApp for a crew member and for a pending invite, the print view badges and the 'Who's buying what' summary (ticked items struck through), no picker or summary on other lists, and the Cook picker regression. One CRITICAL bug: a galley crew member's shopper changes made in the UI show for a moment, then disappear after sync, because the server drops them.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "PUT /api/me/boat (crew, sync_merge.merge_crew_galley)", "issue": "A shopper change made by galley crew (Provision Manager) is thrown away. The frontend stamp() in lib/defaults.js only bumps list_ts[provisions] when the list length or order changes. A shopper-only edit just updates the item's ts. merge_crew_galley only merges when inc list_ts > prev list_ts, so the change is ignored and the client takes the server copy back. Seen in the UI: the badge shows at 300 ms and is gone at 7 s, and the DB is unchanged. This happens from both the Assign shoppers dialog and the edit dialog. Item text edits by galley crew are probably lost the same way.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/boats/{id}/crew/shopping", "issue": "items made only of spaces (e.g. ['  ']) pass min_length=1 and send an email with an empty list. Reject with 422 if no item is left after strip."},
+      {"endpoint": "POST /api/boats/{id}/invites", "issue": "send_email:false still adds a row to invite_sends, so it counts toward the daily limit of 20. test-user-pro is at 20/20 today. This is existing behaviour, noted only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Galley crew Assign shoppers or edit Shopper on a shared boat", "issue": "The change reverts after sync (see the backend critical issue)", "affected_selectors": ["assign-shoppers-apply-btn", "edit-item-shopper-select", "checklist-item-shopper-badge-<id>"]},
+      {"flow": "Assign food to someone you are about to invite", "issue": "loadCooks only uses the skipper plus info.crew. Pending invite names and Crew Register names are not in the Shopper picker, so the skipper can't give food to someone before inviting them. The 'Food to bring on board' invite preview and the pending invite Send shopping list button only work if the shopper name was set some other way (in testing it was set in the DB). Suggest adding info.invites names (and Crew Register names) to the picker.", "affected_selectors": ["edit-item-shopper-select", "assign-shoppers-select"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_provision_shoppers.py", "/app/test_reports/pytest/pytest_results_iter122.xml"],
+  "action_items": [
+    "Fix galley crew shopper and item edits being lost. Either bump list_ts[provisions] on the client for item content edits made by crew, or in merge_crew_galley also merge item by item when the incoming list_ts is not newer: _merge_list(pdata[lid], pl[lid], idata[lid], il[lid]) picks the newer item ts. Keep crew from deleting or reordering items in that case.",
+    "Add pending invite names (and Crew Register names) to the Shopper picker options in loadCooks.",
+    "In ShoppingIn, reject a list whose items are all blank."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx: pickCreate repeats the loadCooks body word for word. Call loadCooks instead.",
+    "BoatPrep.jsx is very large (>1000 lines). Move the shopper handlers (onApply and the edit shopper logic) into a hook.",
+    "The edit dialog's Shopper picker shows for indented or heading Provisions rows too. That is fine, but headings in the Assign dialog can't be told apart from items."
+  ],
+  "updated_files": ["/app/backend/tests/test_provision_shoppers.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "~90% (owner flows all pass; galley crew assigning fails)"},
+  "seed_data_creation": "Temporary: invite test-inv-shop-1 (TEST Pending Shop) and 'Lime Juice' shopper on the pro boat, both removed. The pro boat main (data.provisions, crew_roles, list_ts, updated_at) was restored from a snapshot. Test invites created by pytest (beta owner, and a pending invite on the pro boat) were deleted by invite_id. 3 shopping emails were sent: 2 to test.user.free@example.com and 1 to a test_pending address.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run with -n 0: pytest tests/test_provision_shoppers.py -n 0. test-user-pro invite_sends is 20/20 today, so use test-user-beta (test_session_beta_1, boat main) for invite POSTs. Pro provisions ids: 1 cream, 2 TEST_Bread (ticked), 1793574303219..226 juices and mixers. When crew_roles changes, a crew-agreement-dialog opens for the crew; press Escape to close it. To get to a list: list-selector, then scroll_into_view the list-option-<id>. Retest the galley crew flow once fixed: set role Provision Manager, assign as crew, wait more than 7 s, check the badge and the DB.",
+  "rca of the issue": "Galley crew shopper loss: frontend stamp() (lib/defaults.js:272) only updates list_ts[id] when items are added, removed or reordered; content edits only stamp item.ts. Backend merge_crew_galley (sync_merge.py:167) checks il.get(lid) > pl.get(lid) before merging, so content-only edits from crew never pass. The server returns the owner's copy and the client adopts it. To reproduce: give test-user-free the Provision Manager role, sign in as the crew user, open Provisions, Assign shoppers, give 1 item; the badge shows, then disappears after the sync (about 3-7 s). The backend test passes only because it bumps list_ts by hand."
+}

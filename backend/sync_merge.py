@@ -164,9 +164,16 @@ def merge_crew_galley(out: dict, prev: dict, inc: dict):
     lts = dict(out.get("list_ts") or {})
     for lid in ids:
         kind = next((r.get("kind") for r in reg if r.get("id") == lid), None)
-        if isinstance(idata.get(lid), list) and (lid == "provisions" or kind == "mpa" or is_meal_plan(pdata.get(lid) or [])) and il.get(lid, "") > pl.get(lid, ""):
+        if not (isinstance(idata.get(lid), list) and (lid == "provisions" or kind == "mpa" or is_meal_plan(pdata.get(lid) or []))):
+            continue
+        if il.get(lid, "") > pl.get(lid, ""):
             out["data"][lid] = _merge_list(deepcopy(idata[lid]), il[lid], pdata.get(lid) or [], pl.get(lid, ""))
             lts[lid] = il[lid]
+        else:
+            # Content-only edits (e.g. a shopper) don't bump list_ts: take each item that is newer on the crew's phone.
+            theirs = {i.get("id"): i for i in idata[lid]}
+            out["data"][lid] = [deepcopy(t) if (t := theirs.get(i.get("id"))) and str(t.get("ts", "")) > str(i.get("ts", "")) else i
+                                for i in out["data"].get(lid) or []]
     names = {str(r.get("name", "")).strip().lower() for r in reg}
     new = [r for r in inc.get("registry") or [] if r.get("id") not in ids and str(r.get("id", "")).startswith("custom_")
            and str(r.get("name", "")).strip() and str(r.get("name", "")).strip().lower() not in names
