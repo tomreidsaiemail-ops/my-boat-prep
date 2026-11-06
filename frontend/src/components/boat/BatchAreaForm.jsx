@@ -4,11 +4,12 @@ import { Camera, ImagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
+import { ZoneChip } from "@/components/boat/zone/ZoneDialog";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 // Name + photo for one boat area in a batch. Nothing is scanned until it's confirmed.
-export const BatchAreaForm = ({ open, existing, batchNames, full, onAdd, onClose }) => {
+export const BatchAreaForm = ({ open, zone, existing, batchNames, full, onAdd, onClose }) => {
   const [name, setName] = useState("");
   const [blob, setBlob] = useState(null);
   const [preview, setPreview] = useState("");
@@ -39,7 +40,8 @@ export const BatchAreaForm = ({ open, existing, batchNames, full, onAdd, onClose
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">New boat area</DialogTitle>
+          {zone && <ZoneChip zone={zone} className="self-start" testId="batch-area-zone-chip" />}
+          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} boat area` : "New boat area"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
         <HelpPanel storageKey="mbp_batch_area_help_seen" title="How Batch Magic Scan works" testId="batch-area-help">
@@ -47,7 +49,7 @@ export const BatchAreaForm = ({ open, existing, batchNames, full, onAdd, onClose
           <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
           <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
         </HelpPanel>
-        <input autoFocus value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="e.g. Aft starboard lazarette"
+        <input autoFocus value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
           aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
           {clash.name} is already on your boat. Confirming the batch will replace its {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"} with this scan.</p>}

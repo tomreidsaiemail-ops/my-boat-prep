@@ -128,7 +128,8 @@ async def save_map_meta(boat_id: BoatPath, map_id: MapPath, payload: MapMetaIn, 
     me = next((m for m in maps if m["id"] == map_id), None)
     if not me:
         raise HTTPException(status_code=404, detail="Zone map not found")
-    others = {m.get("colour"): m for m in maps if m["id"] != map_id}
+    same_zone = lambda m: bool(me.get("zone")) and (m.get("zone") or "").lower() == me["zone"].lower()  # noqa: E731
+    others = {m.get("colour"): m for m in maps if m["id"] != map_id and not same_zone(m)}
     label = lambda m: (m.get("name") or "another zone map")  # noqa: E731
     if payload.colour is not None:
         if me.get("kind") == "overview":

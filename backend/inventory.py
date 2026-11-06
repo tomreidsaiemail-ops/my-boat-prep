@@ -2,12 +2,12 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, List, Optional
-from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Query, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from db import db
 from auth import get_current_user, require_admin, require_premium
 from photos import APP_NAME, MAX_BYTES, TYPES, get_object, put_object
-from zone_colours import fill_colours, next_colour
+from zone_colours import PALETTE, colour_name, fill_colours, next_colour
 
 router = APIRouter(prefix="/api")
 INVENTORY_ID = "boatInventory"
@@ -28,7 +28,7 @@ async def _read_picture(file: UploadFile) -> bytes:
 
 def boat_maps(doc: dict) -> list:
     return [{"id": m["id"], "v": m.get("updated_at", ""), "pins": m.get("pins") or [], "name": m.get("name", ""), "colour": m.get("colour", ""),
-             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or []}
+             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or [], "zone": m.get("zone", "")}
             for m in fill_colours(doc.get("zone_maps") or [])]
 
 
@@ -69,13 +69,29 @@ async def save_map_pins(boat_id: BoatPath, map_id: MapPath, payload: ZonePinsIn,
 
 
 @router.post("/boats/{boat_id}/zone-maps")
-async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), user: dict = Depends(require_premium)):
+async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: str = Form(default="", max_length=40), colour: str = Form(default="", max_length=20),
+                       user: dict = Depends(require_premium)):
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1})
     if doc is None:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if len(doc.get("zone_maps") or []) >= MAX_BOAT_MAPS:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
+    maps = fill_colours(doc.get("zone_maps") or [])
+    zone = " ".join(zone.split())
+    zone_colour = colour_name(colour) if zone else None
+    if zone and not zone_colour:
+        raise HTTPException(status_code=400, detail="Please use one of the zone map colours")
+    if zone_colour:
+        low = zone.lower()
+        clash = next((m for m in maps if m.get("kind") != "overview" and m.get("colour") == zone_colour
+                      and (m.get("zone") or "").lower() != low and low not in (m.get("name") or "").lower()), None)
+        if clash and (clash.get("zone") or clash.get("colour_manual")):
+            raise HTTPException(status_code=400, detail=f"{zone_colour} is already used by {clash.get('name') or 'another zone map'}. Rename or recolour that photo first.")
+        if clash:
+            used = {m.get("colour") for m in maps} | {zone_colour}
+            free = next((c for c in PALETTE if c not in used), PALETTE[0])
+            await db.user_boats.update_one({**key, "zone_maps.id": clash["id"]}, {"$set": {"zone_maps.$.colour": free}})
     data = await _read_picture(file)
     map_id = str(uuid.uuid4())
     path = f"{APP_NAME}/boat-zone-maps/{user['user_id']}/{map_id}.{TYPES[file.content_type]}"
@@ -84,6 +100,9 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), user: di
     except Exception:
         raise HTTPException(status_code=502, detail="Couldn't save the picture right now, please try again")
     entry = {"id": map_id, "path": path, "content_type": file.content_type, "updated_at": datetime.now(timezone.utc).isoformat(), "name": "", "colour": next_colour(doc.get("zone_maps") or [])}
+    if zone_colour:
+        count = sum(1 for m in maps if (m.get("zone") or "").lower() == zone.lower())
+        entry.update({"name": zone if not count else f"{zone} {count + 1}", "colour": zone_colour, "colour_manual": True, "zone": zone})
     res = await db.user_boats.update_one({**key, f"zone_maps.{MAX_BOAT_MAPS - 1}": {"$exists": False}}, {"$push": {"zone_maps": entry}})
     if not res.modified_count:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")

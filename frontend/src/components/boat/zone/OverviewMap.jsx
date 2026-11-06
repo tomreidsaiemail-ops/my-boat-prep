@@ -125,7 +125,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
           </button>
-          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to open its Zone Map Photo; press and hold it to remove it."}</p>
+          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to add photos of that zone and scan its cupboards; press and hold it to remove it."}</p>
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"

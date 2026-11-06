@@ -14,7 +14,9 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
-import { areaZones, rainbowGroups } from "@/lib/zoneColours";
+import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
+import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
+import { ZonePicker } from "@/components/boat/zone/ZonePicker";
 import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
 import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
@@ -213,24 +215,38 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
     setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
   const [batchOpen, setBatchOpen] = useState(false);
+  const [zone, setZone] = useState(null);
+  const [batchZone, setBatchZone] = useState(null);
+  const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
+  const zoneCounts = {};
+  Object.values(zones).forEach((z) => { zoneCounts[z.colour] = (zoneCounts[z.colour] || 0) + 1; });
   useEffect(() => {
     if (!batchRequest) return;
     onBatchHandled();
-    if (boat && !boat.owner_id && !readOnly) setBatchOpen(true);
+    if (!boat || boat.owner_id || readOnly) return;
+    if (!boatZoneList.length) { setBatchOpen(true); return; }
+    setTimeout(() => document.querySelector('[data-testid="zone-picker"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    toast.message("Pick the zone to scan first, e.g. Galley");
   }, [batchRequest]); // eslint-disable-line react-hooks/exhaustive-deps
   const openBatch = () => (online ? setBatchOpen(true) : toast.error("Batch Magic Scan needs a signal"));
+  const scanZone = (z) => {
+    if (!online) { toast.error("Batch Magic Scan needs a signal"); return; }
+    setZone(null); setBatchZone(z); setBatchOpen(true);
+  };
+  const closeBatch = () => { setBatchOpen(false); setBatchZone(null); };
   const applyBatch = (list) => {
     const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty }));
+    const tag = batchZone ? { zone: { label: batchZone.label, colour: batchZone.colour } } : {};
     onChange((cur) => {
       const next = [...cur];
       list.forEach(({ name, items }) => {
         const at = next.findIndex((a) => !a.parent_id && same(a.name, name));
-        if (at >= 0) next[at] = { ...next[at], items: toItems(items) };
-        else next.push({ id: newId(), name, items: toItems(items) });
+        if (at >= 0) next[at] = { ...next[at], ...tag, items: toItems(items) };
+        else next.push({ id: newId(), name, ...tag, items: toItems(items) });
       });
       return next;
     });
-    setBatchOpen(false);
+    closeBatch();
     const count = list.reduce((n, a) => n + a.items.length, 0);
     const replaced = list.filter((a) => tops.some((x) => same(x.name, a.name))).length;
     const added = list.length - replaced;
@@ -297,7 +313,7 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} />
+        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})
@@ -330,8 +346,11 @@ export const InventoryList = ({ areas, onChange, readOnly, admin, online, shared
         ])}
       </ul>
       {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} />}
-      {!readOnly && !q && <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />}
-      {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} onClose={() => setBatchOpen(false)} onConfirm={applyBatch} />}
+      {!readOnly && !q && (boatZoneList.length
+        ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={openBatch} /></ZonePicker>
+        : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
+      {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
+      <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps} onScan={scanZone} onClose={() => setZone(null)} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper

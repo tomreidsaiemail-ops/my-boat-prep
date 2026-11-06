@@ -11,7 +11,7 @@ import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
 import { LinkedText } from "@/components/boat/LinkedText";
 import { MapColourPicker } from "@/components/boat/zone/MapColourPicker";
 import { MapNameField } from "@/components/boat/zone/MapNameField";
-import { ZONE_COLOURS } from "@/lib/zoneColours";
+import { ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { OverviewMap, OverviewView } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
 
@@ -83,7 +83,7 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff, onZone }) => {
   const help = useAdminLists(HELP_PREFIX, online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
@@ -102,10 +102,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
     setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });
   }, [focusPin]); // eslint-disable-line react-hooks/exhaustive-deps
   const openColour = (s) => {
-    const label = s.label.toLowerCase(), named = (z) => (z.name || "").toLowerCase();
-    const m = own.find((z) => named(z) === label) || own.find((z) => named(z).includes(label)) || own.find((z) => z.colour === s.colour);
+    const zone = { label: s.label || s.colour, colour: s.colour };
+    if (canEdit && onZone) { onZone(zone); return; }
+    const m = zonePhotos(boat, zone)[0];
     if (m) setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m });
-    else toast(`No Zone Map Photo for ${s.label} yet`, { description: canEdit ? `Add a photo named "${s.label}" and it takes ${s.colour}.` : undefined });
+    else toast(`No ${zone.label} photos yet`);
   };
   const tapPin = (pin) => {
     if (pin.area_id && areas.some((a) => a.id === pin.area_id)) onOpenArea?.(pin.area_id);
@@ -178,7 +179,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
               removing={removing === m.id} onRemove={() => removeMap(m)} onColour={openColour} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
           ))}
           {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}
-          {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Now take photos of your Cockpit, Saloon, Galley and cabins and add them below as Zone Map Photos. Name each one (e.g. Galley) and it takes the same colour, and every boat area you label on it shows that colour.</p>}
+          {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Next, tap each colour on the overview (start with the Galley) to take photos of that zone, then scan its cupboards. Every photo and cupboard is filed under that colour.</p>}
         </div>
       )}
       {pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (

@@ -41,8 +41,12 @@ export const mapLabel = (m, n) => m.name || `Zone map ${n + 1}`;
 export const areaZones = (boat, areas) => {
   const out = {};
   (boat?.zone_maps || []).forEach((m, n) => (m.pins || []).forEach((p) => {
-    if (p.area_id && !out[p.area_id] && ZONE_COLOURS[m.colour]) out[p.area_id] = { colour: m.colour, hex: ZONE_COLOURS[m.colour], map: mapLabel(m, n), rank: RAINBOW.indexOf(m.colour) };
+    if (p.area_id && !out[p.area_id] && ZONE_COLOURS[m.colour]) out[p.area_id] = { colour: m.colour, hex: ZONE_COLOURS[m.colour], map: m.zone || mapLabel(m, n), rank: RAINBOW.indexOf(m.colour) };
   }));
+  areas.forEach((a) => {
+    const z = a.zone;
+    if (!out[a.id] && z && ZONE_COLOURS[z.colour]) out[a.id] = { colour: z.colour, hex: ZONE_COLOURS[z.colour], map: z.label, rank: RAINBOW.indexOf(z.colour) };
+  });
   areas.forEach((a) => { if (a.parent_id && out[a.parent_id]) out[a.id] = out[a.parent_id]; });
   return out;
 };
@@ -57,4 +61,24 @@ export const rainbowGroups = (rows, zones) => {
     groups.get(key).rows.push(r);
   });
   return [...groups.values()].sort((x, y) => (x.zone ? x.zone.rank : 99) - (y.zone ? y.zone.rank : 99));
+};
+
+const low = (v) => String(v || "").trim().toLowerCase();
+
+// Every zone on the boat: colours placed on the Zone Map Overviews, then named Zone Map Photos.
+export const boatZones = (boat) => {
+  const out = [];
+  const add = (label, colour) => { if (label && ZONE_COLOURS[colour] && !out.some((z) => low(z.label) === low(label))) out.push({ label, colour }); };
+  const maps = boat?.zone_maps || [];
+  maps.filter((m) => m.kind === "overview").forEach((m) => (m.swatches || []).forEach((s) => add(s.label || s.colour, s.colour)));
+  maps.filter((m) => m.kind !== "overview").forEach((m) => add(m.zone || m.name, m.colour));
+  return out;
+};
+
+// The Zone Map Photos of one zone: tagged with it, or named after it; same colour only as a last resort.
+export const zonePhotos = (boat, zone) => {
+  const own = (boat?.zone_maps || []).filter((m) => m.kind !== "overview");
+  const l = low(zone.label);
+  const hit = own.filter((m) => low(m.zone) === l || low(m.name) === l || (l && low(m.name).includes(l)));
+  return hit.length ? hit : own.filter((m) => m.colour === zone.colour && !m.zone);
 };

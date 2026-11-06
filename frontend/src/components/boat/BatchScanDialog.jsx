@@ -6,6 +6,7 @@ import { BatchAreaForm } from "@/components/boat/BatchAreaForm";
 import { BatchEntry } from "@/components/boat/BatchEntry";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { checkRows } from "@/components/boat/ScanReviewDialog";
+import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -21,7 +22,7 @@ const Progress = ({ entries, position }) => {
 };
 
 // Batch Magic Scan screen: queue several boat areas, review each one, then add them all at once.
-export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm }) => {
+export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone, boat }) => {
   const batch = useBatchScan(boatId);
   const { entries } = batch;
   const [form, setForm] = useState(true);
@@ -46,9 +47,10 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm }) => 
     <Dialog open={open} onOpenChange={(o) => !o && askClose()}>
       <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-lg flex-col gap-3 overflow-hidden rounded-lg border-2 border-[var(--navy)] p-4" data-testid="batch-scan-dialog"
         onInteractOutside={(e) => e.preventDefault()}>
+        {zone && <ZoneBanner zone={zone} boat={boat} />}
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> Batch Magic Scan</DialogTitle>
-          <DialogDescription>Add each boat area with a photo. Magic Scans happen in the background, while you take photos and name your boat areas, saving you lots of time. Review each one and tick it, then confirm.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> {zone ? `Scan ${zone.label} cupboards` : "Batch Magic Scan"}</DialogTitle>
+          <DialogDescription>{zone ? `Every cupboard, shelf and drawer you add here goes into ${zone.label} (${zone.colour}). ` : ""}Add each boat area with a photo. Magic Scans happen in the background, while you take photos and name your boat areas, saving you lots of time. Review each one and tick it, then confirm.</DialogDescription>
           <p className="text-sm text-[var(--muted)]" data-testid="batch-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Remember you can always return later and fix up one specific cupboard for a better result. It is important you commit all that work you did taking photos and naming boat areas, so we recommend a quick review at this stage.</p>
         </DialogHeader>
         <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1" data-testid="batch-list">
@@ -68,7 +70,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm }) => 
             {entries.length === 1 ? "Done" : "Confirm Batch"}
           </button>
         </div>
-        <BatchAreaForm open={open && form} existing={areas} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
+        <BatchAreaForm open={open && form} zone={zone} existing={areas} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
           onAdd={add} onClose={() => setForm(false)} />
         <ConfirmDelete item={doomed} testId="batch-area-delete" note="Its photo and scanned contents are removed from this batch." cancelLabel="Keep"
           onConfirm={() => { batch.remove(doomed.key); setDoomed(null); }} onClose={() => setDoomed(null)} />
