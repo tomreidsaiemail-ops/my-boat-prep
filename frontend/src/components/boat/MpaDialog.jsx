@@ -28,7 +28,7 @@ const useMatchRules = (open, online) => {
   return useMemo(() => matchRules(raw), [raw]);
 };
 
-export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate }) => {
+export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate, params }) => {
   const rules = useMatchRules(open, online);
   const diet = useCrewDiet()?.text || "";
   const [picked, setPicked] = useState([]);
@@ -67,7 +67,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
         try {
           const onBoard = Object.fromEntries(prov.map((p) => [p, stock[keyOf(p)]?.qty]).filter(([, q]) => q));
           const { data } = await api.post("/ai/mpa/provisions", { items: prov, on_board: onBoard, adults, children, days: days || 1,
-            pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg", diet }, { timeout: 90000 });
+            pets: forPets.map(({ type, name, breed, weight }) => ({ type, name, breed, weight })), units: boat.units === "ft" ? "lb" : "kg", diet }, { params, timeout: 90000 });
           amounts = data.amounts;
           petItems = data.pets || [];
         } catch (e) {
@@ -83,7 +83,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
       const ai = {};
       const unknown = all.filter((n) => !builtInAisle(n));
       if (unknown.length && online) {
-        try { Object.assign(ai, (await api.post("/ai/mpa/aisles", { items: unknown, aisles: AISLE_NAMES.slice(0, -1) }, { timeout: 90000 })).data.aisles); }
+        try { Object.assign(ai, (await api.post("/ai/mpa/aisles", { items: unknown, aisles: AISLE_NAMES.slice(0, -1) }, { params, timeout: 90000 })).data.aisles); }
         catch { toast.warning("The Magic Mariner couldn't sort a few items, so they're under Other"); }
       }
       aisleOf = (n) => builtInAisle(n) || ai[n] || OTHER_AISLE;

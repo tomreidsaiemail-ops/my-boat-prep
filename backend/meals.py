@@ -7,8 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
-from crew_pro import magic_payer
-from sync_merge import galley_crew
+from crew_pro import galley_payer
 from ai_lists import PROVISIONER, _run, with_diet
 
 router = APIRouter(prefix="/api")
@@ -27,10 +26,11 @@ class MyMealIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     recipe: str = Field(default="", max_length=1000)
     ingredients: List[str] = Field(default_factory=list, max_length=40)
+    meal_type: Optional[Literal["breakfast", "lunch", "dinner", "any"]] = None
 
 
 def _meal_out(d: dict) -> dict:
-    return {"id": d["id"], "name": d["name"], "recipe": d.get("recipe", ""), "ingredients": d.get("ingredients", [])}
+    return {"id": d["id"], "name": d["name"], "recipe": d.get("recipe", ""), "ingredients": d.get("ingredients", []), "meal_type": d.get("meal_type")}
 
 
 @router.get("/me/meals")
@@ -44,7 +44,7 @@ async def add_my_meal(body: MyMealIn, user: dict = Depends(get_current_user)):
     if await db.user_meals.count_documents({"user_id": user["user_id"]}) >= MY_MEALS_MAX:
         raise HTTPException(status_code=400, detail=f"You can keep up to {MY_MEALS_MAX} of your own meals")
     doc = {"user_id": user["user_id"], "id": uuid.uuid4().hex[:12], "name": name, "recipe": " ".join(body.recipe.split()).strip("[] "),
-           "ingredients": [i.strip()[:120] for i in body.ingredients if i.strip()], "created_at": datetime.now(timezone.utc).isoformat()}
+           "ingredients": [i.strip()[:120] for i in body.ingredients if i.strip()], "meal_type": body.meal_type, "created_at": datetime.now(timezone.utc).isoformat()}
     await db.user_meals.update_one({"user_id": user["user_id"], "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}}, {"$set": doc}, upsert=True)
     return _meal_out(doc)
 
@@ -90,11 +90,7 @@ def parse_plan(text: str, want: int) -> list:
 
 @router.post("/ai/mpa/meal-plan")
 async def magic_meal_plan(body: MealPlanIn, boat_id: BoatQ = None, owner: BoatQ = None, me: dict = Depends(get_current_user)):
-    user = await magic_payer(me, boat_id, owner)
-    if user["user_id"] != me["user_id"]:
-        doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, f"crew_roles.{me['user_id']}": 1})
-        if not galley_crew(((doc or {}).get("crew_roles") or {}).get(me["user_id"])):
-            raise HTTPException(status_code=403, detail="Only crew with a Provision Manager or Galley Lead / Chef role can plan meals")
+    user = await galley_payer(me, boat_id, owner)
     want = body.days * len(body.meals)
     prompt = (f"Plan {', '.join(body.meals)} for each of {body.days} days of a boat trip, for {body.adults} adults and {body.children} children. "
               "Boat galleys are small: favour simple one-pan or one-pot meals that keep well, and vary the meals. "

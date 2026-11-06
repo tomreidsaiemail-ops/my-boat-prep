@@ -69,7 +69,7 @@ import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { Sparkles } from "lucide-react";
+import { ShoppingCart, Sparkles } from "lucide-react";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
@@ -98,7 +98,9 @@ import { ShopScanDialog } from "@/components/boat/stores/ShopScanDialog";
 import { CreateListOptions } from "@/components/boat/CreateListOptions";
 import { CommonMealsDialog } from "@/components/boat/meals/CommonMealsDialog";
 import { MagicMealPlanDialog } from "@/components/boat/meals/MagicMealPlanDialog";
-import { magicMealName, mealItems, planItems } from "@/lib/mealPlans";
+import { cookOf, magicMealName, mealItems, planItems, withCook } from "@/lib/mealPlans";
+import { CooksRota } from "@/components/boat/meals/CooksRota";
+import { CookPicker } from "@/components/boat/meals/CookPicker";
 import { bulkMove, canTakeItems } from "@/lib/bulkMove";
 import { SyncStoresDialog } from "@/components/boat/stores/SyncStoresDialog";
 import { applyConsumed, applyShopping, applyTargets, shopLog, usedLog } from "@/lib/stores";
@@ -181,6 +183,7 @@ export default function BoatPrep({ boatId, boats }) {
   const [areaFilter, setAreaFilter] = useState("");
   const [editArea, setEditArea] = useState("");
   const [editMeal, setEditMeal] = useState(null);
+  const [editCook, setEditCook] = useState(null);
   const [editBriefing, setEditBriefing] = useState("");
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
@@ -573,6 +576,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (!text) return "Item text cannot be empty";
     if (isDup(text, item.id)) return `${text} already exists`;
     const mealHead = isMealHead(items, item.id);
+    if (mealHead && editCook !== null) text = withCook(text, editCook);
     const briefing = isRoleItem(item) ? editBriefing.trim() : item.briefing;
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
@@ -618,7 +622,12 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog({ type: "magicMeals", mode: how });
     const me = (user.name || "").trim();
     const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
-    setCooks([...new Set([crew ? boats.current.owner_name : me ? `${me} (Skipper)` : "Skipper", ...(crew ? [me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean))]);
+    setCooks([...new Set([crew ? boats.current.owner_name : me ? `${me}, Skipper` : "Skipper", ...(crew ? [me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+  };
+  const loadCooks = async () => {
+    const me = (user.name || "").trim();
+    const info = !crew && online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
+    setCooks([...new Set([crew ? boats.current.owner_name : me ? `${me}, Skipper` : "Skipper", ...(crew ? [me] : []), ...(info?.crew || []).map((m) => m.name)].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
   const addMealToPlan = (target, meal) => {
@@ -658,7 +667,7 @@ export default function BoatPrep({ boatId, boats }) {
     window.addEventListener("mbp:crew-roles", openRoles);
     return () => window.removeEventListener("mbp:crew-roles", openRoles);
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
-  const openMpa = () => (premium ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
+  const openMpa = () => (premium || crewPro ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
   const openBartender = () => needPro("Magic Bartender") && guard() && setDialog({ type: "bartender" });
   const flagArea = (id, key) => mutate((s) => ({ ...s, areas: (s.areas || []).map((a) => (a.id === id ? { ...a, [key]: !a[key] } : a)) }));
   const kids = Math.min(boat.children || 0, (boat.pob || 1) - 1);
@@ -860,7 +869,7 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
-        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /></>
+        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} /><CooksRota lists={mealLists} data={state.data} me={user.name || ""} /></>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, online, premium, onUpgrade: () => needPro("Zone maps"),
@@ -938,6 +947,12 @@ export default function BoatPrep({ boatId, boats }) {
             </div>
           )}
           {showMpa && <DietBanner />}
+          {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? user.name || "" : ""} />}
+          {canEditList && mealLists.some((l) => l.id === active.id) && (
+            <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
+              <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
+            </button>
+          )}
           {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
             help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
           {active.id === "shipsLog" && shown.length > 0 && (
@@ -945,7 +960,7 @@ export default function BoatPrep({ boatId, boats }) {
           )}
           {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
@@ -1005,7 +1020,8 @@ export default function BoatPrep({ boatId, boats }) {
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
-      <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa} />
+      <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
+        params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />
       <CommonMealsDialog open={dialog?.type === "commonMeals"} lists={mealLists} allNames={registry.map((l) => l.name)} activeId={active.id} online={online} onAdd={addMealToPlan} onClose={() => setDialog(null)} />
       {dialog?.type === "magicMeals" && <MagicMealPlanDialog mode={dialog.mode} boat={boat} areas={areas} cooks={cooks} allNames={registry.map((l) => l.name)} online={online}
@@ -1015,6 +1031,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={dialog?.type === "edit" ? saveEdit(dialog.item) : () => true} onClose={() => setDialog(null)}>
         {tagging && <AreaPicker areas={areas} value={editArea} onChange={setEditArea} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
+        {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <CookPicker value={editCook ?? cookOf(dialog.item.label)} cooks={cooks} onChange={setEditCook} />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />

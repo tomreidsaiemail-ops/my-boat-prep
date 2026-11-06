@@ -6,12 +6,13 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from typing import Annotated, List, Optional
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
 from db import db
 from auth import get_current_user, require_premium
+from crew_pro import galley_payer
 from photos import APP_NAME, get_object, put_object
 import quota
 from usage import KIND_FEATURE, record_usage
@@ -19,6 +20,7 @@ from youtube_links import check_links, wants_youtube
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
+BoatQ = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
 SYSTEM = ("You are Magic List Generation in the My Boat Prep app. You turn the user's description into a tidy, well-organised list. "
           "Follow the description exactly, whatever the topic; it is boating related most of the time but not always. Reply with JSON only, no prose and no code fences.")
 PROMPT = (
@@ -282,7 +284,8 @@ def parse_provisions(text: str, names: list, pets: tuple = ()) -> dict:
 
 
 @router.post("/ai/mpa/provisions")
-async def mpa_provisions(body: ProvisionsIn, user: dict = Depends(require_premium)):
+async def mpa_provisions(body: ProvisionsIn, boat_id: BoatQ = None, owner: BoatQ = None, me: dict = Depends(get_current_user)):
+    user = await galley_payer(me, boat_id, owner)
     stock = {str(k)[:80]: v for k, v in list(body.on_board.items())[:120] if isinstance(v, (int, float))}
     pet_names = [p.name.strip() or "Unnamed" for p in body.pets]
     prompt = (f"Trip: {body.days} days, {body.adults} adults and {body.children} children on board.\n"
@@ -501,7 +504,8 @@ class AislesIn(BaseModel):
 
 
 @router.post("/ai/mpa/aisles")
-async def mpa_aisles(body: AislesIn, user: dict = Depends(require_premium)):
+async def mpa_aisles(body: AislesIn, boat_id: BoatQ = None, owner: BoatQ = None, me: dict = Depends(get_current_user)):
+    user = await galley_payer(me, boat_id, owner)
     items = [s for s in dict.fromkeys(str(x).strip()[:80] for x in body.items) if s]
     aisles = [str(a).strip()[:40] for a in body.aisles if str(a).strip()]
     if not items or not aisles:

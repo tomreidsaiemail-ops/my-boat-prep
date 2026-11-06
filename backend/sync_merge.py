@@ -163,14 +163,17 @@ def merge_crew_galley(out: dict, prev: dict, inc: dict):
     ids = {r.get("id") for r in reg}
     lts = dict(out.get("list_ts") or {})
     for lid in ids:
-        if isinstance(idata.get(lid), list) and (lid == "provisions" or is_meal_plan(pdata.get(lid) or [])) and il.get(lid, "") > pl.get(lid, ""):
+        kind = next((r.get("kind") for r in reg if r.get("id") == lid), None)
+        if isinstance(idata.get(lid), list) and (lid == "provisions" or kind == "mpa" or is_meal_plan(pdata.get(lid) or [])) and il.get(lid, "") > pl.get(lid, ""):
             out["data"][lid] = _merge_list(deepcopy(idata[lid]), il[lid], pdata.get(lid) or [], pl.get(lid, ""))
             lts[lid] = il[lid]
     names = {str(r.get("name", "")).strip().lower() for r in reg}
-    new = [r for r in inc.get("registry") or [] if r.get("id") not in ids and str(r.get("id", "")).startswith("custom_") and not r.get("kind")
-           and str(r.get("name", "")).strip() and str(r.get("name", "")).strip().lower() not in names and is_meal_plan(idata.get(r.get("id")) or [])][:10]
+    new = [r for r in inc.get("registry") or [] if r.get("id") not in ids and str(r.get("id", "")).startswith("custom_")
+           and str(r.get("name", "")).strip() and str(r.get("name", "")).strip().lower() not in names
+           and ((not r.get("kind") and is_meal_plan(idata.get(r.get("id")) or [])) or (r.get("kind") == "mpa" and not any(x.get("kind") == "mpa" for x in reg)))][:10]
     if new:
         out["registry"] = list(out.get("registry") or []) + [{"id": r["id"], "name": str(r["name"]).strip()[:60], "isSystem": False,
+                                                              **({"kind": "mpa"} if r.get("kind") == "mpa" else {}),
                                                               **({"category": r["category"]} if r.get("category") else {})} for r in new]
         for r in new:
             out["data"][r["id"]] = deepcopy(idata[r["id"]])
