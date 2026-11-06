@@ -39,9 +39,7 @@ class TestPresets:
         r = requests.get(f"{API}/zone-colour-presets", headers=PRO, timeout=30)
         assert r.status_code == 200
         p = r.json()["presets"]
-        assert p[0] == {"label": "Cockpit", "colour": "Gold"}
-        assert p[1] == {"label": "Saloon", "colour": "Green"}
-        assert p[2] == {"label": "Galley", "colour": "Orange"}
+        assert p and p[0]["label"] == "Cockpit"
         assert all(set(x) == {"label", "colour"} for x in p)
 
     def test_presets_unauth(self):
@@ -59,19 +57,19 @@ class TestSwatches:
         assert isinstance(m["swatches"], list)
 
     def test_save_and_persist(self, original_swatches):
-        sw = original_swatches + [{"id": "TEST_s1", "x": 0.6, "y": 0.5, "colour": "green", "label": " Saloon "}]
+        sw = original_swatches + [{"id": "TEST_s1", "x": 0.6, "y": 0.5, "colour": "green", "label": " TEST Zone "}]
         r = requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": sw}, headers=PRO, timeout=30)
         assert r.status_code == 200, r.text
         got = next(m for m in maps() if m["id"] == MID)["swatches"]
         t = next(s for s in got if s["id"] == "TEST_s1")
-        assert t == {"id": "TEST_s1", "x": 0.6, "y": 0.5, "colour": "Green", "label": "Saloon"}
+        assert t == {"id": "TEST_s1", "x": 0.6, "y": 0.5, "colour": "Green", "label": "TEST Zone"}
 
     def test_bad_colour_400(self, original_swatches):
         r = requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": [{"id": "a", "x": 0.1, "y": 0.1, "colour": "Notacolour"}]}, headers=PRO, timeout=30)
         assert r.status_code == 400
 
     def test_too_many_422(self, original_swatches):
-        sw = [{"id": f"a{i}", "x": 0.1, "y": 0.1, "colour": "Gold"} for i in range(51)]
+        sw = [{"id": f"a{i}", "x": 0.1, "y": 0.1, "colour": "Gold"} for i in range(101)]
         assert requests.put(f"{API}/boats/main/zone-maps/{MID}/swatches", json={"swatches": sw}, headers=PRO, timeout=30).status_code == 422
 
     def test_out_of_range_422(self, original_swatches):

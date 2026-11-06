@@ -29,7 +29,7 @@ export const OverviewView = ({ src, swatches = [] }) => (
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
-export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage }) => {
+export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour }) => {
   const [swatches, setSwatches] = useState(map.swatches || []);
   const [selected, setSelected] = useState(null);
   const [armed, setArmed] = useState(null);
@@ -79,20 +79,24 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
+  // Tap a square to open its Zone Map Photo; press and hold to show its remove button; drag to move.
   const dragOld = (e, s) => {
-    if (!canEdit) return;
     e.preventDefault(); e.stopPropagation();
+    if (!canEdit) { onColour?.(s); return; }
     const sx = e.clientX, sy = e.clientY;
-    let moved = false, last = s;
+    let moved = false, held = false, last = s;
+    const timer = setTimeout(() => { if (!moved) { held = true; setSelected(s.id); } }, 550);
     const move = (ev) => {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
-      moved = true;
+      moved = true; clearTimeout(timer);
       const pos = at(ev.clientX, ev.clientY);
       if (pos) { last = { ...s, ...pos }; setSwatches((all) => all.map((x) => (x.id === s.id ? last : x))); }
     };
     const up = () => {
+      clearTimeout(timer);
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
-      if (moved) save(swatches.map((x) => (x.id === s.id ? last : x))); else setSelected((id) => (id === s.id ? null : s.id));
+      if (moved) save(swatches.map((x) => (x.id === s.id ? last : x)));
+      else if (!held) { setSelected(null); onColour?.(s); }
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
@@ -117,7 +121,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
           </button>
-          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to remove it."}</p>
+          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to open its Zone Map Photo; press and hold it to remove it."}</p>
           <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"

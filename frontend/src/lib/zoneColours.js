@@ -7,14 +7,32 @@ export const ZONE_COLOURS = {
   Salmon: "#FA8072", Silver: "#B8BEC6", Indigo: "#3F2A9E", Aqua: "#00C7C7", Khaki: "#C3B091", Rust: "#B7410E", Mustard: "#D8A31A",
   Cream: "#F3E9C6", Charcoal: "#36454F", Rose: "#E8507A", Jade: "#00A86B", Cobalt: "#0047AB", Lilac: "#C8A2C8", Burgundy: "#6D1A36",
   Ochre: "#CC7722", Slate: "#6A7B8C",
+  Scarlet: "#FF2400", Cherry: "#C2185B", Ruby: "#9B111E", Wine: "#722F37", Raspberry: "#E30B5C", Fuchsia: "#FF00C8", "Hot Pink": "#FF69B4",
+  Blush: "#F4B6C2", Apricot: "#FBCEB1", Tangerine: "#FF9408", Pumpkin: "#FF7518", Terracotta: "#E2725B", Cinnamon: "#A0522D", Chocolate: "#5C3317",
+  Mocha: "#967259", Caramel: "#C68E17", Honey: "#EBA937", Sand: "#D8C29D", Ivory: "#FFFBEA", Lemon: "#FFF44F", Butter: "#FFE680",
+  Pistachio: "#93C572", Sage: "#9CAF88", Moss: "#8A9A5B", "Forest Green": "#228B22", Pine: "#01796F", Seafoam: "#71EEB8", "Kelly Green": "#4CBB17",
+  Cyan: "#00E5FF", "Ice Blue": "#C6E6FB", "Baby Blue": "#A1CAF1", "Powder Blue": "#B0E0E6", "Steel Blue": "#4682B4", Denim: "#1560BD",
+  "Royal Blue": "#4169E1", Sapphire: "#0F52BA", Midnight: "#191970", Ocean: "#006994", Periwinkle: "#8C9EFF", Iris: "#5A4FCF", Amethyst: "#9966CC",
+  Orchid: "#DA70D6", Mauve: "#B784A7", Grape: "#6F2DA8", Eggplant: "#614051", Taupe: "#8B8589", Pewter: "#96A8A1", Graphite: "#474A51",
+  Black: "#111111", White: "#FFFFFF",
 };
 export const PALETTE = Object.keys(ZONE_COLOURS);
-const RAINBOW = ["Red", "Crimson", "Light Red", "Rose", "Maroon", "Burgundy", "Coral", "Salmon", "Peach", "Orange", "Rust", "Copper", "Ochre", "Brown", "Sepia", "Tan", "Khaki",
-  "Gold", "Amber", "Mustard", "Beige", "Cream", "Yellow", "Chartreuse", "Olive", "Lime", "Lime Green", "Green", "Emerald", "Jade", "Mint", "Teal", "Aqua", "Turquoise",
-  "Sky Blue", "Blue", "Cobalt", "Navy", "Indigo", "Violet", "Lavender", "Lilac", "Purple", "Plum", "Magenta", "Pink", "Silver", "Gray", "Slate", "Charcoal"];
+export const RAINBOW = ["Red", "Scarlet", "Crimson", "Cherry", "Ruby", "Light Red", "Raspberry", "Rose", "Maroon", "Burgundy", "Wine", "Coral", "Salmon", "Terracotta", "Peach", "Apricot",
+  "Orange", "Tangerine", "Pumpkin", "Rust", "Copper", "Cinnamon", "Ochre", "Brown", "Chocolate", "Sepia", "Mocha", "Caramel", "Tan", "Khaki", "Sand", "Taupe",
+  "Gold", "Honey", "Amber", "Mustard", "Beige", "Cream", "Ivory", "Butter", "Lemon", "Yellow", "Chartreuse", "Olive", "Moss", "Pistachio", "Sage", "Lime", "Lime Green", "Kelly Green",
+  "Green", "Forest Green", "Emerald", "Jade", "Pine", "Seafoam", "Mint", "Teal", "Aqua", "Cyan", "Turquoise", "Ocean", "Ice Blue", "Powder Blue", "Baby Blue", "Sky Blue",
+  "Steel Blue", "Denim", "Blue", "Royal Blue", "Cobalt", "Sapphire", "Navy", "Midnight", "Periwinkle", "Iris", "Indigo", "Violet", "Amethyst", "Lavender", "Lilac", "Orchid",
+  "Mauve", "Purple", "Grape", "Plum", "Eggplant", "Magenta", "Fuchsia", "Hot Pink", "Pink", "Blush", "White", "Silver", "Pewter", "Gray", "Slate", "Graphite", "Charcoal", "Black"];
 // Light colours need dark writing on them.
 export const LIGHT = new Set(["Yellow", "Beige", "Lime", "Turquoise", "Lavender", "Gold", "Peach", "Mint", "Tan", "Chartreuse", "Sky Blue", "Amber", "Salmon", "Silver",
-  "Aqua", "Khaki", "Cream", "Lilac", "Mustard", "Lime Green", "Coral", "Light Red"]);
+  "Aqua", "Khaki", "Cream", "Lilac", "Mustard", "Lime Green", "Coral", "Light Red", "Blush", "Apricot", "Tangerine", "Honey", "Sand", "Ivory", "Lemon", "Butter",
+  "Pistachio", "Sage", "Seafoam", "Kelly Green", "Cyan", "Ice Blue", "Baby Blue", "Powder Blue", "Periwinkle", "Orchid", "Mauve", "Pewter", "White", "Hot Pink", "Caramel"]);
+const ALIASES = { grey: "gray", oilve: "olive", lightred: "light red", limegreen: "lime green", skyblue: "sky blue", "light grey": "gray", "light gray": "silver" };
+export const colourName = (v) => {
+  const low = String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const want = ALIASES[low] || low;
+  return PALETTE.find((c) => c.toLowerCase() === want) || null;
+};
 
 export const mapLabel = (m, n) => m.name || `Zone map ${n + 1}`;
 

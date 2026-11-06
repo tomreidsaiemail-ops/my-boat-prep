@@ -7,12 +7,17 @@ from db import db
 from auth import get_current_user
 
 router = APIRouter(prefix="/api")
-# The sequence new zone map photos take their colour from; a boat can have 50 maps, so each gets its own.
+# The sequence new zone map photos take their colour from; a boat can have 100 maps, so each gets its own.
 PALETTE = ["Gold", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "Brown", "Gray", "Teal",
            "Maroon", "Navy", "Turquoise", "Lavender", "Magenta", "Lime", "Coral", "Olive", "Beige", "Red",
            "Light Red", "Lime Green", "Copper", "Emerald", "Peach", "Mint", "Tan", "Sepia", "Chartreuse", "Sky Blue",
            "Crimson", "Plum", "Amber", "Violet", "Salmon", "Silver", "Indigo", "Aqua", "Khaki", "Rust",
-           "Mustard", "Cream", "Charcoal", "Rose", "Jade", "Cobalt", "Lilac", "Burgundy", "Ochre", "Slate"]
+           "Mustard", "Cream", "Charcoal", "Rose", "Jade", "Cobalt", "Lilac", "Burgundy", "Ochre", "Slate",
+           "Scarlet", "Cherry", "Ruby", "Wine", "Raspberry", "Fuchsia", "Hot Pink", "Blush", "Apricot", "Tangerine",
+           "Pumpkin", "Terracotta", "Cinnamon", "Chocolate", "Mocha", "Caramel", "Honey", "Sand", "Ivory", "Lemon",
+           "Butter", "Pistachio", "Sage", "Moss", "Forest Green", "Pine", "Seafoam", "Kelly Green", "Cyan", "Ice Blue",
+           "Baby Blue", "Powder Blue", "Steel Blue", "Denim", "Royal Blue", "Sapphire", "Midnight", "Ocean", "Periwinkle", "Iris",
+           "Amethyst", "Orchid", "Mauve", "Grape", "Eggplant", "Taupe", "Pewter", "Graphite", "Black", "White"]
 ALIASES = {"grey": "gray", "oilve": "olive", "lightred": "light red", "limegreen": "lime green", "skyblue": "sky blue", "light grey": "gray", "light gray": "silver"}
 PRESET_LIST = "Admin - Zone Map Predetermined Colours"
 PRESET_LINES = ["Cockpit - Gold", "Saloon - Green", "Galley - Orange", "Nav station - Navy", "Forward cabin - Blue", "Aft cabin - Purple",
@@ -85,7 +90,7 @@ class Swatch(BaseModel):
 
 
 class SwatchesIn(BaseModel):
-    swatches: List[Swatch] = Field(max_length=50)
+    swatches: List[Swatch] = Field(max_length=100)
 
 
 @router.put("/boats/{boat_id}/zone-maps/{map_id}/swatches")
@@ -130,7 +135,7 @@ async def save_map_meta(boat_id: BoatPath, map_id: MapPath, payload: MapMetaIn, 
             raise HTTPException(status_code=400, detail="Zone Map Overviews don't have a colour. Drag colours onto the plan instead.")
         colour = colour_name(payload.colour)
         if not colour:
-            raise HTTPException(status_code=400, detail="Please pick one of the 50 zone map colours")
+            raise HTTPException(status_code=400, detail="Please pick one of the 100 zone map colours")
         if colour in others:
             raise HTTPException(status_code=400, detail=f"{colour} is already used by {label(others[colour])}. Each zone map needs its own colour.")
         me.update({"colour": colour, "colour_manual": True})

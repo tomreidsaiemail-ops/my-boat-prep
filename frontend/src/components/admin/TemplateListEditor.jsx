@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { isHeadingLine, linesToItems } from "@/lib/outline";
 import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
+import { PaletteTest } from "@/components/admin/PaletteTest";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
 const LINE_MAX = 4000;
@@ -46,6 +47,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
           className="field-input min-h-[180px] py-2 font-normal leading-relaxed" data-testid="template-list-items-input" />
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
+      {/zone map predetermined colours/i.test(name) && <PaletteTest lines={lines} />}
       <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} headings={headings} hasLines={!!lines.length} testId="template-list" />
       {initial && !priv && (
         <label className="flex flex-col gap-1 text-sm font-bold">Why this changed (optional)

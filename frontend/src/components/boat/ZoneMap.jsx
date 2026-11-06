@@ -20,7 +20,7 @@ const HELP_NAME = "admin - help panel - zone map help";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
-const MAX_MAPS = 50;
+const MAX_MAPS = 100;
 export const boatMapUrl = (b, m) => `${API}/boats/${b.boat_id}/zone-maps/${m.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(m.v)}`;
 
 const pickPicture = async (e) => {
@@ -101,6 +101,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
     setExpanded(true);
     setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });
   }, [focusPin]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openColour = (s) => {
+    const m = own.find((z) => z.colour === s.colour);
+    if (m) setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m });
+    else toast(`No Zone Map Photo for ${s.label} yet`, { description: canEdit ? `Add a photo named "${s.label}" and it takes ${s.colour}.` : undefined });
+  };
   const tapPin = (pin) => {
     if (pin.area_id && areas.some((a) => a.id === pin.area_id)) onOpenArea?.(pin.area_id);
     else toast.message(`${pin.label} isn't listed in Boat Inventory yet`);
@@ -169,7 +174,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Overviews ({overviews.length})</p>
           {overviews.map((m) => (
             <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps}
-              removing={removing === m.id} onRemove={() => removeMap(m)} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
+              removing={removing === m.id} onRemove={() => removeMap(m)} onColour={openColour} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
           ))}
           {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}
           {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Now take photos of your Cockpit, Saloon, Galley and cabins and add them below as Zone Map Photos. Name each one (e.g. Galley) and it takes the same colour, and every boat area you label on it shows that colour.</p>}
