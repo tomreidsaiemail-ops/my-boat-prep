@@ -621,3 +621,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-06 Persons on board from crew replies
 - Additional details: Persons on board auto = crew who replied "I'm in" + skipper (on-board endpoint now returns in_count), applied when the dialog opens while boat.pob_manual is false and at least one crew is in. Typing a number sets pob_manual; "Use crew count (N)" restores. Self-tested by screenshot.
+
+## 2026-06 Magic Mariner zone map layout plans
+- backend/zone_schematics.py: POST /api/boats/{id}/zone-schematics (premium, body boat_type/make/model/year_built/loa/units, 1 Magic use) starts a background job (db.zone_schematics, TTL 30 days via `expires`) drawing 4 AI layout plans with Gemini Nano Banana (gemini-3.1-flash-image-preview, Emergent LLM key): Deck & cockpit, Saloon & galley, Cabins, Full interior -> JPEG in object storage. A running/done job for the same boat + type/make/model/year in the last 7 days is reused (no extra Magic use). GET /api/zone-schematics/{job} status, GET /{job}/{n} image, POST /api/boats/{id}/zone-schematics/{job}/use {image_ids} adds them as zone maps named after the plan.
+- Frontend: ZoneSchematicsDialog (help from "Admin - Help Panel - Zone Map Selection", seeded by migration zone_map_selection_help); Additional details button "Create <type> ZONE MAP for a <make> <model>..." under Create Boat Maintenance lists; expanding an empty Zone Map (skipper) opens Additional details (mbp:open-details); Continue closes both and shows the expanded Zone Map (mbp:show-zone-map); closing details without a zone map shows "Create a zone map?" reminder (Not now allowed).
+- Tested iteration_111 (backend 17/17, frontend 100%); task refs, job reuse and TTL added after.

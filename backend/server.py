@@ -605,6 +605,8 @@ async def create_indexes():
     await db.crew_register.create_index("entry_id", unique=True)
     await db.crew_register.create_index([("owner_id", 1), ("kind", 1)])
     await db.crew_register.create_index("email_key")
+    await db.zone_schematics.create_index("job_id", unique=True)
+    await db.zone_schematics.create_index("expires", expireAfterSeconds=0)
     await db.invite_sends.create_index("at", expireAfterSeconds=2 * 86400)
     await backfill_invite_keys()
     await db.ai_usage.create_index([("user_id", 1), ("created_at", 1)])

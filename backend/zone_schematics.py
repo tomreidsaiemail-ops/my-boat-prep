@@ -4,7 +4,7 @@ import io
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from pydantic import BaseModel, Field
@@ -23,6 +23,7 @@ BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 JobPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 ImgPath = Annotated[str, Path(pattern=r"^[0-9]$")]
 MODEL = "gemini-3.1-flash-image-preview"
+_tasks = set()
 PLANS = [
     ("Deck & cockpit", "deck plan seen from directly above: bow, foredeck, mast, cabin top, cockpit, helm, cockpit lockers and lazarettes, transom or swim platform"),
     ("Saloon & galley", "interior plan seen from directly above of the saloon and galley: seating, saloon table, galley, chart/nav table, companionway steps"),
@@ -88,11 +89,19 @@ async def start_schematics(boat_id: BoatPath, payload: PlanBoat, user: dict = De
     boat = payload.model_dump()
     if not (str(boat.get("make") or "").strip() and str(boat.get("model") or "").strip()):
         raise HTTPException(status_code=400, detail="Add your boat's make and model first")
+    sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built"))
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "status": {"$in": ["running", "done"]}, "created_at": {"$gte": week_ago}},
+                                               {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
+    if recent:
+        return {"job_id": recent["job_id"], "total": len(PLANS), "scans_left": await quota.left(user["user_id"]), "reused": True}
     source = await quota.consume(user["user_id"])
     job_id = str(uuid.uuid4())
-    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "status": "running", "images": [], "failed": 0,
-                                         "created_at": datetime.now(timezone.utc).isoformat()})
-    asyncio.create_task(_run(job_id, user["user_id"], boat, source))
+    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "status": "running", "images": [], "failed": 0,
+                                         "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
+    task = asyncio.create_task(_run(job_id, user["user_id"], boat, source))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
     return {"job_id": job_id, "total": len(PLANS), "scans_left": await quota.left(user["user_id"])}
 
 
