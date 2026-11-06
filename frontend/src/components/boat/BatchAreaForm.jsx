@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
+import { AreaNamePicker } from "@/components/boat/zone/AreaNamePicker";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -49,7 +50,8 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
           <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
         </HelpPanel>
-        <input autoFocus value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
+        {zone && <AreaNamePicker zone={zone} name={name} used={[...existing.filter((a) => !a.parent_id).map((a) => a.name), ...batchNames]} onPick={(n) => { setName(n); setError(""); }} />}
+        <input autoFocus={!zone} value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
           aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
           {clash.name} is already on your boat. Confirming the batch will replace its {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"} with this scan.</p>}

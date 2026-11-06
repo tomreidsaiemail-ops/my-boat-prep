@@ -126,7 +126,7 @@ async def list_categories(_: dict = Depends(get_current_user)):
     return {"items": [{"label": i["label"]} for i in items]}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ")
 
 
 @router.get("/admin-lists")
@@ -349,6 +349,22 @@ async def seed_log_help():
             await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
                                                 "items": [{"id": n + 1, "label": t, **({"indent": True} if name.endswith("Folders") and n else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
         await db.migrations.insert_one({"_id": mig, "at": now})
+
+
+async def seed_common_names():
+    """Runs once: adds the Galley boat area pick list offered while batch scanning the Galley zone."""
+    if await db.migrations.find_one({"_id": "common_galley_names"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    name = "Admin - Common Galley Names"
+    if not await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(name)}\s*$", "$options": "i"}}, {"_id": 1}):
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True,
+                                            "description": "Boat area names offered as a pick list when scanning Galley cupboards. Make \"Admin - Common <Zone> Names\" for any other zone.",
+                                            "items": [{"id": n + 1, "label": t} for n, t in enumerate(GALLEY_NAMES)], "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": "common_galley_names", "at": now})
+
+
+GALLEY_NAMES = ["Counter Top", "Fridge", "Freezer", "Larder", "Dry Foods Store", "Hanging Basket", "Bilge Storage", "Spice Rack", "Root Locker", "Provisioning Bin", "Provisioning Bin 2"]
 
 
 async def add_spars_attributes():

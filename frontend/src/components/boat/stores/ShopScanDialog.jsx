@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ShoppingBasket } from "lucide-react";
+import { ListChecks, ShoppingBasket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { ShopAreasStep } from "@/components/boat/stores/ShopAreasStep";
@@ -71,13 +71,20 @@ export const ShopScanDialog = ({ boatId, areas, units, onApplyTargets, onDone, o
           <DialogDescription className="text-left text-sm">{review ? "Check what the MPA found. Move anything to a different area and it will remember next time." : "Photograph your shopping set by set and the MPA files it into your boat areas."}</DialogDescription>
         </DialogHeader>
         {step >= 0 && sets.length > 0 && (
-          <div className="flex flex-wrap gap-1" data-testid="shop-steps">
-            {[...sets.map((s) => s.name), "Review"].map((n, i) => (
-              <button key={n + i} type="button" onClick={() => setStep(i)} data-testid={`shop-step-chip-${i}`}
-                className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${i === step ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] text-[var(--navy)]"}`}>
-                {i < sets.length ? `${i + 1}. ${n} (${batch.entries.filter((e) => e.name === sets[i].id).length})` : n}
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-1" data-testid="shop-steps">
+              {sets.map((s, i) => (
+                <button key={s.id + i} type="button" onClick={() => setStep(i)} data-testid={`shop-step-chip-${i}`}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${i === step ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] text-[var(--navy)]"}`}>
+                  {`${i + 1}. ${s.name} (${batch.entries.filter((e) => e.name === s.id).length})`}
+                </button>
+              ))}
+            </div>
+            {!review && (
+              <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setStep(sets.length)} data-testid="shop-review-matches-btn">
+                <ListChecks className="h-4 w-4" /> Review Matches ({rows.length} {rows.length === 1 ? "item" : "items"}{scanning ? ", more coming" : ""})
               </button>
-            ))}
+            )}
           </div>
         )}
         {step < 0 && <ShopAreasStep targets={targets} setTargets={setTargets} others={others} onTagOther={tagOther} />}
@@ -88,7 +95,7 @@ export const ShopScanDialog = ({ boatId, areas, units, onApplyTargets, onDone, o
           {step >= 0 && <button type="button" className="btn-ghost px-4" onClick={() => setStep(step - 1)} data-testid="shop-back-btn">Back</button>}
           {step < 0 && <button type="button" className="btn-solid px-5" onClick={start} data-testid="shop-start-btn">Continue</button>}
           {step >= 0 && !review && <button type="button" className="btn-solid px-5" onClick={() => setStep(step + 1)} data-testid="shop-next-btn">
-            {step + 1 < sets.length ? `Next: ${sets[step + 1].name}` : "Review shopping"}</button>}
+            {step + 1 < sets.length ? `Next: ${sets[step + 1].name}` : "Review Matches"}</button>}
           {review && <button type="button" className="btn-solid px-5" disabled={scanning || !kept.length} onClick={finish} data-testid="shop-done-btn">
             Done / Continue{kept.length ? ` (~${fmtWeight(totalW, units)})` : ""}</button>}
         </DialogFooter>
