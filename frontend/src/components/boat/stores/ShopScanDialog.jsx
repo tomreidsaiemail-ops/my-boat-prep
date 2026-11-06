@@ -80,7 +80,11 @@ export const ShopScanDialog = ({ boatId, areas, units, onApplyTargets, onDone, o
                 </button>
               ))}
             </div>
-            {!review && (
+            {review ? (
+              <p className="flex h-11 items-center justify-center gap-2 rounded-md border-2 border-[var(--navy)] text-sm font-bold text-[var(--navy)]" data-testid="shop-reviewing-label">
+                <ListChecks className="h-4 w-4" /> Reviewing matches
+              </p>
+            ) : (
               <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setStep(sets.length)} data-testid="shop-review-matches-btn">
                 <ListChecks className="h-4 w-4" /> Review Matches ({rows.length} {rows.length === 1 ? "item" : "items"}{scanning ? ", more coming" : ""})
               </button>

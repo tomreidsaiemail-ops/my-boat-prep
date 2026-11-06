@@ -1,0 +1,26 @@
+{
+  "summary": "Tested the Galley boat area name pick list (backend admin-lists 'Admin - Common' prefix plus the AreaNamePicker in BatchAreaForm) and the ShopScanDialog Review Matches button. Everything requested works. Backend: 10/10 pytest pass. Frontend: all flows checked on mobile 390x844 as pro user test_session_pro_1, boat main.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Zone batch-area-form (Galley)", "issues": ["The 'How Batch Magic Scan works' help panel opens expanded by default, so on mobile the 'Common Galley names' picker and the name input start below the fold. The user has to scroll to reach the new pick list. Consider collapsing help once the user has seen it."]},
+      {"screen": "ShopScanDialog review step", "issues": ["On the review step no step chip is highlighted, so the only sign you are on review is the changed description. This is acceptable but could be clearer (for example a 'Reviewing matches' label)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_common_names.py", "/app/test_reports/pytest/pytest_common_names.xml"],
+  "action_items": [
+    "Optional data note: the admin-created DB list 'Admin - Common Galley Names' has 10 items and is missing 'Provisioning Bin 2' (the seed's GALLEY_NAMES has 11). The seed correctly skipped because the list already exists. The admin should add 'Provisioning Bin 2' in the template list editor if wanted. Also note: the DB has 'Root locker' while the seed has 'Root Locker'."
+  ],
+  "critical_code_review_comments": [
+    "AreaNamePicker calls useAdminLists(PREFIX, navigator.onLine). Offline it relies on whatever the hook caches; this was not tested offline.",
+    "The 'used' set only includes top-level areas plus batch names, which matches the spec. Name matching is case- and whitespace-insensitive: typing 'fridge ' highlights the Fridge chip."
+  ],
+  "updated_files": ["/app/backend/tests/test_common_names.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. No scans run, no areas created. Clicking ShopScan Continue calls onApplyTargets, which re-saves the same areas. Before and after DB snapshots of user_boats test-user-pro/main differ only in timestamps (sec_ts/updated_at/synced_at).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro boat main: only the Galley zone has photos (2), so only zone-dialog-galley-scan-btn appears. Other zones (Saloon etc.) have no photos, so their scan button is hidden. The 'no list means no picker' case was checked by mocking /api/admin-lists via page.route (returning only a Saloon list): the Galley form then shows no area-name-picker. The non-zone batch (zone-picker-more-btn -> inventory-batch-scan-btn) shows no picker and no banner. Existing top-level areas Fridge, Freezer and Hanging Basket show as used chips (opacity 0.5, tick). Tapping Fridge shows batch-area-replace-warning ('replace its 17 listed items'). ShopScan opens from app-menu-btn -> app-menu-shop-scan-item. It has 8 sets with chips 1-8 and no Review chip. shop-review-matches-btn is btn-solid h-11, placed under the chips, and is hidden on review. The last step's next button reads 'Review Matches', and Back from review returns to the last set."
+}

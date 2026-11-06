@@ -36,6 +36,13 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
     onAdd(n, blob, more);
     if (more) reset();
   };
+  const help = (
+    <HelpPanel storageKey="mbp_batch_area_help_seen" title="How Batch Magic Scan works" testId="batch-area-help">
+      <p>Name a cupboard that makes sense, open that cupboard - maybe pull a few things out so they appear on the photo, and take and use that photo, and press "Confirm, and add another". Continue around your boat taking photos and naming them, until you have taken a photo of all nooks and crannies.</p>
+      <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
+      <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
+    </HelpPanel>
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -45,11 +52,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} boat area` : "New boat area"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
-        <HelpPanel storageKey="mbp_batch_area_help_seen" title="How Batch Magic Scan works" testId="batch-area-help">
-          <p>Name a cupboard that makes sense, open that cupboard - maybe pull a few things out so they appear on the photo, and take and use that photo, and press "Confirm, and add another". Continue around your boat taking photos and naming them, until you have taken a photo of all nooks and crannies.</p>
-          <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
-          <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
-        </HelpPanel>
+        {!zone && help}
         {zone && <AreaNamePicker zone={zone} name={name} used={[...existing.filter((a) => !a.parent_id).map((a) => a.name), ...batchNames]} onPick={(n) => { setName(n); setError(""); }} />}
         <input autoFocus={!zone} value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
           aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
@@ -63,6 +66,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
         {preview && <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" onClick={() => input.current?.click()} data-testid="batch-area-photo-change-btn"><ImagePlus className="h-4 w-4" /> Change photo</button>}
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={pick} data-testid="batch-area-photo-input" />
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="batch-area-error">{error}</p>}
+        {zone && help}
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <button type="button" className="btn-solid h-12" onClick={() => confirm(false)} data-testid="batch-area-confirm-btn">Confirm</button>
           <button type="button" className="btn-ghost h-12" disabled={full} onClick={() => confirm(true)} data-testid="batch-area-confirm-another-btn">Confirm, and add another</button>

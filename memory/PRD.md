@@ -662,3 +662,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Admin template list search matches names, descriptions and lines; shows up to 3 matching lines highlighted.
 - Tested iteration_115 (backend 21/21 after fixes, frontend 100%).
 
+
+## 2026-06 Common zone boat area names; Review Matches button
+- Zone batch scan "New <Zone> boat area" form shows a tap-to-pick list (zone/AreaNamePicker.jsx) from admin list "Admin - Common <Zone> Names" (admin-lists prefix "admin - common " added; migration common_galley_names seeds "Admin - Common Galley Names" only if missing). Picks save just the name (e.g. "Fridge"); names already on the boat dimmed with a tick, still tappable (replace warning); free typing still works. In zone mode the help panel sits below the photo.
+- Batch Magic Scan My Shopping: "Review" chip removed; solid "Review Matches (N items)" button under the area steps (shop-review-matches-btn), "Reviewing matches" label on the review step, last-step button "Review Matches".
+- Tested iteration_116 (backend 10/10, frontend 100%); help placement + review label added after.
+
