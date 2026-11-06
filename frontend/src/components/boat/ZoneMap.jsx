@@ -102,7 +102,8 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
     setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });
   }, [focusPin]); // eslint-disable-line react-hooks/exhaustive-deps
   const openColour = (s) => {
-    const m = own.find((z) => z.colour === s.colour);
+    const label = s.label.toLowerCase(), named = (z) => (z.name || "").toLowerCase();
+    const m = own.find((z) => named(z) === label) || own.find((z) => named(z).includes(label)) || own.find((z) => z.colour === s.colour);
     if (m) setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m });
     else toast(`No Zone Map Photo for ${s.label} yet`, { description: canEdit ? `Add a photo named "${s.label}" and it takes ${s.colour}.` : undefined });
   };

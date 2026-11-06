@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CheckCircle2, Palette, TriangleAlert, XCircle } from "lucide-react";
-import { isHeadingLine } from "@/lib/outline";
 import { LIGHT, RAINBOW, ZONE_COLOURS, colourName } from "@/lib/zoneColours";
 
 const LINE = /^\s*\*?\s*(.+?)\s*[-–:,=]\s*([A-Za-z]+(?: [A-Za-z]+)?)\s*\*?\s*$/;
@@ -14,7 +13,7 @@ const near = (word) => {
 export const checkPalette = (lines) => {
   const byColour = {}, byZone = {};
   const rows = lines.map((raw, i) => {
-    if (!raw.trim() || isHeadingLine(raw)) return { n: i + 1, raw, kind: "skip" };
+    if (!raw.trim()) return { n: i + 1, raw, kind: "skip" };
     const m = raw.match(LINE);
     if (!m) return { n: i + 1, raw, kind: "bad", why: "Use the format Zone - Colour, e.g. Cockpit - Gold" };
     const zone = m[1].replace(/^\*+|\*+$/g, "").trim(), typed = m[2].trim(), colour = colourName(typed);
@@ -33,7 +32,8 @@ export const checkPalette = (lines) => {
     if (twin.length) { r.kind = "warn"; r.why = `${r.colour} is also used on line ${twin.join(", ")}, so photos can't tell these zones apart`; }
     else if (same.length) { r.kind = "warn"; r.why = `${r.zone} is also listed on line ${same.join(", ")}`; }
   });
-  const used = Object.fromEntries(rows.filter((r) => r.colour).map((r) => [r.colour, r.zone]));
+  const used = {};
+  rows.forEach((r) => { if (r.colour) used[r.colour] = used[r.colour] ? `${used[r.colour]}, ${r.zone}` : r.zone; });
   return { rows: rows.filter((r) => r.kind !== "skip"), used };
 };
 
@@ -72,7 +72,7 @@ export const PaletteTest = ({ lines }) => {
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">All {RAINBOW.length} colours you can use</p>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4" data-testid="palette-test-colours">
             {RAINBOW.map((c) => (
-              <span key={c} className={`flex min-h-9 items-center justify-between gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold ${used[c] ? "ring-2 ring-[var(--navy)]" : ""}`}
+              <span key={c} className={`flex min-h-9 items-center justify-between gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold ${used[c] ? "ring-2 ring-[var(--navy)]" : LIGHT.has(c) ? "ring-1 ring-slate-300" : ""}`}
                 style={{ background: ZONE_COLOURS[c], color: ink(c) }} title={used[c] ? `Used by ${used[c]}` : "Free to use"} data-testid={`palette-test-colour-${c.toLowerCase().replace(/\s+/g, "-")}`}>
                 <span>{c}</span>{used[c] ? <span className="truncate text-[10px] font-bold opacity-90">{used[c]}</span> : <span className="text-[10px] font-bold opacity-75">free</span>}
               </span>

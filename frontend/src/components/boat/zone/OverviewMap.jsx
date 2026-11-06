@@ -9,7 +9,7 @@ const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).sli
 const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 
 const Square = ({ s, style, selected, onPointerDown, onRemove, testId }) => (
-  <span className="absolute z-10 -translate-x-1/2 -translate-y-1/2 touch-none select-none" style={style} onClick={(e) => e.stopPropagation()} data-testid={testId}>
+  <span className={`absolute -translate-x-1/2 -translate-y-1/2 touch-none select-none ${selected ? "z-30" : "z-10"}`} style={style} onClick={(e) => e.stopPropagation()} data-testid={testId}>
     <span onPointerDown={onPointerDown} className={`flex cursor-grab items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] font-extrabold shadow-md ring-2 ${selected ? "ring-[var(--navy)]" : "ring-white"}`}
       style={{ background: ZONE_COLOURS[s.colour], color: ink(s.colour) }}>{s.label || s.colour}</span>
     {selected && onRemove && (
@@ -82,8 +82,12 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   // Tap a square to open its Zone Map Photo; press and hold to show its remove button; drag to move.
   const dragOld = (e, s) => {
     e.preventDefault(); e.stopPropagation();
-    if (!canEdit) { onColour?.(s); return; }
     const sx = e.clientX, sy = e.clientY;
+    if (!canEdit) {
+      const up = (ev) => { window.removeEventListener("pointerup", up); if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 10) onColour?.(s); };
+      window.addEventListener("pointerup", up);
+      return;
+    }
     let moved = false, held = false, last = s;
     const timer = setTimeout(() => { if (!moved) { held = true; setSelected(s.id); } }, 550);
     const move = (ev) => {

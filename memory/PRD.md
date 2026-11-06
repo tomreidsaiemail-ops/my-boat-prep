@@ -642,3 +642,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Magically Place Colours
 - POST /api/boats/{id}/zone-maps/{map_id}/auto-swatches (premium, 1 Magic use, refunded on failure/none found): Gemini 3 Flash vision locates every "Admin - Zone Map Predetermined Colours" label on the overview and REPLACES its squares (one per label, max 50). ~15-20s.
 - OverviewMap button "Magically Place Colours" (testid zone-overview-<id>-auto-btn). Self-tested: curl placed 9 areas; UI click placed 9 squares.
+
+## 2026-06 Tap colour -> Zone Map Photo; admin Palette test; 100 colours
+- Overview squares: tap opens the matching Zone Map Photo (by photo name = label, then name contains label, then same colour), else toast "No Zone Map Photo for X yet"; press-and-hold (550ms) shows remove x (selected square z-30); drag moves. Crew: tap opens on release.
+- Admin TemplateListEditor shows "Test palette" (PaletteTest.jsx) only for "Admin - Zone Map Predetermined Colours": per-line ok/warn/bad (format, unknown colour + "Did you mean", colour reused, zone repeated, aliases "read as"), then all 100 colours with used zones / free.
+- Colours 50 -> 100 (frontend ZONE_COLOURS/RAINBOW/LIGHT + colourName, backend PALETTE); MAX_BOAT_MAPS 100; swatches max 100.
+- Tested iteration_113 (backend 34/34, frontend 90% -> z-index, crew tap, contrast, multi-zone tile fixed; z-index fix self-verified).

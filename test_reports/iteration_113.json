@@ -1,0 +1,33 @@
+{
+  "summary": "Tested tap-a-colour-to-open-photo, the admin palette test, the move to 100 colours, and regressions. Backend: 34 of 34 pass (new test_zone_100_colours.py plus the test_zone_overviews.py and test_zone_colours.py regressions, run serially). Frontend at 390px with mouse pointer events, admin at 1920px. Owner (pro): the hint says tap to open and press and hold to remove, and the Magically Place Colours button is there (not run). Tapping the Galley square with no photo shows the toast 'No Zone Map Photo for Galley yet' with 'Add a photo named \"Galley\" and it takes Orange.' After uploading a photo and naming it Galley, the toast 'Zone map named Galley and coloured Orange' shows, and tapping the Galley square opens zone-map-dialog with that photo. A 300ms press acts as a tap. An 800ms hold shows -remove and opens no dialog; removing works and the palette chip comes back. Dragging moves the square and opens no dialog. Arm-and-tap placing and the one-of-each rule (used chips struck through) still work. Crew (free): tapping Galley opens the pro photo (owner= query); Forward cabin shows the toast without the hint; there is no hint, palette, auto button or remove x, and squares can't be dragged. Admin: palette-test-btn appears only on the 'Admin - Zone Map Predetermined Colours' list (not on Admin - Boat Budget). The panel shows the summary, 100 tiles and per-line kinds. 'Bluee' is bad with 'Did you mean Blue?'. A line with no dash is bad. Gold on two lines is a warn on both. 'Oilve' is ok and 'read as Olive'. 'Forest Green' is ok. 'grey' is read as Gray. Used tiles are ringed with the zone name and the rest say 'free'. It updates live. Cancel was used, so the real list was not saved. Cleanup: the uploaded photo was deleted and the overview's 9 squares were restored exactly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "OverviewMap Square remove x", "issue": "The remove x is covered by neighbouring squares. Every Square is z-10, so squares later in the DOM sit on top of an earlier selected square's x. After press-and-hold on Cockpit, elementFromPoint at the centre of the x returns the Heads Aft square, and a real click on the x times out because Heads Aft intercepts it. When squares overlap (common at 390px), the user can't remove and instead taps or drags the other square. Fix: give the selected Square a higher z-index (e.g. z-30 when selected).", "selector": "[data-testid=zone-overview-<id>-swatch-<sid>-remove]", "priority": "HIGH"},
+      {"component": "OverviewMap crew tap", "issue": "For crew, dragOld calls onColour on pointerdown. If the pointer moves off the square before release, the click lands on the plan div, so tapPlan->onImage also opens the full overview dialog. One press gives both the 'No Zone Map Photo' toast and the overview dialog. Fix: for crew, open on pointerup when the pointer hasn't moved, or stop the click on the plan.", "selector": "[data-testid=zone-overview-<id>-plan]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Palette test tiles and overview squares", "issues": ["White text on Orange (#F28C28, 2.45:1), Pumpkin (#FF7518, 2.69:1) and Pink (#F06EAA, 2.79:1) is low contrast. Add them to LIGHT for dark text (about 6.4-7.3:1).", "The White and Ivory tiles almost disappear on the bg-slate-50 panel. Add a ring or border to light tiles."]},
+      {"screen": "Palette test used tile", "issues": ["When one colour is on two lines, the tile names only the last zone (e.g. Gold shows 'Saloon', not 'Cockpit, Saloon'). Consider listing every zone."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_100_colours.py", "/app/backend/tests/test_zone_overviews.py", "/app/backend/tests/test_zone_colours.py", "/app/test_reports/pytest/pytest_it113.xml"],
+  "action_items": [
+    "Raise the z-index of the selected overview Square (OverviewMap.jsx Square: z-30 when selected) so its remove x can be clicked when squares overlap",
+    "Add Orange, Pumpkin and Pink to LIGHT in zoneColours.js for readable text",
+    "Optional: for crew, trigger onColour on pointerup when the pointer hasn't moved, and stop the click reaching the plan so it doesn't open the overview dialog too"
+  ],
+  "critical_code_review_comments": [
+    "openColour matches the photo by colour, not label. The real admin list reuses Red for 9 Port* zones and Green for 9 Starboard* zones (the palette test flags 22 lines as 'to check'). Tapping 'Port Forward cabin' opens whichever photo is Red, and preset_for skips a colour already used by another photo, so the toast's 'it takes Red' can be wrong. The user may want to know this.",
+    "checkPalette skips numbered heading lines (isHeadingLine), but backend presets() would parse '1. Cockpit - Gold' as zone '1. Cockpit'. The two parsers disagree on numbered lines.",
+    "The LINE regex is duplicated in PaletteTest.jsx and twice in zone_colours.py (presets and colour_presets). Extract it into one backend helper.",
+    "The 100-colour frontend palette matches the backend exactly: 100 keys, RAINBOW has 100 unique entries, no duplicate hex values, and every LIGHT entry is valid."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_100_colours.py"],
+  "success_rate": {"backend": "100%", "frontend": "90%"},
+  "seed_data_creation": "Temporarily uploaded 1 photo zone map to test-user-pro/main (deleted) and changed overview squares (restored to the original 9 exactly). Admin list not saved.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Overview id is in /tmp/mid. Its 9 original squares (Cockpit ae9cdef79c6, Saloon a57da25b544, Galley ad2a3f9b0b9, Nav station, Forward cabin aad04da9f59, Starboard Aft cabin, Heads Aft aeed7aa2260, Lazarett, Transom a5ef1493af5) are backed up in /tmp/orig_swatches_it113.json. Run backend tests with -n 0. The free crew user needs the 'Not now' terms dialog dismissed first. Press-and-hold was tested with page.mouse down/wait/up. Squares overlap at 390px, so check elementFromPoint before clicking the remove x."
+}

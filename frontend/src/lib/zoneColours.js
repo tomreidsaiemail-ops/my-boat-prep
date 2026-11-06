@@ -26,7 +26,8 @@ export const RAINBOW = ["Red", "Scarlet", "Crimson", "Cherry", "Ruby", "Light Re
 // Light colours need dark writing on them.
 export const LIGHT = new Set(["Yellow", "Beige", "Lime", "Turquoise", "Lavender", "Gold", "Peach", "Mint", "Tan", "Chartreuse", "Sky Blue", "Amber", "Salmon", "Silver",
   "Aqua", "Khaki", "Cream", "Lilac", "Mustard", "Lime Green", "Coral", "Light Red", "Blush", "Apricot", "Tangerine", "Honey", "Sand", "Ivory", "Lemon", "Butter",
-  "Pistachio", "Sage", "Seafoam", "Kelly Green", "Cyan", "Ice Blue", "Baby Blue", "Powder Blue", "Periwinkle", "Orchid", "Mauve", "Pewter", "White", "Hot Pink", "Caramel"]);
+  "Pistachio", "Sage", "Seafoam", "Kelly Green", "Cyan", "Ice Blue", "Baby Blue", "Powder Blue", "Periwinkle", "Orchid", "Mauve", "Pewter", "White", "Hot Pink", "Caramel",
+  "Orange", "Pumpkin", "Pink"]);
 const ALIASES = { grey: "gray", oilve: "olive", lightred: "light red", limegreen: "lime green", skyblue: "sky blue", "light grey": "gray", "light gray": "silver" };
 export const colourName = (v) => {
   const low = String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
