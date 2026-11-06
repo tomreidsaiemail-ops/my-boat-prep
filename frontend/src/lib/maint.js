@@ -89,7 +89,7 @@ export const yearsSince = (iso, today = new Date()) => {
   return String(Math.max(0, today.getFullYear() - y - (before ? 1 : 0)));
 };
 export const withAge = (attrs = {}, yearBuilt, defs) => {
-  const ageKeys = defs ? defs.filter((d) => d.type === "integer age").map((d) => d.key) : Object.keys(attrs).filter((k) => k === "age");
+  const ageKeys = defs ? defs.filter((d) => d.type === "integer age").map((d) => d.key) : ("age" in attrs || attrs[PURCHASE_KEY] ? ["age"] : []);
   const own = attrs[PURCHASE_KEY];
   const date = own || purchaseDefault(yearBuilt);
   const out = { ...attrs };

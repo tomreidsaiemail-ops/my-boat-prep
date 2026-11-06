@@ -1,0 +1,24 @@
+{
+  "summary": "Iteration 107: tested (1) the parties-email include_allergies option and (2) Purchase Date defaults with Age always calculated from it. Backend: 42 tests in test_parties_allergies.py, test_crew_register.py and test_crew_diet_parties.py, 40 passed and 2 were skipped on purpose (none failed). The summary_html unit tests check: with no flag or false there is no Allergies column, and the output is the same as the default. With true, an Allergies <th> sits between Next of kin and Status, every row has 8 cells, HTML is escaped (Peanuts &lt;severe&gt; &amp; bees), and a blank or missing value shows 'Not given'. The PartiesIn default is false. One real send to test.rc107@example.com with include_allergies true returned 200. A non-boolean include_allergies returns 422. Frontend (390px phone, pro skipper, boat 'main', container date 2026-11-06), all requested flows pass. The email-parties dialog only shows email-parties-medical-input after a crew member is ticked, and it starts unticked. The request body had include_allergies:true when ticked and false after reopening. Year of manufacture 2012 makes the Sail Loft Mainsail Purchase Date 2013-01-01, in italic slate-500, with the hint 'From Year of manufacture'. Age is a read-only <output> showing '13 years old'. Setting 2020-06-15 removes the hint and Age shows '6 years old'. Clearing it brings back 2013-01-01 with the hint and 13. Changing the year to 2000 leaves items with their own date unchanged (2024-03-10 stays '2 years old', no hint). With no year and no date, Age shows 'Set Purchase Date' and there is no default hint. An item's own date and other attribute edits (weight 7.5, sail_material picklist) were still there after a reload. Purchase Date and Age fields are present on Running Rigging, Standing Rigging and Ground Tackle as well. withAge, yearsSince and purchaseDefault were unit-checked in node: a typed age of 99 is replaced by the calculated age and its __est marker is removed, the part turns 1 on 2014-01-01, and a future date gives 0. Excel maintRows and the maint-col-* columns were checked by code review: both use withAge(…, yearBuilt, defs), so they get the calculated age and the default date.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_parties_allergies.py", "/app/test_reports/pytest/pytest_it107.xml"],
+  "action_items": [
+    "Optional (minor): maintLabel(item, yearBuilt) in lib/maint.js calls withAge without defs. Text, share and PDF labels from displayLabel therefore show Age only when the item already has an 'age' key, and they never show the default Purchase Date. Example: an item with only purchase_date 2020-06-15 gives 'Main - Purchase date: 2020-06-15' with no Age. Pass the list's defs, or always compute age when a purchase date or year is known, so it matches the UI and Excel."
+  ],
+  "critical_code_review_comments": [
+    "lib/maint.js maintLabel: Age and the default Purchase Date are inconsistent with the UI and Excel (see action item).",
+    "AttrField: while the default is shown, the input holds the default value. If the skipper picks exactly 2013-01-01, onChange may not fire, so the date is not stored as their own and keeps following the boat's year. This is an edge case.",
+    "EmailPartiesDialog: if crew are unticked after ticking medical details, the hidden checkbox keeps its value and is still sent. This does no harm, because sending needs crew."
+  ],
+  "updated_files": ["/app/backend/tests/test_parties_allergies.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "TEST crew_register entries were created (TEST RC107/TEST Allergy107 by pytest, TEST UI RC107/TEST UI Crew107 by curl) and all were deleted by id; the register is empty again. Pro boat main year_built was restored to ''. Sail Loft items 1793765791418 and 1793765791420 now hold purchase_date '' (and weight '' with weight__unit 'kg' on 1793765791418), which leaves them in their original effective state.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "List selector is list-selector, and options are list-option-<id>. Year of manufacture: boat-details-expand-btn -> additional-details-btn -> boat-year-input -> additional-details-done-btn. Sail Loft item ids are 1793765791418 (Mainsail) and 1793765791420 (Furling Genoa). Do not use the [data-testid^=maint-expand-] prefix, because it also matches maint-expand-all-btn. Item changes are saved by a debounced sync, so wait about 3 s before closing the browser. In the UI test the parties-email call was mocked with page.route to avoid real sends."
+}

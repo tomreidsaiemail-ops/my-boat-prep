@@ -596,3 +596,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Email crew details: EmailPartiesDialog - tick crew, then pick exactly one interested party (radio); warning + 'Send anyway' for unregistered crew. POST /parties-email {crew_ids, party_id}.
 - Crew Roles items with a Role Briefing show a 'Role briefing' badge.
 - Tested iteration_106 (backend 26/26, frontend 100%); pob/skipper and prompt-order tweaks applied after.
+
+## 2026-06 Medical details for parties + Purchase Date / calculated Age
+- Email crew details dialog: "Include medical details" tick adds an Allergies column (PartiesIn.include_allergies).
+- Maintenance attributes: Purchase Date (key purchase_date, admin master attribute) defaults to 1 January after the boat's Year of manufacture (year_built + 1), shown greyed "From Year of manufacture" until set on an item (clearing returns to default). Age (integer age attrs) is always read-only, calculated in full years from Purchase Date (lib/maint.js withAge), also in table columns, Excel export and item labels.
+- Tested iteration_107 (backend 40/40, frontend 100%); label age consistency fixed after.
