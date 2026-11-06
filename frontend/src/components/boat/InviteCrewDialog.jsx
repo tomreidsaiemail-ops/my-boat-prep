@@ -40,7 +40,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   useEffect(() => {
     if (!open) return;
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes(draft ? draft.notes : info.voyage_notes || plan); setTouched(!!draft);
+    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || info.voyage_notes || plan); setTouched(!!draft?.notes);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (open && !touched) setNotes(info.voyage_notes || plan); }, [info.voyage_notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const editNotes = (v) => { setTouched(true); setNotes(v); };
