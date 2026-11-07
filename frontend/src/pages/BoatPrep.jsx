@@ -74,7 +74,7 @@ import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { ShoppingBasket, ShoppingCart, Sparkles } from "lucide-react";
+import { ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
@@ -1009,6 +1009,11 @@ export default function BoatPrep({ boatId, boats }) {
               online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")}
               logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} crew={crew} onLogged={logMmd} />
           )}
+          {!crew && items.length > 0 && active.id !== "shipsLog" && !EMERGENCY[active.id] && (
+            <button type="button" className="btn-ghost h-10 min-h-0 gap-1.5 self-end px-3 text-sm text-[var(--red)]" onClick={askDeleteList} data-testid="list-delete-list-btn">
+              <Trash2 className="h-4 w-4" /> Delete this list
+            </button>
+          )}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
@@ -1043,7 +1048,7 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea} helpItems={helpNamed("admin - help panel - magic bartender")}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       {dialog?.type === "fish" && <FishWhispererDialog open online={online} gps={gps} imperial={boat.units === "ft"} helpItems={helpNamed("admin - help panel - magic fish whisperer")}
-        logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} onLogged={logCatch} onClose={() => setDialog(null)} />}}
+        logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} onLogged={logCatch} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />

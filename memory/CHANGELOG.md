@@ -80,3 +80,7 @@
 ## 2026-06 QR take out / used + quick count
 - QrScanDialog third mode "Take out / used": +/- per listed item (capped at qty) or photo (Magic Scan names matched via lib/qrStock matchItem; unmatched toasted). Save reduces qty; 0 -> qty 0 + removed (restock), same as applyConsumed.
 - After any QR save the dialog shows QrQuickCount: "<area> now holds N items" (sum of qty of in-place items), different things count, Low stock list (qty 1 amber "Only 1 left", removed/0 red "None left"). lib/qrStock.js applyQr shared by dialog + InventoryList.saveQr. Sticky Cancel/Save bar. Self-tested via Playwright (add, take out, counts).
+
+## 2026-06 Delete this list button on every own list
+- BoatPrep default checklist branch: red "Delete this list" button (list-delete-list-btn, bin icon) at the bottom for non-crew, non-empty lists, except Ship's Log and EMERGENCY lists; opens the existing Delete list confirm dialog (two taps). Maint/Budget/Media lists keep their own buttons.
+- Fixed a stray "}" rendered at the bottom of every list page (extra brace after FishWhispererDialog).
