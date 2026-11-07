@@ -694,3 +694,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Admin mode: light red background + red Admin mode strip on every screen for admins.
 - 2026-06: Ready to sail badge; Magic Fish Whisperer with catch log + Common Meals; simplified Magic Bartender; fish/cocktail icons by Arrange Lists. Details in CHANGELOG.md.
 - 2026-06: Zone Map Schematic Done tick, 2-line magic row, foldable zone groups with counts, Print Cards (QR/Contents) and QR-card Magic Scan into a cupboard. Details in CHANGELOG.md.
+
+## 2026-06 Zone Map Overviews schematic label
+- After "ZONE MAP OVERVIEWS (n)" the heading now shows "<MAKE> <MODEL> SCHEMATIC · <year> · <LOA unit>" from Additional Boat Details (ZoneMap.jsx schematicLabel; boat details passed BoatPrep -> InventoryList -> ZoneMap as `details`). Hidden if make/model empty. Crew view-only (unchanged permissions).

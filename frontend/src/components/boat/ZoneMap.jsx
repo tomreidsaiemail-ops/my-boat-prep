@@ -21,6 +21,12 @@ const DEFAULT_HELP = "Take high level photos of your boat, and annotate the boat
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 100;
+const schematicLabel = (b) => {
+  const name = [b.make, b.model].map((s) => (s || "").trim()).filter(Boolean).join(" ");
+  if (!name) return "";
+  const loa = (b.loa || "").trim() ? `${b.loa} ${b.units === "ft" ? "ft" : "m"}` : "";
+  return [`${name} Schematic`, (b.year_built || "").trim(), loa].filter(Boolean).join(" · ");
+};
 export const boatMapUrl = (b, m) => `${API}/boats/${b.boat_id}/zone-maps/${m.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(m.v)}`;
 
 const pickPicture = async (e) => {
@@ -83,7 +89,7 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff, onZone }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff, onZone }) => {
   const help = useAdminLists(HELP_PREFIX, online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
@@ -173,7 +179,10 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, canEdit, onBo
       )}
       {overviews.length > 0 && (
         <div className="flex flex-col gap-2" data-testid="zone-overviews">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Overviews ({overviews.length})</p>
+          <p className="flex flex-wrap items-baseline gap-x-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]" data-testid="zone-overviews-label">
+            <span>Zone Map Overviews ({overviews.length})</span>
+            {schematicLabel(details) && <span className="text-[var(--navy)]" data-testid="zone-overviews-schematic">{schematicLabel(details)}</span>}
+          </p>
           {overviews.map((m) => (
             <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps}
               removing={removing === m.id} onRemove={() => removeMap(m)} onColour={openColour} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />

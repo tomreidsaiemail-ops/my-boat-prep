@@ -937,7 +937,7 @@ export default function BoatPrep({ boatId, boats }) {
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
-              boat={boats.current} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
+              boat={boats.current} details={boat} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
               batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}

@@ -74,7 +74,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g.
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "", loaded = true }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "", loaded = true }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -353,7 +353,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
+        boat={boat} details={details} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})
