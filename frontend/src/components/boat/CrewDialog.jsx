@@ -18,7 +18,7 @@ import { CrewRegisterDialog } from "@/components/boat/register/CrewRegisterDialo
 import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
 import { RegStatus } from "@/components/boat/register/RegStatus";
 import { RoleBubble } from "@/components/boat/crew/RoleBubble";
-import { CrewFacts } from "@/components/boat/crew/CrewFacts";
+import { CrewFacts, ReadyBadge, readyToSail } from "@/components/boat/crew/CrewFacts";
 import { CrewTotals } from "@/components/boat/crew/CrewTotals";
 
 const bubblesFor = (p, joined, testId) => (p.briefings || (p.roles || []).map((role) => ({ role, has_briefing: false })))
@@ -132,7 +132,9 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         </div>
         <RsvpSummary crew={info.crew} onClear={info.voyage_notes || info.crew.some((m) => m.rsvp) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null} />
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing</p>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing
+            {info.crew.length > 0 && <span className="ml-1 normal-case text-[var(--green)]" data-testid="crew-ready-count">· {info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], provisions)).length} of {info.crew.length} ready to sail</span>}
+          </p>
           <button type="button" className="btn-ghost h-9 gap-1.5 px-3 text-xs" onClick={refresh} disabled={refreshing} data-testid="crew-refresh-btn">
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
           </button>
@@ -143,6 +145,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           {info.crew.map((m) => (
             <Row key={m.user_id} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
               badge={<>
+                {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
                 {regBadge(m.email, `crew-member-${m.user_id}`)}
                 <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} testId={`crew-member-${m.user_id}`} />
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />

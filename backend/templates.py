@@ -382,10 +382,23 @@ LOG_HELP = [
 ]
 
 
+MAGIC_HELP = [
+    ("Admin - Help Panel - Magic Fish Whisperer", "Help at the top of the Magic Fish Whisperer popup. Top-level lines are paragraphs, indented lines are bullets.", [
+        "The Magic Fish Whisperer... is here to help you figure the species of fish you have caught and to use your GPS and give you some local fishing knowledge.",
+        "In particular, The Magic Fish Whisperer, will give you important information sources to help you to stay informed.",
+        "The Magic Fish Whisperer can also give you some help filleting those strange species and if you need to watch out for things like puffer fish poison.",
+        "Always double check with your local authorities but The Magic Fish Whisperer can help get you started the right questions to ask. "
+        "It will give you a good estimate of fish length, and an estimated weight."]),
+    ("Admin - Help Panel - Magic Bartender", "Help at the top of the Magic Bartender popup. Top-level lines are paragraphs, indented lines are bullets.", [
+        "Arrange some drink bottles, some lemons, on a table and take a photo.",
+        "The MAGIC BARTENDER will be able to recommend quickly some cocktails for you, it will also tell you the ingredients, and how to mix them."]),
+]
+
+
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:])):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

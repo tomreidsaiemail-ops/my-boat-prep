@@ -1,4 +1,4 @@
-import { ClipboardCheck, Clock, FileWarning, ShoppingBasket } from "lucide-react";
+import { CircleCheck, ClipboardCheck, Clock, FileWarning, ShoppingBasket } from "lucide-react";
 import { shoppingFor } from "@/lib/shoppers";
 import { localWhen, timeAgo } from "@/lib/timeAgo";
 
@@ -24,6 +24,19 @@ const bringing = (p, items) => {
   if (!sent) return `${what} · not sent to them yet`;
   return `${what} · list sent ${timeAgo(sent.at)}${sent.count !== items.length ? " (changed since, send it again)" : ""}`;
 };
+
+// Ready to sail: joined, registered, agreement accepted, every role briefing read, and told what to bring (or nothing to bring).
+export const readyToSail = (m, reg, provisions) => {
+  const items = shoppingFor(provisions, m.name);
+  return !!(reg?.registered_at && m.agreement?.accepted_at && (m.briefings || []).every((b) => !b.has_briefing || b.read_at)
+    && (!items.length || (m.shopping_sent && m.shopping_sent.count === items.length)));
+};
+
+export const ReadyBadge = ({ testId }) => (
+  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--green)] px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-white" data-testid={testId}>
+    <CircleCheck className="h-4 w-4" strokeWidth={3} /> Ready to sail
+  </span>
+);
 
 // What the skipper checks before sailing: invite age, registration time, agreement (crew) and provisions to bring.
 export const CrewFacts = ({ person, reg, joined, provisions, testId }) => {

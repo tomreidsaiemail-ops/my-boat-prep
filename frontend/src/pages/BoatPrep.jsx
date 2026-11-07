@@ -38,6 +38,7 @@ import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { ListSearch, searchableList } from "@/components/boat/ListSearch";
+import { FishWhispererDialog } from "@/components/boat/fish/FishWhispererDialog";
 import { matches } from "@/components/boat/Highlight";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import useInventoryShared from "@/hooks/useInventoryShared";
@@ -677,6 +678,7 @@ export default function BoatPrep({ boatId, boats }) {
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
   const openMpa = () => (premium || crewPro ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
   const openBartender = () => needPro("Magic Bartender") && guard() && setDialog({ type: "bartender" });
+  const openFish = () => needPro("Magic Fish Whisperer") && guard() && setDialog({ type: "fish" });
   const flagArea = (id, key) => mutate((s) => ({ ...s, areas: (s.areas || []).map((a) => (a.id === id ? { ...a, [key]: !a[key] } : a)) }));
   const kids = Math.min(boat.children || 0, (boat.pob || 1) - 1);
   const barList = registry.find((l) => l.kind === BARTENDER_KIND);
@@ -868,7 +870,7 @@ export default function BoatPrep({ boatId, boats }) {
     <CrewDietContext.Provider value={diet}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
+      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
@@ -878,7 +880,7 @@ export default function BoatPrep({ boatId, boats }) {
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} batchHelp={batchHelp} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
@@ -1032,8 +1034,9 @@ export default function BoatPrep({ boatId, boats }) {
         onCreate={createCustom} onClose={() => setDialog(null)} />}
       {dialog?.type === "maint" && <MaintSetupDialog boat={boat} premium={premium} online={online} defs={maintDefs} auto={dialog.auto} have={haveMaint}
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
-      {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea}
+      {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea} helpItems={helpNamed("admin - help panel - magic bartender")}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
+      {dialog?.type === "fish" && <FishWhispererDialog open online={online} gps={gps} imperial={boat.units === "ft"} helpItems={helpNamed("admin - help panel - magic fish whisperer")} onClose={() => setDialog(null)} />}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />

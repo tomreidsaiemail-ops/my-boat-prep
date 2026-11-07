@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Ship, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Fish, Martini, Ship, Sparkles } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
@@ -48,7 +48,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, onBartender, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -82,6 +82,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp
     if (complete) setOpen(false);
   };
   const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-2 px-3 py-2 !text-left text-[13px] font-bold leading-tight";
+  const magicIcon = "btn-ghost h-11 min-h-11 w-11 shrink-0 justify-center p-0";
   const batchBtn = (onBatchScan || onOrganise) && (
     <div className="flex flex-wrap items-center gap-1" data-testid="boat-details-magic-row">
       {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
@@ -91,6 +92,8 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, batchHelp
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
         <ArrangeIcon /> Arrange Lists
       </button>}
+      {onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
+      {onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}
     </div>
   );
 

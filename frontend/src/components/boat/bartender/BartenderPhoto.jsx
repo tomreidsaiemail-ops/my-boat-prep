@@ -29,10 +29,13 @@ export const BartenderPhoto = ({ boatId, online, photo, onChange }) => {
   const clear = () => { URL.revokeObjectURL(photo.preview); onChange(null); };
   return (
     <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] p-3" data-testid="bartender-photo">
-      <p className="field-label">Bartender Photo (optional)</p>
+      <p className="field-label">Bartender Photo</p>
       <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={upload} data-testid="bartender-photo-input" />
       {!photo ? (
-        <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={pick} data-testid="bartender-photo-btn"><Camera className="h-4 w-4" /> Take a Bartender Photo</button>
+        <button type="button" className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-slate-50 px-4 text-center text-sm font-bold [transition:background-color_.15s] hover:bg-sky-50" onClick={pick} data-testid="bartender-photo-btn">
+          <Camera className="h-8 w-8" /> Tap to take a photo of your drinks
+          <span className="text-xs font-semibold text-[var(--muted)]">e.g. lemon, ginger, gin, vodka, coke and orange juice on the table</span>
+        </button>
       ) : (
         <div className="flex items-start gap-3">
           <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? "Make the photo small" : "Show the photo bigger"} data-testid="bartender-photo-thumb"

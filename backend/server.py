@@ -47,6 +47,7 @@ from template_backup import router as template_backup_router  # noqa: E402
 from meals import router as meals_router, seed_common_meals  # noqa: E402
 from folder_cards import router as folder_cards_router  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
+from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import auth as auth_module  # noqa: E402
@@ -544,6 +545,7 @@ app.include_router(faq_router)
 app.include_router(feedback_router)
 app.include_router(templates_router)
 app.include_router(bartender_router)
+app.include_router(fish_router)
 app.include_router(promo_codes_router)
 app.include_router(service_history_router)
 app.include_router(crew_router)
