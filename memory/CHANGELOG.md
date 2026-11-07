@@ -72,3 +72,7 @@
 - Print Cards (inventory/FolderCardsButton.jsx) with QR Codes (default) / Contents radios. QR: POST /api/inventory/qr-cards.pdf (folder_cards.py, reportlab QR, 90x54 mm, 10 per A4, swatch + zone + area name + parent). Contents = old folder cards (sliced to 200).
 - QR scanning: card URL <origin>/?scan_area=<id>&b=<boat_id>&o=<owner>. lib/qrScan.js captureQr() on load (localStorage mbp_qr_scan, 30 min, survives login), BoatShell switches boat, BoatPrep opens Boat Inventory, InventoryList (after store loaded) opens inventory/QrScanDialog: multi-photo Magic Scan, merge same names, edit, Add (default) or Replace. Crew only for F/D areas (scan with shopping=true&owner).
 - Tested iteration_127; cold-load QR bug fixed (gated on loaded) and self-verified.
+
+## 2026-06 Zone focus + palette two rows
+- Boat Inventory zone headings: "Show only this zone" (folds every other zone) / "Show all zones" when focused; chevron at left.
+- Zone Map Overview: colours section can't fold until a colour is placed (always shows Magically Place Colours); palette shows first two rows with "Show N other zones, and their colours" / "Show fewer colours", remembered per boat (localStorage mbp_overview_all_colours_{boat_id}). Measured with ResizeObserver. Self-tested via screenshots.

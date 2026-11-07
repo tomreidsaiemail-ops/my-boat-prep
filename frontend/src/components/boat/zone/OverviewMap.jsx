@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, Loader2, Palette, Sparkles, Trash2, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
@@ -40,6 +40,32 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   const foldKey = `mbp_overview_colours_folded_${boat.boat_id}`;
   const [folded, setFolded] = useState(() => localStorage.getItem(foldKey) === "1");
   const toggleTools = () => { const f = !folded; localStorage.setItem(foldKey, f ? "1" : "0"); setFolded(f); if (f) setArmed(null); };
+  // No colours placed yet: the colours stay open so "Magically Place Colours" is always there.
+  const shut = folded && swatches.length > 0;
+  const allKey = `mbp_overview_all_colours_${boat.boat_id}`;
+  const [allColours, setAllColours] = useState(() => localStorage.getItem(allKey) === "1");
+  const toggleAll = () => { const v = !allColours; localStorage.setItem(allKey, v ? "1" : "0"); setAllColours(v); };
+  const paletteRef = useRef(null);
+  const [clipH, setClipH] = useState(0);
+  const [hiddenCount, setHiddenCount] = useState(0);
+  // Show the first two rows of colours; the rest sit behind "Show N other zones".
+  useLayoutEffect(() => {
+    const el = paletteRef.current;
+    const measure = () => {
+      if (!el) { setClipH(0); setHiddenCount(0); return; }
+      const base = el.getBoundingClientRect().top;
+      const rows = [...el.children].map((k) => { const r = k.getBoundingClientRect(); return { top: Math.round(r.top - base), bottom: r.bottom - base }; });
+      const tops = [...new Set(rows.map((r) => r.top))].sort((a, b) => a - b);
+      if (tops.length <= 2) { setClipH(0); setHiddenCount(0); return; }
+      setClipH(Math.ceil(Math.max(...rows.filter((r) => r.top <= tops[1]).map((r) => r.bottom))) + 2);
+      setHiddenCount(rows.filter((r) => r.top >= tops[2]).length);
+    };
+    measure();
+    if (!el) return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [shut, presets.length, swatches.length]);
   const save = async (next) => {
     setSwatches(next);
     if (!online) { toast.error("You need a signal to save the colours"); return; }
@@ -124,17 +150,18 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       </div>
       {canEdit && (
         <>
-          <button type="button" onClick={toggleTools} aria-expanded={!folded} className="flex min-h-9 items-center gap-2 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`${t}-colours-toggle`}>
+          <button type="button" onClick={swatches.length ? toggleTools : undefined} aria-expanded={!shut} aria-disabled={!swatches.length}
+            title={swatches.length ? undefined : "Colours stay open until the first colour is placed"} className="flex min-h-9 items-center gap-2 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`${t}-colours-toggle`}>
             <Palette className="h-4 w-4" /> Colours ({swatches.length} placed)
-            <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${folded ? "" : "rotate-180"}`} />
+            {swatches.length > 0 && <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${shut ? "" : "rotate-180"}`} />}
           </button>
-          {!folded && <>
+          {!shut && <>
           <button type="button" className="btn-solid min-h-10 justify-center gap-2 text-sm" disabled={placing || !presets.length} onClick={autoPlace} data-testid={`${t}-auto-btn`}>
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
           </button>
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to add photos of that zone and scan its cupboards; press and hold it to remove it."}</p>
-          <div className="flex flex-wrap gap-1.5" data-testid={`${t}-palette`}>
+          <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"
                 style={{ background: ZONE_COLOURS[p.colour], color: ink(p.colour) }} data-testid={`${t}-palette-${p.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-used`}>
@@ -150,6 +177,12 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             ))}
             {!presets.length && <span className="text-xs text-[var(--muted)]">No colours set up in Admin - Zone Map Predetermined Colours yet.</span>}
           </div>
+          {hiddenCount > 0 && (
+            <button type="button" onClick={toggleAll} aria-expanded={allColours} className="btn-ghost h-9 gap-1.5 self-start px-3 text-xs" data-testid={`${t}-palette-more-btn`}>
+              <ChevronDown className={`h-3.5 w-3.5 [transition:transform_.15s] ${allColours ? "rotate-180" : ""}`} />
+              {allColours ? "Show fewer colours" : `Show ${hiddenCount} other ${hiddenCount === 1 ? "zone" : "zones"}, and their colours`}
+            </button>
+          )}
           </>}
           <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
             {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this overview
