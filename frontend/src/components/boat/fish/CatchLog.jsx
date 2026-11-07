@@ -5,9 +5,10 @@ import { api, API, apiError } from "@/lib/api";
 import { localWhen } from "@/lib/timeAgo";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { FishReport } from "@/components/boat/fish/FishReport";
+import { CatchMap } from "@/components/boat/fish/CatchMap";
 
 // Every catch the Magic Fish Whisperer has looked at: photo, species, size, place and date.
-export const CatchLog = ({ online, imperial, refreshKey, onCount }) => {
+export const CatchLog = ({ online, imperial, refreshKey, onCount, view = "list" }) => {
   const [list, setList] = useState(null);
   const [open, setOpen] = useState(null);
   const [doomed, setDoomed] = useState(null);
@@ -15,6 +16,7 @@ export const CatchLog = ({ online, imperial, refreshKey, onCount }) => {
     if (!online) { setList((l) => l || []); return; }
     api.get("/me/catches").then(({ data }) => { setList(data.catches); onCount(data.catches.length); }).catch(() => setList((l) => l || []));
   }, [online, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setOpen(null), [view]);
   const remove = async () => {
     try {
       await api.delete(`/me/catches/${doomed.catch_id}`);
@@ -29,7 +31,7 @@ export const CatchLog = ({ online, imperial, refreshKey, onCount }) => {
     return (
       <div className="flex flex-col gap-2" data-testid="catch-log-detail">
         <div className="flex items-center justify-between">
-          <button type="button" className="btn-ghost h-10 gap-1 px-3 text-sm" onClick={() => setOpen(null)} data-testid="catch-log-back-btn"><ChevronLeft className="h-4 w-4" /> All catches</button>
+          <button type="button" className="btn-ghost h-10 gap-1 px-3 text-sm" onClick={() => setOpen(null)} data-testid="catch-log-back-btn"><ChevronLeft className="h-4 w-4" /> {view === "map" ? "Back to the map" : "All catches"}</button>
           <button type="button" className="icon-btn text-[var(--red)]" aria-label="Remove this catch" onClick={() => setDoomed({ ...open, name: open.report.species.common_name })} data-testid="catch-log-delete-btn"><Trash2 className="h-5 w-5" /></button>
         </div>
         <FishReport c={open} imperial={imperial} />
@@ -37,6 +39,7 @@ export const CatchLog = ({ online, imperial, refreshKey, onCount }) => {
       </div>
     );
   }
+  if (view === "map") return <CatchMap catches={list} imperial={imperial} onOpen={setOpen} />;
   if (!list.length) return <p className="rounded-md border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="catch-log-empty">No catches yet. Photo your first fish and it will be saved here.</p>;
   return (
     <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="catch-log-list">

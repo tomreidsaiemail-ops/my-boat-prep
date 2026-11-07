@@ -56,3 +56,7 @@
 
 ## 2026-06 Fish Whisperer handles shellfish and other seafood
 - Prompt + parse_fish add kind (fish|shellfish), safety {biotoxins, gathering}, cooking [{name, ingredients, steps}], size.count. Shellfish report shows "Biotoxins and safe gathering", "Bag limits, sizes and closures", "Cleaning and preparing", up to 3 "Cook it" methods (no batter) and "Eating it raw?". UI copy says fish or shellfish. Self-tested with a real mussel photo.
+
+## 2026-06 Catch map + Tom placeholder
+- Magic Fish Whisperer "Catch map" tab (fish/CatchMap.jsx, rendered by CatchLog view="map"): leaflet OSM + OpenSeaMap, circle pins orange fish / purple shellfish, species filter chips with counts, fit to shown pins, tap pin -> card -> full report ("Back to the map"); catches without GPS counted below the map. Self-tested via screenshots with seeded catches (cleaned up).
+- "Serviced by" placeholder now "e.g. Tom (owner)" (lib/maint.js).

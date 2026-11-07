@@ -65,8 +65,9 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, on
         <div className="flex gap-1 rounded-lg bg-[var(--panel)] p-1">
           <Tab on={tab === "new"} onClick={() => setTab("new")} testId="fish-tab-new">New catch</Tab>
           <Tab on={tab === "log"} onClick={() => setTab("log")} testId="fish-tab-log">Catch log{count ? ` (${count})` : ""}</Tab>
+          <Tab on={tab === "map"} onClick={() => setTab("map")} testId="fish-tab-map">Catch map</Tab>
         </div>
-        <div className={tab === "log" ? "" : "hidden"}><CatchLog online={online} imperial={imperial} refreshKey={logKey} onCount={setCount} /></div>
+        <div className={tab === "new" ? "hidden" : ""}><CatchLog online={online} imperial={imperial} refreshKey={logKey} onCount={setCount} view={tab === "map" ? "map" : "list"} /></div>
         {tab === "new" && (result ? (
           <>
             <FishReport c={result} imperial={imperial} preview={shot?.preview} />
