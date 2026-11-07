@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Optional
@@ -110,7 +111,9 @@ def _out(d: dict) -> dict:
 
 @router.post("/ai/fish")
 async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Form(None, ge=-90, le=90), lon: Optional[float] = Form(None, ge=-180, le=180),
-                         position: str = Form("", max_length=80), when: str = Form("", max_length=40), user: dict = Depends(require_premium)):
+                         position: str = Form("", max_length=80), when: str = Form("", max_length=40),
+                         boat_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,40}$"), owner_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,80}$"),
+                         user: dict = Depends(require_premium)):
     if file.content_type not in TYPES:
         raise HTTPException(status_code=400, detail="Please take a JPEG, PNG or WebP photo")
     data = await file.read(MAX_BYTES + 1)
@@ -132,7 +135,40 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
     doc = {"catch_id": catch_id, "user_id": user["user_id"], "photo_path": (stored or {}).get("path"), "content_type": file.content_type, "lat": lat, "lon": lon,
            "position": _s(position, 80), "report": report, "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
     await db.fish_catches.insert_one(doc)
-    return {"catch": {**_out(doc), "has_photo": bool(stored)}, "asks_left": left}
+    log_item = await log_catch(user, boat_id, owner_id, doc, _s(when, 40))
+    return {"catch": {**_out(doc), "has_photo": bool(stored)}, "asks_left": left, "log_item": log_item}
+
+
+def catch_label(doc: dict, who: str, when: str) -> str:
+    r = doc["report"]
+    sp, size = r["species"], r["size"]
+    name = sp["common_name"] + (f" ({sp['scientific_name']})" if sp.get("scientific_name") else "")
+    bits = [f"{size['count']} of them" if (size.get("count") or 0) > 1 else "", f"{size['length_cm']:g} cm" if size.get("length_cm") else "",
+            f"about {size['weight_kg']:g} kg" if size.get("weight_kg") else ""]
+    pos = doc.get("position") or (f"{doc['lat']:.5f}, {doc['lon']:.5f}" if doc.get("lat") is not None and doc.get("lon") is not None else "")
+    where = ", ".join(x for x in (r["place"].get("name"), pos and f"position {pos}") if x)
+    return (f"Catch on {when or datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')} by {who}: {name}"
+            + (f", {', '.join(b for b in bits if b)}" if any(bits) else "") + (f", at {where}" if where else "") + ". Identified by the Magic Fish Whisperer.")[:2000]
+
+
+async def log_catch(user: dict, boat_id: str, owner_id: str, doc: dict, when: str):
+    """Every catch goes straight into the Ship's Log of the boat it was caught on; crew catches go in the skipper's log."""
+    if not boat_id:
+        return None
+    crew = bool(owner_id and owner_id != user["user_id"])
+    key = {"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]} if crew else {"owner_id": user["user_id"], "boat_id": boat_id}
+    who = "Skipper"
+    if crew:
+        boat = await db.user_boats.find_one(key, {"_id": 0, f"crew_names.{user['user_id']}": 1})
+        if not boat:
+            return None
+        who = ((boat.get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user.get("email") or "Crew").strip()[:80]
+    now = datetime.now(timezone.utc)
+    item = {"id": int(now.timestamp() * 1000) * 1000 + secrets.randbelow(1000), "label": catch_label(doc, who, re.sub(r"[^\w ,:/.\-]", "", when).strip()),
+            "catch_id": doc["catch_id"], "checked": False, "ts": now.isoformat()}
+    res = await db.user_boats.update_one({**key, "data.shipsLog": {"$exists": True}},
+                                         {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
+    return item if res.matched_count else None
 
 
 @router.get("/me/catches")

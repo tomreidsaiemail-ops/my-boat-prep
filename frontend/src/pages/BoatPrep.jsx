@@ -341,6 +341,9 @@ export default function BoatPrep({ boatId, boats }) {
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), item] } }));
     toast.success("Question and answer logged in the Ship's Log");
   };
+  const logCatch = (item) => {
+    if (!crew) mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), item] } }));
+  };
   const signOffWalkthrough = async (stops) => {
     const when = new Date().toLocaleString("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
     if (!crew) {
@@ -1036,7 +1039,8 @@ export default function BoatPrep({ boatId, boats }) {
         onCreate={createMaint} onDismiss={dismissMaint} onClose={() => setDialog(null)} />}
       {dialog?.type === "bartender" && <BartenderDialog open boatId={boats.current.boat_id} areas={areas} kids={kids} online={online} onFlag={flagArea} helpItems={helpNamed("admin - help panel - magic bartender")}
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
-      {dialog?.type === "fish" && <FishWhispererDialog open online={online} gps={gps} imperial={boat.units === "ft"} helpItems={helpNamed("admin - help panel - magic fish whisperer")} onClose={() => setDialog(null)} />}
+      {dialog?.type === "fish" && <FishWhispererDialog open online={online} gps={gps} imperial={boat.units === "ft"} helpItems={helpNamed("admin - help panel - magic fish whisperer")}
+        logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} onLogged={logCatch} onClose={() => setDialog(null)} />}}
       <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />

@@ -20,7 +20,7 @@ const Tab = ({ on, onClick, testId, children }) => (
     className={`h-10 flex-1 rounded-md text-sm font-bold [transition:background-color_.15s] ${on ? "bg-[var(--navy)] text-white" : "bg-white text-[var(--navy)] hover:bg-slate-50"}`}>{children}</button>
 );
 
-export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, onClose }) => {
+export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, logParams, onLogged, onClose }) => {
   const input = useRef(null);
   const [tab, setTab] = useState("new");
   const [shot, setShot] = useState(null);
@@ -45,11 +45,16 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, on
     const form = new FormData();
     form.append("file", shot.blob, "catch.jpg");
     if (gps?.status === "ok") { form.append("lat", gps.lat); form.append("lon", gps.lon); form.append("position", gps.text.slice(0, 80)); }
-    form.append("when", new Date().toLocaleString());
+    form.append("when", new Date().toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
+    if (logParams?.boat_id) { form.append("boat_id", logParams.boat_id); if (logParams.owner_id) form.append("owner_id", logParams.owner_id); }
     try {
       const { data } = await api.post("/ai/fish", form, { timeout: 150000 });
       if (data.not_fish) toast.error(data.message, { duration: 8000 });
-      else { setResult(data.catch); setLogKey((k) => k + 1); toast.success(`${data.catch.report.species.common_name} saved to your catch log`); }
+      else {
+        setResult(data.catch); setLogKey((k) => k + 1);
+        toast.success(`${data.catch.report.species.common_name} saved to your catch log${data.log_item ? " and the Ship's Log" : ""}`);
+        if (data.log_item) onLogged(data.log_item);
+      }
     } catch (err) { toast.error(apiError(err, "The Magic Fish Whisperer couldn't look at that photo. Please try again.")); }
     finally { setBusy(false); }
   };

@@ -60,3 +60,7 @@
 ## 2026-06 Catch map + Tom placeholder
 - Magic Fish Whisperer "Catch map" tab (fish/CatchMap.jsx, rendered by CatchLog view="map"): leaflet OSM + OpenSeaMap, circle pins orange fish / purple shellfish, species filter chips with counts, fit to shown pins, tap pin -> card -> full report ("Back to the map"); catches without GPS counted below the map. Self-tested via screenshots with seeded catches (cleaned up).
 - "Serviced by" placeholder now "e.g. Tom (owner)" (lib/maint.js).
+
+## 2026-06 Catch in Ship's Log + Share my catch
+- POST /api/ai/fish takes optional boat_id/owner_id; fish.log_catch pushes a Ship's Log item (label "Catch on <when> by <Skipper|crew name>: species (scientific), size, at place, position ...", catch_id) into the boat's data.shipsLog + pushed_items; crew catches go into the skipper's log. Skipper's app adds it locally (BoatPrep logCatch).
+- "Share my catch" (fish/ShareCatchButton.jsx, lib/catchCard.js): 1080x1350 JPEG card (photo, species, scientific, size, place name only, date, footer) via navigator.share with files, else download + caption copied. Self-tested (crew log via curl, card download via Playwright).

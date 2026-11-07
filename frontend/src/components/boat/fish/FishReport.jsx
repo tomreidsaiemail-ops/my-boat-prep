@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { AlertTriangle, ExternalLink, Fish, Loader2, MapPin, Ruler, UtensilsCrossed } from "lucide-react";
 import { api, API, apiError } from "@/lib/api";
 import { localWhen } from "@/lib/timeAgo";
+import { ShareCatchButton } from "@/components/boat/fish/ShareCatchButton";
 
 const Section = ({ title, tone = "bg-white", testId, children }) => (
   <section className={`rounded-lg border-[1.5px] border-[var(--line)] p-3 ${tone}`} data-testid={testId}>
@@ -19,7 +20,7 @@ const Steps = ({ items, testId }) => (items?.length ? (
   <ol className="list-decimal space-y-1 pl-5" data-testid={testId}>{items.map((t, k) => <li key={k}>{t}</li>)}</ol>
 ) : null);
 
-const sizeText = (size, imperial) => {
+export const sizeText = (size, imperial) => {
   const out = [];
   if (size.count > 1) out.push(`${size.count} of them`);
   if (size.length_cm) out.push(imperial ? `${(size.length_cm / 2.54).toFixed(1)} in (${size.length_cm} cm)` : `${size.length_cm} cm (${(size.length_cm / 2.54).toFixed(1)} in)`);
@@ -70,6 +71,7 @@ export const FishReport = ({ c, imperial, preview }) => {
         </div>
       </div>
       {r.size.how && <p className="text-xs text-[var(--muted)]" data-testid="fish-size-how">Size estimate: {r.size.how}</p>}
+      <ShareCatchButton c={c} size={sizeText(r.size, imperial)} />
       {r.toxins?.length > 0 && <Section title="Watch out" tone="bg-red-50" testId="fish-toxins"><p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Never eat {shell ? "seafood" : "a fish"} you're unsure is safe.</p><Bullets items={r.toxins} /></Section>}
       {shell && (r.safety?.biotoxins?.length > 0 || r.safety?.gathering?.length > 0) && <Section title="Biotoxins and safe gathering" tone="bg-red-50" testId="fish-shell-safety">
         <p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Check current shellfish biotoxin and red tide warnings before gathering or eating.</p>
