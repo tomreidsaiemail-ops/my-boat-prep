@@ -73,7 +73,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g.
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "" }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "", loaded = true }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -255,14 +255,14 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [qrArea, setQrArea] = useState(null);
   useEffect(() => {
     const qr = pendingQr();
-    if (!qr || !boat || qrBoatKey(qr, user.user_id) !== boat.key) return;
+    if (!loaded || !qr || !boat || qrBoatKey(qr, user.user_id) !== boat.key) return;
     const a = areas.find((x) => String(x.id) === qr.area);
     clearQr();
     if (!a) { toast.error("That QR card's cupboard isn't on this boat any more"); return; }
     if (locked(a)) { toast.error(`Only the skipper can change ${a.name}`); return; }
     setQrArea(a);
     openArea(a.parent_id || a.id);
-  }, [boat?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [boat?.key, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   const saveQr = (list, mode) => {
     const fresh = list.map((i) => ({ id: newId(), name: i.name.trim(), qty: i.qty }));
     setArea(qrArea.id, (x) => {

@@ -22,7 +22,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
   const subs = areas.filter((a) => a.parent_id && areas.some((p) => p.id === a.parent_id));
   if (!areas.length || !boat) return null;
   const parentOf = (a) => (a.parent_id ? areas.find((p) => p.id === a.parent_id) : null);
-  const contents = () => subs.map((s) => ({
+  const contents = () => subs.slice(0, 200).map((s) => ({
     name: s.name.slice(0, 120), parent: (parentOf(s)?.name || "").slice(0, 120), zone: (zones[s.id]?.map || "").slice(0, 80),
     items: (s.items || []).slice(0, 400).map((i) => ({ name: String(i.name || "").slice(0, 200), qty: Math.max(0, Math.min(99999, Number(i.qty) || 1)), removed: !!i.removed })),
   }));

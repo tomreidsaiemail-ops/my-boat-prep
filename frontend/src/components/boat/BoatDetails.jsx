@@ -86,7 +86,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
   const batchBtn = (onBatchScan || onOrganise) && (
     <div className="flex flex-nowrap items-center gap-1" data-testid="boat-details-magic-row">
       {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
-        <Sparkles className="h-4 w-4 shrink-0" /> <span>Batch<br />Magic Scan...</span>
+        <Sparkles className="h-4 w-4 shrink-0" /> <span>Batch<br /><span className="whitespace-nowrap">Magic Scan...</span></span>
       </button>}
       {onBatchScan && <span className="mr-1">{<HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">

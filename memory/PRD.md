@@ -693,3 +693,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Crew check-before-sailing (totals, weights, invite/registration/provisions/briefing-read status, Refresh), list search, registration thank-you + waiting screen, Galley-first zone picker. Details in CHANGELOG.md.
 - 2026-06: Admin mode: light red background + red Admin mode strip on every screen for admins.
 - 2026-06: Ready to sail badge; Magic Fish Whisperer with catch log + Common Meals; simplified Magic Bartender; fish/cocktail icons by Arrange Lists. Details in CHANGELOG.md.
+- 2026-06: Zone Map Schematic Done tick, 2-line magic row, foldable zone groups with counts, Print Cards (QR/Contents) and QR-card Magic Scan into a cupboard. Details in CHANGELOG.md.

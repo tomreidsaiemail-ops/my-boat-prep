@@ -933,7 +933,7 @@ export default function BoatPrep({ boatId, boats }) {
         : MEDIA_KINDS.includes(active.kind) ? <MediaList key={active.id} list={active} own={!crew} online={online} ordering={ordering} onOrderingChange={setOrdering} onDeleteList={askDeleteList}
             store={ownMediaStore(items, online, (fn) => guard() && setItems(fn))} />
         : active.isInventory ? (premium || crewPro
-          ? <InventoryList areas={areas} vessel={boat.vessel} readOnly={crew} crewFood={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
+          ? <InventoryList areas={areas} vessel={boat.vessel} loaded={loaded} readOnly={crew} crewFood={crew} admin={!!user.is_admin && !crew} online={online} shared={inventoryShared.shared} onSharedChange={inventoryShared.update}
               onChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))}
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}

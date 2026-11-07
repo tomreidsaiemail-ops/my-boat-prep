@@ -75,7 +75,7 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
             {items.map((i, n) => (
               <li key={i.key} className="flex items-center gap-1.5" data-testid={`qr-scan-item-${n}`}>
                 <input value={i.name} maxLength={120} onChange={(e) => edit(i.key, { name: e.target.value })} aria-label="Item name" className="field-input h-10 min-w-0 flex-1 text-sm" data-testid={`qr-scan-item-${n}-name`} />
-                <input type="number" min={1} max={9999} value={i.qty} onChange={(e) => edit(i.key, { qty: Math.max(1, Math.min(9999, Number(e.target.value) || 1)) })} aria-label="Quantity" className="field-input h-10 w-16 text-sm" data-testid={`qr-scan-item-${n}-qty`} />
+                <input type="number" min={1} max={9999} value={i.qty} onChange={(e) => edit(i.key, { qty: Math.max(1, Math.min(9999, Number(e.target.value) || 1)) })} aria-label="Quantity" className="field-input h-10 !w-16 shrink-0 text-sm" data-testid={`qr-scan-item-${n}-qty`} />
                 <button type="button" className="icon-btn" aria-label={`Remove ${i.name}`} onClick={() => setItems((l) => l.filter((x) => x.key !== i.key))} data-testid={`qr-scan-item-${n}-remove`}><Trash2 className="h-4 w-4" /></button>
               </li>
             ))}
@@ -84,7 +84,7 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
         <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={() => setItems((l) => [...l, { key: `${Date.now()}`, name: "", qty: 1 }])} data-testid="qr-scan-add-row-btn"><Plus className="h-4 w-4" /> Add an item by hand</button>
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} disabled={busy} data-testid="qr-scan-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={busy || (!ready.length && mode === "add")} onClick={() => onSave(ready, mode)} data-testid="qr-scan-save-btn">
+          <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={busy || !ready.length} onClick={() => onSave(ready, mode)} data-testid="qr-scan-save-btn">
             <Sparkles className="h-4 w-4" /> {mode === "add" ? `Add ${ready.length} to ${area.name}` : `Replace with ${ready.length}`}
           </button>
         </div>

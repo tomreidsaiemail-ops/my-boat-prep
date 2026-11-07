@@ -1,0 +1,53 @@
+{
+  "summary": "Tested the 4 features at 390x844: Zone Map Schematic Done, the two-line magic row, zone group counts and folding, Print Cards (QR and Contents), and the QR Magic Scan flow for the pro skipper and for crew. Backend: 16/16 new pytest cases pass for qr-cards.pdf and folder-cards.pdf (validation, auth, paging, limits). Most of the frontend works. Two bugs found: (1) HIGH: a QR scan does nothing useful on a cold load. On a fresh phone, straight after login, or when the boat isn't cached locally, InventoryList runs its one-shot QR effect before the server state has loaded. The area isn't found, so the user gets the toast \"That QR card's cupboard isn't on this boat any more\" and the pending QR is cleared. (2) In the QR dialog the qty input took almost the full width and hid the item name. I fixed this one. 1 real Gemini scan was used.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/inventory/folder-cards.pdf", "issue": "Allows at most 200 cards, but FolderCardsButton.contents() doesn't slice to 200. A boat with more than 200 folders/boxes gets 422 and only the generic error toast."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QrScanDialog item rows", "issue": "FIXED by tester. The qty input class 'w-16' was overridden by .field-input {width:100%} in App.css. The qty box filled the row and the name input shrank to about 25px, so scanned names couldn't be seen. Changed to '!w-16 shrink-0', the same as ScanReviewDialog. Name is now 218px and qty 64px.", "selector": "[data-testid^=qr-scan-item-][data-testid$=-qty]", "priority": "HIGH"},
+      {"component": "boat-details-batch-scan-btn", "issue": "At 390px the label wraps to 3 lines ('Batch' / 'Magic' / 'Scan...'), not the 2 requested. Measured span height 42.9px at line-height 14.3. The fish and bartender icons are on the same line (all top=307, row scrollWidth 358 = clientWidth). Arrange/Lists is 2 lines as intended. Fix: whitespace-nowrap on the 'Magic Scan...' line, or less padding or gap (the '?' help icon next to it takes up width).", "selector": "[data-testid=boat-details-batch-scan-btn]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "QR scan on cold load (fresh device, after login, or crew boat not cached, including after the QR boat switch)", "issue": "InventoryList's QR useEffect([boat?.key]) runs once, while the areas are still the initial or empty local state. The useBoatStore 'loaded' flag isn't waited for. areas.find() fails, the toast \"That QR card's cupboard isn't on this boat any more\" is shown and clearQr() runs. Reproduced 3 ways: (a) new context with a pro cookie opening ?scan_area=amw1pvdq84zo3&b=main&o=test-user-pro; (b) not logged in, so mbp_qr_scan is saved correctly, then login, then the toast and the param is lost; (c) crew test-user-free with own boat active, QR for the pro Fridge, then the boat switches and the same toast appears. The flow works only once the boat's areas are already cached in localStorage. Fix: pass 'loaded' from useBoatStore through BoatPrep to InventoryList. In the effect, return early (without clearing) until loaded, and add loaded to the deps.", "affected_selectors": ["[data-testid=qr-scan-dialog]"]}
+    ],
+    "design_issues": [
+      {"screen": "Additional details (phone)", "issues": ["The zone-map-done hint is only in the title attribute, so it never shows on touch phones, the main target. Consider a tap-to-show hint or a small visible note.", "The disabled checkbox is browser grey, not green."]},
+      {"screen": "QrScanDialog", "issues": ["In Replace mode the save button is enabled with 0 items ('Replace with 0'). One tap empties the area with no confirmation."]},
+      {"screen": "Inventory zone headings", "issues": ["While searching, the heading count shows the number of matching cupboards (e.g. 'Galley - 1'), not the zone total. Fine if intended."]}
+    ]
+  },
+  "passed_checks": [
+    "Pro boat main (overview with 9 swatches): zone-map-done shown, zone-map-create-btn absent, title text exactly matches, checkbox checked and disabled, stays checked when clicked",
+    "Free user's own boat (no zone maps): zone-map-create-btn shown, zone-map-done absent",
+    "Magic row at 390px: no overflow, the batch, organise, fish and bartender buttons all at the same top offset",
+    "Zone headings 'Galley - 3', 'Saloon - 1', 'Not on a zone map - 5'. The toggle sets aria-expanded false and hides the areas, and tapping again shows them. localStorage mbp_zone_folds_main=[\"Orange\"] persists after reload. Search ignores folds",
+    "Print Cards: QR radio checked by default. The QR POST sends a card for each cupboard plus the folder (10 cards), with url origin/?scan_area=id&b=main&o=test-user-pro, zone and hex. Downloads 'Boat area QR cards.pdf', toast '10 QR cards ready...'. Contents with no folder gives an error toast and no request. With a folder, folder-cards.pdf downloads 'Folder and box contents cards.pdf', toast '1 contents card ready to print'",
+    "The PDF text has the zone name and area name. The backend rejects javascript:/ftp:/space urls, bad hex, empty or long names, 0 or more than 300 cards (422), and unauth requests (401)",
+    "Warm QR (pro): URL params stripped, dialog 'Magic Scan into Dry Goods' with swatch and 'Galley ·' intro. Add is the default and the note is correct. A real scan gave 14 items. Manual row added, blank row ignored, remove works. Add mode saved 14 and persisted to the DB. Adding 'test_milk' x3 to existing TEST_Milk x2 gave x5 (case-insensitive merge). Replace mode left only TEST_Eggs x6, toast 'Dry Goods now lists 1 item'",
+    "Two mocked scans with the same names merge quantities (Milk 2, Eggs 12)",
+    "Unknown area id gives an error toast. A QR for a boat not on the phone gives the 'isn't on this phone' toast and clears the QR",
+    "Crew (warm cache): a non-F/D area gives 'Only the skipper can change TEST_Port Locker'. Fridge (F/D) opens the dialog and the scan request is /api/boats/main/scan?shopping=true&owner=test-user-pro"
+  ],
+  "test_report_links": ["/app/backend/tests/test_it127_print_cards.py", "/app/test_reports/pytest/it127_results.xml"],
+  "action_items": [
+    "HIGH: gate the InventoryList QR effect on useBoatStore 'loaded' (don't clear the pending QR until the areas have loaded), so QR cards work on a fresh phone, after login and after the crew boat switch",
+    "Make the Batch Magic Scan label exactly 2 lines at 390px",
+    "Optional: confirm before 'Replace with 0'; make the Zone Map Schematic Done hint reachable on touch; slice contents cards to 200 or chunk them"
+  ],
+  "critical_code_review_comments": [
+    "InventoryList.jsx:256-265: the QR effect deps are [boat?.key] only, so it fires before the server state loads (see integration issue)",
+    "BoatPrep.jsx:321: setActiveId(INVENTORY_LIST) runs only on mount. That's fine because BoatShell remounts BoatPrep by key on a boat switch, but it relies on that remount",
+    "FolderCardsButton: on failure it shows a generic toast and ignores the API error detail (e.g. 422 limits)",
+    "Zone groups are keyed by colour, so two zones with the same colour but different labels merge under the first label"
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/inventory/QrScanDialog.jsx (qty input '!w-16 shrink-0')", "/app/backend/tests/test_it127_print_cards.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "about 85% (all features work on a warm cache; the cold-load QR path fails)"},
+  "seed_data_creation": "Temporary changes to test-user-pro boat main: zone tags on Fridge, Freezer and Dry Goods (Galley/Orange) and Bilge (Saloon/Green), a sub box test_it127_box, and items added or replaced in Dry Goods. All restored from the backup /app/test_reports/backup/it127_pro_main.json, with areas set back to the original 9 and sec_ts.areas bumped. The free user's active boat was switched back to c_test-user-pro_main. 1 real Gemini scan was used. Other scans were mocked through Playwright route.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To reproduce the cold-load bug, use a new browser context, add the session cookie and go straight to /?scan_area=<id>&b=main&o=test-user-pro. Load '/' first to get the warm path. Seed script pattern: /tmp/seed127.py, which updates user_boats areas and sets sec_ts.areas to now. Crew users get a CrewAgreementDialog; dismiss it with 'Not now' before using the boat-selector."
+}

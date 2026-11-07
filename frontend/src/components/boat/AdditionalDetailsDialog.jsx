@@ -124,6 +124,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             )}
             {onZoneMap && zoneDone && (
               <label className="col-span-3 flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md border-[1.5px] border-[var(--green)] bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900"
+                onClick={() => toast.message("in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen.")}
                 title="in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen." data-testid="zone-map-done">
                 <input type="checkbox" checked readOnly disabled className="h-5 w-5 accent-[var(--green)]" data-testid="zone-map-done-checkbox" /> Zone Map Schematic Done
               </label>

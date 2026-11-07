@@ -64,3 +64,11 @@
 ## 2026-06 Catch in Ship's Log + Share my catch
 - POST /api/ai/fish takes optional boat_id/owner_id; fish.log_catch pushes a Ship's Log item (label "Catch on <when> by <Skipper|crew name>: species (scientific), size, at place, position ...", catch_id) into the boat's data.shipsLog + pushed_items; crew catches go into the skipper's log. Skipper's app adds it locally (BoatPrep logCatch).
 - "Share my catch" (fish/ShareCatchButton.jsx, lib/catchCard.js): 1080x1350 JPEG card (photo, species, scientific, size, place name only, date, footer) via navigator.share with files, else download + caption copied. Self-tested (crew log via curl, card download via Playwright).
+
+## 2026-06 Zone schematic done, zone folds, Print Cards (QR), QR Magic Scan
+- Additional details: read-only ticked "Zone Map Schematic Done" (zone-map-done) replaces the schematic chooser when boatZones(boats.current) is non-empty; hint on hover (title) and tap (toast).
+- Boat details magic row: "Batch / Magic Scan..." and "Arrange / Lists" two-line labels, fish + cocktail icons on the same line (no wrap at 390px).
+- Boat Inventory zone headings "<zone> - <cupboards>" are fold toggles; folds remembered in localStorage mbp_zone_folds_{boatKey}; search ignores folds.
+- Print Cards (inventory/FolderCardsButton.jsx) with QR Codes (default) / Contents radios. QR: POST /api/inventory/qr-cards.pdf (folder_cards.py, reportlab QR, 90x54 mm, 10 per A4, swatch + zone + area name + parent). Contents = old folder cards (sliced to 200).
+- QR scanning: card URL <origin>/?scan_area=<id>&b=<boat_id>&o=<owner>. lib/qrScan.js captureQr() on load (localStorage mbp_qr_scan, 30 min, survives login), BoatShell switches boat, BoatPrep opens Boat Inventory, InventoryList (after store loaded) opens inventory/QrScanDialog: multi-photo Magic Scan, merge same names, edit, Add (default) or Replace. Crew only for F/D areas (scan with shopping=true&owner).
+- Tested iteration_127; cold-load QR bug fixed (gated on loaded) and self-verified.
