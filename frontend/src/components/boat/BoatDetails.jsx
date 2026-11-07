@@ -67,7 +67,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
   const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
   const dialog = <>
     <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={closeMore} returnFocus={moreRef} onMakeKit={onMakeKit}
-      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
+      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} zoneDone={!!zone?.coloured} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
     {zone && <ZoneSchematicsDialog open={plans} boat={boat} boatId={zone.boatId} online={zone.online} onDone={plansDone} onClose={() => setPlans(false)} />}
     <ConfirmDelete item={ask ? [1] : null} danger={false} title="Create a zone map?" confirmLabel="Create zone map" cancelLabel="Not now" testId="zone-map-ask"
       note={`Your boat doesn't have a zone map yet. The Magic Mariner can draw layout plans of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}
@@ -84,13 +84,13 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
   const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-2 px-3 py-2 !text-left text-[13px] font-bold leading-tight";
   const magicIcon = "btn-ghost h-11 min-h-11 w-11 shrink-0 justify-center p-0";
   const batchBtn = (onBatchScan || onOrganise) && (
-    <div className="flex flex-wrap items-center gap-1" data-testid="boat-details-magic-row">
+    <div className="flex flex-nowrap items-center gap-1" data-testid="boat-details-magic-row">
       {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
-        <Sparkles className="h-4 w-4 shrink-0" /> Batch Magic Scan...
+        <Sparkles className="h-4 w-4 shrink-0" /> <span>Batch<br />Magic Scan...</span>
       </button>}
       {onBatchScan && <span className="mr-1">{<HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
-        <ArrangeIcon /> Arrange Lists
+        <ArrangeIcon /> <span>Arrange<br />Lists</span>
       </button>}
       {onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
       {onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}

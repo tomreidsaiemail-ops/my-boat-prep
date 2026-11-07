@@ -92,7 +92,7 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, onZoneMap }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, onZoneMap, zoneDone }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -122,7 +122,13 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
               </button>
             )}
-            {onZoneMap && (
+            {onZoneMap && zoneDone && (
+              <label className="col-span-3 flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md border-[1.5px] border-[var(--green)] bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900"
+                title="in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen." data-testid="zone-map-done">
+                <input type="checkbox" checked readOnly disabled className="h-5 w-5 accent-[var(--green)]" data-testid="zone-map-done-checkbox" /> Zone Map Schematic Done
+              </label>
+            )}
+            {onZoneMap && !zoneDone && (
               <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onZoneMap() : toast.error("Please fill in Make and Model first"))}
                 className="btn-ghost col-span-3 h-auto min-h-10 justify-start gap-1.5 px-3 py-2 text-left text-sm" data-testid="zone-map-create-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> {zoneMapLabel(boat)}

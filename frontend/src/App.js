@@ -18,6 +18,9 @@ import JoinCrew from "@/pages/JoinCrew";
 import { TermsGate } from "@/components/auth/TermsGate";
 import { MagicLimitDialog } from "@/components/boat/MagicLimitDialog";
 import { AdminModeStrip } from "@/components/auth/AdminModeStrip";
+import { captureQr } from "@/lib/qrScan";
+
+captureQr();
 
 // Remount the boat workspace per account so one user's local data never carries into another's.
 function UserBoat() {

@@ -39,6 +39,8 @@ import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { ListSearch, searchableList } from "@/components/boat/ListSearch";
 import { FishWhispererDialog } from "@/components/boat/fish/FishWhispererDialog";
+import { boatZones } from "@/lib/zoneColours";
+import { pendingQr, qrBoatKey } from "@/lib/qrScan";
 import { matches } from "@/components/boat/Highlight";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import useInventoryShared from "@/hooks/useInventoryShared";
@@ -316,6 +318,7 @@ export default function BoatPrep({ boatId, boats }) {
   const listQ = listQuery.trim().toLowerCase();
   const listSearch = searchableList(active.name) && !active.isInventory;
   useEffect(() => { setAreaFilter(""); setListQuery(""); }, [active.id]);
+  useEffect(() => { const q = pendingQr(); if (q && qrBoatKey(q, user.user_id) === boats.current.key) setActiveId(INVENTORY_LIST.id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
@@ -885,7 +888,7 @@ export default function BoatPrep({ boatId, boats }) {
         <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
-            zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, online, premium, onUpgrade: () => needPro("Zone maps"),
+            zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {barList && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}

@@ -8,6 +8,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Table, TableStyle
+from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
+from reportlab.pdfgen import canvas
 from auth import get_current_user
 
 router = APIRouter(prefix="/api")
@@ -81,3 +85,96 @@ def build_cards_pdf(p: CardsIn) -> bytes:
 async def folder_cards_pdf(payload: CardsIn, user: dict = Depends(get_current_user)):
     return Response(content=build_cards_pdf(payload), media_type="application/pdf",
                     headers={"Content-Disposition": 'attachment; filename="Folder and box contents cards.pdf"'})
+
+
+class QrCard(BaseModel):
+    url: str = Field(min_length=10, max_length=400, pattern=r"^https?://[^\s]+$")
+    name: str = Field(min_length=1, max_length=120)
+    parent: str = Field(default="", max_length=120)
+    zone: str = Field(default="", max_length=80)
+    hex: str = Field(default="", pattern=r"^(#[0-9A-Fa-f]{6})?$")
+
+
+class QrCardsIn(BaseModel):
+    vessel: str = Field(default="", max_length=120)
+    cards: List[QrCard] = Field(min_length=1, max_length=300)
+
+
+QR_W, QR_H, QR_COLS, QR_ROWS = 90 * mm, 54 * mm, 2, 5
+
+
+def _fit(c, text: str, font: str, size: float, width: float) -> list:
+    """Wraps text to the card's right-hand column, at most three lines."""
+    words, lines, cur = text.split(), [], ""
+    for w in words:
+        nxt = f"{cur} {w}".strip()
+        if c.stringWidth(nxt, font, size) <= width or not cur:
+            cur = nxt
+        else:
+            lines.append(cur)
+            cur = w
+    lines.append(cur)
+    return lines[:3]
+
+
+def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
+    pad = 4 * mm
+    side = QR_H - 2 * pad
+    widget = QrCodeWidget(card.url, barLevel="M")
+    b = widget.getBounds()
+    d = Drawing(side, side, transform=[side / (b[2] - b[0]), 0, 0, side / (b[3] - b[1]), 0, 0])
+    d.add(widget)
+    renderPDF.draw(d, c, x + pad, y + pad)
+    tx, tw = x + pad + side + 4 * mm, QR_W - side - 3 * pad - 4 * mm + pad
+    top = y + QR_H - pad - 9 * mm
+    if card.hex:
+        c.setFillColor(colors.HexColor(card.hex))
+        c.setStrokeColor(colors.HexColor("#334155"))
+        c.roundRect(tx, top, 8 * mm, 8 * mm, 1.5 * mm, stroke=1, fill=1)
+    ty = top - 5 * mm
+    c.setFillColor(colors.HexColor("#0f2a4a"))
+    for line in _fit(c, card.zone or "No zone yet", "Helvetica-Bold", 11, tw):
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(tx, ty, line)
+        ty -= 13
+    ty -= 3
+    for line in _fit(c, card.name, "Helvetica-Bold", 14, tw):
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(tx, ty, line)
+        ty -= 16
+    c.setFillColor(colors.HexColor("#475569"))
+    if card.parent:
+        c.setFont("Helvetica", 8.5)
+        c.drawString(tx, ty, _fit(c, f"in {card.parent}", "Helvetica", 8.5, tw)[0])
+    c.setFont("Helvetica-Oblique", 7)
+    c.drawString(tx, y + pad, _fit(c, f"Scan to Magic Scan · {vessel}", "Helvetica-Oblique", 7, tw)[0])
+
+
+def build_qr_pdf(p: QrCardsIn) -> bytes:
+    """Ten 90 x 54 mm QR cards to an A4 page, with dashed cut lines, to laminate and put in each cupboard."""
+    buf = BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    c.setTitle("Boat area QR cards")
+    c.setAuthor("My Boat Prep")
+    pw, ph = A4
+    x0, y0 = (pw - QR_COLS * QR_W) / 2, (ph + QR_ROWS * QR_H) / 2
+    per = QR_COLS * QR_ROWS
+    for n, card in enumerate(p.cards):
+        if n and n % per == 0:
+            c.showPage()
+        slot = n % per
+        x, y = x0 + (slot % QR_COLS) * QR_W, y0 - (slot // QR_COLS + 1) * QR_H
+        c.setStrokeColor(colors.HexColor("#94a3b8"))
+        c.setDash(3, 3)
+        c.setLineWidth(0.6)
+        c.rect(x, y, QR_W, QR_H)
+        c.setDash()
+        _qr_card(c, card, x, y, p.vessel or "My Boat")
+    c.save()
+    return buf.getvalue()
+
+
+@router.post("/inventory/qr-cards.pdf")
+async def qr_cards_pdf(payload: QrCardsIn, user: dict = Depends(get_current_user)):
+    return Response(content=build_qr_pdf(payload), media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="Boat area QR cards.pdf"'})

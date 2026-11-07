@@ -22,6 +22,9 @@ import { BatchZonePrompt } from "@/components/boat/zone/BatchZonePrompt";
 import { SubAreaTools } from "@/components/boat/inventory/SubAreaTools";
 import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
+import { QrScanDialog } from "@/components/boat/inventory/QrScanDialog";
+import { clearQr, pendingQr, qrBoatKey } from "@/lib/qrScan";
+import { useAuth } from "@/context/AuthContext";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -248,6 +251,31 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setZone(null); setBatchZone(z); setBatchOpen(true);
   };
   const closeBatch = () => { setBatchOpen(false); setBatchZone(null); };
+  const { user } = useAuth();
+  const [qrArea, setQrArea] = useState(null);
+  useEffect(() => {
+    const qr = pendingQr();
+    if (!qr || !boat || qrBoatKey(qr, user.user_id) !== boat.key) return;
+    const a = areas.find((x) => String(x.id) === qr.area);
+    clearQr();
+    if (!a) { toast.error("That QR card's cupboard isn't on this boat any more"); return; }
+    if (locked(a)) { toast.error(`Only the skipper can change ${a.name}`); return; }
+    setQrArea(a);
+    openArea(a.parent_id || a.id);
+  }, [boat?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const saveQr = (list, mode) => {
+    const fresh = list.map((i) => ({ id: newId(), name: i.name.trim(), qty: i.qty }));
+    setArea(qrArea.id, (x) => {
+      if (mode === "replace") return { ...x, items: fresh };
+      const items = [...(x.items || [])];
+      fresh.forEach((f) => { const at = items.findIndex((y) => same(y.name, f.name)); if (at >= 0) items[at] = { ...items[at], qty: (Number(items[at].qty) || 1) + f.qty, removed: false }; else items.push(f); });
+      return { ...x, items };
+    });
+    toast.success(mode === "replace" ? `${qrArea.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}` : `${list.length} ${list.length === 1 ? "item" : "items"} added to ${qrArea.name}`);
+    setQrArea(null);
+  };
+  const [folds, setFolds] = useState(() => { try { return JSON.parse(localStorage.getItem(`mbp_zone_folds_${boat?.key}`)) || []; } catch { return []; } });
+  const toggleFold = (k) => setFolds((f) => { const next = f.includes(k) ? f.filter((x) => x !== k) : [...f, k]; localStorage.setItem(`mbp_zone_folds_${boat?.key}`, JSON.stringify(next)); return next; });
   const applyBatch = (list) => {
     const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty }));
     const tag = batchZone ? { zone: { label: batchZone.label, colour: batchZone.colour } } : {};
@@ -355,17 +383,25 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         <InventoryInstructions searching={!!q} />
       )}
       <ul className="flex flex-col gap-2" data-testid="inventory-areas">
-        {groups.map((g) => [
-          coloured && (
-            <li key={`group-${g.key || "none"}`} className="flex items-center gap-2 pt-1 text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`inventory-colour-group-${(g.key || "none").toLowerCase()}`}>
-              <span className="h-3.5 w-3.5 rounded-[4px] border border-black/20" style={{ backgroundColor: g.zone ? g.zone.hex : "transparent" }} />
-              {g.zone ? g.zone.map : "Not on a zone map"}
-            </li>
-          ),
-          ...g.rows.map((r) => renderArea(r)),
-        ])}
+        {groups.map((g) => {
+          const k = g.key || "none";
+          const shut = !q && folds.includes(k);
+          return [
+            coloured && (
+              <li key={`group-${k}`} data-testid={`inventory-colour-group-${k.toLowerCase()}`}>
+                <button type="button" onClick={() => toggleFold(k)} aria-expanded={!shut} className="flex min-h-9 w-full items-center gap-2 pt-1 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`inventory-colour-group-${k.toLowerCase()}-toggle`}>
+                  <span className="h-3.5 w-3.5 rounded-[4px] border border-black/20" style={{ backgroundColor: g.zone ? g.zone.hex : "transparent" }} />
+                  <span data-testid={`inventory-colour-group-${k.toLowerCase()}-label`}>{g.zone ? g.zone.map : "Not on a zone map"} - {g.rows.length}</span>
+                  <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${shut ? "-rotate-90" : ""}`} />
+                </button>
+              </li>
+            ),
+            ...(shut ? [] : g.rows.map((r) => renderArea(r))),
+          ];
+        })}
       </ul>
-      {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} />}
+      {qrArea && <QrScanDialog area={qrArea} zone={zones[qrArea.id] || zones[qrArea.parent_id]} boat={boat} crew={readOnly} online={online} onSave={saveQr} onClose={() => setQrArea(null)} />}
+      {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} boat={boat} ownerId={user.user_id} />}
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
         ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={() => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"))} /></ZonePicker>
