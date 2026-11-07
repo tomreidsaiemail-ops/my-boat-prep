@@ -83,15 +83,15 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, on
             ) : (
               <button type="button" onClick={() => input.current?.click()} data-testid="fish-photo-btn"
                 className="flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-slate-50 px-4 text-center text-sm font-bold [transition:background-color_.15s] hover:bg-sky-50">
-                <Camera className="h-10 w-10" /> Tap to take a photo of your fish
-                <span className="text-xs font-semibold text-[var(--muted)]">Side-on, the whole fish, with your hand or something for scale</span>
+                <Camera className="h-10 w-10" /> Tap to take a photo of your fish or shellfish
+                <span className="text-xs font-semibold text-[var(--muted)]">The whole catch, side-on for fish, with your hand or something for scale</span>
               </button>
             )}
             <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]" data-testid="fish-gps">
               <MapPin className="h-4 w-4 shrink-0" /> {gps?.status === "ok" ? `Using your GPS: ${gps.text}` : "GPS position unavailable, so local rules will be general"}
             </p>
             <button type="button" className="btn-solid h-12 justify-center gap-2 disabled:opacity-40" onClick={ask} disabled={!shot || busy} data-testid="fish-ask-btn">
-              {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Whispering to your fish...</> : <><Sparkles className="h-4 w-4" /> Identify my fish</>}
+              {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Whispering to your catch...</> : <><Sparkles className="h-4 w-4" /> Identify my catch</>}
             </button>
           </>
         ))}

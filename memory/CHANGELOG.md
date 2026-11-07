@@ -53,3 +53,6 @@
 - Help panels seeded: "Admin - Help Panel - Magic Fish Whisperer" and "Admin - Help Panel - Magic Bartender" (migration magic_fish_bartender_help). MagicHelp.jsx shows until collapsed, then stays hidden (localStorage mbp_help_fish / mbp_help_bartender).
 - Magic Bartender simplified: help + big photo tap area + collapsed "Drinks (D) and food (F) boat areas" section (use-photo, areas, Batch Magic Scan, summary); Mix enabled once there are ingredients. BartenderHelp.jsx removed.
 - Tested iteration_126 (100%), follow-ups self-tested.
+
+## 2026-06 Fish Whisperer handles shellfish and other seafood
+- Prompt + parse_fish add kind (fish|shellfish), safety {biotoxins, gathering}, cooking [{name, ingredients, steps}], size.count. Shellfish report shows "Biotoxins and safe gathering", "Bag limits, sizes and closures", "Cleaning and preparing", up to 3 "Cook it" methods (no batter) and "Eating it raw?". UI copy says fish or shellfish. Self-tested with a real mussel photo.

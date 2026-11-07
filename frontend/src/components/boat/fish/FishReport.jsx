@@ -21,6 +21,7 @@ const Steps = ({ items, testId }) => (items?.length ? (
 
 const sizeText = (size, imperial) => {
   const out = [];
+  if (size.count > 1) out.push(`${size.count} of them`);
   if (size.length_cm) out.push(imperial ? `${(size.length_cm / 2.54).toFixed(1)} in (${size.length_cm} cm)` : `${size.length_cm} cm (${(size.length_cm / 2.54).toFixed(1)} in)`);
   if (size.weight_kg) out.push(imperial ? `about ${(size.weight_kg * 2.20462).toFixed(1)} lb (${size.weight_kg} kg)` : `about ${size.weight_kg} kg (${(size.weight_kg * 2.20462).toFixed(1)} lb)`);
   return out.join(" · ");
@@ -54,6 +55,7 @@ const AddToMeals = ({ meal, fish }) => {
 export const FishReport = ({ c, imperial, preview }) => {
   const r = c.report;
   const sp = r.species;
+  const shell = r.kind === "shellfish";
   return (
     <div className="flex flex-col gap-2.5" data-testid="fish-report">
       <div className="flex items-start gap-3">
@@ -68,7 +70,12 @@ export const FishReport = ({ c, imperial, preview }) => {
         </div>
       </div>
       {r.size.how && <p className="text-xs text-[var(--muted)]" data-testid="fish-size-how">Size estimate: {r.size.how}</p>}
-      {r.toxins?.length > 0 && <Section title="Watch out" tone="bg-red-50" testId="fish-toxins"><p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Never eat a fish you're unsure is safe.</p><Bullets items={r.toxins} /></Section>}
+      {r.toxins?.length > 0 && <Section title="Watch out" tone="bg-red-50" testId="fish-toxins"><p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Never eat {shell ? "seafood" : "a fish"} you're unsure is safe.</p><Bullets items={r.toxins} /></Section>}
+      {shell && (r.safety?.biotoxins?.length > 0 || r.safety?.gathering?.length > 0) && <Section title="Biotoxins and safe gathering" tone="bg-red-50" testId="fish-shell-safety">
+        <p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Check current shellfish biotoxin and red tide warnings before gathering or eating.</p>
+        <Bullets items={r.safety.biotoxins} testId="fish-biotoxins" />
+        {r.safety.gathering.length > 0 && <><p className="font-bold">Safe gathering</p><Bullets items={r.safety.gathering} testId="fish-gathering" /></>}
+      </Section>}
       <Section title={`Why it's a ${sp.common_name}`} testId="fish-reasons"><Bullets items={sp.reasons} /></Section>
       {r.similar?.length > 0 && <Section title="Close and similar species" testId="fish-similar">
         <ul className="space-y-1">{r.similar.map((s, k) => <li key={k}><b>{s.name}</b>{s.difference ? `: ${s.difference}` : ""}</li>)}</ul>
@@ -77,7 +84,7 @@ export const FishReport = ({ c, imperial, preview }) => {
         <p className="flex items-center gap-1 font-bold"><MapPin className="h-4 w-4 shrink-0" /> {r.place.name || "Unknown area"}{c.position ? ` · ${c.position}` : ""}</p>
         <Bullets items={[...r.place.notes, ...r.local_knowledge]} testId="fish-local" />
       </Section>
-      <Section title="Fishing rules" testId="fish-rules">
+      <Section title={shell ? "Bag limits, sizes and closures" : "Fishing rules"} testId="fish-rules">
         {r.regulations.local.length > 0 && <><p className="font-bold">Local</p><Bullets items={r.regulations.local} /></>}
         {r.regulations.national.length > 0 && <><p className="font-bold">National</p><Bullets items={r.regulations.national} /></>}
         <p className="text-xs font-bold text-amber-800">Always double check with your local authorities: rules change.</p>
@@ -86,17 +93,23 @@ export const FishReport = ({ c, imperial, preview }) => {
         <ul className="space-y-1">{r.sources.map((s, k) => <li key={k}><a href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-[var(--blue)] underline" data-testid={`fish-source-${k}`}>{s.name} <ExternalLink className="h-3.5 w-3.5" /></a></li>)}</ul>
       </Section>}
       {r.questions?.length > 0 && <Section title="Questions to ask your local authority" testId="fish-questions"><Bullets items={r.questions} /></Section>}
-      <Section title="Filleting" testId="fish-filleting">
+      <Section title={shell ? "Cleaning and preparing" : "Filleting"} testId="fish-filleting">
         <Steps items={r.filleting.steps} />
         {r.filleting.careful.length > 0 && <><p className="font-bold">Be careful of</p><Bullets items={r.filleting.careful} /></>}
         {r.filleting.protection.length > 0 && <><p className="font-bold">Protection</p><Bullets items={r.filleting.protection} /></>}
       </Section>
-      {r.batter.ingredients.length > 0 && <Section title={r.batter.name || "A good batter"} testId="fish-batter">
+      {shell && r.cooking?.map((m, k) => (
+        <Section key={k} title={`Cook it: ${m.name}`} testId={`fish-cooking-${k}`}>
+          {m.ingredients.length > 0 && <><p className="font-bold">Ingredients</p><Bullets items={m.ingredients} /></>}
+          <Steps items={m.steps} />
+        </Section>
+      ))}
+      {!shell && r.batter.ingredients.length > 0 && <Section title={r.batter.name || "A good batter"} testId="fish-batter">
         <p className="font-bold">Ingredients</p><Bullets items={r.batter.ingredients} />
         <p className="font-bold">Method</p><Steps items={r.batter.steps} />
       </Section>}
-      <Section title="Sushi or sashimi?" tone={r.sushi.suitable ? "bg-emerald-50" : "bg-amber-50"} testId="fish-sushi">
-        <p className="font-bold" data-testid="fish-sushi-verdict">{r.sushi.suitable ? "Suitable for sushi" : "Not recommended for sushi"}</p>
+      <Section title={shell ? "Eating it raw?" : "Sushi or sashimi?"} tone={r.sushi.suitable ? "bg-emerald-50" : "bg-amber-50"} testId="fish-sushi">
+        <p className="font-bold" data-testid="fish-sushi-verdict">{shell ? (r.sushi.suitable ? "Can be eaten raw when gathered safely" : "Cook it, don't eat it raw") : r.sushi.suitable ? "Suitable for sushi" : "Not recommended for sushi"}</p>
         {r.sushi.why && <p>{r.sushi.why}</p>}
       </Section>
       <AddToMeals meal={r.meal} fish={sp.common_name} />

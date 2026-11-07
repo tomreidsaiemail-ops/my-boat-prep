@@ -28,15 +28,22 @@ FISH = (
     "(e.g. puffer fish tetrodotoxin, ciguatera, scombroid) and say never to eat a fish you are unsure is safe. Recommend a good batter for a fillet "
     "with ingredients and steps, and say whether it is suitable for sushi or sashimi and why (parasites, freezing, freshness). "
     "Suggest one meal using this fish for a meal plan. "
-    'Reply with JSON only, no code fences: {"not_fish": false, "message": "", '
+    "Shellfish and other seafood (e.g. scallops, mussels, oysters, cockles, pipi, paua, kina, crayfish, crabs, squid, octopus) are welcome too: set \"kind\" to \"shellfish\" and "
+    "name the species, estimate the size (and count if there are several), give the local shellfish bag limits, minimum sizes, accumulation limits and seasonal closures, "
+    "and warn clearly about biotoxins (paralytic, amnesic, diarrhetic shellfish poisoning), red tide or algal bloom warnings, and safe gathering rules "
+    "(check current public health warnings before gathering, avoid polluted water, stormwater, marinas and after heavy rain, keep them cold, measure before taking). "
+    "For shellfish put cleaning, shucking or preparing steps in \"filleting\", give up to 3 cooking methods in \"cooking\" (e.g. steaming, garlic butter, grilling) "
+    "instead of a batter, and in \"sushi\" say whether it is safe to eat raw. "
+    'Reply with JSON only, no code fences: {"not_fish": false, "message": "", "kind": "fish|shellfish", '
     '"species": {"common_name": "", "scientific_name": "", "other_names": [""], "confidence": "high|medium|low", "reasons": [""]}, '
     '"similar": [{"name": "", "difference": ""}], "size": {"length_cm": 0, "weight_kg": 0, "how": ""}, '
     '"place": {"name": "", "notes": [""]}, "local_knowledge": [""], "regulations": {"local": [""], "national": [""]}, '
     '"sources": [{"name": "", "url": "https://..."}], "questions": [""], '
     '"filleting": {"steps": [""], "careful": [""], "protection": [""]}, "toxins": [""], '
     '"batter": {"name": "", "ingredients": [""], "steps": [""]}, "sushi": {"suitable": false, "why": ""}, '
-    '"meal": {"name": "", "meal_type": "lunch|dinner", "recipe": "", "ingredients": [""]}}. '
-    'If the photo does not show a fish or seafood, reply {"not_fish": true, "message": "<what you can see and a tip for a better photo>"}.'
+    '"meal": {"name": "", "meal_type": "lunch|dinner", "recipe": "", "ingredients": [""]}, '
+    '"safety": {"biotoxins": [""], "gathering": [""]}, "cooking": [{"name": "", "ingredients": [""], "steps": [""]}]}. Use "safety" and "cooking" for shellfish; size may add "count". '
+    'If the photo does not show a fish, shellfish or other seafood, reply {"not_fish": true, "message": "<what you can see and a tip for a better photo>"}.'
 )
 
 
@@ -53,7 +60,7 @@ def _num(x, top: float) -> Optional[float]:
         v = float(x)
     except (TypeError, ValueError):
         return None
-    return round(v, 1) if 0 < v <= top else None
+    return (round(v, 2) or None) if 0 < v <= top else None
 
 
 def _d(x) -> dict:
@@ -66,8 +73,8 @@ def parse_fish(text: str) -> dict:
         raise ValueError("no JSON")
     r = json.loads(match.group(0))
     if r.get("not_fish") is True:
-        return {"not_fish": True, "message": _s(r.get("message"), 400) or "That doesn't look like a fish. Try a clear side-on photo of the whole fish."}
-    sp, size, place, regs, fil, bat, sushi, meal = (_d(r.get(k)) for k in ("species", "size", "place", "regulations", "filleting", "batter", "sushi", "meal"))
+        return {"not_fish": True, "message": _s(r.get("message"), 400) or "That doesn't look like a fish or shellfish. Try a clear photo of your whole catch."}
+    sp, size, place, regs, fil, bat, sushi, meal, safe = (_d(r.get(k)) for k in ("species", "size", "place", "regulations", "filleting", "batter", "sushi", "meal", "safety"))
     name = _s(sp.get("common_name"), 80)
     if not name:
         raise ValueError("no species")
@@ -75,10 +82,14 @@ def parse_fish(text: str) -> dict:
     sources = [{"name": _s(s.get("name"), 100) or _s(s.get("url"), 100), "url": _s(s.get("url"), 300)} for s in (r.get("sources") or []) if isinstance(s, dict)]
     return {
         "not_fish": False,
+        "kind": "shellfish" if r.get("kind") == "shellfish" else "fish",
+        "safety": {"biotoxins": _l(safe.get("biotoxins"), 8), "gathering": _l(safe.get("gathering"), 10)},
+        "cooking": [{"name": _s(c.get("name"), 80), "ingredients": _l(c.get("ingredients"), 15, 120), "steps": _l(c.get("steps"), 10)}
+                    for c in (r.get("cooking") or []) if isinstance(c, dict) and _s(c.get("name"))][:3],
         "species": {"common_name": name, "scientific_name": _s(sp.get("scientific_name"), 100), "other_names": _l(sp.get("other_names"), 6, 60),
                     "confidence": conf, "reasons": _l(sp.get("reasons"), 8)},
         "similar": [{"name": _s(s.get("name"), 80), "difference": _s(s.get("difference"), 300)} for s in (r.get("similar") or []) if isinstance(s, dict) and _s(s.get("name"))][:6],
-        "size": {"length_cm": _num(size.get("length_cm"), 600), "weight_kg": _num(size.get("weight_kg"), 1000), "how": _s(size.get("how"), 400)},
+        "size": {"length_cm": _num(size.get("length_cm"), 600), "weight_kg": _num(size.get("weight_kg"), 1000), "count": int(_num(size.get("count"), 500) or 0) or None, "how": _s(size.get("how"), 400)},
         "place": {"name": _s(place.get("name"), 120), "notes": _l(place.get("notes"), 6)},
         "local_knowledge": _l(r.get("local_knowledge"), 10),
         "regulations": {"local": _l(regs.get("local"), 10), "national": _l(regs.get("national"), 10)},
