@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the iteration 125 features on the backend and the frontend, mostly at 390x844 with one check at 1920. Backend: 10 of 10 new pytest passed in tests/test_crew_check_before_sailing.py. They cover briefing-read (400 for a role the crew member doesn't have, 400 for a role with no briefing, 404 for a non-crew user, 401 with no session), read_at in GET /crew/agreement and GET /boats/{id}/crew, read_old going true after the briefing text changes and back again when the text is restored, shopping_sent on members, the boat_id saved by /crew-register/requests, vessel and has_boat (false, then true after joining) in /crew-register/mine, invite briefings, crew_joined set when an invite is accepted, and crew_joined removed when the member is removed. Regression runs passed: test_crew_agreement.py and test_crew_agreement_edges.py 11 passed; test_area_zone_picker.py and test_crew_register.py 22 passed, 1 skipped. Frontend: every requested flow works. (1) Zone picker: Galley is always first. After picking Cockpit and then Saloon, the next picker showed Galley, Saloon, Cockpit, then the rest in map order. The recents are saved in localStorage mbp_recent_zones_main. (2) Search: Skipper's Tips ('FORE CAST' gives 1 of 2 match), FAQ ('no-signal' and 'SYNCED' each give 1 of 1, so answers are searched too), and the TEST_Books and eBooks checklist ('selfsteering' gives 1 of 4; with no match it shows 'No items match your search.' and not the 'No items yet' empty state). The clear button resets the search. Provisions has no search box. (3) Photo and crew: totals showed '3 on board: you, 1 joined, 1 invited' and 'about 242 kg' (72 kg registered + 2 × 85 kg), with a note of ±43 kg. Each row shows when they were invited, when they registered (local time), the agreement and the provisions. The role bubbles show sky (no briefing), amber (invite, or unread) and green with data-read=yes after the crew confirms. The title and the popover show the right text. Refresh shows its toast and picks up reads made in the background, and a deleted read turns the bubble back to amber. (4) Crew side: 'I've read it' turns into 'Read <date>' with a toast. (5) Crew Registration: Refresh button, and 'Registered <local date/time>' on registered rows. (6) No-boat user: 'Thank you for registering', big tick, the note naming TEST_Kia Ora, Close, the waiting-invite-screen, then 'Close my registration window' logs out and goes to /login. A user who already has a boat goes back to the app after Close.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew-register/requests", "issue": "boat_id is saved on the entries without checking that the skipper owns that boat. It does no harm today, because request_vessel only looks at the owner's boats, but it lets bad data in."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Photo and crew dialog, invite row (390px)", "issues": ["The sub line '<email> · Invited, joins when they log in' now repeats the new 'Invited 3 days ago · hasn't joined yet' line and gets cut off. Show just the email."]},
+      {"screen": "Thank-you view of the crew registration (user who is already crew)", "issues": ["Someone already on that boat's crew still sees 'a crew invite will follow in due course'. Change the wording when has_boat is true and they're already crew on that skipper's boat."]},
+      {"screen": "Waiting for your crew invite", "issues": ["The 'Thanks, Skipper. Terms accepted' toast stays on top of the full-screen waiting page. Minor."]},
+      {"screen": "Crew registration form", "issues": ["Date of birth uses the browser's own date input (type=date), not the shadcn calendar. This was already there before."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_check_before_sailing.py", "/app/test_reports/pytest/pytest_results_125.xml"],
+  "action_items": [
+    "Optional: check in POST /crew-register/requests that the skipper owns boat_id (404 if not)",
+    "Optional: remove the duplicate 'Invited, joins when they log in' sub text on invite rows",
+    "Optional: when a no-boat user who has already registered logs in again they see the normal empty app ('Unnamed boat') and not the waiting screen. Show WaitingForInvite again while has_boat is false and they have a registered entry with no invite",
+    "Optional: change the thank-you wording for people who are already crew"
+  ],
+  "critical_code_review_comments": [
+    "crew_register.send_requests: payload.boat_id isn't checked against the skipper's boats.",
+    "CrewRegistrationPrompt: the waiting state is only in component memory (setWaiting), so it shows once. A no-boat user who logs in again gets the full app with an empty boat.",
+    "AreaZoneButton: recents are keyed by zone label only, so the same label on two maps counts as one recent. Fine for now.",
+    "CrewTotals: the weight comes from any register entry with weight_kg, including entries the skipper typed in themselves but which have status unregistered. The note still calls these 'registered' people.",
+    "The tests need REACT_APP_BACKEND_URL exported, because test_crew_agreement*.py don't load /app/frontend/.env themselves."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_check_before_sailing.py"],
+  "success_rate": {"backend": "100% (10/10 new, 33/33 regression run)", "frontend": "100% of the requested flows"},
+  "seed_data_creation": "All temporary and cleaned up: the roles and briefing_reads of test-user-free on pro boat main; invite TEST Invitee125; crew_register entries for test.user.free and TEST NoBoat; 2 Provisions items with shopper 'TEST Free Crew'; the checklist custom_test125books 'TEST_Books and eBooks'; zones on TEST_Port Locker and TEST_Gantry (unset again); user test-user-nb125 with its session and auto-created boat (deleted); last_boat of test-user-free put back to c_test-user-pro_TEST_agr. I checked afterwards: crew_roles {}, no invites, no register entries, no shopping_notes, 10 provisions, 35 registry lists, no zoned areas.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "In the Crew Roles list (data.tpl_test67crew) on pro boat main, only Port Trim has a briefing. The test file snapshots and restores crew_roles and the briefing data, and uses pymongo for setup. Before running test_crew_agreement*.py, export REACT_APP_BACKEND_URL. Run with -n 1 because the tests share the pro boat. Urllib POSTs from the browser script return 403 (origin/UA), so use curl. New users must accept 'Before you set sail' (a checkbox, then 'Accept and continue') before the crew-reg-dialog appears. On mobile, pick the list selector with '[data-testid=\"list-selector\"]:visible'.first; a force click can open the Batch Magic Scan help instead."
+}

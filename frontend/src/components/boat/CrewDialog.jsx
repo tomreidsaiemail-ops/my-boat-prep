@@ -154,7 +154,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
-            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
               badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}

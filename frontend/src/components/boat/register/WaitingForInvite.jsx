@@ -1,11 +1,18 @@
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
-// Shown after registering to someone with no boat of their own: nothing to do until the skipper's crew invite arrives.
-export const WaitingForInvite = ({ vessel, skipper }) => {
+const OWN_KEY = "mbp_waiting_own_boat";
+export const waitingOff = () => localStorage.getItem(OWN_KEY) === "1";
+export const stopWaiting = () => localStorage.setItem(OWN_KEY, "1");
+
+// Shown to someone registered as crew with no boat of their own: nothing to do until the skipper's crew invite arrives.
+export const WaitingForInvite = ({ vessel, skipper, onOwnBoat }) => {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  useEffect(() => { toast.dismiss(); }, []);
   const close = async () => { await logout(); navigate("/login", { replace: true }); };
   return (
     <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center gap-5 bg-white px-6 text-center" data-testid="waiting-invite-screen">
@@ -16,6 +23,9 @@ export const WaitingForInvite = ({ vessel, skipper }) => {
       </p>
       <button type="button" className="btn-solid h-16 w-full max-w-sm justify-center text-lg" onClick={close} data-testid="waiting-invite-close-btn">
         Close my registration window
+      </button>
+      <button type="button" className="text-sm font-bold text-[var(--muted)] underline underline-offset-2" onClick={onOwnBoat} data-testid="waiting-invite-own-boat-btn">
+        I want to set up my own boat instead
       </button>
     </div>
   );

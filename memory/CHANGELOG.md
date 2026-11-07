@@ -32,3 +32,13 @@
 
 ## 2026-06 ++ Batch Magic Scan zone prompt
 - The ++ button (Add boat areas by zone > More options) opens BatchZonePrompt: pick exactly one zone (e.g. Galley – Orange), then BatchScanDialog opens tagged to that zone. "Scan the whole boat instead" shows a warning about using the 4 square picker later, then "Scan whole boat anyway". Other Batch Magic Scan buttons unchanged (user choice). No zones -> ++ opens the batch scan directly as before. Self-tested via screenshot flow.
+
+## 2026-06 Crew check-before-sailing, list search, registration thank-you
+- Zone picker: Galley first, then recently picked zones (localStorage mbp_recent_zones_{boatKey}), then map order.
+- Search boxes (ListSearch.jsx) on Skipper's Tips, FAQ, and checklists/media lists whose name contains "book" or "video" (Books and eBooks, Education Videos, Latest Tech Videos).
+- Photo and crew: Refresh button (reloads crew, register, pulls boat state via mbp:refresh-boat for role briefings); CrewTotals (you + joined + open invites, weight from register weight_kg else crew_weight/85 kg, ± note 3 kg/registered, 20 kg/estimate); CrewFacts per row (invited/joined ago, registered local time, agreement, provisions bringing + list sent via shopping_notes); RoleBubble popovers with briefing read state.
+- Crew confirm "I've read it" per role in the agreement dialog: POST /api/crew/briefing-read (briefing_reads, hash so edited briefings need re-reading). GET /boats/{id}/crew returns briefings[], shopping_sent, invited_at/joined_at (user_boats.crew_joined set on join).
+- Crew Registration: Refresh button, "Registered <local time>" on rows; requests save boat_id (owner-checked). /crew-register/mine returns vessel, already_crew, has_boat, waiting.
+- Registration done view: "Thank you for registering", big tick, "The skipper of <boat> will see...crew invite will follow". No-boat users then see WaitingForInvite (also on later logins while registered with no invite) with "Close my registration window" (logout -> /login) and "I want to set up my own boat instead".
+- Fixed crew list collapsing to 0 height in the Photo and crew dialog (shrink-0).
+- Tested iteration_125 (100%) + fixes self-tested.

@@ -26,7 +26,7 @@ export const CrewTotals = ({ crew, invites, reg, boat = {} }) => {
         <Scale className="h-4 w-4 shrink-0" /> Total crew weight about {fmtKg(total, unit)}
       </p>
       <p className="text-xs leading-snug text-[var(--muted)]" data-testid="crew-totals-note">
-        Weights are always estimates. {known.length ? `${known.length} registered ${known.length === 1 ? "person uses" : "people use"} the weight they gave (usually within ${fmtKg(REG_SPREAD, unit)}, more in wet gear) and ` : ""}
+        Weights are always estimates. {known.length ? `${known.length} ${known.length === 1 ? "person uses" : "people use"} the weight on your crew register (usually within ${fmtKg(REG_SPREAD, unit)}, more in wet gear) and ` : ""}
         {est} ({est === 1 ? "you" : "including you"}) {est === 1 ? "uses" : "use"} the {Number(boat.crew_weight) ? "" : "typical "}{avg} {unit}, and a real person can be {fmtKg(EST_SPREAD, unit)} either side.
         So the total could be out by about {fmtKg(spread, unit)}.
       </p>

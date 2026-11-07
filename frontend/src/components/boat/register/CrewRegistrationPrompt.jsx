@@ -6,7 +6,7 @@ import { api, apiError } from "@/lib/api";
 import { CREW_FIELDS, missing, toForm, toPayload } from "@/lib/crewRegister";
 import { RegFields } from "@/components/boat/register/RegFields";
 import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
-import { WaitingForInvite } from "@/components/boat/register/WaitingForInvite";
+import { WaitingForInvite, stopWaiting, waitingOff } from "@/components/boat/register/WaitingForInvite";
 
 const LATER_KEY = "mbp_register_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
@@ -30,17 +30,21 @@ export const CrewRegistrationPrompt = () => {
   const [waiting, setWaiting] = useState(null);
   useEffect(() => {
     if (!navigator.onLine) { setList([]); return; }
-    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => { setHasBoat(data.has_boat !== false); setList(data.requests.filter((r) => !later().includes(r.entry_id))); }).catch(() => setList([]));
+    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => {
+      setHasBoat(data.has_boat !== false);
+      setList(data.requests.filter((r) => !later().includes(r.entry_id)));
+      if (data.waiting && !waitingOff()) setWaiting(data.waiting);
+    }).catch(() => setList([]));
   }, []);
   const req = list?.[0];
   useEffect(() => { if (req) { setValues(toForm(req)); setErrors([]); } }, [req]);
   const showing = list === null || !!(req || done || waiting);
   useEffect(() => { holdPrompt("register", showing); return () => holdPrompt("register", false); }, [showing]);
-  if (waiting) return <WaitingForInvite vessel={waiting.vessel} skipper={waiting.skipper} />;
+  if (waiting) return <WaitingForInvite vessel={waiting.vessel} skipper={waiting.skipper} onOwnBoat={() => { stopWaiting(); setWaiting(null); }} />;
   if ((!req && !done) || !free) return null;
 
   const next = () => {
-    if (done && !hasBoat && list.length <= 1) setWaiting(done);
+    if (done && !hasBoat && list.length <= 1 && !waitingOff()) setWaiting(done);
     setDone(null); setList((l) => l.slice(1));
   };
   const notNow = () => { sessionStorage.setItem(LATER_KEY, JSON.stringify([...later(), req.entry_id])); next(); };
@@ -50,7 +54,7 @@ export const CrewRegistrationPrompt = () => {
     setBusy(true);
     try {
       await api.put(`/crew-register/mine/${req.entry_id}`, toPayload(values));
-      setDone({ skipper: req.skipper, vessel: req.vessel });
+      setDone({ skipper: req.skipper, vessel: req.vessel, crew: !!req.already_crew });
     } catch (err) { toast.error(apiError(err, "Couldn't save your registration, please try again")); }
     finally { setBusy(false); }
   };
@@ -68,7 +72,7 @@ export const CrewRegistrationPrompt = () => {
           <div className="flex flex-col items-center gap-4 py-2 text-center" data-testid="crew-reg-done">
             <CheckCircle2 className="h-28 w-28 text-[var(--green)]" strokeWidth={2.5} data-testid="crew-reg-done-tick" />
             <p className="text-base font-bold leading-relaxed" data-testid="crew-reg-done-note">
-              The skipper of {done.vessel || `${done.skipper}'s boat`} will see that you have registered, and a crew invite will follow in due course.
+              The skipper of {done.vessel || `${done.skipper}'s boat`} will see that you have registered{done.crew ? "." : ", and a crew invite will follow in due course."}
             </p>
             <button type="button" className="btn-solid h-12 w-full justify-center" onClick={next} data-testid="crew-reg-done-btn">Close</button>
           </div>

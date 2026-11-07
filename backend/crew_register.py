@@ -168,6 +168,8 @@ def request_html(skipper: str, name: str, email: str, link: str) -> str:
 
 @router.post("/requests")
 async def send_requests(payload: RequestIn, request: Request, user: dict = Depends(require_premium)):
+    if payload.boat_id:
+        await owned_boat(user, payload.boat_id)
     q = {"owner_id": user["user_id"], "kind": "crew"}
     if payload.entry_ids is not None:
         q["entry_id"] = {"$in": payload.entry_ids}
@@ -298,9 +300,20 @@ async def my_requests(user: dict = Depends(get_current_user)):
         if not await asked(r, user):
             continue
         owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
-        out.append({**public(r), "skipper": owner.get("name") or owner.get("email") or "Your skipper", "vessel": await request_vessel(r)})
+        out.append({**public(r), "skipper": owner.get("name") or owner.get("email") or "Your skipper", "vessel": await request_vessel(r),
+                    "already_crew": bool(await db.user_boats.find_one({"owner_id": r["owner_id"], "crew": user["user_id"]}, {"_id": 1}))})
     has_boat = bool(await db.user_boats.find_one({"$or": [{"crew": user["user_id"]}, {"owner_id": user["user_id"], "boat.vessel": {"$regex": r"\S"}}]}, {"_id": 1}))
-    return {"requests": out, "has_boat": has_boat}
+    return {"requests": out, "has_boat": has_boat, "waiting": None if has_boat or out else await waiting_for(user)}
+
+
+async def waiting_for(user: dict):
+    """Registered with a skipper, no boat of their own and no invite yet: they're waiting for that skipper's crew invite."""
+    key = email_key(user["email"])
+    r = await db.crew_register.find_one({"kind": "crew", "email_key": key, "status": "registered", "owner_id": {"$ne": user["user_id"]}}, {"_id": 0}, sort=[("registered_at", -1)])
+    if not r or await db.crew_invites.find_one({"email_key": key, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 1}):
+        return None
+    owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
+    return {"skipper": owner.get("name") or owner.get("email") or "Your skipper", "vessel": await request_vessel(r)}
 
 
 async def request_vessel(r: dict) -> str:
