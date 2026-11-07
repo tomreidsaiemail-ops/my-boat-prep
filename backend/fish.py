@@ -10,6 +10,7 @@ from auth import get_current_user, require_premium
 from ai_lists import _run
 from db import db
 from photos import APP_NAME, MAX_BYTES, TYPES, get_object, put_object
+import quota
 
 router = APIRouter(prefix="/api")
 CatchId = Annotated[str, Path(pattern=r"^[a-f0-9]{32}$")]
@@ -106,9 +107,12 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
         raise HTTPException(status_code=400, detail="That photo is too big (max 3 MB)")
     where = f"Caught at latitude {lat:.5f}, longitude {lon:.5f}." if lat is not None and lon is not None else "The GPS position isn't known, so give general advice and say where rules depend on location."
     prompt = f"{where}\nLocal date and time: {_s(when, 40) or 'unknown'}.\nIdentify this catch and give the full Magic Fish Whisperer report."
+    before = (await db.magic_quota.find_one({"user_id": user["user_id"]}, {"_id": 0, "daily_used": 1}) or {}).get("daily_used", 0)
     report, left = await _run(user, "fish", prompt, parse_fish, {"name": "Magic Fish Whisperer", "count": 1}, FISH, "The Magic Fish Whisperer", image=data)
     if report["not_fish"]:
-        return {"not_fish": True, "message": report["message"], "asks_left": left}
+        after = (await db.magic_quota.find_one({"user_id": user["user_id"]}, {"_id": 0, "daily_used": 1}) or {}).get("daily_used", 0)
+        await quota.refund(user["user_id"], "free" if after > before else "purchased")
+        return {"not_fish": True, "message": report["message"], "asks_left": await quota.left(user["user_id"])}
     catch_id = uuid.uuid4().hex
     try:
         stored = await asyncio.to_thread(put_object, f"{APP_NAME}/catches/{user['user_id']}/{catch_id}.{TYPES[file.content_type]}", data, file.content_type)

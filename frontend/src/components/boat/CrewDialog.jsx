@@ -133,7 +133,9 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         <RsvpSummary crew={info.crew} onClear={info.voyage_notes || info.crew.some((m) => m.rsvp) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null} />
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing
-            {info.crew.length > 0 && <span className="ml-1 normal-case text-[var(--green)]" data-testid="crew-ready-count">· {info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], provisions)).length} of {info.crew.length} ready to sail</span>}
+            {info.crew.length > 0 && (() => { const n = info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], provisions)).length; return (
+              <span className={`ml-1 normal-case ${n === info.crew.length ? "text-[var(--green)]" : "text-amber-800"}`} data-testid="crew-ready-count">· {n} of {info.crew.length} ready to sail</span>
+            ); })()}
           </p>
           <button type="button" className="btn-ghost h-9 gap-1.5 px-3 text-xs" onClick={refresh} disabled={refreshing} data-testid="crew-refresh-btn">
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh

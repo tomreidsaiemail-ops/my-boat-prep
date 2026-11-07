@@ -45,3 +45,11 @@
 
 ## 2026-06 Admin mode red screens
 - Signed in as admin (user.is_admin): body gets class admin-mode (light red #fecaca) on every screen, the faint boat photo watermark is hidden, and a sticky red "Admin mode: changes affect every skipper" strip (AdminModeStrip.jsx, data-testid admin-mode-strip) shows at the top. Non-admins unchanged. Self-tested via screenshots (admin home, /admin, pro user).
+
+## 2026-06 Ready to sail, Magic Fish Whisperer, simpler Magic Bartender
+- Crew dialog: green "Ready to sail" badge (registered + agreement accepted + all briefings read + provisions list sent with matching count or nothing to bring) and "N of M ready to sail" count (amber unless all ready). crew/CrewFacts.jsx readyToSail.
+- Magic Fish Whisperer (backend fish.py): POST /api/ai/fish (multipart photo + lat/lon/position/when, require_premium, daily Magic quota, Gemini vision via _run kind "fish"/MFW; not_fish refunds the quota). Catches saved in fish_catches with photo in object storage; GET /api/me/catches, GET /api/me/catches/{id}/photo, DELETE /api/me/catches/{id}. Frontend components/boat/fish/{FishWhispererDialog,FishReport,CatchLog}.jsx: help, tap-to-photo, GPS line, full report (species, reasons, similar, size, place/local knowledge, local + national rules, sources, questions, filleting/careful/protection, toxins, batter, sushi), "Add to my Common Meals" (POST /me/meals), catch log tab.
+- Opened from app menu (under Magic Bartender) and the new fish icon right of Arrange Lists; cocktail icon opens Magic Bartender (titles on hover).
+- Help panels seeded: "Admin - Help Panel - Magic Fish Whisperer" and "Admin - Help Panel - Magic Bartender" (migration magic_fish_bartender_help). MagicHelp.jsx shows until collapsed, then stays hidden (localStorage mbp_help_fish / mbp_help_bartender).
+- Magic Bartender simplified: help + big photo tap area + collapsed "Drinks (D) and food (F) boat areas" section (use-photo, areas, Batch Magic Scan, summary); Mix enabled once there are ingredients. BartenderHelp.jsx removed.
+- Tested iteration_126 (100%), follow-ups self-tested.

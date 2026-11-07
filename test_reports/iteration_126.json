@@ -1,0 +1,48 @@
+{
+  "summary": "Tested Ready To Sail badge, Magic Fish Whisperer (backend + UI, one real AI fish ID with GPS), catch log, add to Common Meals, Magic Bartender simplification, magic row icons and app menu, at desktop 1920 and mobile 390. Everything requested works. Backend: 14/15 new pytest cases pass. The one exception is skipped, not failed: the Pro gate on /api/ai/fish can't be exercised right now because launch_free (FIRST200) makes free users premium. One real not_fish call via the API returned not_fish=true, a message and asks_left, and saved nothing. No functional bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/fish", "issue": "Couldn't verify the Pro gate (402/403) for free users. launch_free/first200 currently makes test-user-free premium=true, so a free user gets 200 and the AI call runs. This matches the other Magic features via require_premium."},
+      {"endpoint": "POST /api/ai/fish", "issue": "A not_fish reply still uses up one daily Magic generation, because quota.consume runs before parsing and is only refunded on exception. Product decision whether a 'not a fish' photo should be refunded."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew dialog heading", "issues": ["crew-ready-count is always green (var(--green)), even when it reads '0 of 1 ready to sail'. Consider a muted/amber colour when it isn't all ready."]},
+      {"screen": "Bartender dialog (390px)", "issues": ["bartender-batch-scan-btn label 'Photo boat areas with Batch Magic Scan...' is truncated with an ellipsis at 390px width."]},
+      {"screen": "Crew view", "issues": ["For crew, BoatDetails isn't rendered, so there is no boat-details-fish-btn icon. Fish Whisperer is only reachable from the app menu (app-menu-fish-item works for crew, and bartender is correctly hidden). Fine if intended."]}
+    ]
+  },
+  "passed_checks": [
+    "Magic row: boat-details-fish-btn (title 'Magic Fish Whisperer') and boat-details-bartender-btn (title 'Magic Bartender') sit right of Arrange Lists; no overflow at 390px (scrollWidth 390)",
+    "App menu: app-menu-fish-item 'Magic Fish Whisperer...' is directly under app-menu-bartender-item. Crew menu has the fish item but no bartender item",
+    "fish-help shows the seeded admin text; collapse sets mbp_help_fish=closed and stays hidden after reopening and after reload; expand sets it to open",
+    "GPS line shows the position when geolocation is granted; fish-ask-btn sends multipart; report returned in about 25s with species Gilt-head Seabream / Sparus aurata (high confidence), 38 cm, 0.9 kg, Waitematā Harbour, NZ MPI rules and sources, questions, filleting, batter, sushi and meal. fish-toxins correctly absent for a bream",
+    "Toast 'Gilt-head Seabream saved to your catch log'; Catch log tab count went to (2); thumbnail photo loads (naturalWidth 1200); tapping a catch opens the report",
+    "fish-add-meal-btn -> POST /api/me/meals 200, toast '... has been added to your Common Meals, ready for your next meal plan', button changes to 'Added to Common Meals'",
+    "catch-log-delete-btn + catch-delete-confirm-btn -> DELETE 200, toast 'Catch removed from your log', item removed, count back to (1)",
+    "Backend: bad content type 400, >3MB 400, lat out of range 422, bad id pattern 422, unauthenticated 401, free user doesn't see pro catches, other user gets 404 for photo and delete, owner photo 200 image/*, unknown id 404, no _id/user_id in responses",
+    "Bartender: seeded help shown; collapse persists (mbp_help_bartender=closed) after reload; bartender-photo-btn is a large tap area; bartender-areas-body absent by default, the toggle shows use-photo, BarAreas, batch-scan-btn and summary; mix enabled with 28 flagged-area ingredients (pro); mix disabled with 0 ingredients (free user's own boat)",
+    "Ready to sail: unregistered crew with no accepted agreement shows no badge and '0 of 1 ready to sail'. After temporarily making them registered and accepting the agreement (no briefings, no provisions): green 'READY TO SAIL' badge and '1 of 1 ready to sail'"
+  ],
+  "test_report_links": ["/app/backend/tests/test_fish_whisperer.py", "/app/test_reports/pytest/fish_results.xml"],
+  "action_items": [
+    "Optional: refund the Magic quota when the AI says not_fish, or confirm that using it up is intended",
+    "Optional: tone the crew-ready-count colour down when not everyone is ready",
+    "Optional: shorten or wrap the bartender batch-scan button label at 390px"
+  ],
+  "critical_code_review_comments": [
+    "fish.py: _run inserts an ai_drafts doc for kind 'fish' that is never used afterwards. It only matters for the usage backfill, but it adds rows to ai_drafts.",
+    "FishWhispererDialog: the add-to-meal 'done' state is per render, so if the user reopens the same catch from the log they can add the same meal again (duplicate Common Meals).",
+    "CrewDialog calls readyToSail twice per member per render (count and badge). Fine at this scale."
+  ],
+  "updated_files": ["/app/backend/tests/test_fish_whisperer.py"],
+  "success_rate": {"backend": "100% (14 passed, 1 skipped because of the launch_free promo)", "frontend": "100%"},
+  "seed_data_creation": "Temporary data, all cleaned up: 1 real catch (ed275d90...) deleted through the UI; meal f1b9b7bd5f21 deleted; crew_register entry c6e675f9... deleted; agreements.test-user-free.accepted_at on the pro main boat unset again. The free user's boat selection was switched back to their own 'main'. Pre-existing Gilthead Seabream catch 3dfad3db... left untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Help panel lists come from GET /api/admin-lists?prefix=Admin - Help Panel - (private templates, not in /api/templates). The launch_free promo makes everyone premium, so Pro gates can't be tested with test-user-free. Crew users see an agreement dialog on the shared boat; dismiss it with 'Not now'. Real AI calls used: 3 (1 fish ID, 2 not_fish). Briefing-unread and provisions-not-sent negative cases for the Ready badge weren't re-run (covered by the code paths in readyToSail; see iteration_125)."
+}

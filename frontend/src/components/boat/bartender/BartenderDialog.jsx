@@ -29,7 +29,7 @@ const AreaExtras = ({ areas, onFlag, onBatchScan, busy, photoItems, usePhoto, se
           </label>
           {areas.length ? <BarAreas areas={areas} onFlag={onFlag} />
             : <p className="rounded-md border-[1.5px] border-dashed border-[var(--line)] p-3 text-sm text-[var(--muted)]" data-testid="bartender-no-areas">No boat areas yet. Photo your gantry and fridge first.</p>}
-          <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 text-sm" onClick={onBatchScan} disabled={busy} data-testid="bartender-batch-scan-btn">
+          <button type="button" className="btn-ghost h-auto min-h-10 justify-center gap-1.5 whitespace-normal py-2 text-center text-sm" onClick={onBatchScan} disabled={busy} data-testid="bartender-batch-scan-btn">
             <Sparkles className="h-4 w-4" /> Photo boat areas with Batch Magic Scan...
           </button>
           {summary}
