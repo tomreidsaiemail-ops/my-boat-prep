@@ -12,7 +12,7 @@ export const DUE_KEY = "next_service_date";
 const RIGGING = ["runningRigging", "standingRigging", "sparsHardware"];
 export const serviceWording = (key) => (RIGGING.includes(key)
   ? { button: "Log Rigging Check", who: "Rigger's name", placeholder: "e.g. Jo Mast", notes: "Rigger notes", notesHint: "e.g. retensioned cap shrouds, swage on lower ok" }
-  : { button: "Log Service", who: key === "sailLoft" ? "Sailmaker's name" : "Serviced by", placeholder: key === "sailLoft" ? "e.g. North Sails loft" : "e.g. Sam (owner)",
+  : { button: "Log Service", who: key === "sailLoft" ? "Sailmaker's name" : "Serviced by", placeholder: key === "sailLoft" ? "e.g. North Sails loft" : "e.g. Tom (owner)",
     notes: "Service notes", notesHint: key === "groundTackle" ? "e.g. chain end-for-ended, shackle moused" : "e.g. winches stripped and greased" });
 // Sets the picked items' service dates and keeps a short history on each item.
 export const withService = (items, { ids, by, date, notes, due }) => items.map((i) => (ids.includes(i.id) ? {
