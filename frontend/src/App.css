@@ -16,6 +16,7 @@ body {
   font-family: "Public Sans", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+body.admin-mode { background: #fecaca; }
 
 ::selection { background: var(--blue); color: #fff; }
 

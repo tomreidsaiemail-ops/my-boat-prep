@@ -42,3 +42,6 @@
 - Registration done view: "Thank you for registering", big tick, "The skipper of <boat> will see...crew invite will follow". No-boat users then see WaitingForInvite (also on later logins while registered with no invite) with "Close my registration window" (logout -> /login) and "I want to set up my own boat instead".
 - Fixed crew list collapsing to 0 height in the Photo and crew dialog (shrink-0).
 - Tested iteration_125 (100%) + fixes self-tested.
+
+## 2026-06 Admin mode red screens
+- Signed in as admin (user.is_admin): body gets class admin-mode (light red #fecaca) on every screen, the faint boat photo watermark is hidden, and a sticky red "Admin mode: changes affect every skipper" strip (AdminModeStrip.jsx, data-testid admin-mode-strip) shows at the top. Non-admins unchanged. Self-tested via screenshots (admin home, /admin, pro user).

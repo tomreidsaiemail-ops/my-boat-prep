@@ -17,6 +17,7 @@ import Terms from "@/pages/Terms";
 import JoinCrew from "@/pages/JoinCrew";
 import { TermsGate } from "@/components/auth/TermsGate";
 import { MagicLimitDialog } from "@/components/boat/MagicLimitDialog";
+import { AdminModeStrip } from "@/components/auth/AdminModeStrip";
 
 // Remount the boat workspace per account so one user's local data never carries into another's.
 function UserBoat() {
@@ -51,6 +52,7 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <UpgradeProvider>
+            <AdminModeStrip />
             <AppRouter />
             <MagicLimitDialog />
           </UpgradeProvider>

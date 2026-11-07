@@ -867,7 +867,7 @@ export default function BoatPrep({ boatId, boats }) {
     <WeightsContext.Provider value={weights}>
     <CrewDietContext.Provider value={diet}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
-      <BoatWatermark boat={boats.current} />
+      {!user.is_admin && <BoatWatermark boat={boats.current} />}
       <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
