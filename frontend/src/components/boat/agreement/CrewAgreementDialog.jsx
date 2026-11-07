@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -19,14 +20,30 @@ const Lines = ({ lines, testId }) => (
   </ul>
 );
 
-const Roles = ({ roles }) => (roles.length ? roles.map((r, k) => (
-  <div key={r.role} className="rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
+const Roles = ({ roles, onRead, busy }) => (roles.length ? roles.map((r, k) => (
+  <div key={r.role} className="flex flex-col gap-1.5 rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
     <b>{r.role}</b>
     <p className="whitespace-pre-wrap" data-testid={`agreement-role-${k}-briefing`}>{r.briefing || "No briefing from the skipper for this role yet."}</p>
+    {r.briefing && (r.read_at
+      ? <span className="inline-flex items-center gap-1 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900" data-testid={`agreement-role-${k}-read`}><Check className="h-3.5 w-3.5" strokeWidth={3} /> Read {new Date(r.read_at).toLocaleDateString()}</span>
+      : <button type="button" className="btn-solid h-9 self-start px-3 text-xs" disabled={busy === r.role} onClick={() => onRead(r.role)} data-testid={`agreement-role-${k}-read-btn`}>
+          {busy === r.role ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} I've read it
+        </button>)}
   </div>
 )) : <p className="text-sm text-[var(--muted)]" data-testid="agreement-no-roles">The skipper hasn't given you a role yet.</p>);
 
-export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved, onClose }) => {
+export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved, onRead, onClose }) => {
+  const [reading, setReading] = useState("");
+  const read = async (role) => {
+    if (!online) { toast.error("Go online to confirm you've read the briefing"); return; }
+    setReading(role);
+    try {
+      const { data: res } = await api.post("/crew/briefing-read", { owner_id: boat.owner_id, boat_id: boat.boat_id, role });
+      onRead(role, res.read_at);
+      toast.success(`Thanks! The skipper can see you've read the ${role} briefing`);
+    } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
+    finally { setReading(""); }
+  };
   const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })));
   const [ticked, setTicked] = useState(data.agreement?.stops || []);
   const [busy, setBusy] = useState("");
@@ -61,7 +78,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
         </DialogHeader>
         {data.terms.length > 0 && <Section title="Standard terms" testId="agreement-standard-terms"><Lines lines={data.terms} testId="agreement-standard-lines" /></Section>}
         {boatLines.length > 0 && <Section title={`${vessel}'s terms`} testId="agreement-boat-terms"><Lines lines={boatLines} testId="agreement-boat-lines" /></Section>}
-        <Section title="Your role briefing" testId="agreement-roles"><Roles roles={data.roles} /></Section>
+        <Section title="Your role briefing" testId="agreement-roles"><Roles roles={data.roles} onRead={read} busy={reading} /></Section>
         <Section title={`Zone Map Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
           <AgreementWalkthrough steps={steps} areas={areas} ticked={ticked} onChange={accepted ? () => {} : setTicked} />
         </Section>

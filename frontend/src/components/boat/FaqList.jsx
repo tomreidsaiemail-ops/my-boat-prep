@@ -4,11 +4,16 @@ import { HelpCircle, Plus } from "lucide-react";
 import { FaqRow } from "@/components/boat/FaqRow";
 import { FaqDialog } from "@/components/boat/FaqDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { ListSearch } from "@/components/boat/ListSearch";
+import { matches } from "@/components/boat/Highlight";
 
 export const FaqList = ({ faq, admin, online, onSave }) => {
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [doomed, setDoomed] = useState(null);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = faq.filter((f) => matches(`${f.question} ${f.answer || ""}`, q));
   const isDup = (q, exceptId) => faq.some((f) => f.id !== exceptId && f.question.toLowerCase() === q.toLowerCase());
 
   const commit = async (next) => {
@@ -35,12 +40,13 @@ export const FaqList = ({ faq, admin, online, onSave }) => {
         <HelpCircle className="mt-0.5 h-5 w-5 shrink-0" />
         <p>{admin ? "You're the admin: add, edit, reorder and delete questions here. Every skipper sees this list." : "Answers to common questions about My Boat Prep."}</p>
       </div>
+      {faq.length > 0 && <ListSearch value={query} onChange={setQuery} shown={shown.length} total={faq.length} placeholder="Search the FAQ" testId="faq-search" />}
       <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="faq-list">
         {faq.length === 0 && <li className="p-4 text-sm font-medium text-[var(--muted)]" data-testid="faq-empty">{admin ? "No questions yet. Add the first one below." : "No questions yet. Check back soon."}</li>}
-        {faq.map((f, i) => (
-          <FaqRow key={f.id} item={f} admin={admin} busy={busy} first={i === 0} last={i === faq.length - 1}
+        {shown.map((f) => { const i = faq.indexOf(f); return (
+          <FaqRow key={f.id} item={f} admin={admin} busy={busy || !!q} first={i === 0} last={i === faq.length - 1}
             onEdit={() => setDialog({ item: f })} onDelete={() => setDoomed(f)} onMove={(d) => move(i, d)} />
-        ))}
+        ); })}
       </ul>
       {admin && (
         <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" disabled={busy}

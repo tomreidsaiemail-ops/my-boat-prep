@@ -78,7 +78,7 @@ def test_full_agreement_flow():
     assert a.status_code == 200, a.text
     a = a.json()
     assert a["boat_terms"] == "Shoes off below"
-    assert a["roles"] == [{"role": "Radio Operator", "briefing": "Race channel is RPNYC VHF 77"}]
+    assert a["roles"] == [{"role": "Radio Operator", "briefing": "Race channel is RPNYC VHF 77", "read_at": None}]
     assert isinstance(a["terms"], list) and a["agreement"] is None
 
     body = {"owner_id": PRO_ID, "boat_id": BOAT, "stops": ["m1:p1"], "accept": True}

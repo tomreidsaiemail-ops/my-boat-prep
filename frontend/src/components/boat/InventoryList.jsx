@@ -319,7 +319,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={readOnly ? undefined : () => startMove(a)}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
-        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>
+        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>
         {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
         {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
           onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}

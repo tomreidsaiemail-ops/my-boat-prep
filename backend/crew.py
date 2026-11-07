@@ -24,10 +24,20 @@ def _hash(token: str) -> str:
 
 
 async def owned_boat(user: dict, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1, "crew_joined": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     return doc
+
+
+def brief_hash(text: str) -> str:
+    return hashlib.sha256(str(text).strip().encode()).hexdigest()[:16]
+
+
+async def note_shopping(owner_id: str, boat_id: str, email: str, count: int):
+    """Remembers when a crew member was last sent what to bring, for the skipper's crew list."""
+    await db.shopping_notes.update_one({"owner_id": owner_id, "boat_id": boat_id, "email_key": email_key(email)},
+                                       {"$set": {"at": datetime.now(timezone.utc).isoformat(), "count": count}}, upsert=True)
 
 
 def email_key(email: str) -> str:
@@ -173,6 +183,7 @@ async def send_shopping(boat_id: BoatPath, payload: ShoppingIn, user: dict = Dep
             '<p style="font-size:13px;color:#64748b">Sent from My Boat Prep.</p></div>')
     await send_email(to=[to], subject=f"Your shopping for {vessel}", html=html)
     await db.shopping_sends.insert_one({"owner_id": user["user_id"], "at": datetime.now(timezone.utc)})
+    await note_shopping(user["user_id"], boat_id, to, len([i for i in payload.items if i.strip()]))
     return {"ok": True}
 
 
@@ -210,6 +221,8 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
                          html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name,
                                           [s.strip() for s in payload.shopping if s.strip()]))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
+    if payload.send_email and any(x.strip() for x in payload.shopping):
+        await note_shopping(user["user_id"], boat_id, email, len([x for x in payload.shopping if x.strip()]))
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"voyage_notes": notes}})
@@ -252,10 +265,28 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     rsvp = doc.get("rsvp") or {}
     names, agreements = doc.get("crew_names") or {}, doc.get("agreements") or {}
     prep = await crew_prep_progress(user["user_id"], boat_id)
+    shop = {n["email_key"]: {"at": n["at"], "count": n["count"]} async for n in db.shopping_notes.find({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0})}
+    briefs = await role_briefings(user["user_id"], boat_id)
+    reads = {}
+    async for r in db.briefing_reads.find({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0}):
+        reads[(r["user_id"], r["role_key"])] = r
+    joined = doc.get("crew_joined") or {}
+
+    def role_info(uid, rs):
+        out = []
+        for r in rs:
+            b = briefs.get(r.lower(), "")
+            hit = reads.get((uid, r.lower())) if uid else None
+            out.append({"role": r, "has_briefing": bool(b), "read_at": hit["at"] if hit and b and hit.get("hash") == brief_hash(b) else None,
+                        "read_old": bool(hit and b and hit.get("hash") != brief_hash(b))})
+        return out
     for i in invites:
         i["prep"] = prep.get((i.get("name") or "").strip().lower())
+        i["shopping_sent"] = shop.get(email_key(i.get("email", "")))
+        i["briefings"] = role_info(None, i.get("roles") or [])
     crew = [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
-             "agreement": agreements.get(m["user_id"])} for m in members]
+             "agreement": agreements.get(m["user_id"]), "shopping_sent": shop.get(email_key(m.get("email", ""))), "briefings": role_info(m["user_id"], roles.get(m["user_id"], [])),
+             **(joined.get(m["user_id"]) or {})} for m in members]
     return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""),
             "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", "")}
@@ -363,7 +394,8 @@ async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
 @router.delete("/boats/{boat_id}/crew/{member_id}")
 async def remove_crew(boat_id: BoatPath, member_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,80}$")], user: dict = Depends(get_current_user)):
     await owned_boat(user, boat_id)
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": "", f"agreements.{member_id}": "", f"crew_names.{member_id}": ""}})
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": "", f"agreements.{member_id}": "", f"crew_names.{member_id}": "", f"crew_joined.{member_id}": ""}})
+    await db.briefing_reads.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "user_id": member_id})
     return {"ok": True}
 
 
@@ -382,7 +414,8 @@ async def accept_invite(inv: dict, user: dict) -> dict:
         raise HTTPException(status_code=400, detail="That's your own boat")
     key = {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}
     res = await db.user_boats.update_one(key, {"$addToSet": {"crew": user["user_id"]}, "$unset": {f"agreements.{user['user_id']}": ""},
-                                                "$set": {f"crew_roles.{user['user_id']}": inv.get("roles") or [], **({f"crew_names.{user['user_id']}": inv["name"]} if inv.get("name") else {})}})
+                                                "$set": {f"crew_roles.{user['user_id']}": inv.get("roles") or [],
+                                                         f"crew_joined.{user['user_id']}": {"invited_at": inv.get("created_at"), "joined_at": datetime.now(timezone.utc).isoformat()}, **({f"crew_names.{user['user_id']}": inv["name"]} if inv.get("name") else {})}})
     await db.crew_invites.delete_one({"invite_id": inv["invite_id"]})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="That boat no longer exists")
@@ -451,5 +484,6 @@ class LeaveIn(BaseModel):
 
 @router.post("/crew/leave")
 async def leave_crew(payload: LeaveIn, user: dict = Depends(get_current_user)):
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": "", f"agreements.{user['user_id']}": "", f"crew_names.{user['user_id']}": ""}})
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": "", f"agreements.{user['user_id']}": "", f"crew_names.{user['user_id']}": "", f"crew_joined.{user['user_id']}": ""}})
+    await db.briefing_reads.delete_many({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "user_id": user["user_id"]})
     return {"ok": True}

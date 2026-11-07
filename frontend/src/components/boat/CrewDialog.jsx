@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardList, Clock, Loader2, Mail, Pencil, UserMinus, UserPlus, X } from "lucide-react";
+import { ClipboardList, Clock, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
@@ -17,17 +17,23 @@ import { PrepBadge } from "@/components/boat/CrewPrepProgress";
 import { CrewRegisterDialog } from "@/components/boat/register/CrewRegisterDialog";
 import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
 import { RegStatus } from "@/components/boat/register/RegStatus";
+import { RoleBubble } from "@/components/boat/crew/RoleBubble";
+import { CrewFacts } from "@/components/boat/crew/CrewFacts";
+import { CrewTotals } from "@/components/boat/crew/CrewTotals";
 
-const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, testId }) => (
+const bubblesFor = (p, joined, testId) => (p.briefings || (p.roles || []).map((role) => ({ role, has_briefing: false })))
+  .map((b, k) => <RoleBubble key={b.role} b={b} who={p.name || p.email} joined={joined} testId={`${testId}-role-${k}`} />);
+
+const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm font-bold">{title}</p>
       <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
       {badge}
-      {(roles.length > 0 || rsvp !== undefined) && (
+      {(bubbles?.length > 0 || rsvp !== undefined) && (
         <div className="mt-1 flex flex-wrap gap-1" data-testid={`${testId}-roles`}>
           {rsvp !== undefined && <RsvpBadge status={rsvp} testId={`${testId}-rsvp`} />}
-          {roles.map((r) => <span key={r} className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-900">{r}</span>)}
+          {bubbles}
         </div>
       )}
     </div>
@@ -42,7 +48,7 @@ const Row = ({ title, sub, roles = [], rsvp, badge, onRemove, onEdit, label, tes
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
+export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
@@ -64,6 +70,16 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
   const [reg, setReg] = useState({});
   const loadReg = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(Object.fromEntries(data.crew.map((c) => [c.email.toLowerCase(), c])))).catch(() => {}), []);
   useEffect(() => { if (open && online) { load(); loadReg(); } }, [open, online, load, loadReg]);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (!online) { toast.error("Go online to refresh your crew"); return; }
+    setRefreshing(true);
+    window.dispatchEvent(new Event("mbp:refresh-boat"));
+    window.dispatchEvent(new Event("mbp:register-changed"));
+    await Promise.all([load(), loadReg()]);
+    setRefreshing(false);
+    toast.success("Crew, registrations and role briefings refreshed");
+  };
   const regBadge = (email, testId) => {
     const r = reg[(email || "").toLowerCase()];
     const walked = r?.walkthroughs?.some((w) => w.boat_id === boat.boat_id);
@@ -115,12 +131,20 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           </button>
         </div>
         <RsvpSummary crew={info.crew} onClear={info.voyage_notes || info.crew.some((m) => m.rsvp) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null} />
-        <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="crew-list">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing</p>
+          <button type="button" className="btn-ghost h-9 gap-1.5 px-3 text-xs" onClick={refresh} disabled={refreshing} data-testid="crew-refresh-btn">
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
+        <CrewTotals crew={info.crew} invites={info.invites} reg={reg} boat={weightBoat} />
+        <ul className="shrink-0 divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="crew-list">
           {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
           {info.crew.map((m) => (
-            <Row key={m.user_id} title={m.name || m.email} sub={m.email} roles={m.roles} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
+            <Row key={m.user_id} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
               badge={<>
                 {regBadge(m.email, `crew-member-${m.user_id}`)}
+                <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} testId={`crew-member-${m.user_id}`} />
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
@@ -130,8 +154,9 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {info.invites.map((i) => (
-            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} roles={i.roles} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
-              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
+            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.name ? `${i.email} · ` : ""}Declined the invite` : `${i.name ? `${i.email} · ` : ""}Invited, joins when they log in`} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} testId={`crew-invite-${i.invite_id}`} />
+                <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}

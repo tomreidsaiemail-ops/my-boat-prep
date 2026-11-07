@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Lightbulb, Pencil, Trash2 } from "lucide-react";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
+import { ListSearch } from "@/components/boat/ListSearch";
+import { matches } from "@/components/boat/Highlight";
 
 const TipRow = ({ tip, n, admin, first, last, onEdit, onDelete, onMove, busy }) => (
   <li className="checklist-row flex-col" data-testid={`tip-item-${tip.id}`}>
@@ -24,6 +26,9 @@ const TipRow = ({ tip, n, admin, first, last, onEdit, onDelete, onMove, busy }) 
 export const TipsList = ({ tips, admin, online, onSave }) => {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = tips.filter((t) => matches(t.label, q));
   const isDup = (text, exceptId) => tips.some((t) => t.id !== exceptId && t.label.toLowerCase() === text.toLowerCase());
 
   const commit = async (next) => {
@@ -53,12 +58,13 @@ export const TipsList = ({ tips, admin, online, onSave }) => {
         <Lightbulb className="mt-0.5 h-5 w-5 shrink-0" />
         <p>{admin ? "You're the admin: add, edit, reorder and delete tips here. Every skipper sees this list." : "Handy tips from the My Boat Prep team, updated for every skipper."}</p>
       </div>
+      {tips.length > 0 && <ListSearch value={query} onChange={setQuery} shown={shown.length} total={tips.length} placeholder="Search Skipper's Tips" testId="tips-search" />}
       <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="tips-list">
         {tips.length === 0 && <li className="p-4 text-sm font-medium text-[var(--muted)]" data-testid="tips-empty">{admin ? "No tips yet. Add the first one below." : "No tips yet. Check back soon."}</li>}
-        {tips.map((t, i) => (
-          <TipRow key={t.id} tip={t} n={i + 1} admin={admin} busy={busy} first={i === 0} last={i === tips.length - 1}
+        {shown.map((t) => { const i = tips.indexOf(t); return (
+          <TipRow key={t.id} tip={t} n={i + 1} admin={admin} busy={busy || !!q} first={i === 0} last={i === tips.length - 1}
             onEdit={() => setEditing(t)} onDelete={() => commit(tips.filter((x) => x.id !== t.id))} onMove={(d) => move(i, d)} />
-        ))}
+        ); })}
       </ul>
       {admin && <AddItemForm onAdd={add} placeholder="Add a Skipper's Tip..." />}
       {admin && !online && <p className="text-center text-xs font-bold text-[var(--muted)]" data-testid="tips-offline-hint">Go online to update Skipper's Tips</p>}

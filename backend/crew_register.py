@@ -46,6 +46,7 @@ class CrewForm(Details):
 class RequestIn(BaseModel):
     entry_ids: Optional[List[Annotated[str, Field(pattern=r"^[a-f0-9-]{36}$")]]] = Field(default=None, max_length=200)
     send_email: bool = True
+    boat_id: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,40}$")
 
 
 def _mail(value: str, label: str) -> str:
@@ -184,7 +185,7 @@ async def send_requests(payload: RequestIn, request: Request, user: dict = Depen
             await send_email(to=[r["email"]], subject=f"{skipper} asks you to complete your crew registration",
                              html=request_html(skipper, r["name"], r["email"], f"{public_base(request)}/"))
             await db.register_sends.insert_one({"owner_id": user["user_id"], "at": now})
-        await db.crew_register.update_one({"entry_id": r["entry_id"]}, {"$set": {"status": "pending", "requested_at": now.isoformat()}})
+        await db.crew_register.update_one({"entry_id": r["entry_id"]}, {"$set": {"status": "pending", "requested_at": now.isoformat(), **({"boat_id": payload.boat_id} if payload.boat_id else {})}})
         sent.append(r["name"])
     return {"sent": sent, "skipped": [r["name"] for r in rows if r not in todo]}
 
@@ -297,8 +298,19 @@ async def my_requests(user: dict = Depends(get_current_user)):
         if not await asked(r, user):
             continue
         owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
-        out.append({**public(r), "skipper": owner.get("name") or owner.get("email") or "Your skipper"})
-    return {"requests": out}
+        out.append({**public(r), "skipper": owner.get("name") or owner.get("email") or "Your skipper", "vessel": await request_vessel(r)})
+    has_boat = bool(await db.user_boats.find_one({"$or": [{"crew": user["user_id"]}, {"owner_id": user["user_id"], "boat.vessel": {"$regex": r"\S"}}]}, {"_id": 1}))
+    return {"requests": out, "has_boat": has_boat}
+
+
+async def request_vessel(r: dict) -> str:
+    """The boat the skipper asked from: the one the request or a pending invite came from, else their only named boat."""
+    inv = await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 0, "boat_id": 1}, sort=[("created_at", -1)])
+    boat_id = r.get("boat_id") or (inv or {}).get("boat_id")
+    names = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip()
+             async for b in db.user_boats.find({"owner_id": r["owner_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
+    named = [v for v in names.values() if v]
+    return names.get(boat_id) or (named[0] if len(named) == 1 else "")
 
 
 @router.put("/mine/{entry_id}")

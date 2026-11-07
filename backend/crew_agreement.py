@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
-from crew import BoatPath, owned_boat, role_briefings
+from crew import BoatPath, brief_hash, owned_boat, role_briefings
 from agreement_pdf import build_agreement_pdf
 
 router = APIRouter(prefix="/api")
@@ -66,7 +66,9 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
     doc = await crew_doc(user, owner_id, boat_id)
     briefs = await role_briefings(owner_id, boat_id)
     roles = (doc.get("crew_roles") or {}).get(user["user_id"]) or []
-    return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), "")} for r in roles],
+    reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0})}
+    seen = lambda r: (reads.get(r.lower()) or {}).get("at") if briefs.get(r.lower()) and (reads.get(r.lower()) or {}).get("hash") == brief_hash(briefs[r.lower()]) else None  # noqa: E731
+    return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), ""), "read_at": seen(r)} for r in roles],
             "agreement": (doc.get("agreements") or {}).get(user["user_id"])}
 
 
@@ -83,6 +85,28 @@ async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_
            **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {})}
     await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}": rec}})
     return {"agreement": rec}
+
+
+class BriefingReadIn(BaseModel):
+    owner_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    boat_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+    role: str = Field(min_length=1, max_length=60)
+
+
+@router.post("/crew/briefing-read")
+async def briefing_read(payload: BriefingReadIn, user: dict = Depends(get_current_user)):
+    """Crew confirm they've read the briefing for one of their roles; a changed briefing needs reading again."""
+    doc = await crew_doc(user, payload.owner_id, payload.boat_id)
+    key = payload.role.strip().lower()
+    if key not in [r.lower() for r in (doc.get("crew_roles") or {}).get(user["user_id"]) or []]:
+        raise HTTPException(status_code=400, detail="That isn't one of your roles on this boat")
+    brief = (await role_briefings(payload.owner_id, payload.boat_id)).get(key)
+    if not brief:
+        raise HTTPException(status_code=400, detail="There's no briefing for that role yet")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.briefing_reads.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "user_id": user["user_id"], "role_key": key},
+                                       {"$set": {"hash": brief_hash(brief), "at": now}}, upsert=True)
+    return {"role": payload.role, "read_at": now}
 
 
 @router.get("/crew/agreement/pdf")

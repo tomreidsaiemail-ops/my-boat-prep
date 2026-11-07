@@ -1,5 +1,6 @@
 import { CheckCircle2, Loader2, Mail, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { RegStatus } from "@/components/boat/register/RegStatus";
+import { localWhen } from "@/lib/timeAgo";
 
 export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp }) => {
   const t = `reg-row-${entry.entry_id}`;
@@ -9,6 +10,7 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp }) =
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold" data-testid={`${t}-name`}>{entry.name}</p>
         <p className="truncate text-xs text-[var(--muted)]">{[entry.email, entry.phone].filter(Boolean).join(" · ")}</p>
+        {entry.kind === "crew" && entry.registered_at && <p className="text-xs font-bold text-emerald-800" data-testid={`${t}-registered-at`}>Registered {localWhen(entry.registered_at)}</p>}
         <div className="mt-1 flex flex-wrap gap-1">
           <RegStatus status={entry.status} testId={`${t}-status`} />
           {(entry.walkthroughs || []).map((w) => (

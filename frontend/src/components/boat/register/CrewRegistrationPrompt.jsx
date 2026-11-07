@@ -6,6 +6,7 @@ import { api, apiError } from "@/lib/api";
 import { CREW_FIELDS, missing, toForm, toPayload } from "@/lib/crewRegister";
 import { RegFields } from "@/components/boat/register/RegFields";
 import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
+import { WaitingForInvite } from "@/components/boat/register/WaitingForInvite";
 
 const LATER_KEY = "mbp_register_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
@@ -25,17 +26,23 @@ export const CrewRegistrationPrompt = () => {
   const [errors, setErrors] = useState([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
+  const [hasBoat, setHasBoat] = useState(true);
+  const [waiting, setWaiting] = useState(null);
   useEffect(() => {
     if (!navigator.onLine) { setList([]); return; }
-    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => setList(data.requests.filter((r) => !later().includes(r.entry_id)))).catch(() => setList([]));
+    api.get("/crew-register/mine", { timeout: 10000 }).then(({ data }) => { setHasBoat(data.has_boat !== false); setList(data.requests.filter((r) => !later().includes(r.entry_id))); }).catch(() => setList([]));
   }, []);
   const req = list?.[0];
   useEffect(() => { if (req) { setValues(toForm(req)); setErrors([]); } }, [req]);
-  const showing = list === null || !!(req || done);
+  const showing = list === null || !!(req || done || waiting);
   useEffect(() => { holdPrompt("register", showing); return () => holdPrompt("register", false); }, [showing]);
+  if (waiting) return <WaitingForInvite vessel={waiting.vessel} skipper={waiting.skipper} />;
   if ((!req && !done) || !free) return null;
 
-  const next = () => { setDone(null); setList((l) => l.slice(1)); };
+  const next = () => {
+    if (done && !hasBoat && list.length <= 1) setWaiting(done);
+    setDone(null); setList((l) => l.slice(1));
+  };
   const notNow = () => { sessionStorage.setItem(LATER_KEY, JSON.stringify([...later(), req.entry_id])); next(); };
   const submit = async () => {
     const miss = missing(values);
@@ -43,7 +50,7 @@ export const CrewRegistrationPrompt = () => {
     setBusy(true);
     try {
       await api.put(`/crew-register/mine/${req.entry_id}`, toPayload(values));
-      setDone(req.skipper);
+      setDone({ skipper: req.skipper, vessel: req.vessel });
     } catch (err) { toast.error(apiError(err, "Couldn't save your registration, please try again")); }
     finally { setBusy(false); }
   };
@@ -52,17 +59,18 @@ export const CrewRegistrationPrompt = () => {
     <Dialog open onOpenChange={(o) => !o && (done ? next() : notNow())}>
       <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-reg-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl font-extrabold">{done ? "You're registered" : "Crew Registration"}</DialogTitle>
+          <DialogTitle className="font-display text-xl font-extrabold">{done ? "Thank you for registering" : "Crew Registration"}</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-reg-intro">
-            {done ? `${done} can now see your registration.` : `${req.skipper} would like you to register as crew. You only do this once. Check or correct each field. Every field is needed, so type None if something doesn't apply.`}
+            {done ? "Your crew registration is complete." : `${req.skipper} would like you to register as crew. You only do this once. Check or correct each field. Every field is needed, so type None if something doesn't apply.`}
           </DialogDescription>
         </DialogHeader>
         {done ? (
-          <div className="flex flex-col items-center gap-3 py-2" data-testid="crew-reg-done">
-            <CheckCircle2 className="h-16 w-16 text-[var(--green)]" />
-            <span className="tick-badge" data-testid="crew-reg-done-badge">Registered</span>
-            <TextSkipper skipper={done} />
-            <button type="button" className="btn-solid h-12 w-full justify-center" onClick={next} data-testid="crew-reg-done-btn">Done</button>
+          <div className="flex flex-col items-center gap-4 py-2 text-center" data-testid="crew-reg-done">
+            <CheckCircle2 className="h-28 w-28 text-[var(--green)]" strokeWidth={2.5} data-testid="crew-reg-done-tick" />
+            <p className="text-base font-bold leading-relaxed" data-testid="crew-reg-done-note">
+              The skipper of {done.vessel || `${done.skipper}'s boat`} will see that you have registered, and a crew invite will follow in due course.
+            </p>
+            <button type="button" className="btn-solid h-12 w-full justify-center" onClick={next} data-testid="crew-reg-done-btn">Close</button>
           </div>
         ) : (
           <>

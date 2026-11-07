@@ -37,6 +37,8 @@ import { GoDecisionCard } from "@/components/boat/GoDecisionCard";
 import { InventoryList } from "@/components/boat/InventoryList";
 import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
+import { ListSearch, searchableList } from "@/components/boat/ListSearch";
+import { matches } from "@/components/boat/Highlight";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import useInventoryShared from "@/hooks/useInventoryShared";
 import useListOrdering, { useListSetting } from "@/hooks/useListOrdering";
@@ -308,10 +310,14 @@ export default function BoatPrep({ boatId, boats }) {
   const movable = tagging && !isTips && active.id !== FAQ_ID && !active.isMedia && !MEDIA_KINDS.includes(active.kind) && !active.isInventory;
   const areaName = (item) => areas.find((a) => a.id === item.area)?.name || null;
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
-  const shown = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
-  useEffect(() => { setAreaFilter(""); }, [active.id]);
+  const shownByArea = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
+  const [listQuery, setListQuery] = useState("");
+  const listQ = listQuery.trim().toLowerCase();
+  const listSearch = searchableList(active.name) && !active.isInventory;
+  useEffect(() => { setAreaFilter(""); setListQuery(""); }, [active.id]);
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
+  const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
   const ownerOnly = (fn) => (...args) => (crew ? toast.info("On a shared boat, crew can tick items only") : fn(...args));
@@ -965,10 +971,11 @@ export default function BoatPrep({ boatId, boats }) {
           {active.id === "shipsLog" && shown.length > 0 && (
             <ExpandAllButton anyOpen={logOpen.length > 0} onAll={(on) => setLogOpen(on ? (logOn ? logFolders.visible : shown).filter((i) => !i.folder).map((i) => i.id) : [])} />
           )}
-          {areaFilter && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">No items in this area.</p> : (
+          {listSearch && items.length > 0 && <ListSearch value={listQuery} onChange={setListQuery} shown={shown.length} total={shownByArea.length} placeholder={`Search ${active.name}`} testId="checklist-search" />}
+          {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (isMealHead(items, item.id) || active.id === "provisions") loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter} outline={!areaFilter} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
+            ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (

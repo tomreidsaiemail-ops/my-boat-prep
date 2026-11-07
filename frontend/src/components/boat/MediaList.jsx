@@ -5,6 +5,8 @@ import { MediaRow } from "@/components/boat/MediaRow";
 import { MediaDialog } from "@/components/boat/MediaDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { SettingToggle } from "@/components/boat/AddItemForm";
+import { ListSearch, searchableList } from "@/components/boat/ListSearch";
+import { matches } from "@/components/boat/Highlight";
 
 const COPY = {
   youtube: { noun: "channel", intro: "Sailing YouTube channels picked by the My Boat Prep team. Tap one to watch." },
@@ -19,6 +21,9 @@ export const MediaList = ({ list, store, admin, online, own, ordering, onOrderin
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [doomed, setDoomed] = useState(null);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = items.filter((m) => matches(`${m.name} ${m.note || ""}`, q));
 
   const run = async (fn, quiet) => {
     if (!online && !own) { toast.error(`Go online to update ${name}`); return "You're offline"; }
@@ -40,6 +45,7 @@ export const MediaList = ({ list, store, admin, online, own, ordering, onOrderin
         <Clapperboard className="mt-0.5 h-5 w-5 shrink-0" />
         <p>{own ? `Your own copy. Add, edit and delete ${noun}s here, and tick Show List Ordering Icons to put them in your order.` : admin ? `You're the admin: add, edit, reorder and delete ${noun}s here. Every skipper sees this list.` : intro}</p>
       </div>
+      {searchableList(name) && items.length > 0 && <ListSearch value={query} onChange={setQuery} shown={shown.length} total={items.length} placeholder={`Search ${name}`} testId="media-search" />}
       <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="media-list">
         {items.length === 0 && (
           <li className="flex items-center justify-between gap-3 p-4 text-sm font-medium text-[var(--muted)]" data-testid="media-empty">
@@ -48,10 +54,10 @@ export const MediaList = ({ list, store, admin, online, own, ordering, onOrderin
               onClick={onDeleteList} data-testid="delete-list-btn"><Trash2 className="h-[18px] w-[18px]" /></button>}
           </li>
         )}
-        {items.map((m, i) => (
-          <MediaRow key={m.id} item={m} kind={kind} admin={edits} arrows={admin || (own && ordering)} busy={busy} first={i === 0} last={i === items.length - 1}
+        {shown.map((m) => { const i = items.indexOf(m); return (
+          <MediaRow key={m.id} item={m} kind={kind} admin={edits} arrows={(admin || (own && ordering)) && !q} busy={busy} first={i === 0} last={i === items.length - 1}
             onEdit={() => setDialog({ item: m })} onDelete={() => setDoomed(m)} onMove={(d) => move(i, d)} />
-        ))}
+        ); })}
       </ul>
       {own && <SettingToggle checked={!!ordering} onChange={onOrderingChange} label="Show List Ordering Icons" testId="ordering-toggle" />}
       {edits && (

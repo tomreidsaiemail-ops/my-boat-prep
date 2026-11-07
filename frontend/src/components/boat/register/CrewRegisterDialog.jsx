@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Mail, UserPlus } from "lucide-react";
+import { Loader2, Mail, RefreshCw, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -31,6 +31,16 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
   const [busy, setBusy] = useState({});
   const load = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(data)).catch(() => {}), []);
   useEffect(() => { if (open && online) load(); }, [open, online, load]);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (!online) { toast.error("Go online to refresh your crew register"); return; }
+    setRefreshing(true);
+    window.dispatchEvent(new Event("mbp:refresh-boat"));
+    window.dispatchEvent(new Event("mbp:register-changed"));
+    await load();
+    setRefreshing(false);
+    toast.success("Crew registrations and role briefings refreshed");
+  };
 
   const guard = () => {
     if (!online) { toast.error("Go online to change your crew register"); return false; }
@@ -41,7 +51,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
     if (!online) { toast.error("Go online to send registration requests"); return; }
     setBusy((b) => ({ ...b, [key]: "email" }));
     try {
-      const { data } = await api.post("/crew-register/requests", { entry_ids: ids, send_email: sendEmail }, { timeout: 90000 });
+      const { data } = await api.post("/crew-register/requests", { entry_ids: ids, send_email: sendEmail, boat_id: boatId }, { timeout: 90000 });
       if (sendEmail && data.sent.length) toast.success(`Registration request emailed to ${data.sent.join(", ")}`);
       if (sendEmail && !data.sent.length) toast.message("Everyone on your crew list is already registered");
       load();
@@ -72,6 +82,9 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
           <DialogTitle className="font-display text-xl font-extrabold">Crew Registration</DialogTitle>
           <DialogDescription className="text-left text-sm">Your crew register works for all your boats. Crew register once, then you can invite them on any trip. Only you can see their details.</DialogDescription>
         </DialogHeader>
+        <button type="button" className="btn-ghost h-10 gap-1.5 self-end px-3 text-sm" onClick={refresh} disabled={refreshing} data-testid="reg-refresh-btn">
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+        </button>
         <Section title="Crew" hint="Send a registration request, then they fill in their own details when they log in." empty="No crew yet. Add Tom, Dick and Harry here." rows={reg.crew} testId="reg-crew">
           {reg.crew.map(row)}
         </Section>

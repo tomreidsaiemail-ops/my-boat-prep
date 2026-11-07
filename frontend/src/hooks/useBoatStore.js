@@ -127,6 +127,19 @@ export default function useBoatStore(userId, boatEntry) {
     return () => clearInterval(poll);
   }, [online, boatEntry.shared]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A Refresh button on the crew pages pulls the latest copy, e.g. role briefings edited on another phone.
+  useEffect(() => {
+    if (!online) return undefined;
+    const pull = () => {
+      if (pendingRef.current > 0) return;
+      api.get("/me/boat", { params, timeout: 10000 }).then(({ data }) => {
+        if (pendingRef.current === 0 && data.updated_at > stateRef.current.updated_at) setState(serverToState(data));
+      }).catch(() => {});
+    };
+    window.addEventListener("mbp:refresh-boat", pull);
+    return () => window.removeEventListener("mbp:refresh-boat", pull);
+  }, [online, boatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (reachable || !browserOnline) return undefined;
     const retry = setInterval(() => setReachable(true), 15000);
