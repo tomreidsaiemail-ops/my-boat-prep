@@ -76,3 +76,7 @@
 ## 2026-06 Zone focus + palette two rows
 - Boat Inventory zone headings: "Show only this zone" (folds every other zone) / "Show all zones" when focused; chevron at left.
 - Zone Map Overview: colours section can't fold until a colour is placed (always shows Magically Place Colours); palette shows first two rows with "Show N other zones, and their colours" / "Show fewer colours", remembered per boat (localStorage mbp_overview_all_colours_{boat_id}). Measured with ResizeObserver. Self-tested via screenshots.
+
+## 2026-06 QR take out / used + quick count
+- QrScanDialog third mode "Take out / used": +/- per listed item (capped at qty) or photo (Magic Scan names matched via lib/qrStock matchItem; unmatched toasted). Save reduces qty; 0 -> qty 0 + removed (restock), same as applyConsumed.
+- After any QR save the dialog shows QrQuickCount: "<area> now holds N items" (sum of qty of in-place items), different things count, Low stock list (qty 1 amber "Only 1 left", removed/0 red "None left"). lib/qrStock.js applyQr shared by dialog + InventoryList.saveQr. Sticky Cancel/Save bar. Self-tested via Playwright (add, take out, counts).

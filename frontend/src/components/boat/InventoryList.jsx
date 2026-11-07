@@ -24,6 +24,7 @@ import { MergeAreaDialog } from "@/components/boat/inventory/MergeAreaDialog";
 import { FolderCardsButton } from "@/components/boat/inventory/FolderCardsButton";
 import { QrScanDialog } from "@/components/boat/inventory/QrScanDialog";
 import { clearQr, pendingQr, qrBoatKey } from "@/lib/qrScan";
+import { applyQr } from "@/lib/qrStock";
 import { useAuth } from "@/context/AuthContext";
 
 const newId = newAreaItemId;
@@ -263,17 +264,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setQrArea(a);
     openArea(a.parent_id || a.id);
   }, [boat?.key, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-  const saveQr = (list, mode) => {
-    const fresh = list.map((i) => ({ id: newId(), name: i.name.trim(), qty: i.qty }));
-    setArea(qrArea.id, (x) => {
-      if (mode === "replace") return { ...x, items: fresh };
-      const items = [...(x.items || [])];
-      fresh.forEach((f) => { const at = items.findIndex((y) => same(y.name, f.name)); if (at >= 0) items[at] = { ...items[at], qty: (Number(items[at].qty) || 1) + f.qty, removed: false }; else items.push(f); });
-      return { ...x, items };
-    });
-    toast.success(mode === "replace" ? `${qrArea.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}` : `${list.length} ${list.length === 1 ? "item" : "items"} added to ${qrArea.name}`);
-    setQrArea(null);
-  };
+  const saveQr = (list, mode) => setArea(qrArea.id, (x) => ({ ...x, items: applyQr(x.items, list, mode) }));
   const [folds, setFolds] = useState(() => { try { return JSON.parse(localStorage.getItem(`mbp_zone_folds_${boat?.key}`)) || []; } catch { return []; } });
   const setFoldList = (next) => { localStorage.setItem(`mbp_zone_folds_${boat?.key}`, JSON.stringify(next)); setFolds(next); };
   const toggleFold = (k) => setFoldList(folds.includes(k) ? folds.filter((x) => x !== k) : [...folds, k]);
