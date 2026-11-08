@@ -713,3 +713,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Crew registration success screen Close no longer triggers the discard prompt (guard={!done}, content keyed per request); dialog guard also ignores windows with no fields left (success screens).
 - 2026-06: Label this map (ZonePinEditor) only offers cupboards in that map's zone colour (plus the one a label already points at); maps with no colour offer all.
 - 2026-06: Boat menu name bug fixed: blank cached local vessel no longer overrides the server name (useBoats merge uses ||; BoatPrep only pushes non-blank vessel to registry). Leaving Vessel blank restores the last name with a toast. Fallback label 'New boat (add a name)'. boats.add refuses blank names.
+- 2026-06: Delete boat guard: if the boat has zone maps or cupboards, the delete dialog lists them and the skipper must type the boat name (case-insensitive) before Delete boat is enabled. Delete button now red.

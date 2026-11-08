@@ -27,6 +27,7 @@ const BoatOption = ({ b }) => (
 export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole }) => {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [typed, setTyped] = useState("");
   const [crewOpen, setCrewOpen] = useState(false);
   const [startInvite, setStartInvite] = useState(false);
   // "Back to Invite crew" after changing the available roles reopens the invite where the skipper left it.
@@ -41,6 +42,11 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const currentName = nameOf(cur);
   const own = boats.boats.filter((b) => !b.crew);
   const canRemove = cur.crew || own.length > 1;
+  // A boat with zone maps or cupboards needs its name typed before it can be deleted.
+  const maps = (cur.zone_maps || []).length;
+  const cupboards = (state?.areas || []).filter((a) => !a.parent_id).length;
+  const guarded = !cur.crew && (maps > 0 || cupboards > 0);
+  const nameOk = !guarded || typed.trim().toLowerCase() === currentName.trim().toLowerCase();
 
   const confirmAdd = (name) => {
     if (!name) return "Please enter the vessel name";
@@ -50,7 +56,8 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
     toast.success(`${name} added, with a copy of ${currentName}'s lists`);
     return true;
   };
-  const confirmDelete = async () => {
+  const confirmDelete = async (e) => {
+    if (!nameOk) { e?.preventDefault(); return; }
     setDeleting(false);
     if (!online) { toast.error(cur.crew ? "Go online to leave a boat" : "Go online to delete a boat"); return; }
     const next = boats.boats.find((b) => b.key !== cur.key && !b.crew) || boats.boats.find((b) => b.key !== cur.key);
@@ -75,7 +82,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
       )}
       <button type="button" className={BTN} onClick={() => (premium ? setAdding(true) : onUpgrade())} title="Add a boat" aria-label="Add a boat" data-testid="add-boat-btn"><Plus className="h-5 w-5" strokeWidth={3} /></button>
       {canRemove && (
-        <button type="button" className={`${BTN} hover:!border-[var(--red)] hover:!bg-[var(--red)]`} onClick={() => setDeleting(true)}
+        <button type="button" className={`${BTN} hover:!border-[var(--red)] hover:!bg-[var(--red)]`} onClick={() => { setTyped(""); setDeleting(true); }}
           title={cur.crew ? "Leave this boat" : "Delete this boat"} aria-label={cur.crew ? "Leave this boat" : "Delete this boat"} data-testid={cur.crew ? "leave-boat-btn" : "delete-boat-btn"}>
           {cur.crew ? <LogOut className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
         </button>
@@ -95,9 +102,18 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
               {cur.crew ? "The boat disappears from your phone. The skipper can invite you again." : "All of this boat's lists, Ship's Log, engine hours, photo and crew are removed from this phone and the cloud. Your other boats are not changed."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {guarded && (
+            <div className="flex flex-col gap-2" data-testid="delete-boat-guard">
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="delete-boat-guard-note">
+                {currentName} has {[maps && `${maps} zone ${maps === 1 ? "map" : "maps"}`, cupboards && `${cupboards} ${cupboards === 1 ? "cupboard" : "cupboards"}`].filter(Boolean).join(" and ")}. To make sure this isn't a mistake, type the boat's name to delete it.
+              </p>
+              <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={currentName} aria-label="Type the boat's name to confirm"
+                autoComplete="off" className="field-input" data-testid="delete-boat-name-input" />
+            </div>
+          )}
           <AlertDialogFooter className="flex-row justify-end gap-2">
             <AlertDialogCancel className="btn-ghost mt-0 px-5" data-testid="delete-boat-cancel-btn">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="btn-solid bg-[var(--red)] px-5" onClick={confirmDelete} data-testid="delete-boat-confirm-btn">{cur.crew ? "Leave boat" : "Delete boat"}</AlertDialogAction>
+            <AlertDialogAction className="btn-solid !bg-[var(--red)] px-5 disabled:opacity-40" disabled={!nameOk} onClick={confirmDelete} data-testid="delete-boat-confirm-btn">{cur.crew ? "Leave boat" : "Delete boat"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
