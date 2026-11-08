@@ -421,14 +421,14 @@ async def seed_log_help():
 
 
 async def seed_common_names():
-    """Runs once: adds the Galley boat area pick list offered while batch scanning the Galley zone."""
+    """Runs once: adds the Galley cupboard pick list offered while batch scanning the Galley zone."""
     if await db.migrations.find_one({"_id": "common_galley_names"}):
         return
     now = datetime.now(timezone.utc).isoformat()
     name = "Admin - Common Galley Names"
     if not await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(name)}\s*$", "$options": "i"}}, {"_id": 1}):
         await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True,
-                                            "description": "Boat area names offered as a pick list when scanning Galley cupboards. Make \"Admin - Common <Zone> Names\" for any other zone.",
+                                            "description": "Cupboard names offered as a pick list when scanning Galley cupboards. Make \"Admin - Common <Zone> Names\" for any other zone.",
                                             "items": [{"id": n + 1, "label": t} for n, t in enumerate(GALLEY_NAMES)], "created_at": now, "updated_at": now, "updated_by": "system"})
     await db.migrations.insert_one({"_id": "common_galley_names", "at": now})
 

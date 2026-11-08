@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 export const WHERE_MAX = 80;
 
-// Rename a boat area and say where it is in its zone, e.g. "Under the port saloon seat, aft end".
+// Rename a cupboard and say where it is in its zone, e.g. "Under the port saloon seat, aft end".
 export const AreaEditDialog = ({ area, zoneName, onSave, onClose }) => {
   const [name, setName] = useState("");
   const [where, setWhere] = useState("");
@@ -18,7 +18,7 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose }) => {
     <Dialog open={!!area} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" data-testid="inventory-rename-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">Edit {area?.parent_id ? "folder or box" : "boat area"}</DialogTitle>
+          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">Edit {area?.parent_id ? "folder or box" : "cupboard"}</DialogTitle>
           <DialogDescription>Crew find things faster when they know exactly where it is{zoneName ? ` in the ${zoneName}` : ""}.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} noValidate className="flex flex-col gap-3">

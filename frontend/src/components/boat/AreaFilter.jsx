@@ -17,7 +17,7 @@ export const AreaFilter = ({ areas, value, onChange }) => (
 
 export const AreaPicker = ({ areas, value, onChange }) => (
   <label className="flex flex-col gap-1" data-testid="area-picker">
-    <span className="field-label">Boat area</span>
+    <span className="field-label">Cupboard</span>
     <select value={value || ""} onChange={(e) => onChange(e.target.value)} className="field-input" data-testid="area-picker-select">
       <option value="">No area</option>
       {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}

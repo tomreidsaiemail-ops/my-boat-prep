@@ -44,7 +44,7 @@ class CardsIn(BaseModel):
 
 def _card(c: Card, vessel: str) -> list:
     where = " · ".join(x for x in [f"Lives in: {c.parent}" if c.parent else "", f"Zone map: {c.zone}" if c.zone else ""] if x)
-    out = [Paragraph(escape(c.name), NAME), Paragraph(escape(where or "Boat area"), WHERE), Paragraph("&nbsp;", WHERE)]
+    out = [Paragraph(escape(c.name), NAME), Paragraph(escape(where or "Cupboard"), WHERE), Paragraph("&nbsp;", WHERE)]
     shown, lines = [], 0
     for i in c.items:
         need = 1 + len(i.name) // 46
@@ -154,7 +154,7 @@ def build_qr_pdf(p: QrCardsIn) -> bytes:
     """Ten 90 x 54 mm QR cards to an A4 page, with dashed cut lines, to laminate and put in each cupboard."""
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
-    c.setTitle("Boat area QR cards")
+    c.setTitle("Cupboard QR cards")
     c.setAuthor("My Boat Prep")
     pw, ph = A4
     x0, y0 = (pw - QR_COLS * QR_W) / 2, (ph + QR_ROWS * QR_H) / 2
@@ -177,4 +177,4 @@ def build_qr_pdf(p: QrCardsIn) -> bytes:
 @router.post("/inventory/qr-cards.pdf")
 async def qr_cards_pdf(payload: QrCardsIn, user: dict = Depends(get_current_user)):
     return Response(content=build_qr_pdf(payload), media_type="application/pdf",
-                    headers={"Content-Disposition": 'attachment; filename="Boat area QR cards.pdf"'})
+                    headers={"Content-Disposition": 'attachment; filename="Cupboard QR cards.pdf"'})

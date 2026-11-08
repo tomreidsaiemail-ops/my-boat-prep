@@ -17,7 +17,7 @@ const Thumb = ({ e, onRemove, onRetry }) => (
   </li>
 );
 
-// One Shopping Set: photos of the shopping that belongs in this boat area. Scanning carries on in the background.
+// One Shopping Set: photos of the shopping that belongs in this cupboard. Scanning carries on in the background.
 export const ShopSetStep = ({ set, n, count, batch }) => {
   const input = useRef(null);
   const mine = batch.entries.filter((e) => e.name === set.id);

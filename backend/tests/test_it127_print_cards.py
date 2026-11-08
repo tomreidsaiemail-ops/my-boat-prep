@@ -23,7 +23,7 @@ class TestQrCards:
         r = post("qr-cards.pdf", {"vessel": "TEST_Kia Ora", "cards": cards})
         assert r.status_code == 200, r.text
         assert r.headers["content-type"].startswith("application/pdf")
-        assert "Boat area QR cards.pdf" in r.headers.get("content-disposition", "")
+        assert "Cupboard QR cards.pdf" in r.headers.get("content-disposition", "")
         assert r.content[:4] == b"%PDF"
         assert len(r.content) > 1500
 

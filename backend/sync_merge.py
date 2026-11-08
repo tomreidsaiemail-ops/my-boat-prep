@@ -92,13 +92,13 @@ def _born(area_id) -> int:
 
 
 def fd_ids(areas: list) -> set:
-    """Food (F) and Drink (D) boat areas, and the folders and boxes inside them."""
+    """Food (F) and Drink (D) cupboards, and the folders and boxes inside them."""
     fd = {a.get("id") for a in areas if a.get("food") or a.get("drinks")}
     return fd | {a.get("id") for a in areas if a.get("parent_id") in fd}
 
 
 def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
-    """Crew may add, change and delete Food & Drink boat areas; every other area stays as the skipper left it."""
+    """Crew may add, change and delete Food & Drink cupboards; every other area stays as the skipper left it."""
     pfd, ifd = fd_ids(prev_areas), fd_ids(inc_areas)
     theirs = {a.get("id"): a for a in inc_areas}
     out = []
@@ -124,7 +124,7 @@ def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
 
 
 def merge_crew(prev: dict, inc: dict, galley: bool = False) -> tuple:
-    """Crew changes: ticks, Food & Drink boat areas, and new Ship's Log entries. Returns the merged copy and the log entries they added."""
+    """Crew changes: ticks, Food & Drink cupboards, and new Ship's Log entries. Returns the merged copy and the log entries they added."""
     out = merge_crew_ticks(prev, inc)
     if galley:
         merge_crew_galley(out, prev, inc)

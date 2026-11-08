@@ -1,4 +1,4 @@
-// Where a boat area or its items can go: its own folders and boxes first, then its zone, then the other zones in rainbow order.
+// Where a cupboard or its items can go: its own folders and boxes first, then its zone, then the other zones in rainbow order.
 export const groupTargets = (source, list, zones, folders = []) => {
   const cur = zones[source?.id]?.colour || "";
   const byZone = new Map();

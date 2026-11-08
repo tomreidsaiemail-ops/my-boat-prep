@@ -3,10 +3,10 @@ import { slug } from "@/components/boat/zone/ZoneDialog";
 import { ZoneIcon } from "@/components/boat/zone/AreaZoneButton";
 import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
-// Boat areas are added zone by zone; a box without a zone gets its zone later from the 4-colour square icon.
+// Cupboards are added zone by zone; a box without a zone gets its zone later from the 4-colour square icon.
 export const ZonePicker = ({ zones, counts, onPick, children }) => (
   <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-picker">
-    <p className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]"><Layers className="h-4 w-4" /> Add boat areas by zone</p>
+    <p className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]"><Layers className="h-4 w-4" /> Add cupboards by zone</p>
     <p className="text-xs text-[var(--muted)]">Pick a zone, take its photos, then scan its cupboards. Start with the Galley.</p>
     <div className="flex flex-wrap gap-2">
       {zones.map((z) => (

@@ -32,7 +32,7 @@ const checklistRows = (raw, labelFor, areaName) => {
     Heading: yes(isHeading(items, n)),
     Ticked: i.folder ? "" : yes(i.checked),
     Flagged: yes(i.flagged),
-    "Boat area": areaName?.(i) || "",
+    "Cupboard": areaName?.(i) || "",
   }));
 };
 
@@ -93,7 +93,7 @@ export const serviceRows = (entries, kind) => [...entries].sort((a, b) => String
   : { Date: asDate(e.date), Electrician: e.electrician || "", Notes: e.notes || "" }));
 
 export const zoneRows = (boat, areas) => (boat?.zone_maps || []).map((m, n) => ({
-  "Zone map": mapLabel(m, n), Colour: m.colour || "", "Boat areas pinned": (m.pins || []).map((p) => areas.find((a) => a.id === p.area_id)?.name).filter(Boolean).join(", "),
+  "Zone map": mapLabel(m, n), Colour: m.colour || "", "Cupboards pinned": (m.pins || []).map((p) => areas.find((a) => a.id === p.area_id)?.name).filter(Boolean).join(", "),
 }));
 
 export const crewRows = (info) => [

@@ -21,7 +21,7 @@ const Progress = ({ entries, position }) => {
   );
 };
 
-// Batch Magic Scan screen: queue several boat areas, review each one, then add them all at once.
+// Batch Magic Scan screen: queue several cupboards, review each one, then add them all at once.
 export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone, boat }) => {
   const batch = useBatchScan(boatId);
   const { entries } = batch;
@@ -50,18 +50,18 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
         {zone && <ZoneBanner zone={zone} boat={boat} />}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> {zone ? `Scan ${zone.label} cupboards` : "Batch Magic Scan"}</DialogTitle>
-          <DialogDescription>{zone ? `Every cupboard, shelf and drawer you add here goes into ${zone.label} (${zone.colour}). ` : ""}Add each boat area with a photo. Magic Scans happen in the background, while you take photos and name your boat areas, saving you lots of time. Review each one and tick it, then confirm.</DialogDescription>
-          <p className="text-sm text-[var(--muted)]" data-testid="batch-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Remember you can always return later and fix up one specific cupboard for a better result. It is important you commit all that work you did taking photos and naming boat areas, so we recommend a quick review at this stage.</p>
+          <DialogDescription>{zone ? `Every cupboard, shelf and drawer you add here goes into ${zone.label} (${zone.colour}). ` : ""}Add each cupboard with a photo. Magic Scans happen in the background, while you take photos and name your cupboards, saving you lots of time. Review each one and tick it, then confirm.</DialogDescription>
+          <p className="text-sm text-[var(--muted)]" data-testid="batch-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Remember you can always return later and fix up one specific cupboard for a better result. It is important you commit all that work you did taking photos and naming cupboards, so we recommend a quick review at this stage.</p>
         </DialogHeader>
         <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1" data-testid="batch-list">
-          {entries.length === 0 && <li className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="batch-empty">No boat areas in this batch yet.</li>}
+          {entries.length === 0 && <li className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="batch-empty">No cupboards in this batch yet.</li>}
           {entries.map((e, n) => (
             <BatchEntry key={e.key} entry={e} n={n} existing={existingFor(e.name)} onPatch={(p) => batch.patch(e.key, p)}
               onDelete={() => setDoomed(e)} onRetry={() => batch.retry(e.key)} />
           ))}
         </ul>
         <button type="button" className="btn-ghost h-11 justify-center" disabled={full} onClick={() => setForm(true)} data-testid="batch-add-area-btn">
-          <Plus className="h-4 w-4" /> {full ? `Batch is full (${BATCH_MAX} boat areas)` : "Add boat areas for background Magic Scan"}
+          <Plus className="h-4 w-4" /> {full ? `Batch is full (${BATCH_MAX} cupboards)` : "Add cupboards for background Magic Scan"}
         </button>
         {entries.length > 0 && <Progress entries={entries} position={batch.position} />}
         <div className="flex gap-2">

@@ -1,6 +1,6 @@
 import { MapPin } from "lucide-react";
 
-// Edit List Panel section: pick a boat area, then tick the items to move there. Items with no area start ticked.
+// Edit List Panel section: pick a cupboard, then tick the items to move there. Items with no area start ticked.
 export const MoveToAreaSection = ({ areas, items, labelFor, areaOf, move, onChange }) => {
   const placed = (i) => i.area === move.area && !!areaOf(i);
   const choose = (area) => onChange({ area, ids: area ? items.filter((i) => !areaOf(i)).map((i) => i.id) : [] });
@@ -10,8 +10,8 @@ export const MoveToAreaSection = ({ areas, items, labelFor, areaOf, move, onChan
   return (
     <fieldset className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] p-3" data-testid="move-area-section">
       <legend className="flex items-center gap-1.5 px-1 text-sm font-bold"><MapPin className="h-4 w-4 text-[var(--navy)]" /> Move items to an area</legend>
-      <select value={move.area} onChange={(e) => choose(e.target.value)} className="field-input font-normal" aria-label="Boat area to move items to" data-testid="move-area-select">
-        <option value="">Choose a boat area (optional)</option>
+      <select value={move.area} onChange={(e) => choose(e.target.value)} className="field-input font-normal" aria-label="Cupboard to move items to" data-testid="move-area-select">
+        <option value="">Choose a cupboard (optional)</option>
         {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
       </select>
       {move.area && (

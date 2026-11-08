@@ -11,13 +11,13 @@ import { BarAreas } from "@/components/boat/bartender/BarAreas";
 const HELP = ["Arrange some drink bottles, some lemons, on a table and take a photo.",
   "The MAGIC BARTENDER will be able to recommend quickly some cocktails for you, it will also tell you the ingredients, and how to mix them."];
 
-// Extra ingredients from flagged Drinks (D) and food (F) boat areas, folded away so the basic flow is just a photo.
+// Extra ingredients from flagged Drinks (D) and food (F) cupboards, folded away so the basic flow is just a photo.
 const AreaExtras = ({ areas, onFlag, onBatchScan, busy, photoItems, usePhoto, setUsePhoto, summary }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border-[1.5px] border-[var(--line)]" data-testid="bartender-areas-section">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-bold" data-testid="bartender-areas-toggle">
-        Drinks (D) and food (F) boat areas
+        Drinks (D) and food (F) cupboards
         <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -28,9 +28,9 @@ const AreaExtras = ({ areas, onFlag, onBatchScan, busy, photoItems, usePhoto, se
             Using the &apos;Bartender Photo&apos;
           </label>
           {areas.length ? <BarAreas areas={areas} onFlag={onFlag} />
-            : <p className="rounded-md border-[1.5px] border-dashed border-[var(--line)] p-3 text-sm text-[var(--muted)]" data-testid="bartender-no-areas">No boat areas yet. Photo your gantry and fridge first.</p>}
+            : <p className="rounded-md border-[1.5px] border-dashed border-[var(--line)] p-3 text-sm text-[var(--muted)]" data-testid="bartender-no-areas">No cupboards yet. Photo your gantry and fridge first.</p>}
           <button type="button" className="btn-ghost h-auto min-h-10 justify-center gap-1.5 whitespace-normal py-2 text-center text-sm" onClick={onBatchScan} disabled={busy} data-testid="bartender-batch-scan-btn">
-            <Sparkles className="h-4 w-4" /> Photo boat areas with Batch Magic Scan...
+            <Sparkles className="h-4 w-4" /> Photo cupboards with Batch Magic Scan...
           </button>
           {summary}
         </div>

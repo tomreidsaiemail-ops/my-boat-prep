@@ -1,4 +1,4 @@
-// Laminated QR cards inside each cupboard open My Boat Prep straight to a Magic Scan into that boat area.
+// Laminated QR cards inside each cupboard open My Boat Prep straight to a Magic Scan into that cupboard.
 const KEY = "mbp_qr_scan";
 const TTL = 30 * 60 * 1000;
 

@@ -39,7 +39,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
     try {
       const cards = kind === "qr" ? qrs() : contents();
       const { data } = await api.post(kind === "qr" ? "/inventory/qr-cards.pdf" : "/inventory/folder-cards.pdf", { vessel: (vessel || "").slice(0, 120), cards }, { responseType: "blob", timeout: 60000 });
-      download(data, kind === "qr" ? "Boat area QR cards.pdf" : "Folder and box contents cards.pdf");
+      download(data, kind === "qr" ? "Cupboard QR cards.pdf" : "Folder and box contents cards.pdf");
       toast.success(kind === "qr" ? `${cards.length} QR ${cards.length === 1 ? "card" : "cards"} ready to print and laminate` : `${cards.length} contents ${cards.length === 1 ? "card" : "cards"} ready to print`);
     } catch { toast.error("Couldn't make the cards. Please try again."); }
     setBusy(false);

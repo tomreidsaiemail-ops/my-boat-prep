@@ -52,10 +52,10 @@ export const SyncStoresDialog = ({ areas, units, params, onDone, onClose }) => {
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="stores-sync-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold"><RefreshCw className="h-5 w-5" /> Sync Food &amp; Drink Boat Areas</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold"><RefreshCw className="h-5 w-5" /> Sync Food &amp; Drink Cupboards</DialogTitle>
           <DialogDescription className="text-left text-sm">{rows ? "Check what the MPA will take out of your stores, then confirm." : "Tell the Magic Provisioning Assistant what was eaten or drunk, and it takes those items out of their food and drink areas."}</DialogDescription>
         </DialogHeader>
-        {!stock.length ? <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="stores-empty">Nothing is listed in your Food (F) or Drink (D) boat areas yet. Try Batch Magic Scan My Shopping first.</p>
+        {!stock.length ? <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="stores-empty">Nothing is listed in your Food (F) or Drink (D) cupboards yet. Try Batch Magic Scan My Shopping first.</p>
           : !rows ? (
             <div className="flex flex-col gap-2">
               <textarea value={text} maxLength={2000} rows={4} onChange={(e) => setText(e.target.value)} className="field-input h-auto py-2 !text-sm" data-testid="stores-text-input"

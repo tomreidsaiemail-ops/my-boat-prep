@@ -82,7 +82,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g.
         <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={placeholder}
           aria-label="Cupboard or locker name" className="field-input h-12 min-w-0 flex-1" data-testid="inventory-add-area-input" />
         <button type="submit" className="btn-solid h-12 w-12 shrink-0 justify-center p-0" aria-label="Add cupboard" data-testid="inventory-add-area-btn"><Plus className="h-5 w-5" /></button>
-        {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-14 shrink-0 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several boat areas with photos" title="Batch Magic Scan"
+        {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-14 shrink-0 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several cupboards with photos" title="Batch Magic Scan"
           data-testid="inventory-batch-scan-btn"><Plus className="-mr-1.5 h-5 w-5" /><Plus className="h-5 w-5" /></button>}
       </div>
       {error && <p className="text-sm font-semibold text-[var(--red)]" data-testid="inventory-add-area-error">{error}</p>}
@@ -130,7 +130,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const linkHits = links.filter((l) => matches(`${l.listName} ${l.text}`, q));
     return hits.length || linkHits.length ? { area: a, visible: hits, visibleLinked: linkHits } : null;
   };
-  // Search looks inside folders and boxes too, so a hit shows its zone map, boat area and sub-area.
+  // Search looks inside folders and boxes too, so a hit shows its zone map, cupboard and sub-area.
   const results = tops.flatMap((a) => {
     const own = hit(a);
     const subs = subsOf(a.id).map((s) => hit(s, !!q && matches(a.name, q))).filter(Boolean);
@@ -197,12 +197,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   };
   const takeOut = (sub) => {
     const parent = areas.find((a) => a.id === sub.parent_id);
-    if (tops.some((t) => same(t.name, sub.name))) { toast.error(`There's already a boat area called ${sub.name}. Rename it first.`); return; }
+    if (tops.some((t) => same(t.name, sub.name))) { toast.error(`There's already a cupboard called ${sub.name}. Rename it first.`); return; }
     setArea(sub.id, ({ parent_id: _p, ...a }) => a);
     toast.success(`${sub.name} taken out of ${parent?.name || "its cupboard"}`);
   };
   const startMove = (a) => {
-    if (areas.length < 2) { toast.warning("You can only move items to new boat areas when there is more than one boat area."); return; }
+    if (areas.length < 2) { toast.warning("You can only move items to new cupboards when there is more than one cupboard."); return; }
     if (!(a.items || []).length && !(linked[a.id] || []).length) { toast.message(`${a.name} has nothing to move yet`); return; }
     setDialog({ type: "move", area: a });
   };
@@ -221,7 +221,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     onChange((list) => [...list, { id, name, items: [], ...extra }]);
     return true;
   };
-  // Crew can change Food (F) and Drink (D) boat areas, and the folders and boxes inside them.
+  // Crew can change Food (F) and Drink (D) cupboards, and the folders and boxes inside them.
   const fdTop = new Set(tops.filter((a) => a.food || a.drinks).map((a) => a.id));
   const crewCan = (a) => crewFood && (fdTop.has(a.id) || fdTop.has(a.parent_id));
   const locked = (a) => readOnly && !crewCan(a);
@@ -392,7 +392,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       )}
       {readOnly ? <>
         {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p>}
-        {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) boat areas. The skipper looks after the rest.</p>}
+        {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) cupboards. The skipper looks after the rest.</p>}
       </> : (
         <InventoryInstructions searching={!!q} online={online} />
       )}

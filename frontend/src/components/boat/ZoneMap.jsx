@@ -17,7 +17,7 @@ import useAdminLists from "@/hooks/useAdminLists";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
 const HELP_NAME = "admin - help panel - zone map help";
-const DEFAULT_HELP = "Take high level photos of your boat, and annotate the boat areas onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
+const DEFAULT_HELP = "Take high level photos of your boat, and annotate the cupboards onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 100;
@@ -211,7 +211,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </div>
       ))}
       {!pics.length && !overviews.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
-      {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with boat areas, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that boat area. You can do that after taking the boat inventory. You can rename boat areas later should the zone map photo have a better name.</p>}
+      {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with cupboards, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that cupboard. You can do that after taking the boat inventory. You can rename cupboards later should the zone map photo have a better name.</p>}
       {canEdit && <OwnerTools boat={boat} count={all.length} online={online} onMaps={onBoatMaps} />}
       {admin && (
         <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-2">

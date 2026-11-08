@@ -18,17 +18,17 @@ const Row = ({ t, onChange, other }) => (
   </li>
 );
 
-// Pick the Food (F) and Drink (D) areas the shopping goes into; other boat areas can be tagged F/D too.
+// Pick the Food (F) and Drink (D) areas the shopping goes into; other cupboards can be tagged F/D too.
 export const ShopAreasStep = ({ targets, setTargets, others, onTagOther }) => {
   const [showOthers, setShowOthers] = useState(false);
   const set = (id, p) => setTargets((ts) => ts.map((t) => (t.id === id ? { ...t, ...p } : t)));
   return (
     <div className="flex flex-col gap-3" data-testid="shop-areas-step">
-      <p className="text-sm">The MPA puts your shopping into these Food <b>(F)</b> and Drink <b>(D)</b> boat areas, one Shopping Set each. Untick any you don&apos;t need today. Areas marked <b>new</b> are added to your Boat Inventory.</p>
+      <p className="text-sm">The MPA puts your shopping into these Food <b>(F)</b> and Drink <b>(D)</b> cupboards, one Shopping Set each. Untick any you don&apos;t need today. Areas marked <b>new</b> are added to your Boat Inventory.</p>
       <ul className="flex flex-col gap-2">{targets.map((t) => <Row key={t.id} t={t} onChange={(p) => set(t.id, p)} />)}</ul>
       {others.length > 0 && (
         <button type="button" onClick={() => setShowOthers((v) => !v)} className="flex items-center gap-1 self-start text-sm font-bold text-[var(--navy)] underline underline-offset-2" data-testid="shop-areas-show-others-btn">
-          <ChevronDown className={`h-4 w-4 [transition:transform_.15s] ${showOthers ? "rotate-180" : ""}`} /> {showOthers ? "Hide other boat areas" : "Click here to show other boat areas"}
+          <ChevronDown className={`h-4 w-4 [transition:transform_.15s] ${showOthers ? "rotate-180" : ""}`} /> {showOthers ? "Hide other cupboards" : "Click here to show other cupboards"}
         </button>
       )}
       {showOthers && others.length > 0 && (

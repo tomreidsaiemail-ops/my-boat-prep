@@ -40,7 +40,7 @@ export const mapLabel = (m, n) => m.name || `Zone map ${n + 1}`;
 // Area id -> the colour and name of the zone map it's pinned on; folders and boxes take their cupboard's.
 export const areaZones = (boat, areas) => {
   const out = {};
-  // A zone picked for the boat area itself wins over a pin on a Zone Map Photo.
+  // A zone picked for the cupboard itself wins over a pin on a Zone Map Photo.
   areas.forEach((a) => {
     const z = a.zone;
     if (z && ZONE_COLOURS[z.colour]) out[a.id] = { colour: z.colour, hex: ZONE_COLOURS[z.colour], map: z.label, rank: RAINBOW.indexOf(z.colour) };

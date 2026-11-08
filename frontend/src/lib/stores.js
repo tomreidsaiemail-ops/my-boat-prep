@@ -1,4 +1,4 @@
-// Shopping in, food and drink out: Batch Magic Scan My Shopping and Sync Food & Drink Boat Areas Magically.
+// Shopping in, food and drink out: Batch Magic Scan My Shopping and Sync Food & Drink Cupboards Magically.
 import { newAreaItemId } from "@/lib/inventoryMove";
 
 export const SHOP_MAX = 20;
@@ -87,4 +87,4 @@ const grams = (rows) => rows.reduce((n, r) => n + (r.weight || 0), 0);
 export const shopLog = (rows, nameOf, units) =>
   `Batch Magic Scan My Shopping, ${when()}: ${total(rows)} ${total(rows) === 1 ? "item" : "items"} added, MPA estimated weight added ${fmtWeight(grams(rows), units)} (${byArea(rows, nameOf)})`;
 export const usedLog = (rows, nameOf, units) =>
-  `Sync Food & Drink Boat Areas Magically, ${when()}: ${total(rows)} ${total(rows) === 1 ? "item" : "items"} removed, MPA estimated weight removed ${fmtWeight(grams(rows), units)} (${byArea(rows, nameOf)})`;
+  `Sync Food & Drink Cupboards Magically, ${when()}: ${total(rows)} ${total(rows) === 1 ? "item" : "items"} removed, MPA estimated weight removed ${fmtWeight(grams(rows), units)} (${byArea(rows, nameOf)})`;

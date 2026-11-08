@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { groupTargets } from "@/lib/areaTargets";
 
-// Puts a boat area (e.g. a Red folder scanned on its own) inside a cupboard as a folder or box. Its own zone's cupboards come first.
+// Puts a cupboard (e.g. a Red folder scanned on its own) inside a cupboard as a folder or box. Its own zone's cupboards come first.
 export const MergeAreaDialog = ({ area, parents, zones = {}, onMerge, onClose }) => {
   const [target, setTarget] = useState("");
   useEffect(() => setTarget(""), [area?.id]);
@@ -12,7 +12,7 @@ export const MergeAreaDialog = ({ area, parents, zones = {}, onMerge, onClose })
       <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="inventory-merge-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Put {area?.name} inside...</DialogTitle>
-          <DialogDescription>It becomes a folder or box inside that boat area, keeping its own list. Search still finds everything in it.</DialogDescription>
+          <DialogDescription>It becomes a folder or box inside that cupboard, keeping its own list. Search still finds everything in it.</DialogDescription>
         </DialogHeader>
         <ul className="flex flex-col gap-1.5" data-testid="inventory-merge-options">
           {groups.map((g, n) => (

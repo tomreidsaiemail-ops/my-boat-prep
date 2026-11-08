@@ -68,7 +68,7 @@ export const ShopScanDialog = ({ boatId, owner, areas, units, onApplyTargets, on
       <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="shop-scan-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold"><ShoppingBasket className="h-5 w-5" /> Batch Magic Scan My Shopping</DialogTitle>
-          <DialogDescription className="text-left text-sm">{review ? "Check what the MPA found. Move anything to a different area and it will remember next time." : "Photograph your shopping set by set and the MPA files it into your boat areas."}</DialogDescription>
+          <DialogDescription className="text-left text-sm">{review ? "Check what the MPA found. Move anything to a different area and it will remember next time." : "Photograph your shopping set by set and the MPA files it into your cupboards."}</DialogDescription>
         </DialogHeader>
         {step >= 0 && sets.length > 0 && (
           <div className="flex flex-col gap-2">

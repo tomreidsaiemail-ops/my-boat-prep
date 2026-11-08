@@ -11,7 +11,7 @@ const toRows = (area, links) => [
 ];
 const shiftTo = (list, from, to) => { const next = [...list]; next.splice(to, 0, next.splice(from, 1)[0]); return next; };
 
-// Move some or all of one boat area's items to other areas; a changed target carries down to the rows below it.
+// Move some or all of one cupboard's items to other areas; a changed target carries down to the rows below it.
 export const MoveAreaDialog = ({ source, areas, zones = {}, links = [], onMove, onClose }) => {
   const [rows, setRows] = useState([]);
   const [explicit, setExplicit] = useState({});
@@ -51,7 +51,7 @@ export const MoveAreaDialog = ({ source, areas, zones = {}, links = [], onMove, 
     <Dialog open={!!source} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dirty={reordered} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="move-area-dialog">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Move className="h-5 w-5" /> Move Boat Area Items</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Move className="h-5 w-5" /> Move Cupboard Items</DialogTitle>
           <DialogDescription className="text-sm" data-testid="move-area-description">
             Moving from <b>{source?.name}</b>. Untick anything that should stay. Changing an item's target area also changes the items below it.
           </DialogDescription>

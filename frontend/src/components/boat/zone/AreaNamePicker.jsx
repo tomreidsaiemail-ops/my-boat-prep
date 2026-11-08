@@ -4,7 +4,7 @@ import useAdminLists, { stripPrefix } from "@/hooks/useAdminLists";
 const PREFIX = "Admin - Common ";
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-// Preferred boat area names for a zone, from "Admin - Common <Zone> Names"; names already on the boat show dimmed with a tick.
+// Preferred cupboard names for a zone, from "Admin - Common <Zone> Names"; names already on the boat show dimmed with a tick.
 export const AreaNamePicker = ({ zone, name, used, onPick }) => {
   const lists = useAdminLists(PREFIX, navigator.onLine);
   const want = `${zone.label} names`.toLowerCase();

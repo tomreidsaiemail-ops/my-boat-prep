@@ -30,7 +30,7 @@ const dragPin = (e, p, onDrag) => {
   el.addEventListener("pointercancel", up);
 };
 
-// A zone photo with its pinned labels; tapping a linked pin opens that boat area. `highlight` makes one pin stand out. `onDrag` lets labels be moved.
+// A zone photo with its pinned labels; tapping a linked pin opens that cupboard. `highlight` makes one pin stand out. `onDrag` lets labels be moved.
 export const PinnedPhoto = ({ src, alt, pins = [], areas = [], onPin, onImage, onDrag, imgRef, imgClass = "max-h-64 w-full rounded-md object-contain", testId, onError, highlight }) => (
   <div className="relative mx-auto w-fit max-w-full" data-testid={testId}>
     <img ref={imgRef} src={src} alt={alt} onClick={onImage} onError={onError} className={`${imgClass} ${onImage ? "cursor-pointer" : ""}`} draggable={false} data-testid={`${testId}-img`} />

@@ -35,14 +35,14 @@ const PinForm = ({ pin, areas, onSave, onDelete, onCancel, onNudge }) => {
   };
   return (
     <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-[var(--panel)] p-3" data-testid="zone-pin-form">
-      <label className="flex flex-col gap-1"><span className="field-label">Boat area at this spot</span>
+      <label className="flex flex-col gap-1"><span className="field-label">Cupboard at this spot</span>
         <select value={areaId} onChange={(e) => { setAreaId(e.target.value); setError(""); }} className="field-input" data-testid="zone-pin-area-select">
           {areas.filter((a) => !a.parent_id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          <option value={NEW}>New boat area...</option>
+          <option value={NEW}>New cupboard...</option>
         </select>
       </label>
       {areaId === NEW && <input autoFocus value={name} maxLength={60} placeholder="e.g. Port Lazarette" onChange={(e) => { setName(e.target.value); setError(""); }}
-        className="field-input" aria-label="New boat area name" data-testid="zone-pin-name-input" />}
+        className="field-input" aria-label="New cupboard name" data-testid="zone-pin-name-input" />}
       {areaId === NEW && <p className="text-xs text-[var(--muted)]">A new name is also added to your Boat Inventory when you save.</p>}
       {error && <p className="text-sm font-bold text-[var(--red)]" data-testid="zone-pin-error">{error}</p>}
       <Nudge onNudge={onNudge} />
@@ -96,7 +96,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
       <DialogContent className="max-h-[94vh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-3" data-testid="zone-pin-editor">
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight">Label this zone map</DialogTitle>
-          <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its boat area. Drag a label to move it, or tap it to fine-tune with the arrows, change or remove it.</DialogDescription>
+          <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its cupboard. Drag a label to move it, or tap it to fine-tune with the arrows, change or remove it.</DialogDescription>
         </DialogHeader>
         <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
           onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}

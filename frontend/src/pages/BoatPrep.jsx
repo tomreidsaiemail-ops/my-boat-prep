@@ -537,13 +537,13 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${dialog.list.name} deleted`);
   };
   const openStores = (type) => {
-    if (!crew && !needPro(type === "shopScan" ? "Batch Magic Scan My Shopping" : "Sync Food & Drink Boat Areas")) return;
+    if (!crew && !needPro(type === "shopScan" ? "Batch Magic Scan My Shopping" : "Sync Food & Drink Cupboards")) return;
     if (!online) { toast.error("The Magic Provisioning Assistant needs a signal"); return; }
     setDialog({ type });
   };
   const crewName = (user.name || user.email || "crew").trim().split(/\s+/)[0];
   const byCrew = (label) => (crew ? label.replace(/^([^,]+),/, `$1 by ${crewName},`) : label);
-  const areaLabel = (id) => areas.find((a) => a.id === id)?.name || "Boat area";
+  const areaLabel = (id) => areas.find((a) => a.id === id)?.name || "Cupboard";
   const logStores = (label) => ({ id: Date.now(), label: byCrew(label).slice(0, 2000), checked: false });
   const doneShopping = (rows) => {
     const entry = logStores(shopLog(rows.map((r) => ({ ...r, areaName: areaLabel(r.dest) })), (r) => r.areaName, boat.units));

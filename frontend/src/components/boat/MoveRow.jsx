@@ -30,7 +30,7 @@ export const MoveRow = ({ row, n, total, target, groups, ordering, onChange, onT
         )}
         <ArrowRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
         <select value={target} onChange={(e) => onTarget(e.target.value)} className="field-input h-10 min-w-0 flex-1 px-2 text-sm"
-          aria-label={`Target boat area for ${row.name}`} data-testid={`move-row-target-${n}`}>
+          aria-label={`Target cupboard for ${row.name}`} data-testid={`move-row-target-${n}`}>
           <TargetOptions groups={groups} />
         </select>
       </div>

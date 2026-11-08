@@ -3,7 +3,7 @@ const Flag = ({ on, letter, label, onClick, testId, colour }) => (
     className={`inline-flex h-8 w-8 items-center justify-center rounded-full border-[1.5px] text-xs font-extrabold [transition:background-color_.15s] ${on ? `${colour} text-white` : "border-[var(--line)] text-[var(--muted)]"}`}>{letter}</button>
 );
 
-// Every boat area with its F (food) and D (drinks) flags; flagged areas feed the Magic Bartender.
+// Every cupboard with its F (food) and D (drinks) flags; flagged areas feed the Magic Bartender.
 export const BarAreas = ({ areas, onFlag }) => {
   const sorted = [...areas].sort((a, b) => (b.drinks ? 2 : b.food ? 1 : 0) - (a.drinks ? 2 : a.food ? 1 : 0));
   return (

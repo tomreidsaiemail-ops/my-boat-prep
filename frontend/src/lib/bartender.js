@@ -1,4 +1,4 @@
-// Magic Bartender: cocktails from the F (food) and D (drinks) boat areas, plus an optional Bartender Photo.
+// Magic Bartender: cocktails from the F (food) and D (drinks) cupboards, plus an optional Bartender Photo.
 export const BARTENDER_KIND = "bartender";
 export const BARTENDER_NAME = "Magic Bartender Cocktails";
 

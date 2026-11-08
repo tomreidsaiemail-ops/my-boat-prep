@@ -11,7 +11,7 @@ import { WHERE_MAX } from "@/components/boat/inventory/AreaEditDialog";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-// Name + photo for one boat area in a batch. Nothing is scanned until it's confirmed.
+// Name + photo for one cupboard in a batch. Nothing is scanned until it's confirmed.
 export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, onAdd, onClose }) => {
   const [name, setName] = useState("");
   const [blob, setBlob] = useState(null);
@@ -34,7 +34,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
   };
   const confirm = (more, emptyOk = false) => {
     const n = name.trim();
-    if (!n) { setError("Please enter the boat area name"); return; }
+    if (!n) { setError("Please enter the cupboard name"); return; }
     if (batchNames.some((b) => same(b, n))) { setError(`${n} is already in this batch`); return; }
     if (!blob && !emptyOk) { setNoPhoto(more ? "more" : "one"); return; }
     onAdd(n, blob, more, { where: where.trim().slice(0, WHERE_MAX) });
@@ -44,7 +44,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
     <HelpPanel storageKey="mbp_batch_area_help_seen" title="How Batch Magic Scan works" testId="batch-area-help">
       <p>Name a cupboard that makes sense, open that cupboard - maybe pull a few things out so they appear on the photo, and take and use that photo, and press "Confirm, and add another". Continue around your boat taking photos and naming them, until you have taken a photo of all nooks and crannies.</p>
       <p>Magic Scan will have been busy while you were taking photos, scroll its results and press Confirm Batch. Your boat inventory is done, and everything is searchable by you and crew.</p>
-      <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one boat area, and then you are really done!</p>
+      <p>It is easy if Magic Scan missed something at the back of the cupboard, use the + icon and just fix up that one cupboard, and then you are really done!</p>
     </HelpPanel>
   );
 
@@ -53,19 +53,19 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
       <DialogContent dirty={!!(name.trim() || blob || where.trim())} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
           {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
-          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} boat area` : "New boat area"}</DialogTitle>
+          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} cupboard` : "New cupboard"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
         {!zone && help}
         {zone && <AreaNamePicker zone={zone} name={name} used={[...existing.filter((a) => !a.parent_id).map((a) => a.name), ...batchNames]} onPick={(n) => { setName(n); setError(""); }} />}
         <input autoFocus={!zone} value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
-          aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
+          aria-label="Cupboard name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
           {clash.name} is already on your boat with {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"}. When you review it you choose to add to them or replace them.</p>}
         <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder={`Where is it${zone ? ` in the ${zone.label}` : ""}? e.g. Under the port bench (optional)`}
-          aria-label="Where the boat area is" className="field-input" data-testid="batch-area-where-input" />
+          aria-label="Where the cupboard is" className="field-input" data-testid="batch-area-where-input" />
         <button type="button" onClick={() => input.current?.click()} className="flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)]" data-testid="batch-area-photo-btn">
-          {preview ? <img src={preview} alt="Boat area" className="max-h-56 w-full object-contain" data-testid="batch-area-photo-preview" />
+          {preview ? <img src={preview} alt="Cupboard" className="max-h-56 w-full object-contain" data-testid="batch-area-photo-preview" />
             : <><Camera className="h-7 w-7" /> Take or choose a photo
               <span className="px-4 text-center text-xs font-medium text-[var(--muted)]" data-testid="batch-area-photo-hint">Consider laying some things out so Magic Scan sees everything you want</span></>}
         </button>
@@ -78,7 +78,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <button type="button" className="btn-ghost h-12" disabled={full} onClick={() => confirm(true)} data-testid="batch-area-confirm-another-btn">Confirm, and add another</button>
           <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="batch-area-cancel-btn">Cancel</button>
         </DialogFooter>
-        <ConfirmDelete item={noPhoto ? {} : null} danger={false} testId="batch-area-empty" title={`No photo of ${name.trim() || "this boat area"}`} confirmLabel="Create it empty" cancelLabel="Take a photo"
+        <ConfirmDelete item={noPhoto ? {} : null} danger={false} testId="batch-area-empty" title={`No photo of ${name.trim() || "this cupboard"}`} confirmLabel="Create it empty" cancelLabel="Take a photo"
           note="It will be created empty, with nothing listed inside. You can Magic Scan it later from Boat Inventory."
           onConfirm={() => { const more = noPhoto === "more"; setNoPhoto(""); confirm(more, true); }} onClose={() => setNoPhoto("")} />
       </DialogContent>

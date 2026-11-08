@@ -1,7 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { fmtWeight } from "@/lib/stores";
 
-// Check what the MPA found; change amounts or the boat area each item goes into.
+// Check what the MPA found; change amounts or the cupboard each item goes into.
 export const ShopReview = ({ rows, setRows, dests, units, scanning }) => {
   const set = (key, p) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...p } : r)));
   if (!rows.length) return <p className="py-6 text-center text-sm text-[var(--muted)]" data-testid="shop-review-empty">{scanning ? "The MPA is still scanning your photos..." : "No items found yet. Go back and add photos."}</p>;
@@ -15,7 +15,7 @@ export const ShopReview = ({ rows, setRows, dests, units, scanning }) => {
             <input value={r.qty} inputMode="numeric" onChange={(e) => set(r.key, { qty: e.target.value.replace(/\D/g, "").slice(0, 4) })} className="field-input h-10 !w-14 shrink-0 !text-sm" aria-label="Quantity" data-testid={`shop-row-qty-${r.key}`} />
           </div>
           <div className="flex items-center gap-2 pl-7">
-            <select value={r.dest} onChange={(e) => set(r.key, { dest: e.target.value, learned: false })} className="field-input h-9 !w-0 min-w-0 flex-1 !py-0 !text-sm" aria-label="Boat area" data-testid={`shop-row-dest-${r.key}`}>
+            <select value={r.dest} onChange={(e) => set(r.key, { dest: e.target.value, learned: false })} className="field-input h-9 !w-0 min-w-0 flex-1 !py-0 !text-sm" aria-label="Cupboard" data-testid={`shop-row-dest-${r.key}`}>
               {dests.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             <span className="shrink-0 font-mono text-xs text-[var(--muted)]" data-testid={`shop-row-weight-${r.key}`}>~{fmtWeight(r.unitW * (+r.qty || 0), units)}</span>

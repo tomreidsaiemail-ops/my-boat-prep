@@ -23,7 +23,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             {onBartender && <DropdownMenuItem onSelect={onBartender} data-testid="app-menu-bartender-item"><Martini className="mr-2 h-4 w-4" />Magic Bartender</DropdownMenuItem>}
             {onFish && <DropdownMenuItem onSelect={onFish} data-testid="app-menu-fish-item"><Fish className="mr-2 h-4 w-4" />Magic Fish Whisperer...</DropdownMenuItem>}
             {onShopScan && <DropdownMenuItem onSelect={onShopScan} data-testid="app-menu-shop-scan-item"><ShoppingBasket className="mr-2 h-4 w-4" />Batch Magic Scan My Shopping...</DropdownMenuItem>}
-            {onSyncStores && <DropdownMenuItem onSelect={onSyncStores} data-testid="app-menu-sync-stores-item"><RefreshCw className="mr-2 h-4 w-4" />Sync Food &amp; Drink Boat Areas Magically...</DropdownMenuItem>}
+            {onSyncStores && <DropdownMenuItem onSelect={onSyncStores} data-testid="app-menu-sync-stores-item"><RefreshCw className="mr-2 h-4 w-4" />Sync Food &amp; Drink Cupboards Magically...</DropdownMenuItem>}
             {onBuilder && <DropdownMenuItem onSelect={onBuilder} data-testid="app-menu-builder-item"><TableProperties className="mr-2 h-4 w-4" />Custom Attribute List Builder...</DropdownMenuItem>}
             {onImport && <DropdownMenuItem onSelect={onImport} data-testid="app-menu-import-item"><FileUp className="mr-2 h-4 w-4" />Import Spreadsheet...</DropdownMenuItem>}
             <DropdownMenuSeparator data-testid="app-menu-bartender-separator" />

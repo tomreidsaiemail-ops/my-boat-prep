@@ -39,7 +39,7 @@ export const MapColourPicker = ({ boat, map, maps, online, onMaps }) => {
             );
           })}
         </div>
-        <p className="mt-2 text-xs text-[var(--muted)]">Faded colours are already used by another zone map. Boat areas pinned on this map take its colour.</p>
+        <p className="mt-2 text-xs text-[var(--muted)]">Faded colours are already used by another zone map. Cupboards pinned on this map take its colour.</p>
       </PopoverContent>
     </Popover>
   );

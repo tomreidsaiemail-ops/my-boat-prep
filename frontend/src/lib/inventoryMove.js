@@ -1,7 +1,7 @@
 export const newAreaItemId = () => `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6).padEnd(4, "0")}`;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-// Moves picked cupboard items (whole or part quantities) and tagged checklist items out of one boat area.
+// Moves picked cupboard items (whole or part quantities) and tagged checklist items out of one cupboard.
 // Same-name items in the target area get the moved quantity added on.
 export const applyMove = (s, { sourceId, order, moves, links }) => {
   const areas = (s.areas || []).map((a) => ({ ...a, items: [...(a.items || [])] }));

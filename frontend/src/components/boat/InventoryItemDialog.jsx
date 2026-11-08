@@ -34,7 +34,7 @@ export const InventoryItemDialog = ({ open, item, areaId, areas = [], zones = {}
           <label className="flex flex-col gap-1"><span className="field-label">Quantity</span>
             <input type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className="field-input !w-32" data-testid="inventory-item-qty-input" /></label>
           {areas.length > 1 && here && (
-            <label className="flex flex-col gap-1"><span className="field-label">Boat area</span>
+            <label className="flex flex-col gap-1"><span className="field-label">Cupboard</span>
               <select value={target} onChange={(e) => setTarget(e.target.value)} className="field-input" data-testid="inventory-item-area-select">
                 <option value={here.id}>{here.name} (stays here)</option>
                 <TargetOptions groups={groupTargets(here, areas.filter((a) => a.id !== areaId), zones, areas.filter((a) => a.parent_id === areaId))} />

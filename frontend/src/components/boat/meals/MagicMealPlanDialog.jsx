@@ -11,7 +11,7 @@ import { magicMealName, uniqueName } from "@/lib/mealPlans";
 const MEALS = [["breakfast", "Breakfast"], ["lunch", "Lunch"], ["dinner", "Dinner"]];
 const AMOUNTS = [["under", "Under provision"], ["normal", "Normal"], ["over", "Over provision"]];
 
-// Names of everything in the Food (F) boat areas and the folders inside them.
+// Names of everything in the Food (F) cupboards and the folders inside them.
 const onBoardFood = (areas) => {
   const food = new Set(areas.filter((a) => a.food).map((a) => a.id));
   return [...new Set(areas.filter((a) => food.has(a.id) || food.has(a.parent_id)).flatMap((a) => (a.items || []).filter((i) => !i.removed).map((i) => i.name)))].slice(0, 200);
@@ -41,7 +41,7 @@ const Setup = ({ mode, form, set, boatDays, foodCount }) => (
       </div>
     </div>
     <input value={form.note} onChange={(e) => set({ note: e.target.value })} maxLength={300} placeholder={'Optional note, e.g. "Thai, easy one-pot"'} className="field-input font-normal" data-testid="magic-meals-note-input" />
-    {mode === "onboard" && <p className="text-sm" data-testid="magic-meals-food-count">{foodCount ? `${foodCount} foods from your Food (F) boat areas will be used first.` : "No food found in your Food (F) boat areas yet, so the plan will mostly need shopping."}</p>}
+    {mode === "onboard" && <p className="text-sm" data-testid="magic-meals-food-count">{foodCount ? `${foodCount} foods from your Food (F) cupboards will be used first.` : "No food found in your Food (F) cupboards yet, so the plan will mostly need shopping."}</p>}
   </div>
 );
 

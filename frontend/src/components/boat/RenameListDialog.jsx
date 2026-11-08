@@ -6,7 +6,7 @@ import { BulkMoveSection } from "@/components/boat/BulkMoveSection";
 
 const NO_MOVE = { area: "", ids: [] };
 
-// Edit List Panel: rename, describe, and move list contents to a boat area (when the boat has areas).
+// Edit List Panel: rename, describe, and move list contents to a cupboard (when the boat has areas).
 export const RenameListDialog = ({ list, areas = [], items = [], labelFor, areaOf, onConfirm, onClose, targets = [] }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -16,7 +16,7 @@ export const RenameListDialog = ({ list, areas = [], items = [], labelFor, areaO
   useEffect(() => { if (list) { setName(list.name); setDescription(list.description || ""); setMove(NO_MOVE); setBulk(null); setError(""); } }, [list]);
   const submit = (e) => {
     e.preventDefault();
-    if (move.area && !move.ids.length) { setError("Nothing is ticked to move. Tick the items to move, or clear the boat area."); return; }
+    if (move.area && !move.ids.length) { setError("Nothing is ticked to move. Tick the items to move, or clear the cupboard."); return; }
     if (bulk && !bulk.to) { setError("Choose the list to move the items to, or tap Don't bulk move."); return; }
     if (bulk && !bulk.ids.length) { setError("Nothing is ticked to move. Tick the items to move, or tap Don't bulk move."); return; }
     const res = onConfirm(name.trim(), description.trim(), move.area ? move : null, bulk);
