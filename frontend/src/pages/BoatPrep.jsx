@@ -257,7 +257,7 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(`${add.length} Boat Maintenance ${add.length === 1 ? "list" : "lists"} created. Review and correct each one.`);
   };
   const { setVessel } = boats;
-  useEffect(() => { setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
+  useEffect(() => { if (boat.vessel?.trim()) setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
   const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const areas = state.areas || [];

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ChevronDown, ChevronRight, ChevronUp, Fish, Martini, Ship, Sparkles } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
@@ -20,7 +21,7 @@ const MoreButton = ({ boat, onClick, btnRef }) => (
   </button>
 );
 
-const Field = ({ id, label, value, onChange, placeholder, type = "text" }) => (
+const Field = ({ id, label, value, onChange, onBlur, placeholder, type = "text" }) => (
   <label htmlFor={id} className="flex min-w-0 flex-col gap-1">
     <span className="field-label">{label}</span>
     <input
@@ -30,6 +31,7 @@ const Field = ({ id, label, value, onChange, placeholder, type = "text" }) => (
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
       className="field-input"
       autoComplete="off"
     />
@@ -62,6 +64,14 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
     return () => window.removeEventListener("mbp:open-details", show);
   }, []);
   const ready = !!(boat.make?.trim() && boat.model?.trim() && /^\d{4}$/.test(boat.year_built || ""));
+  // A boat that has a name never loses it: leaving the Vessel field blank puts the last name back.
+  const lastName = useRef("");
+  if (boat.vessel?.trim()) lastName.current = boat.vessel;
+  const keepName = () => {
+    if (boat.vessel?.trim() || !lastName.current) return;
+    onChange("vessel", lastName.current);
+    toast.info(`Every boat needs a name, so ${lastName.current} was put back`);
+  };
   // Closing without a zone map: remind once per close; "Not now" carries on as before.
   const closeMore = () => { setMore(false); if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.(); };
   const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
@@ -109,7 +119,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
         </button>
       )}
       <div className="grid grid-cols-2 gap-2.5">
-        <Field id="vessel" label="Vessel" value={boat.vessel} placeholder="Name..." onChange={(v) => onChange("vessel", v)} />
+        <Field id="vessel" label="Vessel" value={boat.vessel} placeholder="Name..." onChange={(v) => onChange("vessel", v)} onBlur={keepName} />
         <Field id="callsign" label="Callsign" value={boat.callsign} placeholder="Call..." onChange={(v) => onChange("callsign", v)} />
         <Field id="skipper" label="Skipper" value={boat.skipper} placeholder="Name..." onChange={(v) => onChange("skipper", v)} />
         <Field id="email" type="email" label="Email" value={boat.log_email || ""} placeholder="you@email.com" onChange={(v) => onChange("log_email", v)} />

@@ -13,7 +13,7 @@ import { apiError } from "@/lib/api";
 import { roleBriefings, roleGroups } from "@/lib/crewRoles";
 import { routeNotes } from "@/lib/routeNotes";
 
-export const nameOf = (b) => b.vessel?.trim() || "Unnamed boat";
+export const nameOf = (b) => b.vessel?.trim() || "New boat (add a name)";
 const BTN = "flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white active:scale-95 [transition:background-color_.15s,color_.15s,transform_.1s]";
 
 const BoatOption = ({ b }) => (

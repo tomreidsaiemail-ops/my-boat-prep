@@ -36,7 +36,7 @@ export default function useBoats(userId) {
       const server = data.boats.map(withKey);
       const ids = new Set(server.map((b) => b.key));
       const localOnly = local.filter((b) => !b.crew && !ids.has(b.key) && unsynced(b.key));
-      const merged = [...server, ...localOnly].map((b) => ({ ...b, vessel: read(stateKey(b.key), null)?.boat?.vessel ?? b.vessel }));
+      const merged = [...server, ...localOnly].map((b) => ({ ...b, vessel: read(stateKey(b.key), null)?.boat?.vessel?.trim() || b.vessel }));
       return merged.length ? merged : MAIN;
     });
     // Open the boat this skipper last used, on whichever phone that was.
@@ -68,6 +68,7 @@ export default function useBoats(userId) {
   const setVessel = useCallback((key, vessel) => patch(key, { vessel }), [patch]);
 
   const add = useCallback((fromState, vessel) => {
+    if (!vessel?.trim()) return;
     const id = `b${Date.now().toString(36)}`;
     localStorage.setItem(stateKey(id), JSON.stringify(copyBoatState(fromState, vessel)));
     localStorage.setItem(outboxKey(id), "1");
