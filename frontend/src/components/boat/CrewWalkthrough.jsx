@@ -34,7 +34,7 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
           <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · here's what's stowed in this spot.</DialogDescription>
         </DialogHeader>
-        <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins} areas={areas} highlight={step.pin.id}
+        <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <WalkStopContents area={area} areas={areas} />
         {onTick && (

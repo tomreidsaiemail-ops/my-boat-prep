@@ -1,0 +1,37 @@
+{
+  "summary": "Round 1 tested on the backend and on the frontend at mobile size (390x844). Backend: 10/10 pytest pass for walk-stops save/filter, walk_skip in /me/boats, crew agreement leaving out skipped stops, the 'walkthrough' field, quick accept (400 with no earlier walkthrough, 200 with one; agreement.quick/full_at saved; db.walkthroughs quick=true with the old full_at kept), full accept setting full_at=at, and register rows with at/full_at/quick. Frontend: the owner Walkthrough stops picker works (toggle, maps grouped, untick, save, count goes 3->2, toast). The crew agreement shows only the chosen stops (2 of 3). Start the walkthrough opens the walkthrough dialog. The 'I've seen X' tick syncs both ways with the agreement list. Escape and X before the last stop show 'Are you sure you want to exit the walkthrough?' with Keep going/Exit. Done on the last stop closes with no prompt. Pins show only after the img loads (0 before onload, 2 after). No walkthrough-prompt-dialog appears. The quick checkbox shows unticked with 'You did it 5 months ago (local date)'. Ticking it ticks every stop and accept works. The skipper badge reads 'Returning crew member opted for quick accept having done a full walk-through 5 months ago'. The register chip reads 'TEST_Kia Ora Walkthrough quick accept <local date/time> (full walk-through 5 months ago)'; a full accept shows the tick plus local date/time. The Interested parties hint is updated. The owner boat-details-organise-btn and crew-organise-btn both read 'Lists'.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew/agreement", "issue": "With quick=true and accept=false, the backend still ticks every stop (ticked = all_stops when walk exists). The frontend only sends quick together with accept, so this can't be reached from the UI today."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Quick accept loophole", "issue": "In CrewAgreementDialog, ticking agreement-quick-checkbox sets all stops ticked, but unticking it leaves them all ticked (pickQuick only fills on true). The crew member can then press accept as a normal full accept. That records quick=false and full_at=now, so a fresh 'complete walkthrough' is recorded without the walkthrough being done. Suggest restoring the earlier ticks (or clearing them) when quick is unticked.", "affected_selectors": ["[data-testid=agreement-quick-checkbox]", "[data-testid=agreement-accept-btn]"]}
+    ],
+    "design_issues": [
+      {"screen": "Crew page > Walkthrough stops picker", "issues": ["Map group headings use m.zone before m.name, so the two maps 'Galley' and 'Galley 2' (both zone 'Galley') both show the heading 'GALLEY'. Use the name, or zone + name, to tell them apart."]},
+      {"screen": "Walkthrough photo", "issues": ["Every pin on the photo is drawn, including stops the skipper left out (e.g. TEST_Under sink still shows on the Galley photo). This may be intended, but it can confuse crew; consider showing only included pins."]},
+      {"screen": "Walkthrough dialog", "issues": ["X/Escape on the last stop also asks 'Are you sure you want to exit' (only Done skips it). This is fine by the spec, just noting it."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_walk_stops_quick.py", "/app/test_reports/pytest/pytest_results_130.xml"],
+  "action_items": [
+    "CrewAgreementDialog: when the quick checkbox is unticked, put the earlier ticks back (or clear them) so crew can't accept a 'full' walkthrough they didn't do",
+    "Optional: WalkStopsPicker headings should show m.name (or zone + name) so maps sharing a zone can be told apart",
+    "Optional: in the walkthrough photo, hide pins for skipped stops"
+  ],
+  "critical_code_review_comments": [
+    "crew_agreement.save_walk_stops uses owned_boat(user, boat_id), so any user who has a boat with the same id (the free user also has 'main') saves to their own boat. That is correct, but there's no 404 when doc has no zone_maps (fine, doc is non-null after owned_boat).",
+    "record_walkthrough full_at expression `(prev or {}).get('full_at') or (prev or {}).get('at') if quick else now` relies on operator precedence. It is correct, but brackets would make it clearer.",
+    "last_walk treats any earlier walkthrough record (including a legacy Ship's Log signoff or an earlier quick accept) as qualifying, matching the user's choice; full_at is carried forward correctly."
+  ],
+  "updated_files": ["/app/backend/tests/test_walk_stops_quick.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested flows (1 logic loophole reported)"},
+  "seed_data_creation": "Temporarily put pins tg1/tg2 on map f634a094 (Galley) and th1 on map e7b33faf (Galley 2) of test-user-pro/main, and seeded db.walkthroughs for test-user-free with full_at 5 months ago. All of it is restored: pins cleared, walk_skip [], walkthroughs record deleted (there was none before), agreements.test-user-free reset to its original {stops:[],stops_total:0}, the auto-created crew_register entry for test.user.free (created during the test) deleted, and the stray walk_skip unset on test-user-free's own boat.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_walk_stops_quick.py seeds pins through the API and restores everything itself; run it with -n 0. The free user lands on the shared boat TEST_Kia Ora, and the agreement dialog opens automatically once per session (sessionStorage mbp_agreement_seen_*). After accept, a Crew Registration form auto-opens for the crew member (existing behaviour). The pro boat main has no zone-map pins by default."
+}

@@ -113,7 +113,7 @@ async def record_walkthrough(owner_id: str, boat_id: str, user: dict, quick: boo
     """Crew signed off the boat's Crew walkthrough (or quick-accepted after an earlier full one): keep it for their register badge, adding them to the skipper's register if they aren't on it."""
     key, now = email_key(user["email"]), datetime.now(timezone.utc).isoformat()
     prev = await db.walkthroughs.find_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0, "at": 1, "full_at": 1})
-    full_at = (prev or {}).get("full_at") or (prev or {}).get("at") if quick else now
+    full_at = ((prev or {}).get("full_at") or (prev or {}).get("at")) if quick else now
     await db.walkthroughs.update_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]},
                                      {"$set": {"email_key": key, "at": now, "full_at": full_at or now, "quick": quick}}, upsert=True)
     if not await db.crew_register.find_one({"owner_id": owner_id, "kind": "crew", "email_key": key}, {"_id": 1}):

@@ -54,7 +54,8 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const fullAt = !accepted && steps.length ? data.walkthrough?.full_at : null;
   const ready = steps.every((s) => ticked.includes(stopId(s)));
   const boatLines = (data.boat_terms || "").split("\n").map((l) => l.trim()).filter(Boolean).map((label) => ({ label }));
-  const pickQuick = (v) => { setQuick(v); if (v) setTicked(steps.map(stopId)); };
+  const [before, setBefore] = useState([]);
+  const pickQuick = (v) => { setQuick(v); if (v) { setBefore(ticked); setTicked(steps.map(stopId)); } else setTicked(before); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
 
   const save = async (accept) => {

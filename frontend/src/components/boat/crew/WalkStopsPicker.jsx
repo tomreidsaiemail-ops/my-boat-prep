@@ -9,7 +9,7 @@ const keyOf = (s) => `${s.pic.key}:${s.pin.id}`;
 
 // The skipper picks which labelled cupboards are stops on the crew's Zone Map Walk Through (all, to start).
 export const WalkStopsPicker = ({ boat, areas = [], online, onSaved }) => {
-  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, map: m, name: m.zone || m.name || "Zone map" })));
+  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, map: m, name: [m.zone, m.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ") || "Zone map" })));
   const [open, setOpen] = useState(false);
   const [skip, setSkip] = useState(boat.walk_skip || []);
   const [busy, setBusy] = useState(false);

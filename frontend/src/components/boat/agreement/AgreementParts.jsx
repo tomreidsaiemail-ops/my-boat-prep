@@ -5,7 +5,7 @@ import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { WalkStopContents } from "@/components/boat/CrewWalkthrough";
 
 // One Zone Map Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
-const Stop = ({ step, areas, ticked, onTick, n }) => {
+const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
   const [open, setOpen] = useState(false);
   const area = areas.find((a) => a.id === step.pin.area_id);
   return (
@@ -18,7 +18,7 @@ const Stop = ({ step, areas, ticked, onTick, n }) => {
         </button>
       </div>
       {open && <>
-        <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins} areas={areas} highlight={step.pin.id}
+        <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
         <WalkStopContents area={area} areas={areas} />
       </>}
@@ -33,7 +33,7 @@ export const AgreementWalkthrough = ({ steps, areas, ticked, onChange }) => {
   const toggle = (id) => onChange(ticked.includes(id) ? ticked.filter((x) => x !== id) : [...ticked, id]);
   return (
     <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="agreement-walkthrough">
-      {steps.map((s, n) => <Stop key={stopId(s)} step={s} n={n} areas={areas} ticked={ticked.includes(stopId(s))} onTick={() => toggle(stopId(s))} />)}
+      {steps.map((s, n) => <Stop key={stopId(s)} step={s} pins={s.pic.map.pins.filter((p) => steps.some((x) => x.pic.key === s.pic.key && x.pin.id === p.id))} n={n} areas={areas} ticked={ticked.includes(stopId(s))} onTick={() => toggle(stopId(s))} />)}
     </ul>
   );
 };

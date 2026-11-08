@@ -100,8 +100,8 @@ async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:
 async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_user)):
     doc = await crew_doc(user, payload.owner_id, payload.boat_id)
     all_stops = stop_ids(doc)
-    walk = await last_walk(payload.owner_id, payload.boat_id, user) if payload.quick else None
-    if payload.quick and not walk:
+    walk = await last_walk(payload.owner_id, payload.boat_id, user) if payload.quick and payload.accept else None
+    if payload.quick and payload.accept and not walk:
         raise HTTPException(status_code=400, detail="Quick accept is for crew who have done the complete walkthrough before")
     ticked = all_stops if walk else [s for s in dict.fromkeys(payload.stops) if s in all_stops]
     if payload.accept and len(ticked) < len(all_stops):
