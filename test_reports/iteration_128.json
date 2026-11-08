@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 128 (mobile 390x844, pro user test_session_pro_1, boat TEST_Kia Ora). Tested all 11 requested features in the browser except a real Magic AI scan; I checked that one by code review and spent 0 AI generations. Everything requested works. (1) Generic discard guard. Area edit dialog: Cancel, X, Escape and tap-outside all prompt after a change. Keep editing keeps the typed text. Discard closes without saving. With no change, or after typing the original value back, it closes with no prompt. Also verified the prompt on the Edit Item dialog (qty change), the Add folder/box TextDialog (typing straight into the autofocused field, then Cancel and tap-outside), the Move items dialog (unticking an item, then Escape; changing a target, then Cancel), the merge dialog (picking an option, then Cancel) and batch-area-form (Cancel and Escape). Additional details does NOT prompt (Escape and tap-outside). (2) Item delete opens inventory-item-delete-dialog: Keep keeps the item; Delete removes it and shows an Undo toast; Undo put the item back in its original spot. budget-delete-dialog opens and Keep cancels. (3) Print Cards: the confirm dialog has the right title and a cupboard count; Not now closes it with no download. (4) Merge dialog groups: 'Galley (this zone)', then a separator, Saloon, a separator, 'Not in a zone'. (5) Move and Edit Item selects use optgroups grouped by zone, and the Edit Item select starts with '<area> (stays here)'. (7) The where-is-it description is capped at 80 chars (80/80 counter), saves, and shows under the area name. (8) Batch scan with no photo: the 'No photo of X' prompt offers 'Create it empty'; the entry shows 'Empty cupboard', can be ticked and confirmed, and the empty area is created in the zone with its description. An existing name shows Add/Replace radios; ticking without picking one shows 'Choose whether to add to X or replace what's there'. (9) The year field sits above both buttons. An empty or 2-digit year gives the toast 'Please fill in Make, Model and Year of manufacture first'; a 4-digit year opens maint-setup-dialog. (10) No 'More options' button; the no-zone label shows its icon; + and ++ are visible. (11) Instructions lines 0-3 show the new wording. Backend: 4/4 pytest pass for GET /api/admin-lists (the help panel is there once with the 4 lines, unknown prefix gives 400, no auth gives 401).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin-lists", "issue": "Loads every custom template (to_list(1000)) and filters by prefix in Python. Fine for now, but a Mongo regex filter on name would scale better."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Move Boat Area Items dialog: reorder with the up/down arrows, then Cancel", "issue": "No discard prompt. The new order is saved on Confirm (order: rows.map(id)), so the user really loses a change. The snapshot only compares input/select values, and reordering doesn't change them. Fix: pass dirty={orderChanged || ...} to DialogContent in MoveAreaDialog.", "affected_selectors": ["move-row-down-0", "move-row-up-N", "move-area-cancel-btn"]},
+      {"flow": "Generic guard with Radix Checkbox/Select/Switch", "issue": "The snapshot only reads native input/textarea/select, so Radix Checkbox (button[role=checkbox]) and Select changes aren't seen. If these are the only change, closing does not prompt. Affected: MaintSetupDialog picks (maint-setup-pick-*) and CustomListBuilder column toggles (builder-col-*). Include [role=checkbox][data-state] / [role=combobox] in the snapshot, or pass dirty to those dialogs.", "affected_selectors": ["maint-setup-pick-*", "builder-col-*"]}
+    ],
+    "design_issues": [
+      {"screen": "Inventory instructions panel", "issues": ["Wording typos (probably the user's own copy): 'This will take you a feature' (missing 'to'), 'your boats schematic' (missing apostrophe). It's in the seeded admin list, so it can be edited in the admin templates."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter128_help_panel.py", "/app/test_reports/pytest/iter128.xml"],
+  "action_items": [
+    "MoveAreaDialog: mark the dialog dirty when the item order changes, so reorder + Cancel/X/Escape prompts.",
+    "dialog.jsx snapshot: also capture Radix checkbox/select state (e.g. [role=checkbox] data-state, [role=combobox] text), or pass dirty in MaintSetupDialog and CustomListBuilder.",
+    "Optional: ScanReviewDialog closes with no prompt straight after a paid Magic Scan if the user hasn't edited anything. Consider dirty={rows.length>0} so a costly AI result isn't thrown away by an accidental tap outside. QrScanDialog may need the same.",
+    "Optional: the guard takes its baseline lazily, on the first pointerdown/keydown. Values changed without a pointer/key event (autofill, dictation) are not seen as dirty. Consider snapshotting on open, after a rAF."
+  ],
+  "critical_code_review_comments": [
+    "dialog.jsx: isCancel catches any button inside the dialog whose text is Cancel/Close or whose testid ends in cancel-btn. That includes inline sub-form Cancels (e.g. an inline editor inside a dialog), which will also show 'Discard your changes?'. Harmless, but the wording may be odd for inline cancels.",
+    "ScanReviewDialog: 'existing' = scan.area.items.length counts items that are 'removed for now', so 'Replace all N items' can overstate the number of live items.",
+    "BatchScanDialog.existingFor searches all areas (folders/boxes included), but applyBatch only matches top-level areas (!parent_id). A batch name that matches a folder's name shows Add/Replace, yet a new top-level area gets created. Filter existingFor to top-level areas, as BatchAreaForm's AreaNamePicker already does.",
+    "applyQr add/replace logic checked: same-name items sum their qty (numbers come from checkRows); replace gives new ids. Correct."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter128_help_panel.py"],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "~95% (all requested flows pass; 2 guard gaps found outside the requested list)"},
+  "seed_data_creation": "I created TEST_Galley Empty, TEST_Galley Two and TEST_Saloon Empty (empty batch areas) and deleted them all afterwards; the final area list matches the original 9. Item 'Vodka' in TEST_Gantry was deleted and restored with Undo. Boat year_built was briefly set to 2015 and restored to empty (verified after reload). No AI generations used.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro user's current boat is TEST_Kia Ora (Beneteau Oceanis 38, year empty, zone map done; Galley has 2 zone photos so zone-dialog-galley-scan-btn exists, Saloon has none). ++ (inventory-batch-scan-btn) first shows a 'Batch Magic Scan one zone?' picker. Use click + keyboard.type, not fill(), to trigger the guard: fill() fires no pointerdown/keydown, so no baseline is taken. batch-entry-rows-error-N holds the Add/Replace missing-choice error. Area delete confirm is media-delete-dialog."
+}

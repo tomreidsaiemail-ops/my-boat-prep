@@ -20,6 +20,7 @@ export const MoveAreaDialog = ({ source, areas, zones = {}, links = [], onMove, 
   useEffect(() => { if (source) { setRows(toRows(source, links)); setExplicit({}); setOrdering(true); setError(""); } }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = source ? groupTargets(source, areas.filter((a) => a.id !== source.id), zones, areas.filter((a) => a.parent_id === source.id)) : [];
   const targets = groups.flatMap((g) => g.items);
+  const reordered = !!source && rows.map((r) => r.key).join() !== toRows(source, links).map((r) => r.key).join();
   let carry = targets[0]?.id;
   const effective = rows.map((r) => (carry = explicit[r.key] && targets.some((a) => a.id === explicit[r.key]) ? explicit[r.key] : carry));
   const picked = rows.filter((r) => r.pick);
@@ -48,7 +49,7 @@ export const MoveAreaDialog = ({ source, areas, zones = {}, links = [], onMove, 
 
   return (
     <Dialog open={!!source} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="move-area-dialog">
+      <DialogContent dirty={reordered} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="move-area-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Move className="h-5 w-5" /> Move Boat Area Items</DialogTitle>
           <DialogDescription className="text-sm" data-testid="move-area-description">

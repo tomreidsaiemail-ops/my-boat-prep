@@ -35,8 +35,12 @@ const keepForToast = (handler) => (e) => {
 
 // Unsaved-changes guard: what's typed or picked in the window is compared with how it looked before the first tap or key press.
 const skipField = (el) => el.type === "file" || el.type === "search" || el.readOnly || el.closest("[data-no-dirty]");
-const snapshot = (root) => [...root.querySelectorAll("input, textarea, select")].filter((el) => !skipField(el))
-  .map((el) => (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : el.value)).join("\u0001");
+const snapshot = (root) => [
+  ...[...root.querySelectorAll("input, textarea, select")].filter((el) => !skipField(el))
+    .map((el) => (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : el.value)),
+  ...[...root.querySelectorAll("[role=checkbox][data-state], [role=switch][data-state], [role=radio][data-state], [role=combobox]")].filter((el) => !el.closest("[data-no-dirty]"))
+    .map((el) => el.getAttribute("data-state") + (el.getAttribute("role") === "combobox" ? el.textContent : "")),
+].join("\u0001");
 const isCancel = (btn) => /^(cancel|close)$/i.test((btn.textContent || "").trim()) || /cancel-btn$/.test(btn.dataset.testid || "");
 
 const DiscardPrompt = ({ run, onKeep }) => (

@@ -697,3 +697,15 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## 2026-06 Zone Map Overviews schematic label
 - After "ZONE MAP OVERVIEWS (n)" the heading now shows "<MAKE> <MODEL> SCHEMATIC · <year> · <LOA unit>" from Additional Boat Details (ZoneMap.jsx schematicLabel; boat details passed BoatPrep -> InventoryList -> ZoneMap as `details`). Hidden if make/model empty. Crew view-only (unchanged permissions).
+
+## 2026-06 Safety & inventory round
+- Generic unsaved-changes guard in components/ui/dialog.jsx (DialogContent): Cancel/Close-labelled buttons, X, Escape, tap-outside prompt "Discard your changes?" when inputs (or Radix checkbox/select state) differ from the baseline taken at first tap/keypress. Props: guard={false} for live-save dialogs (AdditionalDetails, Organise, BatchScan has its own), dirty={bool} for explicit state (BatchAreaForm, MoveAreaDialog reorder, ScanReviewDialog with AI rows). data-no-dirty skips live-saved fields.
+- Delete prompts: inventory items, budget items (ConfirmDelete). Print Cards asks "This is a lengthy process, do you want to continue?".
+- lib/areaTargets.jsx groupTargets: folders of the area, then current zone, then other zones (Merge dialog with separators; Move/Edit Item selects with optgroups).
+- Magic scan review on a non-empty cupboard: Add (counts add up via applyQr) or Replace. Batch entries matching an existing top-level area must choose Add/Replace.
+- Boat area `where` (80 chars) via AreaEditDialog (pencil) and batch form; shown under the area name.
+- Batch scan without photo -> confirm, creates empty cupboard.
+- Year of manufacture above the Create buttons; Make+Model+Year required for Zone Map Overviews and Maintenance lists (year already sent to AI).
+- ZonePicker: no More options; "Add a box without a zone (zone assign later with [icon])".
+- Help panel "Admin - Help Panel - How to take your boat inventory" seeded (migration inventory_help), rendered in InventoryInstructions with default fallback.
+- Tested: iteration_128 (all pass), follow-up fixes self-tested.

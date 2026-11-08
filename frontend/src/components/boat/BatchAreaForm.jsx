@@ -23,7 +23,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
   const reset = () => { setName(""); setBlob(null); setPreview(""); setError(""); setWhere(""); setNoPhoto(""); };
   useEffect(() => { if (open) reset(); }, [open]);
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
-  const clash = name.trim() && existing.find((a) => same(a.name, name));
+  const clash = name.trim() && existing.find((a) => !a.parent_id && same(a.name, name));
 
   const pick = async (e) => {
     const file = e.target.files?.[0];

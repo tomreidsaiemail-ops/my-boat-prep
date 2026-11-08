@@ -28,7 +28,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
   const [form, setForm] = useState(true);
   const [doomed, setDoomed] = useState(null);
   const [discard, setDiscard] = useState(false);
-  const existingFor = (name) => areas.find((a) => same(a.name, name));
+  const existingFor = (name) => areas.find((a) => !a.parent_id && same(a.name, name));
   const full = entries.length >= BATCH_MAX;
   const ready = entries.length > 0 && entries.every((e) => e.ticked);
 
