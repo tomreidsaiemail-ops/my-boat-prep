@@ -61,7 +61,7 @@ export const CrewRegistrationPrompt = () => {
 
   return (
     <Dialog open onOpenChange={(o) => !o && (done ? next() : notNow())}>
-      <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-reg-dialog">
+      <DialogContent key={done ? "done" : req?.entry_id} guard={!done} className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-reg-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">{done ? "Thank you for registering" : "Crew Registration"}</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-reg-intro">

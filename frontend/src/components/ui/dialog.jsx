@@ -40,7 +40,7 @@ const snapshot = (root) => [
     .map((el) => (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : el.value)),
   ...[...root.querySelectorAll("[role=checkbox][data-state], [role=switch][data-state], [role=radio][data-state], [role=combobox]")].filter((el) => !el.closest("[data-no-dirty]"))
     .map((el) => el.getAttribute("data-state") + (el.getAttribute("role") === "combobox" ? el.textContent : "")),
-].join("\u0001");
+];
 const isCancel = (btn) => /^(cancel|close)$/i.test((btn.textContent || "").trim()) || /cancel-btn$/.test(btn.dataset.testid || "");
 
 const DiscardPrompt = ({ run, onKeep }) => (
@@ -62,14 +62,16 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
   const [ask, setAsk] = React.useState(null);
   const s = React.useRef({}).current;
   s.guard = guard; s.dirty = dirty; s.ask = ask; s.ref = ref;
-  const isDirty = () => s.guard && !s.pass && !!s.box && (!!s.dirty || (s.base != null && snapshot(s.box) !== s.base));
+  // A window with no fields left (e.g. a success screen) has nothing to lose.
+  const changed = () => { if (s.base == null) return false; const now = snapshot(s.box); return now.length > 0 && now.join("\u0001") !== s.base; };
+  const isDirty = () => s.guard && !s.pass && !!s.box && (!!s.dirty || changed());
   const again = (fn) => () => { s.pass = true; try { fn(); } finally { s.pass = false; } };
   const closeNow = again(() => s.close?.click());
   const setBox = React.useCallback((el) => {
     if (typeof s.ref === "function") s.ref(el); else if (s.ref) s.ref.current = el;
     if (!el || el === s.box) return;
     s.off?.(); s.box = el; s.base = null;
-    const start = () => { if (s.base == null) s.base = snapshot(el); };
+    const start = () => { if (s.base == null) s.base = snapshot(el).join("\u0001"); };
     const click = (e) => {
       const btn = e.target.closest?.("button");
       if (!btn || btn === s.close || !el.contains(btn) || !isCancel(btn) || !isDirty()) return;
