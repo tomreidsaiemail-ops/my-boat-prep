@@ -93,6 +93,7 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose, 
   const speakDo = (p) => {
     if (p.put) { setMode("add"); setItems((l) => merge(l, [p.put])); return; }
     const hit = stock.find((i) => i.id === p.take.id);
+    if (!hit) return;
     setMode("out"); setOut((o) => ({ ...o, [hit.id]: Math.min(qtyOf(hit), (o[hit.id] || 0) + p.take.qty) }));
   };
   const ready = items.filter((i) => i.name.trim());
@@ -138,6 +139,8 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose, 
               onClick={() => input.current?.click()} disabled={busy} data-testid="qr-scan-photo-btn">
               {busy ? <><Loader2 className="h-7 w-7 animate-spin" /> Magic Scanning...</> : <><Camera className="h-7 w-7" /> {mode === "out" ? "Photo what you're taking out" : photos ? "Take another photo" : "Take a photo"}</>}
             </button>
+            <SpeakButton plan={speakPlan} onConfirm={speakDo} label={mode === "out" ? `Speak, e.g. "Remove milk"` : `Speak, e.g. "Add cheese"`}
+              examples={mode === "out" ? ["Remove milk", "Take out 2 eggs"] : ["Add cheese", "Put 2 milk"]} className="btn-ghost h-12 justify-center gap-2" testId="qr-speak" />
             {mode === "out" ? <OutList stock={stock} out={out} setOut={setOut} /> : (
               <>
                 {items.length > 0 && (
@@ -154,8 +157,6 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose, 
                 <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={() => setItems((l) => [...l, { key: `${Date.now()}`, name: "", qty: 1 }])} data-testid="qr-scan-add-row-btn"><Plus className="h-4 w-4" /> Add an item by hand</button>
               </>
             )}
-            <SpeakButton plan={speakPlan} onConfirm={speakDo} label={mode === "out" ? `Speak, e.g. "Remove milk"` : `Speak, e.g. "Add cheese"`}
-              examples={mode === "out" ? ["Remove milk", "Take out 2 eggs"] : ["Add cheese", "Put 2 milk"]} className="btn-ghost h-12 justify-center gap-2" testId="qr-speak" />
             <div className="sticky bottom-0 -mx-4 -mb-4 flex gap-2 border-t border-[var(--line)] bg-white p-3">
               <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} disabled={busy} data-testid="qr-scan-cancel-btn">Cancel</button>
               <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={busy || (mode === "out" ? !taken : !ready.length)} onClick={save} data-testid="qr-scan-save-btn">

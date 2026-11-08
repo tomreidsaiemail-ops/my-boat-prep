@@ -1,0 +1,32 @@
+{
+  "summary": "Round 2 voice/help/batch-zone/QR features tested only on the frontend, with Playwright at 390x844 and window.__mbpFakeSpeech. Owner pro (TEST_Kia Ora): home-speak-btn sits to the right of boat-details-batch-scan-btn and the old batch-scan-help icon is gone. Every home speak command gave the expected result. 'put 2 cheese into the fridge' showed 'Put 2 Cheese into Fridge?' and OK added it, then 'remove cheese from fridge' showed 'Remove 1 Cheese from Fridge?'. The DB showed Cheese at qty 1 after the remove. The wardrobe, unicorn and gibberish errors appeared with examples. The galley phrase showed 'Batch Magic Scan the Galley – Orange?' and OK opened batch-scan-dialog for the Galley. The Batch Magic Scan button opens batch-zone-prompt 'Add Cupboards By ZONE' with 9 zone options. Its help collapses and the closed state is remembered (localStorage mbp_batch_help_closed). The scan button stays disabled until a zone is picked, and Saloon then opened the Saloon batch-scan dialog. Help submenu: 'Batch Magic Scan...' comes first, then 7 other panels, and help-dialog lines and the Done button work. QR window (via /?scan_area=<fridge id>&b=main&o=test-user-pro): exactly 2 radios with Add (put) as default, an empty item-0 row, 'add cheese' adds a Cheese row, and 'remove 2 broccoli' sets the take-out to -2. 'remove unicorn' gives 'There is no unicorn in Fridge.', the sync tip shows only in Remove mode, and qr-scan-sync-btn closes the QR window and opens stores-sync-dialog. Crew (free): crew-speak-btn sits next to crew-organise-btn. The non-food 'port locker' gives the 'is not a cupboard' error, and Fridge commands work. One real mobile bug: the Help submenu is mostly off-screen.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AppMenu > Help submenu (HelpMenu.jsx DropdownMenuSubContent)", "issue": "At 390px width the cascaded submenu opens at x=321 and is 256px wide, so its right edge is at 577px, beyond the 390px viewport. Only about 69px shows and item titles are cut off ('Batch Ma', 'How To T'...). Radix can't flip it left because the main menu is 288px wide. Fix: on mobile, show the help items inline or as an accordion inside the main menu, or open a help-list dialog. Another option is a narrower w-[calc(100vw-2rem)] with side='bottom'/collisionPadding.", "selector": "[data-testid='app-menu-help-submenu']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home boat details row (390px)", "issues": ["The 'Batch Magic Scan...' pill text overflows slightly (scrollWidth 102 > clientWidth 97) and 'Scan...' looks clipped at the right edge."]},
+      {"screen": "QR window Remove mode", "issues": ["With a long cupboard list (17 Fridge items) the qr-speak-btn ends up below the whole list. The user has to scroll to reach Speak. Consider putting it next to the photo button."]},
+      {"screen": "Crew speak", "issues": ["Crew saying 'batch magic scan the galley' gets '\"galley\" isn't one of your zones.' This is misleading. Crew can't batch scan, so say something like 'Only the skipper can Batch Magic Scan'."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make the Help submenu usable on mobile: it currently renders mostly off-screen at 390px.",
+    "Optional: better crew error for batch voice commands, and a slightly wider/shorter Batch Magic Scan pill label."
+  ],
+  "critical_code_review_comments": [
+    "voiceCommand.findCupboard: the fallback `n.includes(a.name.toLowerCase())` can match a short cupboard name (e.g. 'Bin') inside a longer spoken name and pick the wrong cupboard. Prefer exact matches, then the longest name match.",
+    "voiceCommand.planCommand batch zone matching only matches the full zone label or colour. A partial phrase like 'heads' for 'Heads aft' fails. Consider x.label.toLowerCase().includes(c.zone).",
+    "QrScanDialog.speakDo: `hit` from stock.find can be undefined if stock changes between plan and OK, which would throw. Add a guard.",
+    "Home remove via voice leaves the item listed as removed (qty 0, removed:true). This matches the existing QR behaviour, but the toast doesn't mention it."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "~95% (all requested flows pass; 1 mobile layout bug in Help submenu)"},
+  "seed_data_creation": "None. 2 Cheese were added to the pro boat 'main' Fridge by voice and then removed by voice twice, leaving a removed qty-0 Cheese item. That one item (id mw8f2z85hsqor) was $pulled from the DB, so Fridge is back to its original 17 items. QR window and crew tests saved nothing (cancelled).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Fake speech: page.evaluate(\"p => { window.__mbpFakeSpeech = p }\", phrase), then click <testId>-speak-btn. The dialog ids are home-speak-*, qr-speak-* and crew-speak-*. Fridge area id on the pro boat main is amw1pvdq802hq, and the QR URL is /?scan_area=amw1pvdq802hq&b=main&o=test-user-pro. TEST_Port Locker (amvr1vpa6f5jn) is a non-food cupboard. For crew, skip the agreement dialog with init script sessionStorage mbp_agreement_seen_test-user-pro_main=1. Zones on main: cockpit, saloon, galley, nav-station, forward-cabin, starboard-aft-cabin, heads-aft, lazarett, transom."
+}

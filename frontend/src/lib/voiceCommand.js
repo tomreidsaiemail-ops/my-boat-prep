@@ -35,15 +35,18 @@ export const parseItem = (heard, mode) => {
 const findCupboard = (areas, name) => {
   const n = name.toLowerCase();
   const tops = areas.filter((a) => !a.parent_id);
-  return tops.find((a) => a.name.toLowerCase() === n) || tops.find((a) => a.name.toLowerCase().includes(n) || n.includes(a.name.toLowerCase()));
+  const low = (a) => a.name.toLowerCase();
+  return tops.find((a) => low(a) === n) || tops.find((a) => low(a).includes(n))
+    || tops.filter((a) => n.includes(low(a))).sort((a, b) => b.name.length - a.name.length)[0];
 };
 
 // What a command would do, or an error to show; `run(areas)` applies it to the cupboards.
-export const planCommand = (heard, areas, zones = []) => {
+export const planCommand = (heard, areas, zones = [], crew = false) => {
   const c = parseCommand(heard);
   if (!c) return { error: `Sorry, I couldn't make sense of "${heard}".` };
   if (c.kind === "batch") {
-    const z = zones.find((x) => x.label.toLowerCase() === c.zone || c.zone.includes(x.label.toLowerCase()) || c.zone.includes(x.colour.toLowerCase()));
+    if (crew) return { error: "Only the skipper can Batch Magic Scan. You can say \"remove milk from fridge\" or \"put milk into fridge\"." };
+    const z = zones.find((x) => x.label.toLowerCase() === c.zone || c.zone.includes(x.label.toLowerCase()) || x.label.toLowerCase().includes(c.zone) || c.zone.includes(x.colour.toLowerCase()));
     if (!z) return { error: `"${c.zone}" isn't one of your zones${zones.length ? ` (${zones.map((x) => x.label).join(", ")})` : ""}.` };
     return { message: `Batch Magic Scan the ${z.label} – ${z.colour}?`, batch: z };
   }

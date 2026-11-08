@@ -181,7 +181,7 @@ export default function BoatPrep({ boatId, boats }) {
   const speakPlan = (text) => {
     const list = state.areas || [];
     const fd = new Set(list.filter((a) => !a.parent_id && (a.food || a.drinks)).map((a) => a.id));
-    return planCommand(text, crew ? list.filter((a) => fd.has(a.id)) : list, crew ? [] : boatZones(boats.current));
+    return planCommand(text, crew ? list.filter((a) => fd.has(a.id)) : list, crew ? [] : boatZones(boats.current), crew);
   };
   const speakDo = (p) => {
     if (p.batch) { startBatchScan(p.batch); return; }
