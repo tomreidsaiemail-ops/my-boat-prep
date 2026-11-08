@@ -1,0 +1,36 @@
+{
+  "summary": "Charter Boat ROUND 2 (Charter Return) tested end to end. Backend: test_charter_round1.py 20/20 passed. It covers the owner-only /return (404 for another user, 400 when already returned), the unlock, the 'Charter skipper <name>:' entries in shipsLog/myTodo and pushed_items, the read-only copy (PUT ignored, crew endpoints 423) and the lazy delete after 7 days. Thank-you emails really went out (Emergent email returned 202, emailed=true). Frontend at 390x844 on two real past-dated charters (2026-01-01 to 2026-01-07) handed from pro main to beta. Owner: the lock banner showed the overdue reminder and End charter. Ticking while locked was blocked with a toast. Crew dialog -> Charter Registrations showed the HANDED OVER row with charter-row-overdue. End charter -> confirm dialog -> success toast ('1 Ship's Log entry and 1 To Do item ... We emailed ... a thank-you') -> row changed to RETURNED with the charter-row-returned text, and the End button was gone. Ending from the banner removed the banner without a reload. Ship's Log and My To Do List showed the 'Charter skipper TEST_Beta Skipper: ...' entries straight away, and ticking worked again. Charter skipper (beta): the returned copy showed charter-ended-banner and no terms dialog. Ticking or adding a Ship's Log entry showed the toast 'This charter has ended – the charter copy is read only', changed nothing and sent no PUT /api/me/boat. No functional bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/charters/{id}/return", "issue": "charter_entries() resolves id clashes with `iid + 1`. If a copied item has a string id that clashes, this raises TypeError (500). Today the ids are numbers (Date.now), so this is only a hardening note."},
+      {"endpoint": "POST /api/charters/{id}/return", "issue": "Status is set to 'returned' before the owner's boat is unlocked and the entries are merged. If the later update_one fails, the charter can't be ended again: the boat stays locked and the logs are not brought back. Do the owner update first, or allow a retry."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Boat selector trigger (mobile 390)", "issues": ["On a charter copy the trigger shows only the 'CHARTER SKIPPER' badge; the vessel name is cut off completely. The same happens for the owner with the 'ON CHARTER' badge ('TEST_K...')."]},
+      {"screen": "Boat switcher option for a returned copy", "issues": ["It still shows the 'Charter skipper' badge. A 'Charter ended' or read-only badge would be clearer."]},
+      {"screen": "Charter Registrations form", "issues": ["Uses the browser's native date pickers (input type=date) instead of the shadcn calendar (carried over from round 1)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_charter_round1.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: make charter_entries id clash handling type-safe (string ids)",
+    "Optional: in end_charter, unlock and merge the owner's boat before marking the charter returned, or make the end idempotent or retryable",
+    "Optional: keep the vessel name visible in the mobile boat selector trigger when a charter badge is shown; show 'Charter ended' for returned copies"
+  ],
+  "critical_code_review_comments": [
+    "charter.py end_charter: the status flip and the owner update are not atomic, so a partial failure leaves the boat locked with no way to end the charter again.",
+    "charter.py list_charters: the lazy delete runs only when the owner opens Charter Registrations. Otherwise the TTL index removes the copy but the charter doc keeps status 'returned' until the owner next lists. Acceptable.",
+    "Frontend is clean: CharterTermsDialog is not rendered for returned copies (BoatPrep.jsx:902), the useBoatStore lockRef read-only toast works, and EndCharter dispatches mbp:refresh-boat."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Made 2 TEST charters (TEST_Beta Skipper, pro main -> beta, 2026-01-01 to 2026-01-07) plus copies chb8f12ea7fe98 and ch05cc8a1349e0 with TEST_UI log/todo entries. All cleaned up afterwards: the charters and copies were deleted by charter_id, charter_lock was unset on pro main, and the 'Charter skipper TEST_Beta Skipper' entries and pushed_items were pulled. db.charters for test-user-pro is now 0, as are the copies.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To set up for the UI: POST /api/charters (pro, boat main, beta email, past dates), POST /handover, GET /api/boats as beta (claims the copy), then GET+PUT /api/me/boat?boat_id=<copy> as beta with data.shipsLog/myTodo items (drop boat_id/owner_id/role/synced_at from the body). The list selector uses list-option-<id> (shipsLog, myTodo, head). The boat selector uses boat-option-<key>, where the copy key is ch<charter_id[:12]>. Ticks use checklist-item-toggle-<id>."
+}

@@ -228,8 +228,10 @@ def charter_entries(items: list, name: str, taken: set) -> list:
         if not (i.get("label") or "").strip():
             continue
         iid = i.get("id")
-        while iid in taken or iid is None:
-            iid = (iid or int(datetime.now(timezone.utc).timestamp() * 1000)) + 1
+        if iid is None or iid in taken:
+            iid = int(datetime.now(timezone.utc).timestamp() * 1000)
+            while iid in taken:
+                iid += 1
         taken.add(iid)
         out.append({**i, "id": iid, "label": f"Charter skipper {name}: {i['label'].strip()}", "charter": name})
     return out
@@ -250,11 +252,6 @@ async def end_charter(charter_id: str, user: dict = Depends(get_current_user)):
     if c["status"] != "handed_over":
         raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")
     now = datetime.now(timezone.utc)
-    done = await db.charters.update_one({"charter_id": charter_id, "status": "handed_over"},
-                                        {"$set": {"status": "returned", "returned_at": now.isoformat(), "delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat()},
-                                         "$unset": {"copy_state": ""}})
-    if not done.modified_count:
-        raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")
     copy = await db.user_boats.find_one({"owner_id": c.get("copy_owner"), "boat_id": c.get("copy_boat_id")}, {"_id": 0, "data.shipsLog": 1, "data.myTodo": 1}) if c.get("copy_owner") else None
     own = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": c["boat_id"]}, {"_id": 0, "data.shipsLog": 1, "data.myTodo": 1})
     taken = {i.get("id") for k in ("shipsLog", "myTodo") for i in ((own or {}).get("data") or {}).get(k) or []}
@@ -266,7 +263,13 @@ async def end_charter(charter_id: str, user: dict = Depends(get_current_user)):
     upd = {"$unset": {"charter_lock": ""}, "$set": {"updated_at": now.isoformat()}}
     if push:
         upd["$push"] = push
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"]}, upd)
+    # Unlock and merge first (only while this charter holds the lock), so a failure part-way can simply be retried.
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"], "charter_lock.charter_id": charter_id}, upd)
+    done = await db.charters.update_one({"charter_id": charter_id, "status": "handed_over"},
+                                        {"$set": {"status": "returned", "returned_at": now.isoformat(), "delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat()},
+                                         "$unset": {"copy_state": ""}})
+    if not done.modified_count:
+        raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")
     if copy:
         await db.user_boats.update_one({"owner_id": c["copy_owner"], "boat_id": c["copy_boat_id"]},
                                        {"$set": {"charter.returned_at": now.isoformat(), "charter.delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat(),

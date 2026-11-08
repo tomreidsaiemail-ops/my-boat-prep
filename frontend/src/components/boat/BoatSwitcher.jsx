@@ -20,10 +20,12 @@ const BTN = "flex h-12 w-12 shrink-0 items-center justify-center rounded-md bord
 const BoatOption = ({ b }) => (
   <span className="flex min-w-0 items-center gap-2">
     <BoatPhoto boat={b} size="h-8 w-8" />
-    <span className="min-w-0 truncate">{nameOf(b)}</span>
+    <span className="min-w-[5rem] truncate">{nameOf(b)}</span>
     {b.crew && <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase text-sky-900">Crew</span>}
-    {b.charter && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-900" data-testid="boat-charter-skipper-badge">Charter skipper</span>}
-    {b.charter_lock && <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold uppercase text-slate-800" data-testid="boat-on-charter-badge">On charter</span>}
+    {b.charter && (b.charter.returned_at
+      ? <span className="min-w-0 truncate rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold uppercase text-slate-800" data-testid="boat-charter-ended-badge">Charter ended</span>
+      : <span className="min-w-0 truncate rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-900" data-testid="boat-charter-skipper-badge">Charter skipper</span>)}
+    {b.charter_lock && <span className="min-w-0 truncate rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold uppercase text-slate-800" data-testid="boat-on-charter-badge">On charter</span>}
   </span>
 );
 
