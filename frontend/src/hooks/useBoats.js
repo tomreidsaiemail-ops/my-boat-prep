@@ -88,5 +88,13 @@ export default function useBoats(userId) {
     setBoats((list) => list.filter((x) => x.key !== b.key));
   }, []);
 
-  return { boats, activeId: current, current: currentBoat, select, setVessel, patch, add, remove, refresh };
+  // Deleted boats wait 7 days on the server; bringing one back reloads the list and opens it.
+  const restore = useCallback(async (boatId) => {
+    const { data } = await api.post(`/me/deleted-boats/${boatId}/restore`, null, { timeout: 15000 });
+    await refresh();
+    select(boatId);
+    return data;
+  }, [refresh, select]);
+
+  return { boats, activeId: current, current: currentBoat, select, setVessel, patch, add, remove, restore, refresh };
 }

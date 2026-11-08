@@ -55,6 +55,7 @@ import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
+from boat_trash import router as boat_trash_router, trash_boat  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
 from maint_ai import router as maint_ai_router  # noqa: E402
 from stores_ai import router as stores_ai_router  # noqa: E402
@@ -440,6 +441,7 @@ async def delete_boat(boat_id: Annotated[str, PathParam(pattern=ID_PATTERN)], us
         raise HTTPException(status_code=404, detail="Boat not found")
     if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
         raise HTTPException(status_code=400, detail="You need at least one boat")
+    await trash_boat(owner_id, boat_id)
     await db.user_boats.delete_one({"owner_id": owner_id, "boat_id": boat_id})
     await db.crew_invites.delete_many({"owner_id": owner_id, "boat_id": boat_id})
     return {"ok": True}
@@ -559,6 +561,7 @@ app.include_router(folder_cards_router)
 app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)
+app.include_router(boat_trash_router)
 app.include_router(paper_log_router)
 app.include_router(ai_lists_router)
 app.include_router(maint_ai_router)
@@ -613,6 +616,8 @@ async def create_indexes():
         await db.user_boats.drop_index("owner_id_1")
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
+    await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
+    await db.deleted_boats.create_index([("owner_id", 1), ("boat_id", 1)])
     await db.crew_invites.create_index("token_hash", unique=True)
     await db.crew_invites.create_index("email_key")
     await db.crew_register.create_index("entry_id", unique=True)

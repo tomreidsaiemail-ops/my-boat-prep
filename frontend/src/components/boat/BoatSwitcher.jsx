@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TextDialog } from "@/components/boat/TextDialog";
+import { DeletedBoats } from "@/components/boat/DeletedBoats";
 import { BoatPhoto } from "@/components/boat/BoatPhoto";
 import { CrewDialog } from "@/components/boat/CrewDialog";
 import { apiError } from "@/lib/api";
@@ -61,9 +62,21 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
     setDeleting(false);
     if (!online) { toast.error(cur.crew ? "Go online to leave a boat" : "Go online to delete a boat"); return; }
     const next = boats.boats.find((b) => b.key !== cur.key && !b.crew) || boats.boats.find((b) => b.key !== cur.key);
-    try { await boats.remove(cur); boats.select(next.key); toast.success(cur.crew ? `You've left ${currentName}` : `${currentName} deleted`); }
+    const gone = { boat_id: cur.boat_id, name: currentName };
+    try {
+      await boats.remove(cur); boats.select(next.key);
+      if (cur.crew) toast.success(`You've left ${currentName}`);
+      else toast.success(`${currentName} deleted. You can bring it back for 7 days from Add a boat (+).`, {
+        duration: 10000, action: { label: "Undo", onClick: () => bringBack(gone) },
+      });
+    }
     catch (e) { toast.error(apiError(e, "Couldn't do that, please try again")); }
   };
+  const bringBack = async (b) => {
+    try { await boats.restore(b.boat_id); toast.success(`${b.name || b.vessel || "Your boat"} is back`); }
+    catch (e) { toast.error(apiError(e, "Couldn't bring it back, please try again")); }
+  };
+  const restoreFromList = async (b) => { await boats.restore(b.boat_id); setAdding(false); toast.success(`${b.vessel || "Your boat"} is back`); };
 
   return (
     <div className="flex items-center gap-2" data-testid="boat-switcher">
@@ -89,7 +102,9 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
       )}
       <TextDialog open={adding} title="Add a boat" confirmLabel="Add boat" testId="add-boat" placeholder="Vessel name (e.g., Bacchus)"
         description={`Starts with a copy of ${currentName}'s lists, all unticked. Ship's Log, My To Do List, engine hours and callsign start empty.`}
-        onConfirm={confirmAdd} onClose={() => setAdding(false)} />
+        onConfirm={confirmAdd} onClose={() => setAdding(false)}>
+        <DeletedBoats open={adding} online={online} onRestore={restoreFromList} />
+      </TextDialog>
       {!cur.crew && (
         <CrewDialog open={crewOpen} boat={cur} name={currentName} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
@@ -99,7 +114,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display text-xl font-extrabold">{cur.crew ? `Leave ${currentName}?` : `Delete ${currentName}?`}</AlertDialogTitle>
             <AlertDialogDescription className="text-left text-sm text-[var(--navy)]">
-              {cur.crew ? "The boat disappears from your phone. The skipper can invite you again." : "All of this boat's lists, Ship's Log, engine hours, photo and crew are removed from this phone and the cloud. Your other boats are not changed."}
+              {cur.crew ? "The boat disappears from your phone. The skipper can invite you again." : "All of this boat's lists, Ship's Log, engine hours, photo and crew are removed from this phone and the cloud. You can bring it back within 7 days from Add a boat (+). Your other boats are not changed."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {guarded && (
