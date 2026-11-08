@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardList, Clock, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
+import { Anchor, ClipboardList, Clock, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
 import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
 import { WalkStopsPicker } from "@/components/boat/crew/WalkStopsPicker";
+import { CharterDialog } from "@/components/boat/charter/CharterDialog";
 import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
 import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
@@ -49,9 +50,10 @@ const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip }) => {
+export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
+  const [chartering, setChartering] = useState(false);
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
   const [editing, setEditing] = useState(null);
   const [rota, setRota] = useState(false);
@@ -123,6 +125,12 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
           <ClipboardList className="h-4 w-4" /> Crew Registration
         </button>
+        {!boat?.charter && (
+          <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setChartering(true) : toast.error("Go online to open Charter Registrations"))} data-testid="charter-open-btn">
+            <Anchor className="h-4 w-4" /> Charter Registrations
+          </button>
+        )}
+        {chartering && <CharterDialog open boat={boat} vessel={name} online={online} onClose={() => setChartering(false)} onHandedOver={onCharterChange} />}
         <WalkStopsPicker boat={boat} areas={areas} online={online} onSaved={onWalkSkip} />
         <div className="flex gap-2">
           <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">

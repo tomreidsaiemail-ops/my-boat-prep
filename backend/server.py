@@ -56,6 +56,7 @@ from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
 from ai_scan import router as ai_scan_router  # noqa: E402
 from boat_trash import router as boat_trash_router, trash_boat  # noqa: E402
+from charter import router as charter_router, claim_charters  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
 from maint_ai import router as maint_ai_router  # noqa: E402
 from stores_ai import router as stores_ai_router  # noqa: E402
@@ -354,6 +355,9 @@ async def get_boat(user: dict = Depends(get_current_user), boat_id: BoatId = "ma
 async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
     key, role = await boat_access(user, boat_id, owner)
     prev = await db.user_boats.find_one(key, {"_id": 0})
+    if prev and prev.get("charter_lock"):
+        # Out on charter: the owner's boat stays exactly as handed over until the charter ends.
+        return to_out(BoatState(**key, **{f: prev.get(f) for f in STATE_FIELDS if prev.get(f) is not None}, synced_at=prev.get("synced_at") or prev.get("updated_at")), role)
     if role == "crew":
         if not prev:
             raise HTTPException(status_code=404, detail="Boat not found")
@@ -418,12 +422,14 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
         "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
         "zone_maps": boat_maps(d), "walk_skip": d.get("walk_skip") or [],
+        "charter_lock": d.get("charter_lock"), "charter": d.get("charter"),
     }
 
 
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
+    await claim_charters(user)
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
@@ -562,6 +568,7 @@ app.include_router(photos_router)
 app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(boat_trash_router)
+app.include_router(charter_router)
 app.include_router(paper_log_router)
 app.include_router(ai_lists_router)
 app.include_router(maint_ai_router)

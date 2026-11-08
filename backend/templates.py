@@ -405,11 +405,25 @@ INVENTORY_HELP = [
         "for your Galley cupboards like Dry Storage Locker, but you can add your own."]),
 ]
 
+CHARTER_ADMIN = [
+    ("Admin - charter lists to hand over", "Lists copied onto a charter boat when the owner hands it over (one list name per line). Boat Maintenance lists are never copied, "
+     "My To Do List and Ship's Log are always copied empty, and any owner list starting \"Charter - \" is always copied.", [
+        "Leaving Dock", "Returning to Dock", "Arriving at Destination", "Safety", "Rigging Checks", "Route Planning", "Crew Prep", "Provisions",
+        "Meal Plan", "Head (Toilet)", "My To Do List", "Ship's Log", "Grab Bag", "Mayday", "Pan-Pan", "Crew Roles",
+        "First Aid Kit - basic for cruising", "First Aid Kit - advanced for long passages", "Disaster Strikes - Mast Fail"]),
+    ("Admin - Charter Boat Terms and Conditions", "What a charter skipper agrees to before taking the boat. The owner's \"Charter - charter skipper responsibilities\" list is added below these.", [
+        "I hold the qualifications and experience needed to skipper this boat in the waters and conditions of this charter.",
+        "I am responsible for the safety of everyone on board, and will brief my crew on the safety equipment and emergency procedures.",
+        "I will keep the Ship's Log up to date during the charter, and complete the return-to-dock checklist before handing the boat back.",
+        "I will report any damage, breakage or loss to the owner as soon as possible, and add anything that needs fixing to the My To Do List.",
+        "I will return the boat on the agreed date, clean, with the agreed fuel, water and gas levels."]),
+]
+
 
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

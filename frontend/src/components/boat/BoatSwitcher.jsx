@@ -22,6 +22,8 @@ const BoatOption = ({ b }) => (
     <BoatPhoto boat={b} size="h-8 w-8" />
     <span className="min-w-0 truncate">{nameOf(b)}</span>
     {b.crew && <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase text-sky-900">Crew</span>}
+    {b.charter && <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase text-amber-900" data-testid="boat-charter-skipper-badge">Charter skipper</span>}
+    {b.charter_lock && <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold uppercase text-slate-800" data-testid="boat-on-charter-badge">On charter</span>}
   </span>
 );
 
@@ -106,7 +108,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         <DeletedBoats open={adding} online={online} onRestore={restoreFromList} />
       </TextDialog>
       {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+        <CrewDialog open={crewOpen} boat={cur} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
       )}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>

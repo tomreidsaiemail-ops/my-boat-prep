@@ -47,6 +47,9 @@ export default function useBoatStore(userId, boatEntry) {
   const hadLocal = useRef(!!loadLocal(boatId));
   const [state, setState] = useState(() => loadLocal(boatId) || freshState());
   const [role, setRole] = useState(boatEntry.crew ? "crew" : "owner");
+  // A boat out on charter is frozen: nothing can be changed until the owner ends the charter.
+  const lockRef = useRef(null);
+  lockRef.current = boatEntry.charter_lock || null;
   // Auto-added template lists wait for the cloud copy so they never overwrite another phone's changes.
   const [loaded, setLoaded] = useState(() => hadLocal.current && (!navigator.onLine || localStorage.getItem(MANUAL_OFFLINE_KEY) === "1" || Number(localStorage.getItem(outboxKey(boatId)) || 0) > 0));
   const [pending, setPending] = useState(() => Number(localStorage.getItem(outboxKey(boatId)) || 0));
@@ -147,6 +150,7 @@ export default function useBoatStore(userId, boatEntry) {
   }, [reachable, browserOnline]);
 
   const mutate = useCallback((fn, { count = true } = {}) => {
+    if (lockRef.current) { toast.error(`On charter to ${lockRef.current.name} – read only until the charter ends`, { id: "charter-lock" }); return; }
     editsRef.current += 1;
     setState((prev) => {
       const now = new Date().toISOString();

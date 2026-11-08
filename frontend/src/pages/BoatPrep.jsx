@@ -15,6 +15,7 @@ import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
 import { planCommand, runPlan } from "@/lib/voiceCommand";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
+import { CharterBanner, CharterTermsDialog } from "@/components/boat/charter/CharterTermsDialog";
 import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
@@ -161,6 +162,7 @@ export default function BoatPrep({ boatId, boats }) {
   const gps = useGps();
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
+  const [charterTerms, setCharterTerms] = useState(0);
   const openDistress = (id) => {
     const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
     if (!allLists.some((l) => l.id === id)) {
@@ -896,6 +898,8 @@ export default function BoatPrep({ boatId, boats }) {
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
+      <CharterBanner entry={boats.current} onTerms={() => setCharterTerms((n) => n + 1)} />
+      {boats.current.charter && <CharterTermsDialog key={boats.current.key} boat={boats.current} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}

@@ -1,0 +1,78 @@
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Anchor, Check, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { api, apiError } from "@/lib/api";
+import { fmtPeriod } from "@/lib/charter";
+import { localWhen } from "@/lib/timeAgo";
+
+const seenKey = (boatId) => `mbp_charter_terms_seen_${boatId}`;
+
+// The charter skipper signs the Charter Boat Terms and Conditions, ticking off the owner's charter skipper responsibilities.
+export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
+  const [terms, setTerms] = useState(null);
+  const [open, setOpen] = useState(false);
+  const [ticked, setTicked] = useState([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!boat?.charter || !online) return;
+    api.get("/charter-terms", { params: { boat_id: boat.boat_id } }).then(({ data }) => {
+      setTerms(data); setTicked(data.ticked || []);
+      if (!data.accepted_at && sessionStorage.getItem(seenKey(boat.boat_id)) !== "1") setOpen(true);
+    }).catch(() => {});
+  }, [boat?.boat_id, online]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (forceOpen && terms) setOpen(true); }, [forceOpen, terms]);
+  if (!terms) return null;
+  const close = () => { sessionStorage.setItem(seenKey(boat.boat_id), "1"); setOpen(false); onClosed?.(); };
+  const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
+  const ready = terms.responsibilities.every((r) => ticked.includes(r.id));
+  const accept = async () => {
+    setBusy(true);
+    try {
+      const { data } = await api.post("/charter-terms", { ticked }, { params: { boat_id: boat.boat_id } });
+      setTerms((t) => ({ ...t, accepted_at: data.accepted_at })); toast.success("Charter Boat Terms and Conditions accepted. Enjoy your charter!"); close();
+    } catch (e) { toast.error(apiError(e, "Couldn't save, please try again")); } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent guard={false} className="flex max-h-[92vh] max-w-md flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="charter-terms-dialog">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl font-extrabold uppercase">Charter Boat Terms and Conditions</DialogTitle>
+          <DialogDescription>{terms.vessel} from {terms.owner_name}, {fmtPeriod(terms)}.</DialogDescription>
+        </DialogHeader>
+        <ol className="flex list-decimal flex-col gap-1.5 pl-5 text-sm" data-testid="charter-terms-list">{terms.terms.map((t, i) => <li key={i}>{t}</li>)}</ol>
+        {terms.responsibilities.length > 0 && (
+          <div className="flex flex-col gap-1.5" data-testid="charter-resp">
+            <p className="field-label">Charter skipper responsibilities ({ticked.filter((x) => terms.responsibilities.some((r) => r.id === x)).length} of {terms.responsibilities.length} ticked)</p>
+            {terms.responsibilities.map((r) => (
+              <label key={r.id} className="flex min-h-10 cursor-pointer items-start gap-3 text-sm" data-testid={`charter-resp-${r.id}`}>
+                <input type="checkbox" checked={ticked.includes(r.id)} disabled={!!terms.accepted_at} onChange={() => tick(r.id)} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid={`charter-resp-checkbox-${r.id}`} /> {r.label}
+              </label>
+            ))}
+          </div>
+        )}
+        {terms.accepted_at ? <p className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm font-bold text-green-900" data-testid="charter-terms-accepted"><Check className="h-4 w-4" /> Accepted {localWhen(terms.accepted_at)}</p> : (
+          <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!ready || busy || !online} onClick={accept} data-testid="charter-terms-accept-btn">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Anchor className="h-4 w-4" />} I accept the Charter Boat Terms and Conditions
+          </button>
+        )}
+        <button type="button" className="btn-ghost h-11 justify-center" onClick={close} data-testid="charter-terms-later-btn">{terms.accepted_at ? "Close" : "Later"}</button>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export const CharterBanner = ({ entry, onTerms }) => {
+  if (entry.charter_lock) return (
+    <p className="rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" data-testid="charter-lock-banner">
+      <b>On charter</b> to {entry.charter_lock.name}, {fmtPeriod(entry.charter_lock)}. This boat and its crew are read only until you end the charter.
+    </p>
+  );
+  if (entry.charter) return (
+    <p className="flex flex-wrap items-center gap-x-2 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" data-testid="charter-skipper-banner">
+      <span><b>Charter skipper</b> of {entry.charter.vessel} from {entry.charter.owner_name}, {fmtPeriod(entry.charter)}.</span>
+      <button type="button" className="font-extrabold underline" onClick={onTerms} data-testid="charter-terms-open-btn">Charter Terms...</button>
+    </p>
+  );
+  return null;
+};
