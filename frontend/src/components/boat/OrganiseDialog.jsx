@@ -61,7 +61,7 @@ export const OrganiseDialog = ({ open, onClose, org, cats, lists, hidden, crew, 
   const mineAll = crew ? [] : lists.filter(isUserList);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-lg" data-testid="organise-dialog">
+      <DialogContent guard={false} className="max-h-[90vh] w-[calc(100%-1.5rem)] grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-lg" data-testid="organise-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl text-[var(--navy)]"><Wand2 className="h-5 w-5" />Magical Organisation</DialogTitle>
           <DialogDescription>Tap a list to open it. Untick a box to hide that list, or a whole category, from the list menu.{crew ? " Your choices are saved on this phone only and don't change the skipper's lists." : ""}</DialogDescription>

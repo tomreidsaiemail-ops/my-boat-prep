@@ -14,6 +14,8 @@ import { zoneMapLabel } from "@/components/boat/zone/ZoneSchematicsDialog";
 
 const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
+const IDENTITY_NEEDED = "Please fill in Make, Model and Year of manufacture first";
+const identityReady = (b) => !!(b.make?.trim() && b.model?.trim() && /^\d{4}$/.test(b.year_built || ""));
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 export const crewSplit = (boat) => {
   const pob = boat.pob || 1;
@@ -105,7 +107,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
   const useCrew = () => { setPob(crewPob); onChange("pob_manual", false); };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
+      <DialogContent guard={false} className="max-h-[90vh] max-w-md overflow-y-auto" data-testid="additional-details-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => { if (returnFocus?.current) { e.preventDefault(); returnFocus.current.focus(); } }}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat details - Additional details</DialogTitle>
@@ -116,8 +118,15 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
             <BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} />
             <TextField id="boat-make" label="Make" value={boat.make} placeholder="e.g. Beneteau" onChange={(v) => onChange("make", v)} />
             <TextField id="boat-model" label="Model" value={boat.model} placeholder="e.g. Oceanis 38" onChange={(v) => onChange("model", v)} />
+            <label htmlFor="boat-year" className="flex min-w-0 flex-col gap-1" data-testid="boat-year-row">
+              <span className="field-label">Year of manufacture</span>
+              <input id="boat-year" inputMode="numeric" value={boat.year_built || ""} placeholder="e.g. 2012"
+                onChange={(e) => onChange("year_built", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                className="field-input" data-testid="boat-year-input" />
+            </label>
+            {(onMaintSetup || onZoneMap) && <p className="col-span-2 self-end pb-2 text-xs text-[var(--muted)]" data-testid="boat-year-hint">Make, model and year of manufacture are needed for the buttons below.</p>}
             {onMaintSetup && (
-              <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onMaintSetup() : toast.error("Please fill in Make and Model first"))}
+              <button type="button" onClick={() => (identityReady(boat) ? onMaintSetup() : toast.error(IDENTITY_NEEDED))}
                 className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
               </button>
@@ -130,21 +139,15 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
               </label>
             )}
             {onZoneMap && !zoneDone && (
-              <button type="button" onClick={() => (boat.make?.trim() && boat.model?.trim() ? onZoneMap() : toast.error("Please fill in Make and Model first"))}
+              <button type="button" onClick={() => (identityReady(boat) ? onZoneMap() : toast.error(IDENTITY_NEEDED))}
                 className="btn-ghost col-span-3 h-auto min-h-10 justify-start gap-1.5 px-3 py-2 text-left text-sm" data-testid="zone-map-create-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> {zoneMapLabel(boat)}
               </button>
             )}
           </div>
-          <div className="col-span-2 grid grid-cols-3 items-start gap-2.5" data-testid="boat-year-row">
+          <div className="col-span-2 grid grid-cols-2 items-start gap-2.5" data-testid="boat-colour-row">
             <ColourField id="hull-colour" label="Hull colour" value={boat.hull_colour} onChange={(v) => onChange("hull_colour", v)} />
             <ColourField id="deck-colour" label="Deck colour" value={boat.deck_colour} onChange={(v) => onChange("deck_colour", v)} />
-            <label htmlFor="boat-year" className="flex min-w-0 flex-col gap-1">
-              <span className="field-label">Year of manufacture</span>
-              <input id="boat-year" inputMode="numeric" value={boat.year_built || ""} placeholder="e.g. 2012"
-                onChange={(e) => onChange("year_built", e.target.value.replace(/\D/g, "").slice(0, 4))}
-                className="field-input" data-testid="boat-year-input" />
-            </label>
           </div>
           <div className="col-span-2 grid grid-cols-3 items-end gap-2.5" data-testid="pob-row">
             <IntField id="pob" label="Persons on board" value={pob} min={1} max={999} onChange={typePob} />

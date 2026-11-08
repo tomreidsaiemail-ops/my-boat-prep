@@ -81,6 +81,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             <span className="flex items-center gap-1.5 break-words font-bold text-[var(--navy)] [overflow-wrap:anywhere]" data-testid={`inventory-area-name-${area.id}`}>
               <Highlight text={area.name} query={query} />
             </span>
+            {area.where && <span className="break-words text-xs font-semibold text-[var(--muted)] [overflow-wrap:anywhere]" data-testid={`inventory-area-where-${area.id}`}>{area.where}</span>}
             <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
@@ -96,7 +97,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             </button>}
             {zoneButton}
             {onMove && <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>}
-            <button type="button" className="icon-btn" aria-label="Rename cupboard" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
+            <button type="button" className="icon-btn" aria-label="Rename cupboard or say where it is" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete cupboard" onClick={onDelete} data-testid={`inventory-area-delete-${area.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
           </div>
         )}

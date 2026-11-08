@@ -1,7 +1,8 @@
 import { ArrowDown, ArrowRight, ArrowUp, Link2 } from "lucide-react";
 import { OrderNumber } from "@/components/boat/OrderNumber";
+import { TargetOptions } from "@/lib/areaTargets";
 
-export const MoveRow = ({ row, n, total, target, targets, ordering, onChange, onTarget, onShift, onPlace }) => (
+export const MoveRow = ({ row, n, total, target, groups, ordering, onChange, onTarget, onShift, onPlace }) => (
   <li className={`flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-2 ${row.pick ? "" : "opacity-60"}`} data-testid={`move-row-${n}`}>
     <div className="flex items-center gap-2">
       {ordering && <OrderNumber id={row.key} pos={n + 1} total={total} onPlace={onPlace} prefix="move-row" />}
@@ -30,7 +31,7 @@ export const MoveRow = ({ row, n, total, target, targets, ordering, onChange, on
         <ArrowRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
         <select value={target} onChange={(e) => onTarget(e.target.value)} className="field-input h-10 min-w-0 flex-1 px-2 text-sm"
           aria-label={`Target boat area for ${row.name}`} data-testid={`move-row-target-${n}`}>
-          {targets.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          <TargetOptions groups={groups} />
         </select>
       </div>
     )}

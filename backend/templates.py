@@ -394,11 +394,22 @@ MAGIC_HELP = [
         "The MAGIC BARTENDER will be able to recommend quickly some cocktails for you, it will also tell you the ingredients, and how to mix them."]),
 ]
 
+INVENTORY_HELP = [
+    ("Admin - Help Panel - How to take your boat inventory", "The 'How to take your Boat Inventory' panel in Boat Inventory. Top-level lines are paragraphs, indented lines are bullets.", [
+        "Make sure and get the zone schematic for yacht, if you have not done that, then expand the Boat drop down, and click \"Additional boat details...\", "
+        "fill in boat type, make, model and year of manufacture.",
+        "Click on ZONE MAP OVERVIEWS, these are schematics of your boat.",
+        "This will take you a feature \"Magically Create Colours\", this looks at your boats schematic and tries to place Galley Orange onto your Galley schematic, "
+        "along with anything else it can figure out. Best to get a schematic where the Galley, Saloon etc are labelled.",
+        "From here on just pick a colour like Orange and Batch Magic Scan your Galley cupboards. The sailing community have provided great defaults "
+        "for your Galley cupboards like Dry Storage Locker, but you can add your own."]),
+]
+
 
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

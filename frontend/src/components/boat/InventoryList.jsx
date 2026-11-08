@@ -26,15 +26,28 @@ import { QrScanDialog } from "@/components/boat/inventory/QrScanDialog";
 import { clearQr, pendingQr, qrBoatKey } from "@/lib/qrScan";
 import { applyQr } from "@/lib/qrStock";
 import { useAuth } from "@/context/AuthContext";
+import useAdminLists from "@/hooks/useAdminLists";
+import { LinkedText } from "@/components/boat/LinkedText";
+import { AreaEditDialog } from "@/components/boat/inventory/AreaEditDialog";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const INSTR_KEY = "mbp_inventory_instructions_collapsed";
 
-const InventoryInstructions = ({ searching }) => {
+const HELP_NAME = "admin - help panel - how to take your boat inventory";
+const DEFAULT_HELP = [
+  "Make sure and get the zone schematic for yacht, if you have not done that, then expand the Boat drop down, and click \"Additional boat details...\", fill in boat type, make, model and year of manufacture.",
+  "Click on ZONE MAP OVERVIEWS, these are schematics of your boat.",
+  "This will take you a feature \"Magically Create Colours\", this looks at your boats schematic and tries to place Galley Orange onto your Galley schematic, along with anything else it can figure out. Best to get a schematic where the Galley, Saloon etc are labelled.",
+  "From here on just pick a colour like Orange and Batch Magic Scan your Galley cupboards. The sailing community have provided great defaults for your Galley cupboards like Dry Storage Locker, but you can add your own.",
+].map((label) => ({ label }));
+
+const InventoryInstructions = ({ searching, online }) => {
   const [open, setOpenState] = useState(() => localStorage.getItem(INSTR_KEY) !== "1");
   const setOpen = (v) => { setOpenState(v); localStorage.setItem(INSTR_KEY, v ? "0" : "1"); };
   useEffect(() => { if (searching) setOpen(false); }, [searching]); // eslint-disable-line react-hooks/exhaustive-deps
+  const admin = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === HELP_NAME)?.items;
+  const lines = admin?.length ? admin : DEFAULT_HELP;
   return (
     <div className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white text-sm text-[var(--muted)]" data-testid="inventory-instructions">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left font-bold text-[var(--navy)]" data-testid="inventory-instructions-toggle">
@@ -43,8 +56,11 @@ const InventoryInstructions = ({ searching }) => {
       </button>
       {open && (
         <div className="flex flex-col gap-2 px-4 pb-4" data-testid="inventory-instructions-body">
-          <p data-testid="inventory-instructions-text">List each cupboard, lazarette, drawer, shelf, fridge, freezer etc then add what's stowed inside. You can tick an item to show it's been removed temporarily, e.g. a knife moved to the cockpit ready for passage.</p>
-          <p data-testid="inventory-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Use ++ below. This saves lots of time because while you take photos, the Magic Scan runs in the background. Taking the boat inventory should take 30 minutes for a 40 foot yacht, longer for larger vessels, shorter for Launches and Runabouts.</p>
+          {lines.map((i, k) => (
+            <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""} data-testid={`inventory-instructions-line-${k}`}>
+              <LinkedText text={i.label} testId={`inventory-instructions-link-${k}`} />
+            </p>
+          ))}
         </div>
       )}
     </div>
@@ -96,11 +112,11 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left (free today + bought)`);
     } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
   };
-  const saveScan = (list) => {
+  const saveScan = (list, mode) => {
     const { area } = scan;
-    setArea(area.id, (x) => ({ ...x, items: list.map((i) => ({ id: newId(), name: i.name, qty: i.qty })) }));
+    setArea(area.id, (x) => ({ ...x, items: applyQr(x.items || [], list, mode === "add" ? "add" : "replace") }));
     setScan(null);
-    toast.success(`${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
+    toast.success(mode === "add" ? `${list.length} ${list.length === 1 ? "item" : "items"} added to ${area.name}` : `${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };
   const q = query.trim().toLowerCase();
   const isTop = (a) => !a.parent_id || !areas.some((p) => p.id === a.parent_id);
@@ -273,26 +289,29 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const tag = batchZone ? { zone: { label: batchZone.label, colour: batchZone.colour } } : {};
     onChange((cur) => {
       const next = [...cur];
-      list.forEach(({ name, items }) => {
+      list.forEach(({ name, items, mode, where }) => {
         const at = next.findIndex((a) => !a.parent_id && same(a.name, name));
-        if (at >= 0) next[at] = { ...next[at], ...tag, items: toItems(items) };
-        else next.push({ id: newId(), name, ...tag, items: toItems(items) });
+        const place = where ? { where } : {};
+        if (at >= 0) next[at] = { ...next[at], ...tag, ...place, items: mode === "add" ? applyQr(next[at].items || [], items, "add") : toItems(items) };
+        else next.push({ id: newId(), name, ...tag, ...place, items: toItems(items) });
       });
       return next;
     });
     closeBatch();
     const count = list.reduce((n, a) => n + a.items.length, 0);
-    const replaced = list.filter((a) => tops.some((x) => same(x.name, a.name))).length;
-    const added = list.length - replaced;
-    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
+    const old = list.filter((a) => tops.some((x) => same(x.name, a.name)));
+    const merged = old.filter((a) => a.mode === "add").length;
+    const replaced = old.length - merged;
+    const added = list.length - old.length;
+    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
-  const renameArea = (name) => {
+  const renameArea = (name, where) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
     const scope = area.parent_id ? subsOf(area.parent_id) : tops;
     if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
-    setArea(area.id, (a) => ({ ...a, name }));
+    setArea(area.id, ({ where: _w, ...a }) => ({ ...a, name, ...(where ? { where } : {}) }));
     setDialog(null);
     return true;
   };
@@ -338,7 +357,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
         onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
-        onDeleteItem={(i) => deleteItem(a, i)}
+        onDeleteItem={(i) => setDialog({ type: "deleteItem", area: a, item: i })}
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={readOnly ? undefined : () => startMove(a)}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
@@ -375,7 +394,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p>}
         {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) boat areas. The skipper looks after the rest.</p>}
       </> : (
-        <InventoryInstructions searching={!!q} />
+        <InventoryInstructions searching={!!q} online={online} />
       )}
       <ul className="flex flex-col gap-2" data-testid="inventory-areas">
         {groups.map((g) => {
@@ -415,18 +434,19 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         </button>
       )}
       <SuggestAreasDialog open={dialog?.type === "suggest"} names={suggestions} onClose={() => setDialog(null)} onConfirm={(names) => { addSuggested(names); setDialog(null); }} />
-      <TextDialog open={dialog?.type === "rename"} title="Rename Cupboard" confirmLabel="Save" testId="inventory-rename"
-        initial={dialog?.type === "rename" ? dialog.area.name : ""} onConfirm={dialog?.type === "rename" ? renameArea : () => true} onClose={() => setDialog(null)} />
+      <AreaEditDialog area={dialog?.type === "rename" ? dialog.area : null} zoneName={dialog?.type === "rename" ? zones[dialog.area.id]?.map : ""} onSave={renameArea} onClose={() => setDialog(null)} />
       <TextDialog open={dialog?.type === "sub"} title={dialog?.type === "sub" ? `Add a folder or box to ${dialog.area.name}` : ""} confirmLabel="Add" testId="inventory-sub"
         description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. Only the list is kept, not the photo."
         placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => setDialog(null)} />
-      <MergeAreaDialog area={dialog?.type === "merge" ? dialog.area : null} onMerge={mergeInto} onClose={() => setDialog(null)}
-        parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id).map((t) => ({ id: t.id, name: t.name, colour: zones[t.id]?.hex })) : []} />
-      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={readOnly ? labelled.filter(crewCan) : labelled} onConfirm={saveItem} onClose={() => setDialog(null)} />
+      <MergeAreaDialog area={dialog?.type === "merge" ? dialog.area : null} onMerge={mergeInto} onClose={() => setDialog(null)} zones={zones}
+        parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id) : []} />
+      <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={readOnly ? labelled.filter(crewCan) : labelled} zones={zones} onConfirm={saveItem} onClose={() => setDialog(null)} />
+      <ConfirmDelete item={dialog?.type === "deleteItem" ? dialog.item : null} testId="inventory-item-delete" note={dialog?.type === "deleteItem" ? `It comes off ${dialog.area.name}'s list.` : ""}
+        onClose={() => setDialog(null)} onConfirm={() => { deleteItem(dialog.area, dialog.item); setDialog(null); }} />
       <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note={`Everything listed inside it${dialog?.type === "delete" && subsOf(dialog.area.id).length ? ", including its folders and boxes," : ""} is removed too, and checklist items tagged with it lose their tag.`}
         onClose={() => setDialog(null)} onConfirm={() => { deleteArea(dialog.area); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
-      <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={labelled} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
+      <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={labelled} zones={zones} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
         onMove={finishMove} onClose={() => setDialog(null)} />
     </section>
   );

@@ -34,9 +34,9 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
 
   const close = () => { batch.clear(); setDiscard(false); onClose(); };
   const askClose = () => (entries.length ? setDiscard(true) : close());
-  const add = (name, blob, more) => { batch.add(name, blob); if (!more || entries.length + 1 >= BATCH_MAX) setForm(false); };
+  const add = (name, blob, more, extra) => { batch.add(name, blob, extra); if (!more || entries.length + 1 >= BATCH_MAX) setForm(false); };
   const finish = () => {
-    const out = entries.map((e) => ({ name: e.name, items: checkRows(e.rows) }));
+    const out = entries.map((e) => ({ name: e.name, items: checkRows(e.rows), mode: e.mode, where: e.where || "" }));
     const bad = out.findIndex((o) => typeof o.items === "string");
     if (bad >= 0) { batch.patch(entries[bad].key, { ticked: false }); return; }
     batch.clear();
@@ -45,7 +45,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && askClose()}>
-      <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-lg flex-col gap-3 overflow-hidden rounded-lg border-2 border-[var(--navy)] p-4" data-testid="batch-scan-dialog"
+      <DialogContent guard={false} className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-lg flex-col gap-3 overflow-hidden rounded-lg border-2 border-[var(--navy)] p-4" data-testid="batch-scan-dialog"
         onInteractOutside={(e) => e.preventDefault()}>
         {zone && <ZoneBanner zone={zone} boat={boat} />}
         <DialogHeader>

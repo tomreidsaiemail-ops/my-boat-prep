@@ -3,6 +3,7 @@ import { Move } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MoveRow } from "@/components/boat/MoveRow";
+import { groupTargets } from "@/lib/areaTargets";
 
 const toRows = (area, links) => [
   ...(area.items || []).map((i) => ({ key: i.id, kind: "item", id: i.id, name: i.name, max: i.qty || 1, qty: String(i.qty || 1), pick: true })),
@@ -11,13 +12,14 @@ const toRows = (area, links) => [
 const shiftTo = (list, from, to) => { const next = [...list]; next.splice(to, 0, next.splice(from, 1)[0]); return next; };
 
 // Move some or all of one boat area's items to other areas; a changed target carries down to the rows below it.
-export const MoveAreaDialog = ({ source, areas, links = [], onMove, onClose }) => {
+export const MoveAreaDialog = ({ source, areas, zones = {}, links = [], onMove, onClose }) => {
   const [rows, setRows] = useState([]);
   const [explicit, setExplicit] = useState({});
   const [ordering, setOrdering] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => { if (source) { setRows(toRows(source, links)); setExplicit({}); setOrdering(true); setError(""); } }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
-  const targets = areas.filter((a) => a.id !== source?.id);
+  const groups = source ? groupTargets(source, areas.filter((a) => a.id !== source.id), zones, areas.filter((a) => a.parent_id === source.id)) : [];
+  const targets = groups.flatMap((g) => g.items);
   let carry = targets[0]?.id;
   const effective = rows.map((r) => (carry = explicit[r.key] && targets.some((a) => a.id === explicit[r.key]) ? explicit[r.key] : carry));
   const picked = rows.filter((r) => r.pick);
@@ -58,7 +60,7 @@ export const MoveAreaDialog = ({ source, areas, links = [], onMove, onClose }) =
         </label>
         <ul className="flex flex-col gap-2" data-testid="move-rows">
           {rows.map((r, n) => (
-            <MoveRow key={r.key} row={r} n={n} total={rows.length} target={effective[n]} targets={targets} ordering={ordering}
+            <MoveRow key={r.key} row={r} n={n} total={rows.length} target={effective[n]} groups={groups} ordering={ordering}
               onChange={(patch) => set(r.key, patch)} onTarget={(id) => setExplicit((e) => ({ ...e, [r.key]: id }))}
               onShift={(d) => setRows((rs) => shiftTo(rs, n, n + d))} onPlace={(pos) => setRows((rs) => shiftTo(rs, n, pos - 1))} />
           ))}

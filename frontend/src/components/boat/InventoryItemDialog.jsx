@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TargetOptions, groupTargets } from "@/lib/areaTargets";
 
-export const InventoryItemDialog = ({ open, item, areaId, areas = [], onConfirm, onClose }) => {
+export const InventoryItemDialog = ({ open, item, areaId, areas = [], zones = {}, onConfirm, onClose }) => {
+  const here = areas.find((a) => a.id === areaId);
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [target, setTarget] = useState("");
@@ -31,10 +33,11 @@ export const InventoryItemDialog = ({ open, item, areaId, areas = [], onConfirm,
             <input autoFocus value={name} maxLength={200} onChange={(e) => setName(e.target.value)} className="field-input" data-testid="inventory-item-name-input" /></label>
           <label className="flex flex-col gap-1"><span className="field-label">Quantity</span>
             <input type="number" inputMode="numeric" min={1} max={9999} value={qty} onChange={(e) => setQty(e.target.value)} className="field-input !w-32" data-testid="inventory-item-qty-input" /></label>
-          {areas.length > 1 && (
+          {areas.length > 1 && here && (
             <label className="flex flex-col gap-1"><span className="field-label">Boat area</span>
               <select value={target} onChange={(e) => setTarget(e.target.value)} className="field-input" data-testid="inventory-item-area-select">
-                {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                <option value={here.id}>{here.name} (stays here)</option>
+                <TargetOptions groups={groupTargets(here, areas.filter((a) => a.id !== areaId), zones, areas.filter((a) => a.parent_id === areaId))} />
               </select>
               {target !== areaId && <span className="text-xs font-semibold text-[var(--muted)]" data-testid="inventory-item-move-note">Saving moves the whole item to {areas.find((a) => a.id === target)?.name}.</span>}
             </label>

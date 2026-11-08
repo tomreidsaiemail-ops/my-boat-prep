@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ChevronsUpDown, Plus } from "lucide-react";
 import { TextDialog } from "@/components/boat/TextDialog";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { BudgetRow } from "@/components/boat/budget/BudgetRow";
 import { BudgetTotals } from "@/components/boat/budget/BudgetTotals";
 import { OpeningStore } from "@/components/boat/budget/OpeningStore";
@@ -14,6 +15,7 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
   const locked = year < thisYear() && !unlocked.includes(year);
   const prior = all.some((i) => ledgerYear(i) === year - 1);
   const [linkFor, setLinkFor] = useState(null);
+  const [doomed, setDoomed] = useState(null);
   const [opening, setOpening] = useState(null);
   const [draft, setDraft] = useState("");
   const [openIds, setOpenIds] = useState([]);
@@ -77,7 +79,7 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
           </thead>
           <tbody>
             {items.map((item) => (
-              <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => remove(item)} locked={locked}
+              <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => !locked && setDoomed(item)} locked={locked}
                 onLink={() => (item.url ? setOpening(item) : guard() && setLinkFor(item))} />
             ))}
             {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items in {year} yet.{locked ? "" : " Add one below."}</td></tr>}
@@ -100,6 +102,8 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
         description={`Where do you buy ${linkFor?.product || linkFor?.label || "this"}? Leave it empty to remove the link.`} initial={linkFor?.url || ""}
         onConfirm={saveLink} onClose={() => setLinkFor(null)} />
       <OpeningStore url={opening?.url || ""} onDone={() => setOpening(null)} onEdit={() => { const it = opening; setOpening(null); if (guard()) setLinkFor(it); }} />
+      <ConfirmDelete item={doomed ? { name: doomed.label || "this budget item" } : null} testId="budget-delete" note="It comes off your Boat Budget."
+        onClose={() => setDoomed(null)} onConfirm={() => { remove(doomed); setDoomed(null); }} />
     </div>
   );
 };

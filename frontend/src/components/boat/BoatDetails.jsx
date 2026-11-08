@@ -61,7 +61,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
     window.addEventListener("mbp:open-details", show);
     return () => window.removeEventListener("mbp:open-details", show);
   }, []);
-  const ready = !!(boat.make?.trim() && boat.model?.trim());
+  const ready = !!(boat.make?.trim() && boat.model?.trim() && /^\d{4}$/.test(boat.year_built || ""));
   // Closing without a zone map: remind once per close; "Not now" carries on as before.
   const closeMore = () => { setMore(false); if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.(); };
   const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };

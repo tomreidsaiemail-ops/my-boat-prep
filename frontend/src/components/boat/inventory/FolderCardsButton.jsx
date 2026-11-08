@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Loader2, Printer } from "lucide-react";
 import { api } from "@/lib/api";
 import { qrUrl } from "@/lib/qrScan";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const download = (blob, name) => {
   const url = URL.createObjectURL(blob);
@@ -19,6 +20,7 @@ const download = (blob, name) => {
 export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId }) => {
   const [busy, setBusy] = useState(false);
   const [kind, setKind] = useState("qr");
+  const [ask, setAsk] = useState(false);
   const subs = areas.filter((a) => a.parent_id && areas.some((p) => p.id === a.parent_id));
   if (!areas.length || !boat) return null;
   const parentOf = (a) => (a.parent_id ? areas.find((p) => p.id === a.parent_id) : null);
@@ -44,7 +46,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
   };
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid="inventory-print-cards">
-      <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={print} disabled={busy} data-testid="inventory-folder-cards-btn">
+      <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => setAsk(true)} disabled={busy} data-testid="inventory-folder-cards-btn">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Print Cards
       </button>
       <div className="flex items-center gap-3" role="radiogroup" aria-label="Card type" data-testid="inventory-print-cards-kind">
@@ -54,6 +56,9 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
           </label>
         ))}
       </div>
+      <ConfirmDelete item={ask ? {} : null} danger={false} testId="print-cards-confirm" title="This is a lengthy process, do you want to continue?" confirmLabel="Continue" cancelLabel="Not now"
+        note={kind === "qr" ? `Making a QR card for each of your ${Math.min(qrs().length, 300)} cupboards, folders and boxes can take a while.` : `Making contents cards for your ${Math.min(subs.length, 200)} folders and boxes can take a while.`}
+        onConfirm={() => { setAsk(false); print(); }} onClose={() => setAsk(false)} />
     </div>
   );
 };

@@ -34,15 +34,15 @@ export const ScanRows = ({ rows, setRows, prefix = "scan" }) => {
   );
 };
 
-// Review what the AI spotted before it replaces the cupboard's contents.
+// Review what the AI spotted, then add it to the cupboard or replace its contents.
 export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   useEffect(() => { if (scan) { setRows(toRows(scan.items)); setError(""); } }, [scan]);
-  const save = () => {
+  const save = (mode) => {
     const res = checkRows(rows);
     if (typeof res === "string") { setError(res); return; }
-    onSave(res);
+    onSave(res, mode);
   };
   const existing = scan?.area.items?.length || 0;
   return (
@@ -52,15 +52,23 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold text-[var(--navy)]"><Sparkles className="h-5 w-5" /> Magic Scan Discoveries</DialogTitle>
           <DialogDescription className="text-sm">
             {scan?.items.length ? `Magic Scan discovered ${scan.items.length} ${scan.items.length === 1 ? "item" : "items"} in ${scan?.area.name}. Fix names or quantities, untick anything wrong, or add what it missed.` : `Magic Scan couldn't spot any items in ${scan?.area.name}. You can add them below.`}
-            {existing > 0 && <b className="mt-1 block text-[var(--red)]" data-testid="scan-replace-warning">Saving replaces the {existing} {existing === 1 ? "item" : "items"} listed in this cupboard now.</b>}
+            {existing > 0 && <b className="mt-1 block text-[var(--navy)]" data-testid="scan-replace-warning">{scan?.area.name} already lists {existing} {existing === 1 ? "item" : "items"}. Add these to what's there (same names add up), or replace everything with this scan.</b>}
           </DialogDescription>
         </DialogHeader>
         <ScanRows rows={rows} setRows={setRows} />
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="scan-review-error">{error}</p>}
-        <DialogFooter className="flex-row gap-2">
-          <button type="button" className="btn-ghost h-12 flex-1" onClick={onClose} data-testid="scan-review-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid h-12 flex-1" onClick={save} data-testid="scan-review-save-btn">Save contents</button>
-        </DialogFooter>
+        {existing > 0 ? (
+          <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <button type="button" className="btn-solid h-12" onClick={() => save("add")} data-testid="scan-review-merge-btn">Add to {scan?.area.name}</button>
+            <button type="button" className="btn-ghost h-12 hover:text-[var(--red)]" onClick={() => save("replace")} data-testid="scan-review-replace-btn">Replace all {existing} {existing === 1 ? "item" : "items"}</button>
+            <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="scan-review-cancel-btn">Cancel</button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter className="flex-row gap-2">
+            <button type="button" className="btn-ghost h-12 flex-1" onClick={onClose} data-testid="scan-review-cancel-btn">Cancel</button>
+            <button type="button" className="btn-solid h-12 flex-1" onClick={() => save("replace")} data-testid="scan-review-save-btn">Save contents</button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

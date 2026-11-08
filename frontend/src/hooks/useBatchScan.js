@@ -38,14 +38,17 @@ export default function useBatchScan(boatId, params = { batch: true }) {
   const abort = (key) => { if (inflight.current && (!key || inflight.current.key === key)) inflight.current.ctrl.abort(); };
   useEffect(() => () => abort(), []);
 
-  const add = (name, blob) => setEntries((es) => [...es, { key: `b${(seq += 1)}`, name, blob, preview: URL.createObjectURL(blob), status: "queued", rows: [], ticked: false }]);
+  // No photo: an empty cupboard, ready to review straight away and Magic Scan later.
+  const add = (name, blob, extra = {}) => setEntries((es) => [...es, blob
+    ? { key: `b${(seq += 1)}`, name, blob, preview: URL.createObjectURL(blob), status: "queued", rows: [], ticked: false, ...extra }
+    : { key: `b${(seq += 1)}`, name, blob: null, preview: "", status: "done", empty: true, rows: [], found: 0, ticked: false, ...extra }]);
   const remove = (key) => { abort(key); setEntries((es) => {
     const e = es.find((x) => x.key === key);
-    if (e) URL.revokeObjectURL(e.preview);
+    if (e?.preview) URL.revokeObjectURL(e.preview);
     return es.filter((x) => x.key !== key);
   }); };
   const retry = (key) => patch(key, { status: "queued", error: "" });
-  const clear = () => { abort(); setEntries((es) => { es.forEach((e) => URL.revokeObjectURL(e.preview)); return []; }); };
+  const clear = () => { abort(); setEntries((es) => { es.forEach((e) => e.preview && URL.revokeObjectURL(e.preview)); return []; }); };
   const position = entries.findIndex((e) => e.status === "scanning") + 1;
   return { entries, add, remove, retry, clear, patch, position };
 }

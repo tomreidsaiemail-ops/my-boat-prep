@@ -17,7 +17,7 @@ const ordered = (zones, boatId) => {
 };
 
 // Rounded square of four little squares: multi-coloured but greyed out for an orphan boat area, the zone's colour once it has one.
-const ZoneIcon = ({ hex }) => (
+export const ZoneIcon = ({ hex }) => (
   <span className={`grid h-[22px] w-[22px] grid-cols-2 gap-[2px] rounded-[6px] border-[1.5px] p-[2px] ${hex ? "" : "border-current opacity-45 grayscale"}`}
     style={hex ? { borderColor: hex } : undefined}>
     {MIX.map((c, i) => <span key={i} className="rounded-[2px]" style={{ background: hex || c }} />)}

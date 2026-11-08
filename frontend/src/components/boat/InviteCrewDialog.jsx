@@ -126,7 +126,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
           onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes }); })} />
         {onSaveBriefing && (
           <label className="-mt-2 flex items-start gap-2 text-sm font-semibold text-[var(--navy)]" data-testid="role-briefing-toggle">
-            <input type="checkbox" checked={prompt} onChange={(e) => togglePrompt(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="role-briefing-toggle-input" />
+            <input type="checkbox" data-no-dirty checked={prompt} onChange={(e) => togglePrompt(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="role-briefing-toggle-input" />
             As Roles are clicked &amp; added, show Role Briefing
           </label>
         )}
@@ -139,7 +139,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
               <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => { editNotes(plan); }} data-testid="voyage-notes-fill-btn">Fill from Route Planning</button>
             )}
           </div>
-          <textarea id="voyage-notes" value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
+          <textarea id="voyage-notes" data-no-dirty value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
             className="field-input !h-auto min-h-[9rem] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
           <p className="text-xs text-[var(--muted)]">Suggested from Route Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>

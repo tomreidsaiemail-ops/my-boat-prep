@@ -6,6 +6,8 @@ import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
 import { AreaNamePicker } from "@/components/boat/zone/AreaNamePicker";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { WHERE_MAX } from "@/components/boat/inventory/AreaEditDialog";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -15,8 +17,10 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
   const [blob, setBlob] = useState(null);
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
+  const [where, setWhere] = useState("");
+  const [noPhoto, setNoPhoto] = useState("");
   const input = useRef(null);
-  const reset = () => { setName(""); setBlob(null); setPreview(""); setError(""); };
+  const reset = () => { setName(""); setBlob(null); setPreview(""); setError(""); setWhere(""); setNoPhoto(""); };
   useEffect(() => { if (open) reset(); }, [open]);
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
   const clash = name.trim() && existing.find((a) => same(a.name, name));
@@ -28,12 +32,12 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
     try { const b = await shrink(file, 1600); setBlob(b); setPreview(URL.createObjectURL(b)); setError(""); }
     catch { toast.error("That file doesn't look like a photo"); }
   };
-  const confirm = (more) => {
+  const confirm = (more, emptyOk = false) => {
     const n = name.trim();
     if (!n) { setError("Please enter the boat area name"); return; }
     if (batchNames.some((b) => same(b, n))) { setError(`${n} is already in this batch`); return; }
-    if (!blob) { setError("Please take or choose a photo of the boat area"); return; }
-    onAdd(n, blob, more);
+    if (!blob && !emptyOk) { setNoPhoto(more ? "more" : "one"); return; }
+    onAdd(n, blob, more, { where: where.trim().slice(0, WHERE_MAX) });
     if (more) reset();
   };
   const help = (
@@ -46,7 +50,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
+      <DialogContent dirty={!!(name.trim() || blob || where.trim())} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
           {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} boat area` : "New boat area"}</DialogTitle>
@@ -57,7 +61,9 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
         <input autoFocus={!zone} value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
           aria-label="Boat area name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
-          {clash.name} is already on your boat. Confirming the batch will replace its {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"} with this scan.</p>}
+          {clash.name} is already on your boat with {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"}. When you review it you choose to add to them or replace them.</p>}
+        <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder={`Where is it${zone ? ` in the ${zone.label}` : ""}? e.g. Under the port bench (optional)`}
+          aria-label="Where the boat area is" className="field-input" data-testid="batch-area-where-input" />
         <button type="button" onClick={() => input.current?.click()} className="flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)]" data-testid="batch-area-photo-btn">
           {preview ? <img src={preview} alt="Boat area" className="max-h-56 w-full object-contain" data-testid="batch-area-photo-preview" />
             : <><Camera className="h-7 w-7" /> Take or choose a photo
@@ -72,6 +78,9 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <button type="button" className="btn-ghost h-12" disabled={full} onClick={() => confirm(true)} data-testid="batch-area-confirm-another-btn">Confirm, and add another</button>
           <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="batch-area-cancel-btn">Cancel</button>
         </DialogFooter>
+        <ConfirmDelete item={noPhoto ? {} : null} danger={false} testId="batch-area-empty" title={`No photo of ${name.trim() || "this boat area"}`} confirmLabel="Create it empty" cancelLabel="Take a photo"
+          note="It will be created empty, with nothing listed inside. You can Magic Scan it later from Boat Inventory."
+          onConfirm={() => { const more = noPhoto === "more"; setNoPhoto(""); confirm(more, true); }} onClose={() => setNoPhoto("")} />
       </DialogContent>
     </Dialog>
   );
