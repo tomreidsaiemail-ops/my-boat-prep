@@ -106,7 +106,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         <DeletedBoats open={adding} online={online} onRestore={restoreFromList} />
       </TextDialog>
       {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} name={currentName} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+        <CrewDialog open={crewOpen} boat={cur} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} plan={routeNotes(state.boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
       )}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>

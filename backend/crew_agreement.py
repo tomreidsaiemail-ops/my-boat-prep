@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
 from crew import BoatPath, brief_hash, owned_boat, role_briefings
+from crew_register import record_walkthrough
 from agreement_pdf import build_agreement_pdf
 
 router = APIRouter(prefix="/api")
@@ -35,10 +36,27 @@ class AgreementIn(BaseModel):
     boat_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
     stops: List[str] = Field(default_factory=list, max_length=600)
     accept: bool = False
+    quick: bool = False
+
+
+class WalkSkipIn(BaseModel):
+    skip: List[str] = Field(default_factory=list, max_length=600)
 
 
 def stop_ids(doc: dict) -> List[str]:
-    return [f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in m.get("pins") or []]
+    skip = set(doc.get("walk_skip") or [])
+    return [s for s in (f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in m.get("pins") or []) if s not in skip]
+
+
+@router.put("/boats/{boat_id}/walk-stops")
+async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = Depends(get_current_user)):
+    """The skipper leaves less important cupboards out of the Zone Map Walk Through."""
+    await owned_boat(user, boat_id)
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1})
+    known = {f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in m.get("pins") or []}
+    skip = [s for s in dict.fromkeys(payload.skip) if s in known]
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"walk_skip": skip}})
+    return {"walk_skip": skip}
 
 
 async def standard_terms() -> List[dict]:
@@ -55,7 +73,7 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1})
+                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -69,21 +87,33 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
     reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0})}
     seen = lambda r: (reads.get(r.lower()) or {}).get("at") if briefs.get(r.lower()) and (reads.get(r.lower()) or {}).get("hash") == brief_hash(briefs[r.lower()]) else None  # noqa: E731
     return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), ""), "read_at": seen(r)} for r in roles],
-            "agreement": (doc.get("agreements") or {}).get(user["user_id"])}
+            "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user)}
+
+
+async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:
+    """When this crew member last did the complete walkthrough of this boat, so a returning racer can quick-accept."""
+    w = await db.walkthroughs.find_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0, "at": 1, "full_at": 1})
+    return {"full_at": w.get("full_at") or w["at"]} if w else None
 
 
 @router.post("/crew/agreement")
 async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_user)):
     doc = await crew_doc(user, payload.owner_id, payload.boat_id)
     all_stops = stop_ids(doc)
-    ticked = [s for s in dict.fromkeys(payload.stops) if s in all_stops]
+    walk = await last_walk(payload.owner_id, payload.boat_id, user) if payload.quick else None
+    if payload.quick and not walk:
+        raise HTTPException(status_code=400, detail="Quick accept is for crew who have done the complete walkthrough before")
+    ticked = all_stops if walk else [s for s in dict.fromkeys(payload.stops) if s in all_stops]
     if payload.accept and len(ticked) < len(all_stops):
         raise HTTPException(status_code=400, detail="Tick every stop of the Zone Map Walk Through before you accept")
     prev = (doc.get("agreements") or {}).get(user["user_id"]) or {}
     now = datetime.now(timezone.utc).isoformat()
     rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now,
-           **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {})}
+           **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {}),
+           **({"quick": True, "full_at": walk["full_at"]} if walk and payload.accept else {})}
     await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}": rec}})
+    if payload.accept and all_stops:
+        await record_walkthrough(payload.owner_id, payload.boat_id, user, quick=bool(walk))
     return {"agreement": rec}
 
 

@@ -103,15 +103,19 @@ async def list_register(user: dict = Depends(get_current_user)):
     boats = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip() or "Your boat"
              async for b in db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
     for r in rows:
-        r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"]} for w in walks if w["email_key"] == r.get("email_key") and w["boat_id"] in boats] if r["kind"] == "crew" else []
+        r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"], "full_at": w.get("full_at") or w["at"], "quick": bool(w.get("quick"))}
+                             for w in walks if w["email_key"] == r.get("email_key") and w["boat_id"] in boats] if r["kind"] == "crew" else []
         r.pop("email_key", None)
     return {"crew": [r for r in rows if r["kind"] == "crew"], "parties": [r for r in rows if r["kind"] == "party"]}
 
 
-async def record_walkthrough(owner_id: str, boat_id: str, user: dict):
-    """Crew signed off the boat's Crew walkthrough: keep it for their register badge, adding them to the skipper's register if they aren't on it."""
+async def record_walkthrough(owner_id: str, boat_id: str, user: dict, quick: bool = False):
+    """Crew signed off the boat's Crew walkthrough (or quick-accepted after an earlier full one): keep it for their register badge, adding them to the skipper's register if they aren't on it."""
     key, now = email_key(user["email"]), datetime.now(timezone.utc).isoformat()
-    await db.walkthroughs.update_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"$set": {"email_key": key, "at": now}}, upsert=True)
+    prev = await db.walkthroughs.find_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0, "at": 1, "full_at": 1})
+    full_at = (prev or {}).get("full_at") or (prev or {}).get("at") if quick else now
+    await db.walkthroughs.update_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]},
+                                     {"$set": {"email_key": key, "at": now, "full_at": full_at or now, "quick": quick}}, upsert=True)
     if not await db.crew_register.find_one({"owner_id": owner_id, "kind": "crew", "email_key": key}, {"_id": 1}):
         boat = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, f"crew_names.{user['user_id']}": 1})
         name = ((boat or {}).get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user["email"].split("@")[0]

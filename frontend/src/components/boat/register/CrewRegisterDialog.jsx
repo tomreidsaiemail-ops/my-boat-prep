@@ -96,7 +96,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
             </button>
           )}
         </div>
-        <Section title="Interested parties" hint="Family or shore contacts. They're registered straight away and can be emailed the crew's details." empty="No interested parties yet." rows={reg.parties} testId="reg-parties">
+        <Section title="Interested parties" hint="Family, friends, shore contacts or race boat organisers. They're registered straight away and can be emailed the crew's details." empty="No interested parties yet." rows={reg.parties} testId="reg-parties">
           {reg.parties.map(row)}
         </Section>
         <div className="flex flex-col gap-2">

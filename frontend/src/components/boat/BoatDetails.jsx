@@ -100,7 +100,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
       </button>}
       {onBatchScan && <span className="mr-1">{<HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
-        <ArrangeIcon /> <span>Arrange<br />Lists</span>
+        <ArrangeIcon /> <span>Lists</span>
       </button>}
       {onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
       {onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}

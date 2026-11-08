@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MapPin } from "lucide-react";
 
 export const pinName = (pin, areas) => areas.find((a) => a.id === pin.area_id)?.name || pin.label;
@@ -31,10 +32,12 @@ const dragPin = (e, p, onDrag) => {
 };
 
 // A zone photo with its pinned labels; tapping a linked pin opens that cupboard. `highlight` makes one pin stand out. `onDrag` lets labels be moved.
-export const PinnedPhoto = ({ src, alt, pins = [], areas = [], onPin, onImage, onDrag, imgRef, imgClass = "max-h-64 w-full rounded-md object-contain", testId, onError, highlight }) => (
+export const PinnedPhoto = ({ src, alt, pins = [], areas = [], onPin, onImage, onDrag, imgRef, imgClass = "max-h-64 w-full rounded-md object-contain", testId, onError, highlight }) => {
+  const [shown, setShown] = useState("");
+  return (
   <div className="relative mx-auto w-fit max-w-full" data-testid={testId}>
-    <img ref={imgRef} src={src} alt={alt} onClick={onImage} onError={onError} className={`${imgClass} ${onImage ? "cursor-pointer" : ""}`} draggable={false} data-testid={`${testId}-img`} />
-    {pins.map((p) => {
+    <img ref={imgRef} src={src} alt={alt} onClick={onImage} onError={onError} onLoad={() => setShown(src)} className={`${imgClass} ${onImage ? "cursor-pointer" : ""}`} draggable={false} data-testid={`${testId}-img`} />
+    {shown === src && pins.map((p) => {
       const hot = highlight === p.id;
       return (
         <button key={p.id} type="button"
@@ -50,4 +53,5 @@ export const PinnedPhoto = ({ src, alt, pins = [], areas = [], onPin, onImage, o
       );
     })}
   </div>
-);
+  );
+};

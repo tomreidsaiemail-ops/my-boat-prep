@@ -130,7 +130,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   }, [expanded, canEdit, overviews.length, online]); // eslint-disable-line react-hooks/exhaustive-deps
   const pics = own.length ? own.map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))
     : version && !failed.admin && !overviews.length ? [{ key: "admin", src: mapUrl(version) }] : [];
-  const steps = walkSteps(pics.filter((p) => p.map));
+  const steps = walkSteps(pics.filter((p) => p.map), boat?.walk_skip || []);
   const sectionRef = useRef(null);
   useEffect(() => {
     const show = () => { setExpanded(true); setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); };

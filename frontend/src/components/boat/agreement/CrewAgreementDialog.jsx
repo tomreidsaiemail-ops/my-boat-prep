@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Footprints, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { walkSteps } from "@/components/boat/CrewWalkthrough";
+import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
+import { localWhen, timeAgo } from "@/lib/timeAgo";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { AcceptButtons, AgreementWalkthrough, stopId } from "@/components/boat/agreement/AgreementParts";
 
@@ -44,12 +45,17 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
     } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
     finally { setReading(""); }
   };
-  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })));
+  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })), boat.walk_skip || []);
   const [ticked, setTicked] = useState(data.agreement?.stops || []);
   const [busy, setBusy] = useState("");
+  const [walking, setWalking] = useState(false);
+  const [quick, setQuick] = useState(false);
   const accepted = !!data.agreement?.accepted_at;
+  const fullAt = !accepted && steps.length ? data.walkthrough?.full_at : null;
   const ready = steps.every((s) => ticked.includes(stopId(s)));
   const boatLines = (data.boat_terms || "").split("\n").map((l) => l.trim()).filter(Boolean).map((label) => ({ label }));
+  const pickQuick = (v) => { setQuick(v); if (v) setTicked(steps.map(stopId)); };
+  const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
 
   const save = async (accept) => {
     const same = !accept && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
@@ -57,7 +63,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
     setBusy(accept ? "accept" : "later");
     try {
-      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept });
+      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick });
       onSaved(res.agreement);
       if (accept) toast.success(`Thanks! The skipper of ${vessel} can see you've read and accepted the agreement`);
       onClose();
@@ -80,9 +86,21 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
         {boatLines.length > 0 && <Section title={`${vessel}'s terms`} testId="agreement-boat-terms"><Lines lines={boatLines} testId="agreement-boat-lines" /></Section>}
         <Section title="Your role briefing" testId="agreement-roles"><Roles roles={data.roles} onRead={read} busy={reading} /></Section>
         <Section title={`Zone Map Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
+          {fullAt && (
+            <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-semibold ${quick ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="agreement-quick">
+              <input type="checkbox" checked={quick} onChange={(e) => pickQuick(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-quick-checkbox" />
+              <span>I will check with the skipper if anything has moved since I did the complete walkthrough <span className="block text-xs font-normal text-[var(--muted)]">You did it {timeAgo(fullAt)} ({localWhen(fullAt)}).</span></span>
+            </label>
+          )}
+          {steps.length > 0 && !accepted && !quick && (
+            <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(true)} data-testid="agreement-start-walkthrough-btn">
+              <Footprints className="h-4 w-4" /> {ticked.length ? "Carry on the walkthrough" : "Start the walkthrough"}
+            </button>
+          )}
           <AgreementWalkthrough steps={steps} areas={areas} ticked={ticked} onChange={accepted ? () => {} : setTicked} />
         </Section>
         <AcceptButtons accepted={accepted} ready={ready} busy={busy} onAccept={() => save(true)} onLater={() => save(false)} />
+        {walking && <CrewWalkthrough steps={steps} areas={areas} ticked={ticked} onTick={tick} onClose={() => setWalking(false)} onOpenArea={() => {}} />}
       </DialogContent>
     </Dialog>
   );

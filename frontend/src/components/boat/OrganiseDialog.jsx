@@ -85,6 +85,6 @@ export const OrganiseDialog = ({ open, onClose, org, cats, lists, hidden, crew, 
 
 export const CrewOrganiseButton = ({ onClick }) => (
   <button type="button" onClick={onClick} className="btn-ghost h-auto min-h-11 gap-2 self-start px-3 py-2 text-[13px] font-bold leading-tight" data-testid="crew-organise-btn">
-    <ArrangeIcon /> Arrange Lists
+    <ArrangeIcon /> Lists
   </button>
 );

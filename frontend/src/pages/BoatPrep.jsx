@@ -79,7 +79,6 @@ import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
-import { WalkthroughPrompt } from "@/components/boat/register/WalkthroughPrompt";
 import { routeNotes } from "@/lib/routeNotes";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
@@ -885,7 +884,7 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
-        <WalkthroughPrompt boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} onSignOff={signOffWalkthrough} onOpenArea={() => setActiveId(INVENTORY_LIST.id)} /><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
+        <CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
         : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} batchHelp={batchHelp} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),

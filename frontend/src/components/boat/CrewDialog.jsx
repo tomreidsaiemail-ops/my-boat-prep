@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
 import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
+import { WalkStopsPicker } from "@/components/boat/crew/WalkStopsPicker";
 import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
 import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
@@ -48,7 +49,7 @@ const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose }) => {
+export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
@@ -122,6 +123,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
           <ClipboardList className="h-4 w-4" /> Crew Registration
         </button>
+        <WalkStopsPicker boat={boat} areas={areas} online={online} onSaved={onWalkSkip} />
         <div className="flex gap-2">
           <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
             <UserPlus className="h-4 w-4" /> Invite crew
