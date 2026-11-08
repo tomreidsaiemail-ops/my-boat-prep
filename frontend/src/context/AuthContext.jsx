@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try { await api.post("/auth/logout"); } catch { /* offline: still sign out locally */ }
+    localStorage.removeItem("mbp_add_area_tip");
     setUser(null);
   }, [setUser]);
 

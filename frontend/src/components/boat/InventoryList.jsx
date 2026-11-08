@@ -67,9 +67,12 @@ const InventoryInstructions = ({ searching, online }) => {
   );
 };
 
-const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g. Aft starboard lazarette" }) => {
+const ADD_TIP_KEY = "mbp_add_area_tip";
+const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard, a box or a folder" }) => {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [tip, setTip] = useState(() => localStorage.getItem(ADD_TIP_KEY) === "1");
+  const showTip = () => { if (!tip) { localStorage.setItem(ADD_TIP_KEY, "1"); setTip(true); } };
   const submit = (e) => {
     e.preventDefault();
     const res = onAdd(name.trim());
@@ -78,11 +81,12 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard or locker, e.g.
   };
   return (
     <form onSubmit={submit} className="flex flex-col gap-1" data-testid="inventory-add-area-form">
-      <div className="flex gap-2">
-        <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={placeholder}
-          aria-label="Cupboard or locker name" className="field-input h-12 min-w-0 flex-1" data-testid="inventory-add-area-input" />
-        <button type="submit" className="btn-solid h-12 w-12 shrink-0 justify-center p-0" aria-label="Add cupboard" data-testid="inventory-add-area-btn"><Plus className="h-5 w-5" /></button>
-        {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-14 shrink-0 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several cupboards with photos" title="Batch Magic Scan"
+      {tip && <p className="text-xs font-semibold text-[var(--navy)]" data-testid="inventory-add-area-tip">Boxes and folders can easily be moved into a cupboard!</p>}
+      <div className="flex gap-1.5 sm:gap-2">
+        <input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} onFocus={showTip} placeholder={placeholder}
+          aria-label="Cupboard, box or folder name" className="field-input h-12 min-w-0 flex-1 !px-3 placeholder:text-[12.5px]" data-testid="inventory-add-area-input" />
+        <button type="submit" className="btn-solid h-12 w-11 shrink-0 sm:w-12 justify-center p-0" aria-label="Add cupboard" data-testid="inventory-add-area-btn"><Plus className="h-5 w-5" /></button>
+        {onBatch && <button type="button" onClick={onBatch} className="btn-solid h-12 w-12 shrink-0 sm:w-14 justify-center gap-0 p-0" aria-label="Batch Magic Scan: add several cupboards with photos" title="Batch Magic Scan"
           data-testid="inventory-batch-scan-btn"><Plus className="-mr-1.5 h-5 w-5" /><Plus className="h-5 w-5" /></button>}
       </div>
       {error && <p className="text-sm font-semibold text-[var(--red)]" data-testid="inventory-add-area-error">{error}</p>}
