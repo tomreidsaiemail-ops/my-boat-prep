@@ -16,7 +16,7 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan }) => (
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels }) => (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -43,7 +43,7 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
           </div>
         )}
       </div>
-      <AppMenu onOpenFaq={onOpenFaq} onBartender={onBartender} onFish={onFish} onShopScan={onShopScan} onSyncStores={onSyncStores} onBuilder={onBuilder} onImport={onImport} />
+      <AppMenu onOpenFaq={onOpenFaq} onBartender={onBartender} onFish={onFish} onShopScan={onShopScan} onSyncStores={onSyncStores} onBuilder={onBuilder} onImport={onImport} helpPanels={helpPanels} />
       <AccountMenu />
     </div>
   </header>

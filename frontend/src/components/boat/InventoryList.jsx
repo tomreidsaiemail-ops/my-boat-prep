@@ -94,7 +94,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard, a box or a fol
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, onSignOff, vessel = "", loaded = true }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, batchHelp, onSyncStores, onSignOff, vessel = "", loaded = true }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -263,8 +263,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     onBatchHandled();
     if (!boat || boat.owner_id || readOnly) return;
     if (!boatZoneList.length) { setBatchOpen(true); return; }
-    setTimeout(() => document.querySelector('[data-testid="zone-picker"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
-    toast.message("Pick the zone to scan first, e.g. Galley");
+    const z = batchRequest.zone && boatZoneList.find((x) => x.label === batchRequest.zone.label);
+    if (z) scanZone(z); else setZonePrompt(true);
   }, [batchRequest]); // eslint-disable-line react-hooks/exhaustive-deps
   const openBatch = () => (online ? setBatchOpen(true) : toast.error("Batch Magic Scan needs a signal"));
   const scanZone = (z) => {
@@ -422,13 +422,13 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
           ];
         })}
       </ul>
-      {qrArea && <QrScanDialog area={qrArea} zone={zones[qrArea.id] || zones[qrArea.parent_id]} boat={boat} crew={readOnly} online={online} onSave={saveQr} onClose={() => setQrArea(null)} />}
+      {qrArea && <QrScanDialog area={qrArea} zone={zones[qrArea.id] || zones[qrArea.parent_id]} boat={boat} crew={readOnly} online={online} onSave={saveQr} onClose={() => setQrArea(null)} onSyncStores={onSyncStores} />}
       {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} boat={boat} ownerId={user.user_id} />}
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
         ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={() => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"))} /></ZonePicker>
         : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
-      <BatchZonePrompt open={zonePrompt} zones={boatZoneList} onClose={() => setZonePrompt(false)}
+      <BatchZonePrompt open={zonePrompt} zones={boatZoneList} help={batchHelp} counts={zoneCounts} onClose={() => setZonePrompt(false)}
         onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps} onScan={scanZone} onClose={() => setZone(null)} />

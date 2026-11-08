@@ -4,11 +4,13 @@ import { FileText, FileUp, Fish, HelpCircle, Martini, Menu, MessageSquarePlus, Q
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
 import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
+import { HelpDialog, HelpSubMenu, helpMenuItems } from "@/components/boat/HelpMenu";
 
-export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport }) => {
+export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [help, setHelp] = useState(null);
   return (
     <>
       <DropdownMenu>
@@ -28,6 +30,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             {onImport && <DropdownMenuItem onSelect={onImport} data-testid="app-menu-import-item"><FileUp className="mr-2 h-4 w-4" />Import Spreadsheet...</DropdownMenuItem>}
             <DropdownMenuSeparator data-testid="app-menu-bartender-separator" />
           </>}
+          <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} />
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setFeedback(true)} data-testid="app-menu-feedback-item"><MessageSquarePlus className="mr-2 h-4 w-4" />Submit feedback...</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setSharing(true)} data-testid="app-menu-share-item"><QrCode className="mr-2 h-4 w-4" />Share the app</DropdownMenuItem>
@@ -36,6 +39,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
       </DropdownMenu>
       <FeedbackDialog open={feedback} onClose={() => setFeedback(false)} />
       <ShareAppDialog open={sharing} onClose={() => setSharing(false)} />
+      <HelpDialog help={help} onClose={() => setHelp(null)} />
     </>
   );
 };

@@ -13,6 +13,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
+import { planCommand, runPlan } from "@/lib/voiceCommand";
+import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
@@ -169,11 +171,22 @@ export default function BoatPrep({ boatId, boats }) {
     setActiveId(id);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
-  const startBatchScan = () => {
+  const startBatchScan = (zone) => {
     if (!needPro("Boat inventory") || !guard()) return;
     if (!online) { toast.error("Batch Magic Scan needs a signal"); return; }
     setActiveId("boatInventory");
-    setBatchRequest(true);
+    setBatchRequest(zone?.label ? { zone } : true);
+  };
+  // Speak: "remove milk from fridge", "put cheese into fridge", "batch magic scan the galley". Crew only reach Food & Drink cupboards.
+  const speakPlan = (text) => {
+    const list = state.areas || [];
+    const fd = new Set(list.filter((a) => !a.parent_id && (a.food || a.drinks)).map((a) => a.id));
+    return planCommand(text, crew ? list.filter((a) => fd.has(a.id)) : list, crew ? [] : boatZones(boats.current));
+  };
+  const speakDo = (p) => {
+    if (p.batch) { startBatchScan(p.batch); return; }
+    mutate((s) => ({ ...s, areas: runPlan(p, s.areas || []) }));
+    toast.success(`Done: ${p.message.replace(/\?$/, "")}`);
   };
   const [warn, showWarn] = useWarn();
   const [dialog, setDialog] = useState(null);
@@ -875,7 +888,7 @@ export default function BoatPrep({ boatId, boats }) {
     <CrewDietContext.Provider value={diet}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
+      <Header helpPanels={helpPanels} gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
@@ -884,8 +897,8 @@ export default function BoatPrep({ boatId, boats }) {
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
-        <CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} batchHelp={batchHelp} onMakeKit={makePetKit}
+        <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
+        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
@@ -937,7 +950,7 @@ export default function BoatPrep({ boatId, boats }) {
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} details={boat} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
-              batchRequest={batchRequest} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
+              batchRequest={batchRequest} batchHelp={batchHelp} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />

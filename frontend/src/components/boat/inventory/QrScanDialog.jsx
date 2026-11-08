@@ -6,10 +6,12 @@ import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { applyQr, matchItem } from "@/lib/qrStock";
 import { QrQuickCount } from "@/components/boat/inventory/QrQuickCount";
+import { SpeakButton } from "@/components/boat/voice/SpeakButton";
+import { parseItem } from "@/lib/voiceCommand";
 
 const keyOf = (name) => name.trim().toLowerCase();
 const merge = (list, found) => {
-  const next = [...list];
+  const next = list.filter((x) => x.name.trim());
   found.forEach((f) => {
     const at = next.findIndex((x) => keyOf(x.name) === keyOf(f.name));
     if (at >= 0) next[at] = { ...next[at], qty: next[at].qty + (f.qty || 1) };
@@ -18,7 +20,7 @@ const merge = (list, found) => {
   return next;
 };
 const qtyOf = (i) => (i.qty === undefined || i.qty === null || i.qty === "" ? 1 : Number(i.qty) || 0);
-const MODES = [["add", "Add to contents"], ["replace", "Replace contents"], ["out", "Take out / used"]];
+const MODES = [["add", "Add (put)"], ["out", "Remove"]];
 
 // Taking things out: tick off what's leaving the cupboard, or photo it and Magic Scan finds it in the list.
 const OutList = ({ stock, out, setOut }) => (
@@ -40,10 +42,10 @@ const OutList = ({ stock, out, setOut }) => (
 );
 
 // Opened by scanning a cupboard's QR card: add, replace or take out contents, then a quick count of what's left.
-export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }) => {
+export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose, onSyncStores }) => {
   const input = useRef(null);
   const [mode, setMode] = useState("add");
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([{ key: "first", name: "", qty: 1 }]);
   const [out, setOut] = useState({});
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState(0);
@@ -81,6 +83,18 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
     finally { setBusy(false); }
   };
   const edit = (k, patch) => setItems((l) => l.map((x) => (x.key === k ? { ...x, ...patch } : x)));
+  const speakPlan = (text) => {
+    const c = parseItem(text, mode === "out" ? "remove" : "put");
+    if (!c.item) return { error: "I didn't catch the item." };
+    if (c.kind === "put") { const name = c.item.replace(/\b\w/g, (x) => x.toUpperCase()); return { message: `Add ${c.qty} ${name} to ${area.name}?`, put: { name, qty: c.qty } }; }
+    const hit = matchItem(stock, c.item);
+    return hit ? { message: `Remove ${c.qty} ${hit.name} from ${area.name}?`, take: { id: hit.id, qty: c.qty } } : { error: `There is no ${c.item} in ${area.name}.` };
+  };
+  const speakDo = (p) => {
+    if (p.put) { setMode("add"); setItems((l) => merge(l, [p.put])); return; }
+    const hit = stock.find((i) => i.id === p.take.id);
+    setMode("out"); setOut((o) => ({ ...o, [hit.id]: Math.min(qtyOf(hit), (o[hit.id] || 0) + p.take.qty) }));
+  };
   const ready = items.filter((i) => i.name.trim());
   const taking = Object.entries(out).filter(([, q]) => q > 0).map(([itemId, qty]) => ({ itemId, qty }));
   const taken = taking.reduce((n, t) => n + t.qty, 0);
@@ -105,7 +119,7 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
         </DialogHeader>
         {after ? <QrQuickCount area={area} items={after} onDone={onClose} /> : (
           <>
-            <div className="grid grid-cols-3 gap-1.5" role="radiogroup" data-testid="qr-scan-mode">
+            <div className="grid grid-cols-2 gap-1.5" role="radiogroup" data-testid="qr-scan-mode">
               {MODES.map(([v, label]) => (
                 <label key={v} className={`flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border-[1.5px] px-2 py-1 text-xs font-bold leading-tight ${mode === v ? "border-[var(--navy)] bg-sky-50" : "border-[var(--line)] bg-white"}`} data-testid={`qr-scan-mode-${v}`}>
                   <input type="radio" name="qr-mode" value={v} checked={mode === v} onChange={() => setMode(v)} className="h-4 w-4 shrink-0 accent-[var(--navy)]" /> {label}
@@ -113,6 +127,12 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
               ))}
             </div>
             <p className="text-xs text-[var(--muted)]" data-testid="qr-scan-mode-note">{note}</p>
+            {mode === "out" && onSyncStores && (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-sky-50 px-3 py-2 text-xs font-semibold text-[var(--navy)]" data-testid="qr-scan-sync-tip">
+                Tip: "Sync Food &amp; Drink Cupboards magically" may be a better option, as you can direct the Magic Provisioner to several cupboards at once.
+                <button type="button" className="font-extrabold underline" onClick={() => { onClose(); onSyncStores(); }} data-testid="qr-scan-sync-btn">Open Sync Food &amp; Drink...</button>
+              </p>
+            )}
             <input ref={input} type="file" accept="image/*" capture="environment" className="hidden" onChange={scan} data-testid="qr-scan-input" />
             <button type="button" className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-slate-50 text-sm font-bold [transition:background-color_.15s] hover:bg-sky-50"
               onClick={() => input.current?.click()} disabled={busy} data-testid="qr-scan-photo-btn">
@@ -134,6 +154,8 @@ export const QrScanDialog = ({ area, zone, boat, crew, online, onSave, onClose }
                 <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={() => setItems((l) => [...l, { key: `${Date.now()}`, name: "", qty: 1 }])} data-testid="qr-scan-add-row-btn"><Plus className="h-4 w-4" /> Add an item by hand</button>
               </>
             )}
+            <SpeakButton plan={speakPlan} onConfirm={speakDo} label={mode === "out" ? `Speak, e.g. "Remove milk"` : `Speak, e.g. "Add cheese"`}
+              examples={mode === "out" ? ["Remove milk", "Take out 2 eggs"] : ["Add cheese", "Put 2 milk"]} className="btn-ghost h-12 justify-center gap-2" testId="qr-speak" />
             <div className="sticky bottom-0 -mx-4 -mb-4 flex gap-2 border-t border-[var(--line)] bg-white p-3">
               <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} disabled={busy} data-testid="qr-scan-cancel-btn">Cancel</button>
               <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={busy || (mode === "out" ? !taken : !ready.length)} onClick={save} data-testid="qr-scan-save-btn">

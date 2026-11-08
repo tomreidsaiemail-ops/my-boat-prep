@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, ChevronUp, Fish, Martini, Ship, Sparkles } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
-import { HelpPanelIcon } from "@/components/boat/HelpPanelIcon";
+import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
@@ -50,7 +50,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, onBartender, batchHelp, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, onBartender, speak, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -98,7 +98,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
       {onBatchScan && <button type="button" onClick={onBatchScan} className={pill} title="Take the photos and Magic Scan tells you what is in them" data-testid="boat-details-batch-scan-btn">
         <Sparkles className="h-4 w-4 shrink-0" /> <span>Batch<br /><span className="whitespace-nowrap">Magic Scan...</span></span>
       </button>}
-      {onBatchScan && <span className="mr-1">{<HelpPanelIcon title="Batch Magic Scan" items={batchHelp} testId="batch-scan-help" />}</span>}
+      {onBatchScan && speak && <SpeakButton plan={speak.plan} onConfirm={speak.onConfirm} className={`${pill} mr-1`} testId="home-speak" />}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
         <ArrangeIcon /> <span>Lists</span>
       </button>}
