@@ -11,6 +11,7 @@ import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
 import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
+import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -37,6 +38,9 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [qrFor, setQrFor] = useState("");
+  // Invites saved while this window is open: who, and whether only a message was copied (so it still has to be sent).
+  const [sent, setSent] = useState({});
+  const [check, setCheck] = useState(null);
   const [askClear, setAskClear] = useState("");
   const [prompt, setPrompt] = useState(briefingPromptOn);
   const [queue, setQueue] = useState([]);
@@ -52,7 +56,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
   // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
   useEffect(() => {
     if (!open) return;
-    setQueue([]);
+    setQueue([]); setSent({}); setCheck(null);
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
     setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || info.voyage_notes || plan); setTouched(!!draft?.notes);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -76,9 +80,10 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
       await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email" }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
+      setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
       if (mode === "qr") setQrFor(who);
       else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
-      else if (copied) toast.success(mode === "link" ? `Link copied. ${who} logs in with that email to join.` : "Message copied. Paste it into WhatsApp or any messaging app.");
+      else if (copied) toast.success(mode === "link" ? `Invite saved and link copied. ${who} logs in with that email to join.` : `Invite saved, no email sent. Message copied: paste it into WhatsApp and send it to ${crewName.trim() || who}.`);
       else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.");
       if (copied) setAskClear(who);
       onInvited({ name: crewName.trim(), email: who });
@@ -91,9 +96,17 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
     </button>
   );
 
+  const closeNow = () => { setCheck(null); sessionStorage.removeItem(INVITE_DRAFT); onClose(); };
+  const tryClose = () => {
+    const typed = crewName.trim() || email.trim();
+    const unsaved = typed && !sent[email.trim().toLowerCase()] ? crewName.trim() || email.trim() : "";
+    const pending = Object.values(sent).filter((s) => s.toSend).map((s) => s.email);
+    if (unsaved || pending.length) setCheck({ unsaved, pending }); else closeNow();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) { sessionStorage.removeItem(INVITE_DRAFT); onClose(); } }}>
-      <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="invite-crew-dialog">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) tryClose(); }}>
+      <DialogContent guard={false} className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="invite-crew-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Invite crew to {name}</DialogTitle>
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
@@ -165,6 +178,8 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
           <span className="field-label">WhatsApp message preview</span>
           <pre className="whitespace-pre-wrap break-words rounded-md border-[1.5px] border-dashed border-[var(--line)] bg-slate-50 p-3 font-sans text-sm" data-testid="crew-message-preview">{message}</pre>
         </div>
+        <button type="button" className="btn-solid h-12 w-full justify-center" onClick={tryClose} data-testid="crew-invite-done-btn">Done</button>
+        <InviteCloseCheck check={check} onKeep={() => setCheck(null)} onClose={closeNow} />
       </DialogContent>
     </Dialog>
   );

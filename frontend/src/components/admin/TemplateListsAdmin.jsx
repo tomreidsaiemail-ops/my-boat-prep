@@ -17,7 +17,7 @@ const Row = ({ t, q, hits = [], onEdit, onDelete }) => (
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2">
         <span className="truncate font-bold" data-testid={`template-list-name-${t.id}`}><Highlight text={t.name} query={q} /></span>
-        {t.private && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700" data-testid={`template-list-private-${t.id}`}><Check className="h-3 w-3" />Admin use only</span>}
+        {t.private && <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--red)] text-[11px] font-extrabold text-white" title="Admin use only" aria-label="Admin use only" data-testid={`template-list-private-${t.id}`}>A</span>}
       </div>
       <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · updated {fmt(t.updated_at)}</div>
       {hits.length > 0 && (
