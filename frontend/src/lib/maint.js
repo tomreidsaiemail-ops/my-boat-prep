@@ -155,8 +155,13 @@ export const withInheritedDue = (data, registry) => ({ ...data, ...Object.fromEn
 
 const SAIL_WORDS = /\b(yacht|sloop|cutter|ketch|yawl|schooner|sail\w*|dinghy|catboat|catamaran|trimaran)\b/i;
 export const looksLikeSailboat = (boat) => SAIL_WORDS.test(`${boat.boat_type || ""} ${boat.model || ""}`);
-export const boatTitle = (boat) => [boat.make, boat.model, boat.boat_type].map((x) => (x || "").trim()).filter(Boolean).join(" ");
-export const offerKey = (boatId, boat) => `${boatId}|${normName(boatTitle(boat))}`;
+const trimmed = (x) => (x || "").trim();
+export const boatTitle = (boat) => {
+  const name = [boat.make, boat.model].map(trimmed).filter(Boolean).join(" ");
+  const kind = trimmed(boat.boat_type);
+  return name && kind ? `${name} (${kind})` : name || kind;
+};
+export const offerKey = (boatId, boat) => `${boatId}|${normName([boat.make, boat.model, boat.boat_type].map(trimmed).filter(Boolean).join(" "))}`;
 
 const G = (heading, ...items) => ({ heading, items: items.map((i) => (typeof i === "string" ? { label: i, attrs: {} } : i)) });
 const A = (label, attrs) => ({ label, attrs });

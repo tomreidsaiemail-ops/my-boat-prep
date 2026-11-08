@@ -67,7 +67,9 @@ def _number(text: str):
 
 
 def _boat(b: BoatIn) -> str:
-    return " ".join(x.strip() for x in (b.make, b.model, b.boat_type) if x.strip())
+    name = " ".join(x.strip() for x in (b.make, b.model) if x.strip())
+    kind = b.boat_type.strip()
+    return f"{name} ({kind})" if name and kind else name or kind
 
 
 def _json(text: str) -> dict:
@@ -89,7 +91,8 @@ async def boat_kind(body: BoatIn, user: dict = Depends(require_premium)):
     boat = _boat(body)
     if not (body.make.strip() and body.model.strip()):
         raise HTTPException(status_code=422, detail="Add your boat's make and model first")
-    key = " ".join(boat.lower().split())
+    key = " ".join(x.strip() for x in (body.make, body.model, body.boat_type) if x.strip()).lower()
+    key = " ".join(key.split())
     hit = await db.boat_kinds.find_one({"key": key}, {"_id": 0})
     if hit:
         return {"sailboat": hit["sailboat"], "name": hit["name"]}
