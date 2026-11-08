@@ -1,0 +1,45 @@
+{
+  "summary": "Charter ROUND 1 tested end to end. Backend: 16/16 pytest pass (/app/backend/tests/test_charter_round1.py). Covered: register; overlap 409; end before start 400; bad date 422; same skipper again at non-overlapping dates; delete only while registered; handover_lists (no maint lists, includes My To Do List / Ship's Log / 'Charter - ...'); handover before the user exists, then claim on login (case-insensitive email, 3 repeat GET /me/boats calls give 1 copy, copy_state removed); handover to beta (copy contents: only hand-over lists, unticked, empty shipsLog/myTodo, 9 cupboards with items [], blank routes, skipper = charter name, crew []); owner charter_lock in /me/boats; owner PUT and crew (free) PUT on the locked boat both ignored (DB unchanged); second handover 409, repeat handover 400; terms GET (5 seeded admin lines + 2 responsibilities), POST 400 with partial ticks, accepted after all ticked, owner sees terms_accepted_at; beta can edit the copy. Frontend on mobile 390x844: the owner flow works (empty form error, register, row with 'Friday 1/1/2027 to Thursday 1/7/2027 inclusive' + REGISTERED, overlap error in charter-form-error, hand-over reminder listing the lists, confirm gives HANDED OVER + claimed text, charter-lock-banner, 'On charter' badge, single tick/delete blocked with a read-only toast, DB unchanged). The charter skipper flow mostly works (badge in the selector, the terms dialog opens when you pick the copy, accept stays disabled until all ticked, Later closes it, banner button reopens it, accept saves, inventory cupboards show 0 items, Ship's Log empty, ticking Provisions works). Found 2 bugs (below) and some code-review gaps. Cleanup done.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "Other boat-mutating endpoints while charter_lock is set", "issue": "Only PUT /api/me/boat checks charter_lock. These still change the 'frozen' owner boat and its crew: POST /api/me/boat/walkthrough-signoff (pushes to shipsLog, for owner and crew), DELETE /api/me/boats/{id} (the owner can delete a boat that is out on charter), /api/boats/{id}/invites, crew roles/remove, voyage-notes, watch-rota, photos, zone-maps, walk-stops, terms, paper-log. Found by reading the code; I did not run these, to avoid changing real data."},
+      {"endpoint": "POST /api/charter-terms", "issue": "The responsibilities come from the copy's registry, which the charter skipper owns. They can edit or delete the 'Charter - charter skipper responsibilities' list on their copy, then accept with nothing ticked. Snapshot the responsibilities into the charter doc at hand-over time instead."},
+      {"endpoint": "claim_charters / make_copy", "issue": "Two GET /me/boats calls at the same moment can both upsert, because there is no unique index on user_boats(owner_id, boat_id). Low risk."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CharterTermsDialog", "issue": "If the dialog was opened from the banner (charter-terms-open-btn), clicking Accept saves but the dialog does not close. It re-opens straight away in the 'Accepted' state. RCA: the effect useEffect(() => { if (forceOpen && terms) setOpen(true) }, [forceOpen, terms]) runs again when accept() calls setTerms(...accepted_at). forceOpen is still non-zero, so setOpen(true) runs right after close(). Fix: depend only on [forceOpen], or track the last handled forceOpen in a ref.", "selector": "[data-testid=charter-terms-accept-btn]", "priority": "MEDIUM"},
+      {"component": "Owner locked boat - Select All", "issue": "Clicking Select All on a locked boat shows both a 'Ticked all 10 items / Undo' success toast and the read-only toast. Nothing actually changes. The success toast fires before mutate() is blocked.", "selector": "[data-testid=checklist-select-all]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Charter copy opened by the charter skipper", "issue": "The backend copy holds only the hand-over lists. As soon as the charter skipper opens it, the client migrations (defaults.js addMissingLists for engineService/electricalService/head/mealPlan, plus the Boat Budget and template list migrations) add Engine Service, Electrical Service, Meal Plan - Sample and Boat Budget back, and save them to the copy. Checked in the DB after the UI session: the registry now has those 4 extra lists, filled with default template items (not the owner's own data). This breaks 'only hand-over lists copied / maintenance lists never copied'. Fix: in charter_copy set deleted_lists (and the equivalent flags for budget/template lists) to the ids of the lists that are not copied, or skip addMissingLists/template migrations for boats with a 'charter' field.", "affected_selectors": ["[data-testid=list-selector]"]}
+    ],
+    "design_issues": [
+      {"screen": "Owner home (mobile 390)", "issues": ["The 'ON CHARTER' badge in the boat selector cuts the vessel name down to 'TEST_K...'"]},
+      {"screen": "Hand-over reminder", "issues": ["The note is one long paragraph. A bulleted list of copied lists would read better on mobile. The wording 'Cupboards come across empty, with no routes, Ship's Log, To Do items' is a little ambiguous, because the Ship's Log and To Do lists are copied, just empty."]},
+      {"screen": "Owner locked boat", "issues": ["Delete boat (when the owner has more than 1 boat), Invite crew and the Charter Registrations buttons are still offered on a locked boat. Consider hiding or disabling them."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_charter_round1.py", "/app/test_reports/pytest/charter_round1.xml"],
+  "action_items": [
+    "Stop client migrations from re-adding Engine Service / Electrical Service / Meal Plan - Sample / Boat Budget to charter copies (set deleted_lists in charter_copy or skip migrations when boat.charter is set)",
+    "Fix CharterTermsDialog reopening after Accept when it was opened from the banner (forceOpen effect deps)",
+    "Enforce charter_lock on the other boat-mutating endpoints (walkthrough-signoff, delete boat, invites, crew roles/remove, voyage notes, watch rota, photos, zone maps, walk-stops, terms, paper-log)",
+    "Snapshot the responsibilities at hand-over so the charter skipper can't edit them away before accepting",
+    "Don't show the success toast for Select All when the boat is locked"
+  ],
+  "critical_code_review_comments": [
+    "charter.py: the charter_lock check in hand_over and the update_one that sets the lock are not atomic. Two handovers at the same moment could both pass. Use update_one({..., charter_lock: {$exists: false}}) and check matched_count.",
+    "charter.py hand_over: the skipper lookup uses a regex on users.email (escaped). Fine, but it is inconsistent with email_key used for the claim. Consider using email_key for both.",
+    "If the owner registers their own email, hand over makes a copy owned by the owner. There is no guard against that."
+  ],
+  "updated_files": ["/app/backend/tests/test_charter_round1.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "~90% (terms accept-close bug, copy list leakage)"},
+  "test_credentials": "test_session_pro_1 (owner, boat main TEST_Kia Ora), test_session_beta_1 (charter skipper), test_session_free_1 (crew on pro main). Temporary user test-charter-xxxx created and deleted by the pytest fixture.",
+  "seed_data_creation": "Temporarily added the list 'Charter - charter skipper responsibilities' (id custom_TEST_charter_resp, 2 items) to pro main. Removed afterwards. Cleanup verified: db.charters for pro = 0, charter copy boats = 0, charter_lock unset on pro main, no Charter list left, pro provisions and vessel unchanged. The last_boat values for pro and beta were restored to their original values.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest -n 0 /app/backend/tests/test_charter_round1.py. It is order-dependent within the module and cleans up after itself. The UI flow: pro boat-crew-btn > charter-open-btn > register > charter-handover-btn-<id> > charter-handover-confirm-btn. The beta copy option is boat-option-ch<12>. Verify the 2 bugs above are fixed, and check the copy registry in the DB after beta opens it in the UI."
+}

@@ -3,9 +3,11 @@
 The copy belongs to the charter skipper (so they can run it like a skipper: invite crew, change lists, add cupboards)
 while the owner's own boat, and its crew, stay frozen read-only until the charter ends.
 """
+import html
+import logging
 import re
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,6 +16,7 @@ from pydantic import BaseModel, Field, field_validator
 from auth import get_current_user
 from crew import email_key, owned_boat
 from db import db
+from email_service import send_email
 
 router = APIRouter(prefix="/api")
 BoatQ = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
@@ -34,6 +37,8 @@ DEFAULT_TERMS = [
     "I will return the boat on the agreed date, clean, with the agreed fuel, water and gas levels.",
 ]
 EMPTY_BOAT = ("route_start", "route_dest", "depart", "arrive", "weather", "skipper_phone", "shore_email")
+DEFAULT_IDS = ("leavingDock", "returningDock", "arrivingDest", "safety", "riggingChecks", "routeHazards", "crewPrep", "provisions", "mealPlan",
+               "head", "engineService", "electricalService", "myTodo", "shipsLog", "grabBag", "mayDay", "panPan", "boatBudget")
 STATE_KEYS = ("boat", "registry", "data", "areas", "template_versions", "list_ts", "sec_ts")
 
 
@@ -67,7 +72,7 @@ class TermsIn(BaseModel):
 
 def public(c: dict) -> dict:
     return {k: c.get(k) for k in ("charter_id", "boat_id", "vessel", "name", "email", "start", "end", "status", "created_at",
-                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "deleted_at", "copy_boat_id")}
+                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "delete_at", "deleted_at", "copy_boat_id")}
 
 
 async def template_lines(pattern) -> Optional[List[str]]:
@@ -83,11 +88,13 @@ def charter_copy(src: dict, names: set, c: dict) -> dict:
         if lst.get("id") in ("shipsLog", "myTodo") or (lst.get("kind") != "maint" and (n.startswith("charter - ") or n in names)):
             keep.append(lst)
     ids = {lst["id"] for lst in keep}
+    # Lists left behind stay gone on the copy, so the app doesn't add default or template copies of them back.
+    gone = sorted({lst["id"] for lst in src.get("registry") or [] if lst["id"] not in ids} | {i for i in DEFAULT_IDS if i not in ids})
     data = {k: ([] if k in ("shipsLog", "myTodo") else [{**i, "checked": False} for i in v]) for k, v in (src.get("data") or {}).items() if k in ids}
     boat = {**(src.get("boat") or {}), **{f: "" for f in EMPTY_BOAT}, "skipper": c["name"], "log_email": c["email"]}
     areas = [{**a, "items": []} for a in src.get("areas") or []]
     return {"boat": boat, "registry": keep, "data": data, "areas": areas, "template_versions": src.get("template_versions") or {},
-            "list_ts": {}, "sec_ts": {}, "engine_log": [], "electrical_log": [], "rigging_log": [], "deleted_lists": [],
+            "list_ts": {}, "sec_ts": {}, "engine_log": [], "electrical_log": [], "rigging_log": [], "deleted_lists": gone,
             "emergency_checked": {}, "list_hidden": []}
 
 
@@ -110,7 +117,11 @@ async def claim_charters(user: dict):
 
 @router.get("/charters")
 async def list_charters(boat_id: BoatQ, user: dict = Depends(get_current_user)):
-    await owned_boat(user, boat_id)
+    await owned_boat(user, boat_id, allow_charter=True)
+    now = datetime.now(timezone.utc).isoformat()
+    async for c in db.charters.find({"owner_id": user["user_id"], "boat_id": boat_id, "status": "returned", "delete_at": {"$lte": now}}, {"_id": 0, "charter_id": 1, "delete_at": 1}):
+        await db.user_boats.delete_many({"charter.charter_id": c["charter_id"]})
+        await db.charters.update_one({"charter_id": c["charter_id"]}, {"$set": {"status": "deleted", "deleted_at": c["delete_at"]}})
     rows = await db.charters.find({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "copy_state": 0}).sort("start", -1).to_list(300)
     names = {norm(n) for n in (await template_lines(HANDOVER_LIST) or DEFAULT_HANDOVER)}
     src = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "registry": 1})
@@ -121,7 +132,7 @@ async def list_charters(boat_id: BoatQ, user: dict = Depends(get_current_user)):
 
 @router.post("/charters")
 async def register_charter(payload: CharterIn, user: dict = Depends(get_current_user)):
-    doc = await owned_boat(user, payload.boat_id)
+    doc = await owned_boat(user, payload.boat_id, allow_charter=True)
     if payload.end < payload.start:
         raise HTTPException(status_code=400, detail="The charter has to end on or after its first day")
     clash = await db.charters.find_one({"owner_id": user["user_id"], "boat_id": payload.boat_id, "status": {"$in": ["registered", "handed_over"]},
@@ -164,11 +175,15 @@ async def hand_over(charter_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=409, detail="This boat is already out on charter")
     names = {norm(n) for n in (await template_lines(HANDOVER_LIST) or DEFAULT_HANDOVER)}
     now = datetime.now(timezone.utc).isoformat()
+    lock = {"charter_id": charter_id, "name": c["name"], "email": c["email"], "start": c["start"], "end": c["end"]}
+    locked = await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"], "charter_lock": None}, {"$set": {"charter_lock": lock}})
+    if not locked.matched_count:
+        raise HTTPException(status_code=409, detail="This boat is already out on charter")
+    resp = next((lst for lst in src.get("registry") or [] if norm(lst.get("name")) == RESP_LIST), None)
     c.update({"status": "handed_over", "handed_at": now, "copy_boat_id": f"ch{charter_id[:12]}", "copy_state": charter_copy(src, names, c),
-              "vessel": (src.get("boat") or {}).get("vessel", c.get("vessel", ""))})
-    await db.charters.update_one({"charter_id": charter_id}, {"$set": {k: c[k] for k in ("status", "handed_at", "copy_boat_id", "copy_state", "vessel")}})
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"]},
-                                   {"$set": {"charter_lock": {"charter_id": charter_id, "name": c["name"], "email": c["email"], "start": c["start"], "end": c["end"]}}})
+              "vessel": (src.get("boat") or {}).get("vessel", c.get("vessel", "")),
+              "responsibilities": [{"id": str(i.get("id")), "label": i.get("label", "")} for i in (src.get("data") or {}).get(resp["id"], []) if i.get("label", "").strip()] if resp else []})
+    await db.charters.update_one({"charter_id": charter_id}, {"$set": {k: c[k] for k in ("status", "handed_at", "copy_boat_id", "copy_state", "vessel", "responsibilities")}})
     skipper = await db.users.find_one({"email": {"$regex": f"^{re.escape(c['email'])}$", "$options": "i"}}, {"_id": 0, "user_id": 1})
     if skipper:
         await make_copy(c, skipper["user_id"])
@@ -186,9 +201,7 @@ async def my_charter(user: dict, boat_id: str) -> tuple[dict, dict]:
 @router.get("/charter-terms")
 async def charter_terms(boat_id: BoatQ, user: dict = Depends(get_current_user)):
     doc, c = await my_charter(user, boat_id)
-    resp = next((lst for lst in doc.get("registry") or [] if norm(lst.get("name")) == RESP_LIST), None)
-    items = [{"id": str(i.get("id")), "label": i.get("label", "")} for i in (doc.get("data") or {}).get(resp["id"], [])] if resp else []
-    return {"terms": await template_lines(TERMS_LIST) or DEFAULT_TERMS, "responsibilities": [i for i in items if i["label"].strip()],
+    return {"terms": await template_lines(TERMS_LIST) or DEFAULT_TERMS, "responsibilities": c.get("responsibilities") or [],
             "accepted_at": c.get("terms_accepted_at"), "ticked": c.get("resp_ticked") or [], "start": c.get("start"), "end": c.get("end"),
             "owner_name": c.get("owner_name", ""), "vessel": c.get("vessel", "")}
 
@@ -203,3 +216,66 @@ async def accept_charter_terms(boat_id: BoatQ, payload: TermsIn, user: dict = De
     now = datetime.now(timezone.utc).isoformat()
     await db.charters.update_one({"charter_id": doc["charter"]["charter_id"]}, {"$set": {"terms_accepted_at": now, "resp_ticked": sorted(need)}})
     return {"accepted_at": now}
+
+
+KEEP_DAYS = 7
+
+
+def charter_entries(items: list, name: str, taken: set) -> list:
+    """The charter skipper's entries, labelled with their name, with ids that can't clash with the owner's own."""
+    out = []
+    for i in items or []:
+        if not (i.get("label") or "").strip():
+            continue
+        iid = i.get("id")
+        while iid in taken or iid is None:
+            iid = (iid or int(datetime.now(timezone.utc).timestamp() * 1000)) + 1
+        taken.add(iid)
+        out.append({**i, "id": iid, "label": f"Charter skipper {name}: {i['label'].strip()}", "charter": name})
+    return out
+
+
+def thanks_html(c: dict, vessel: str) -> str:
+    e = html.escape
+    return (f"<div style=\"font-family:Arial,sans-serif;font-size:15px;color:#0b2545\"><p>Hi {e(c['name'])},</p>"
+            f"<p>Thank you for skippering <b>{e(vessel)}</b> on your charter from {e(c['start'])} to {e(c['end'])}. "
+            f"{e(c.get('owner_name') or 'The owner')} has ended the charter and your Ship's Log and To Do List are now with them.</p>"
+            f"<p>You can still look at your charter copy of {e(vessel)} in My Boat Prep for {KEEP_DAYS} days. It is read only and is then deleted.</p>"
+            "<p>Fair winds,<br/>My Boat Prep</p></div>")
+
+
+@router.post("/charters/{charter_id}/return")
+async def end_charter(charter_id: str, user: dict = Depends(get_current_user)):
+    c = await own_charter(user, charter_id)
+    if c["status"] != "handed_over":
+        raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")
+    now = datetime.now(timezone.utc)
+    done = await db.charters.update_one({"charter_id": charter_id, "status": "handed_over"},
+                                        {"$set": {"status": "returned", "returned_at": now.isoformat(), "delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat()},
+                                         "$unset": {"copy_state": ""}})
+    if not done.modified_count:
+        raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")
+    copy = await db.user_boats.find_one({"owner_id": c.get("copy_owner"), "boat_id": c.get("copy_boat_id")}, {"_id": 0, "data.shipsLog": 1, "data.myTodo": 1}) if c.get("copy_owner") else None
+    own = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": c["boat_id"]}, {"_id": 0, "data.shipsLog": 1, "data.myTodo": 1})
+    taken = {i.get("id") for k in ("shipsLog", "myTodo") for i in ((own or {}).get("data") or {}).get(k) or []}
+    got = {k: charter_entries(((copy or {}).get("data") or {}).get(k), c["name"], taken) for k in ("shipsLog", "myTodo")}
+    push = {f"data.{k}": {"$each": v} for k, v in got.items() if v}
+    pushed = [{"list": k, "item": i} for k, v in got.items() for i in v]
+    if pushed:
+        push["pushed_items"] = {"$each": pushed}
+    upd = {"$unset": {"charter_lock": ""}, "$set": {"updated_at": now.isoformat()}}
+    if push:
+        upd["$push"] = push
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"]}, upd)
+    if copy:
+        await db.user_boats.update_one({"owner_id": c["copy_owner"], "boat_id": c["copy_boat_id"]},
+                                       {"$set": {"charter.returned_at": now.isoformat(), "charter.delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat(),
+                                                 "charter_expires_at": now + timedelta(days=KEEP_DAYS)}})
+    emailed = False
+    try:
+        await send_email(to=[c["email"]], subject=f"Thank you for skippering {c.get('vessel') or 'the boat'}", html=thanks_html(c, c.get("vessel") or "the boat"))
+        emailed = True
+    except Exception as e:  # The charter still ends if the email can't go.
+        logging.getLogger(__name__).warning(f"Charter thank-you email failed: {e}")
+    return {**public(await db.charters.find_one({"charter_id": charter_id}, {"_id": 0})),
+            "log_entries": len(got["shipsLog"]), "todo_entries": len(got["myTodo"]), "emailed": emailed}

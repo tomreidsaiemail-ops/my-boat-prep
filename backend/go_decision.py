@@ -49,7 +49,7 @@ async def push_log(owner_id: str, boat_id: str, label: str) -> None:
 @router.post("/boats/{boat_id}/go-plan")
 async def send_go_plan(boat_id: BoatPath, payload: GoPlanIn, user: dict = Depends(get_current_user)):
     """Skipper shares the route, weather photos and 'why we're going'; every earlier crew answer is cleared so all are asked again."""
-    doc = await owned_boat(user, boat_id)
+    doc = await owned_boat(user, boat_id, allow_charter=True)
     if not (payload.start.strip() or payload.dest.strip() or payload.why.strip() or payload.photos):
         raise HTTPException(status_code=400, detail="Add the route, a weather photo or why you're going first")
     now = datetime.now(timezone.utc).isoformat()

@@ -271,7 +271,7 @@ async def email_parties(payload: PartiesIn, user: dict = Depends(require_premium
 @router.get("/on-board/{boat_id}")
 async def on_board(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     """Crew on this boat (those who replied 'in', if anyone has) with their registered allergies, food preferences and weight. Skipper only."""
-    doc = await owned_boat(user, boat_id)
+    doc = await owned_boat(user, boat_id, allow_charter=True)
     ids = doc.get("crew") or []
     rsvp = doc.get("rsvp") or {}
     if any((rsvp.get(i) or {}).get("status") == "in" for i in ids):

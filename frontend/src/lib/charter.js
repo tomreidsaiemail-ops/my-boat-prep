@@ -13,3 +13,6 @@ export const STATUS = {
   returned: { text: "Returned", cls: "bg-green-100 text-green-900" },
   deleted: { text: "Copy deleted", cls: "bg-slate-200 text-slate-700" },
 };
+
+const today = () => new Date().toLocaleDateString("en-CA");
+export const isOverdue = (c) => !!c?.end && today() > c.end;

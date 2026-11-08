@@ -355,7 +355,7 @@ async def get_boat(user: dict = Depends(get_current_user), boat_id: BoatId = "ma
 async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user), boat_id: BoatId = "main", owner: OwnerId = None):
     key, role = await boat_access(user, boat_id, owner)
     prev = await db.user_boats.find_one(key, {"_id": 0})
-    if prev and prev.get("charter_lock"):
+    if prev and (prev.get("charter_lock") or (prev.get("charter") or {}).get("returned_at")):
         # Out on charter: the owner's boat stays exactly as handed over until the charter ends.
         return to_out(BoatState(**key, **{f: prev.get(f) for f in STATE_FIELDS if prev.get(f) is not None}, synced_at=prev.get("synced_at") or prev.get("updated_at")), role)
     if role == "crew":
@@ -445,6 +445,8 @@ async def delete_boat(boat_id: Annotated[str, PathParam(pattern=ID_PATTERN)], us
     owner_id = user["user_id"]
     if not await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found")
+    if await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "charter_lock": {"$ne": None}}, {"_id": 1}):
+        raise HTTPException(status_code=423, detail="This boat is out on charter. End the charter before deleting it.")
     if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
         raise HTTPException(status_code=400, detail="You need at least one boat")
     await trash_boat(owner_id, boat_id)
@@ -624,6 +626,7 @@ async def create_indexes():
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
     await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
+    await db.user_boats.create_index("charter_expires_at", expireAfterSeconds=0)
     await db.deleted_boats.create_index([("owner_id", 1), ("boat_id", 1)])
     await db.crew_invites.create_index("token_hash", unique=True)
     await db.crew_invites.create_index("email_key")

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Anchor, Check, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { fmtPeriod } from "@/lib/charter";
+import { fmtDay, fmtPeriod, isOverdue } from "@/lib/charter";
+import { EndCharter } from "@/components/boat/charter/EndCharter";
 import { localWhen } from "@/lib/timeAgo";
 
 const seenKey = (boatId) => `mbp_charter_terms_seen_${boatId}`;
@@ -21,7 +22,8 @@ export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
       if (!data.accepted_at && sessionStorage.getItem(seenKey(boat.boat_id)) !== "1") setOpen(true);
     }).catch(() => {});
   }, [boat?.boat_id, online]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (forceOpen && terms) setOpen(true); }, [forceOpen, terms]);
+  const handled = useRef(0);
+  useEffect(() => { if (forceOpen && terms && handled.current !== forceOpen) { handled.current = forceOpen; setOpen(true); } }, [forceOpen, terms]);
   if (!terms) return null;
   const close = () => { sessionStorage.setItem(seenKey(boat.boat_id), "1"); setOpen(false); onClosed?.(); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
@@ -62,10 +64,18 @@ export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
   );
 };
 
-export const CharterBanner = ({ entry, onTerms }) => {
-  if (entry.charter_lock) return (
-    <p className="rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" data-testid="charter-lock-banner">
-      <b>On charter</b> to {entry.charter_lock.name}, {fmtPeriod(entry.charter_lock)}. This boat and its crew are read only until you end the charter.
+export const CharterBanner = ({ entry, online, onTerms, onEnded }) => {
+  const lock = entry.charter_lock;
+  if (lock) return (
+    <div className="flex flex-col gap-2 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" data-testid="charter-lock-banner">
+      <p><b>On charter</b> to {lock.name}, {fmtPeriod(lock)}. This boat and its crew are read only until you end the charter.</p>
+      {!entry.crew && isOverdue(lock) && <p className="font-extrabold" data-testid="charter-overdue-reminder">Reminder: the charter ended {fmtDay(lock.end)}. End it to unlock your boat and bring back {lock.name}&apos;s Ship&apos;s Log and To Do List.</p>}
+      {!entry.crew && <div className="flex"><EndCharter c={lock} vessel={entry.vessel || "Your boat"} online={online} onEnded={onEnded} className="btn-solid h-10 justify-center gap-2 px-4" /></div>}
+    </div>
+  );
+  if (entry.charter?.returned_at) return (
+    <p className="rounded-lg border-2 border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900" data-testid="charter-ended-banner">
+      <b>Charter ended</b> {localWhen(entry.charter.returned_at)}. Thank you for skippering {entry.charter.vessel}! This copy is read only{entry.charter.delete_at ? ` and is deleted ${localWhen(entry.charter.delete_at)}` : ""}.
     </p>
   );
   if (entry.charter) return (

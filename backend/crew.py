@@ -23,10 +23,14 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-async def owned_boat(user: dict, boat_id: str) -> dict:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1, "crew_joined": 1})
+async def owned_boat(user: dict, boat_id: str, allow_charter: bool = False) -> dict:
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "charter_lock": 1, "charter": 1, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1, "crew_joined": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    if doc.get("charter_lock") and not allow_charter:
+        raise HTTPException(status_code=423, detail="This boat is out on charter, so it is read only until the charter ends")
+    if (doc.get("charter") or {}).get("returned_at"):
+        raise HTTPException(status_code=423, detail="This charter has ended, so the charter copy is read only")
     return doc
 
 
@@ -256,7 +260,7 @@ async def crew_prep_progress(owner_id: str, boat_id: str) -> dict:
 
 @router.get("/boats/{boat_id}/crew")
 async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
-    doc = await owned_boat(user, boat_id)
+    doc = await owned_boat(user, boat_id, allow_charter=True)
     members = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(100)
     roles = doc.get("crew_roles") or {}
     now = datetime.now(timezone.utc).isoformat()

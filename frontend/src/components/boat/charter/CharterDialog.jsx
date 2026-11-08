@@ -4,12 +4,13 @@ import { Anchor, Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { api, apiError } from "@/lib/api";
-import { STATUS, fmtPeriod } from "@/lib/charter";
+import { STATUS, fmtDay, fmtPeriod, isOverdue } from "@/lib/charter";
+import { EndCharter } from "@/components/boat/charter/EndCharter";
 import { localWhen } from "@/lib/timeAgo";
 
 const blank = { name: "", email: "", start: "", end: "" };
 
-const CharterRow = ({ c, busy, onHandOver, onRemove }) => {
+const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded }) => {
   const st = STATUS[c.status] || STATUS.registered;
   return (
     <li className="flex flex-col gap-1.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`charter-row-${c.charter_id}`}>
@@ -24,8 +25,11 @@ const CharterRow = ({ c, busy, onHandOver, onRemove }) => {
         {c.handed_at && <span>Handed over {localWhen(c.handed_at)}</span>}
         {c.status === "handed_over" && <span data-testid={`charter-row-claimed-${c.charter_id}`}>{c.claimed_at ? `Charter skipper has the boat since ${localWhen(c.claimed_at)}` : "Waiting for the charter skipper to log in with that email"}</span>}
         {c.terms_accepted_at && <span data-testid={`charter-row-terms-${c.charter_id}`}>Charter Boat Terms and Conditions accepted {localWhen(c.terms_accepted_at)}</span>}
+        {c.status === "handed_over" && isOverdue(c) && <span className="font-bold text-amber-900" data-testid={`charter-row-overdue-${c.charter_id}`}>The charter ended {fmtDay(c.end)}. End it to unlock {vessel} and bring back the logs.</span>}
+        {c.returned_at && <span data-testid={`charter-row-returned-${c.charter_id}`}>Charter ended {localWhen(c.returned_at)}{c.status === "returned" && c.delete_at ? `. Charter copy read only until ${localWhen(c.delete_at)}, then deleted` : ""}</span>}
         {c.deleted_at && <span data-testid={`charter-row-deleted-${c.charter_id}`}>Charter copy deleted {localWhen(c.deleted_at)}</span>}
       </div>
+      {c.status === "handed_over" && <div className="flex"><EndCharter c={c} vessel={vessel} online={online} onEnded={onEnded} /></div>}
       {c.status === "registered" && (
         <div className="flex gap-2">
           <button type="button" className="btn-solid h-10 flex-1 justify-center gap-2" disabled={busy} onClick={() => onHandOver(c)} data-testid={`charter-handover-btn-${c.charter_id}`}><Anchor className="h-4 w-4" /> Hand over the boat</button>
@@ -88,10 +92,10 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
             {busy === "add" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Register charter
           </button>
         </form>
-        {rows.length ? <ul className="flex flex-col gap-2" data-testid="charter-list">{rows.map((c) => <CharterRow key={c.charter_id} c={c} busy={!!busy || !online} onHandOver={setHanding} onRemove={setRemoving} />)}</ul>
+        {rows.length ? <ul className="flex flex-col gap-2" data-testid="charter-list">{rows.map((c) => <CharterRow key={c.charter_id} c={c} busy={!!busy || !online} vessel={vessel} online={online} onHandOver={setHanding} onRemove={setRemoving} onEnded={() => { load(); onHandedOver?.(); }} />)}</ul>
           : <p className="text-sm text-[var(--muted)]" data-testid="charter-empty">No charters yet.</p>}
         <ConfirmDelete item={handing ? {} : null} danger={false} testId="charter-handover" title={`Hand ${vessel} over to ${handing?.name || ""}?`} confirmLabel="Hand over" cancelLabel="Not yet"
-          note={`${handing ? fmtPeriod(handing) : ""}. They get a copy with these lists: ${lists.join(", ") || "none"}. ${charterLists.length ? `Your Charter lists (${charterLists.join(", ")}) are copied too.` : "Tip: lists you name \"Charter - ...\", e.g. \"Charter - charter skipper responsibilities\", are copied too."} Cupboards come across empty, with no routes, Ship's Log, To Do items, crew or invites. ${vessel} and its crew become read only until you end the charter.`}
+          note={`${handing ? fmtPeriod(handing) : ""}. They get a copy with these lists: ${lists.join(", ") || "none"}. ${charterLists.length ? `Your Charter lists (${charterLists.join(", ")}) are copied too.` : "Tip: lists you name \"Charter - ...\", e.g. \"Charter - charter skipper responsibilities\", are copied too."} Cupboards, Ship's Log and My To Do List come across empty, with no routes, crew or invites. ${vessel} and its crew become read only until you end the charter.`}
           onConfirm={handOver} onClose={() => setHanding(null)} />
         <ConfirmDelete item={removing ? { name: `${removing.name}'s charter` } : null} testId="charter-remove" onConfirm={remove} onClose={() => setRemoving(null)} />
       </DialogContent>
