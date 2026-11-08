@@ -711,3 +711,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Tested: iteration_128 (all pass), follow-up fixes self-tested.
 - 2026-06: Wording change: every on-screen "boat area(s)" is now "cupboard(s)" (frontend strings, PDF names "Cupboard QR cards.pdf", seed descriptions). No DB admin lists contained "boat area" in preview.
 - 2026-06: Crew registration success screen Close no longer triggers the discard prompt (guard={!done}, content keyed per request); dialog guard also ignores windows with no fields left (success screens).
+- 2026-06: Label this map (ZonePinEditor) only offers cupboards in that map's zone colour (plus the one a label already points at); maps with no colour offer all.

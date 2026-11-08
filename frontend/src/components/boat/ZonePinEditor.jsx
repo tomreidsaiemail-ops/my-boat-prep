@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Loader2, Trash2 } from "luci
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
+import { ZONE_COLOURS, areaZones } from "@/lib/zoneColours";
 
 const NEW = "__new";
 const STEP = 0.01;
@@ -22,7 +23,7 @@ const Nudge = ({ onNudge }) => (
   </div>
 );
 
-const PinForm = ({ pin, areas, onSave, onDelete, onCancel, onNudge }) => {
+const PinForm = ({ pin, areas, zoneName, onSave, onDelete, onCancel, onNudge }) => {
   const linked = areas.some((a) => a.id === pin.area_id);
   const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas.find((a) => !a.parent_id)?.id || NEW);
   const [name, setName] = useState(linked ? "" : pin.label || "");
@@ -35,12 +36,13 @@ const PinForm = ({ pin, areas, onSave, onDelete, onCancel, onNudge }) => {
   };
   return (
     <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-[var(--panel)] p-3" data-testid="zone-pin-form">
-      <label className="flex flex-col gap-1"><span className="field-label">Cupboard at this spot</span>
+      <label className="flex flex-col gap-1"><span className="field-label">Cupboard at this spot{zoneName ? ` (${zoneName} cupboards)` : ""}</span>
         <select value={areaId} onChange={(e) => { setAreaId(e.target.value); setError(""); }} className="field-input" data-testid="zone-pin-area-select">
-          {areas.filter((a) => !a.parent_id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           <option value={NEW}>New cupboard...</option>
         </select>
       </label>
+      {zoneName && !areas.length && areaId !== NEW && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-none-in-zone">No cupboards in {zoneName} yet.</p>}
       {areaId === NEW && <input autoFocus value={name} maxLength={60} placeholder="e.g. Port Lazarette" onChange={(e) => { setName(e.target.value); setError(""); }}
         className="field-input" aria-label="New cupboard name" data-testid="zone-pin-name-input" />}
       {areaId === NEW && <p className="text-xs text-[var(--muted)]">A new name is also added to your Boat Inventory when you save.</p>}
@@ -62,6 +64,10 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const [busy, setBusy] = useState(false);
   useEffect(() => { setPins(pic?.map.pins || []); setEditing(null); }, [pic]);
   if (!pic) return null;
+  // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
+  const zone = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
+  const zones = areaZones(boat, areas);
+  const choicesFor = (pin) => areas.filter((a) => !a.parent_id && (!zone || zones[a.id]?.colour === zone || a.id === pin.area_id));
   const place = (e) => {
     const r = img.current.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
@@ -101,7 +107,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
           onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}
           highlight={editing?.pin.id} imgClass="max-h-[60vh] w-full rounded-md object-contain" testId="zone-pin-photo" />
-        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={areas} onSave={keep} onCancel={() => setEditing(null)}
+        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
           onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
         {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}
