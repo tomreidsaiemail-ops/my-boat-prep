@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BRIEFING_MAX } from "@/components/boat/agreement/RoleBriefingField";
@@ -12,9 +12,10 @@ export const RoleBriefingPrompt = ({ role, current = "", isNew, onSave, onSkip }
   useEffect(() => { setText(current); }, [role]); // eslint-disable-line react-hooks/exhaustive-deps
   const changed = text.trim() !== current.trim();
   const has = !!current.trim() && !isNew;
+  const keepRef = useRef(null);
   return (
     <Dialog open={!!role} onOpenChange={(o) => !o && onSkip()}>
-      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="role-briefing-prompt">
+      <DialogContent onOpenAutoFocus={(e) => { if (has) { e.preventDefault(); keepRef.current?.focus({ preventScroll: true }); } }} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="role-briefing-prompt">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold" data-testid="role-briefing-prompt-title">Role Briefing - {role}</DialogTitle>
           <DialogDescription className="text-left text-sm">Sent in the crew invite email, and shown in the Boat Terms and Conditions Agreement crew accept when they join.</DialogDescription>
@@ -27,7 +28,7 @@ export const RoleBriefingPrompt = ({ role, current = "", isNew, onSave, onSkip }
           <span>Saved to this boat's Crew Roles{isNew ? `, where ${role} is added as a new role` : ""}. Any future crew member given {role} gets this briefing too.</span>
         </p>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
-          {has && !changed && <button type="button" className="btn-solid h-12 justify-center" onClick={onSkip} autoFocus data-testid="role-briefing-prompt-keep-btn">Keep it as it is</button>}
+          {has && !changed && <button type="button" ref={keepRef} className="btn-solid h-12 justify-center" onClick={onSkip} data-testid="role-briefing-prompt-keep-btn">Keep it as it is</button>}
           {(!has || changed) && (
             <button type="button" className="btn-solid h-12 justify-center" disabled={!changed && !isNew} onClick={() => onSave(text)} data-testid="role-briefing-prompt-save-btn">
               {text.trim() ? "Save to Crew Roles" : current.trim() ? "Delete briefing from Crew Roles" : "Save role without a briefing"}

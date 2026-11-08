@@ -16,7 +16,7 @@ const Row = ({ t, q, hits = [], onEdit, onDelete }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`template-list-row-${t.id}`}>
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="truncate font-bold" data-testid={`template-list-name-${t.id}`}><Highlight text={t.name} query={q} /></span>
+        <span className="min-w-0 break-words font-bold [overflow-wrap:anywhere]" data-testid={`template-list-name-${t.id}`}><Highlight text={t.name} query={q} /></span>
         {t.private && <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--red)] text-[11px] font-extrabold text-white" title="Admin use only" aria-label="Admin use only" data-testid={`template-list-private-${t.id}`}>A</span>}
       </div>
       <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · updated {fmt(t.updated_at)}</div>

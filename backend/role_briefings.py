@@ -1,4 +1,5 @@
 """Safety-first default Role Briefings for every role in the admin Crew Roles list (written once, on deploy)."""
+import logging
 from datetime import datetime, timezone
 
 from db import db
@@ -128,10 +129,14 @@ async def seed_role_safety_briefings():
         return
     now = datetime.now(timezone.utc).isoformat()
     tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}}, {"_id": 1, "items": 1})
-    if tpl:
-        items = [{**i, "briefing": SAFETY_BRIEFINGS[_role_key(i.get("label", ""))]} if _role_key(i.get("label", "")) in SAFETY_BRIEFINGS else i
-                 for i in tpl.get("items") or []]
-        if items != tpl.get("items"):
-            await db.list_templates.update_one({"_id": tpl["_id"]}, {"$set": {"items": items, "updated_at": now}})
-        await push_role_briefings(items, now)
+    if not tpl:
+        return
+    items = [{**i, "briefing": SAFETY_BRIEFINGS[_role_key(i.get("label", ""))]} if _role_key(i.get("label", "")) in SAFETY_BRIEFINGS else i
+             for i in tpl.get("items") or []]
+    missed = [i.get("label") for i in tpl.get("items") or [] if i.get("indent") and _role_key(i.get("label", "")) not in SAFETY_BRIEFINGS]
+    if missed:
+        logging.getLogger(__name__).info("Role safety briefings: no default for %s", missed)
+    if items != tpl.get("items"):
+        await db.list_templates.update_one({"_id": tpl["_id"]}, {"$set": {"items": items, "updated_at": now}})
+    await push_role_briefings(items, now)
     await db.migrations.insert_one({"_id": "role_safety_briefings", "at": now})

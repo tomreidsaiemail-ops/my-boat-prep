@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only test on mobile 390x844 of the Invite Crew Done button and close check, the Role Briefing prompt 'Keep it as it is' button, the new placeholder, and the admin template-list private 'A' marker, plus a code review of backend/role_briefings.py. All requested flows pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Role Briefing prompt (Port Trim)", "issues": ["Low priority: with a long briefing, the textarea opens scrolled partway down, so the first line is cut off at the top. The cause is probably autoFocus on the Keep button, or the textarea keeping its scroll position. Showing the top of the text would read better."]},
+      {"screen": "Admin Template lists (mobile)", "issues": ["Low priority: long names such as 'Admin - Boat Terms and Conditions' are still cut short with an ellipsis (200px shown, 264px needed) because of the edit and delete icons. The red 'A' circle no longer covers the name."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: in seed_role_safety_briefings, think about writing the migration marker only when the admin Crew Roles template was found. Right now, if prod has no matching template at first startup, the migration is marked done and never runs again.",
+    "Optional: show the full name (wrap or title tooltip) for long admin template names on mobile."
+  ],
+  "critical_code_review_comments": [
+    "role_briefings.py: on purpose, the migration replaces any briefing the admin already wrote on matching template roles (for example the earlier TRIM_BRIEFING). push_role_briefings only fills boat roles that have no 'briefing' key, so boats that already have the old trim text keep it. That matches the 'a blanked one stays blank' rule.",
+    "role_briefings.py: matching is by _role_key on exact labels, so a template label that differs (for example 'Fire Marshal' with one L, or 'Helmsperson') gets no briefing and nothing is logged. A short log of the roles that didn't match would help check the prod run.",
+    "Every briefing is under 1000 characters, the BRIEFING_MAX limit. The migration is idempotent through db.migrations. It is called at startup after seed_trim_briefings, which is the right order.",
+    "InviteCrewDialog tryClose: when only roles were picked (no name or email), Done closes with no warning. This is acceptable under the spec.",
+    "Preview DB now has the migrations marker 'role_safety_briefings', with no admin Crew Roles template present."
+  ],
+  "verified_passing": [
+    "crew-invite-done-btn is at the bottom of the dialog. With empty fields Done closes at once, with no close check and no 'Discard your changes?' dialog.",
+    "Name and email typed but not sent: Done shows invite-close-check titled 'TEST_Wa isn't invited yet'. 'Go back' keeps the dialog open with the typed values. 'Close without inviting' closes it.",
+    "Escape and the X button open the same invite-close-check, never the generic discard dialog.",
+    "Copy WhatsApp message: the toast reads 'Invite saved, no email sent. Message copied: paste it into WhatsApp...'. GET /api/boats/main/crew shows a pending invite for test.wa.invite@example.com. Done then shows 'Now send the WhatsApp message' naming the email, with Back / 'OK, I'll send it', and 'OK, I'll send it' closes.",
+    "Send email invite to delivered@resend.dev: the invite is saved and Done closes with no prompt.",
+    "Role Briefing prompt for Port Trim (has a briefing): the only solid button is 'Keep it as it is' (role-briefing-prompt-keep-btn). After an edit it becomes 'Save to Crew Roles', with a ghost 'Keep it as it is' skip button. Undoing the edit brings the Keep button back. Keep closes the prompt and leaves Crew Roles data unchanged (checked in the DB).",
+    "Roles with no briefing (Skipper, First Aider, Helm) show the placeholder 'e.g. One hand for the boat at all times'.",
+    "Admin template lists: all 19 private lists show template-list-private-<id> as a 20x20 red (rgb 220,38,38) round badge with 'A', and the badge does not overlap the name."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (code review only)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST invites test.wa.invite@example.com (TEST_Wa) and delivered@resend.dev (TEST_Email) on boat main and deleted both by invite_id. invites is now [].",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro boat 'main' (TEST_Kia Ora) only has Skipper, First Aider and Helm as available role chips, none with a briefing. Port Trim and Starboard Trim have briefings but are unchecked. To get the Keep prompt, type 'Port Trim' in crew-role-custom-input and click crew-role-add-btn. Grant clipboard permissions for the WhatsApp copy. Admin page is /admin/templates with session test_session_admin_1."
+}
