@@ -16,3 +16,6 @@ export const STATUS = {
 
 const today = () => new Date().toLocaleDateString("en-CA");
 export const isOverdue = (c) => !!c?.end && today() > c.end;
+const addDays = (iso, n) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d + n).toLocaleDateString("en-CA"); };
+// Handing over (or back) is expected on the day itself or the day before.
+export const onOrDayBefore = (iso) => !!iso && [iso, addDays(iso, -1)].includes(today());

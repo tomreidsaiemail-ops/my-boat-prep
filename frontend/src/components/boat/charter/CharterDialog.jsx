@@ -4,7 +4,7 @@ import { Anchor, Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { api, apiError } from "@/lib/api";
-import { STATUS, fmtDay, fmtPeriod, isOverdue } from "@/lib/charter";
+import { STATUS, fmtDay, fmtPeriod, isOverdue, onOrDayBefore } from "@/lib/charter";
 import { EndCharter } from "@/components/boat/charter/EndCharter";
 import { localWhen } from "@/lib/timeAgo";
 
@@ -79,6 +79,9 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
     try { await api.delete(`/charters/${c.charter_id}`); load(); } catch (err) { toast.error(apiError(err, "Couldn't remove that charter")); }
   };
   const charterLists = lists.filter((n) => n.toLowerCase().startsWith("charter - "));
+  const EMPTY = ["Ship's Log", "My To Do List"];
+  const bubbles = lists.filter((n) => !charterLists.includes(n) && !EMPTY.includes(n));
+  const handNote = handing ? `${fmtPeriod(handing)}. They get a copy of the lists below.${charterLists.length ? ` Your Charter lists (${charterLists.join(", ")}) are copied too.` : " Tip: lists you name \"Charter - ...\", e.g. \"Charter - charter skipper responsibilities\", are copied too."} The Ship's Log and My To Do List come across empty, and so do the Food & Drink cupboards. Other cupboards keep their contents. No routes, crew or invites come across.` : "";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="charter-dialog">
@@ -101,8 +104,16 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
         {rows.length ? <ul className="flex flex-col gap-2" data-testid="charter-list">{rows.map((c) => <CharterRow key={c.charter_id} c={c} busy={!!busy || !online} vessel={vessel} online={online} onHandOver={setHanding} onRemove={setRemoving} onEnded={() => { load(); onHandedOver?.(); }} />)}</ul>
           : <p className="text-sm text-[var(--muted)]" data-testid="charter-empty">No charters yet.</p>}
         <ConfirmDelete item={handing ? {} : null} danger={false} testId="charter-handover" title={`Hand ${vessel} over to ${handing?.name || ""}?`} confirmLabel="Hand over" cancelLabel="Not yet"
-          note={`${handing ? fmtPeriod(handing) : ""}. They get a copy with these lists: ${lists.join(", ") || "none"}. ${charterLists.length ? `Your Charter lists (${charterLists.join(", ")}) are copied too.` : "Tip: lists you name \"Charter - ...\", e.g. \"Charter - charter skipper responsibilities\", are copied too."} Cupboards, Ship's Log and My To Do List come across empty, with no routes, crew or invites. ${vessel} and its crew become read only until you end the charter.`}
-          onConfirm={handOver} onClose={() => setHanding(null)} />
+          note={handNote}
+          warning={handing && !onOrDayBefore(handing.start) ? `Today isn't the first day of the charter or the day before. It starts ${fmtDay(handing.start)}. Hand over anyway?` : null}
+          strong={`${vessel} and its crew become read only until you end the charter.`}
+          onConfirm={handOver} onClose={() => setHanding(null)}>
+          {bubbles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 border-t border-[var(--line)] pt-3" data-testid="charter-handover-lists">
+              {bubbles.map((n) => <span key={n} className="rounded-full border-[1.5px] border-[var(--line)] bg-sky-50 px-2.5 py-1 text-xs font-bold text-[var(--navy)]">{n}</span>)}
+            </div>
+          )}
+        </ConfirmDelete>
         <ConfirmDelete item={removing ? { name: `${removing.name}'s charter` } : null} testId="charter-remove" onConfirm={remove} onClose={() => setRemoving(null)} />
       </DialogContent>
     </Dialog>

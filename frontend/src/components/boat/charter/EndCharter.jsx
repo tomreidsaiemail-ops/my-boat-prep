@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Loader2, Undo2 } from "lucide-react";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { api, apiError } from "@/lib/api";
+import { fmtDay, onOrDayBefore } from "@/lib/charter";
 
 const counted = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -27,6 +28,7 @@ export const EndCharter = ({ c, vessel, online, onEnded, className = "btn-solid 
       </button>
       <ConfirmDelete item={asking ? {} : null} danger={false} testId="charter-end" title={`End ${c.name}'s charter?`} confirmLabel="End charter" cancelLabel="Not yet"
         note={`${vessel} unlocks for you and your crew. ${c.name}'s Ship's Log and My To Do List entries are added to yours, labelled with their name. Their copy stays read only for 7 days, then it is deleted. We email ${c.name} a short thank-you.`}
+        warning={onOrDayBefore(c.end) ? null : `Today isn't the last day of the charter or the day before. It ends ${fmtDay(c.end)}. End it anyway?`}
         onConfirm={end} onClose={() => setAsking(false)} />
     </>
   );
