@@ -46,7 +46,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const cur = boats.current;
   const currentName = nameOf(cur);
   const own = boats.boats.filter((b) => !b.crew);
-  const canRemove = cur.crew || own.length > 1;
+  const canRemove = cur.crew || (own.length > 1 && !(cur.charter && !cur.charter.returned_at));
   // A boat with zone maps or cupboards needs its name typed before it can be deleted.
   const maps = (cur.zone_maps || []).length;
   const cupboards = (state?.areas || []).filter((a) => !a.parent_id).length;

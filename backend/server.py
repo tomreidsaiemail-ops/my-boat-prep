@@ -448,6 +448,8 @@ async def delete_boat(boat_id: Annotated[str, PathParam(pattern=ID_PATTERN)], us
         raise HTTPException(status_code=404, detail="Boat not found")
     if await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "charter_lock": {"$ne": None}}, {"_id": 1}):
         raise HTTPException(status_code=423, detail="This boat is out on charter. End the charter before deleting it.")
+    if await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "charter": {"$ne": None}, "charter.returned_at": None}, {"_id": 1}):
+        raise HTTPException(status_code=423, detail="This is a charter boat. It goes when the owner ends the charter.")
     if await db.user_boats.count_documents({"owner_id": owner_id}) <= 1:
         raise HTTPException(status_code=400, detail="You need at least one boat")
     await trash_boat(owner_id, boat_id)

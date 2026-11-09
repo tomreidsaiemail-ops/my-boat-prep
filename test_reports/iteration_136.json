@@ -1,0 +1,34 @@
+{
+  "summary": "Charter walkthrough + stocked copy tested end to end at 390x844. Setup: charter flag enabled for pro, 3 TEST_ pins (Galley map: area pin TEST_Port Locker + label pin TEST_Bungs; Galley 2 map: TEST_Bilge pump, which was in walk_skip), charter registered and handed over to beta. Charter skipper (beta): picked the copy in boat-selector ('TEST_Kia Ora / Charter skipper'). charter-terms-dialog opened by itself, showing the 5 terms and 'Zone Map Walk Through (0 of 3 ticked)' with stops 1. TEST_Port Locker, 2. TEST_Bungs, 3. TEST_Bilge pump (the skipped-for-crew stop is listed). Accept was disabled. charter-walk-start-btn opened walkthrough-dialog with the zone map photo, pins and cupboard contents. The 'I've seen' tick, Next and Back work, and ticks stay ticked after Back. Done returned to the list showing 2 of 3; accept stayed disabled until the 3rd list checkbox was ticked. Accept worked (toast, dialog closed). Ship's Log on the copy shows 'Charter walkthrough signed off by TEST_Beta Skipper on 2026-11-09 (3 stops): Galley: TEST_Port Locker; Galley: TEST_Bungs; Galley 2: TEST_Bilge pump'. Reopening Charter Terms shows 'Accepted ...', no start button, 3 of 3. Inventory on the copy: TEST_Port Locker kept its 2 items; TEST_Gantry (drinks, 10 items on the owner's boat), Fridge and Pantry show 0 items; all 9 cupboards are there. Zone Maps on the copy: overview 'Full interior' shows all 9 coloured swatches (Cockpit Gold, Saloon Green, ...), the plan image loads, and the crew walkthrough shows 3 stops. Owner (pro): boat shows 'On charter'; Crew -> charter-open-btn -> row shows terms accepted and 'Zone Map Walk Through signed off (3 stops)', which opens to the 3 stops. After the API return, the walkthrough entry was in the owner's main Ship's Log (charter='TEST_Beta Skipper'). Everything requested passes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/charters/{id}/return", "issue": "The returned Ship's Log entry names the skipper twice: 'Charter skipper TEST_Beta Skipper: Charter walkthrough signed off by TEST_Beta Skipper on ...'. charter_entries adds a prefix to a label that already has the name. Cosmetic."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Charter skipper main screen", "issues": ["The delete-boat-btn (trash) shows on the charter copy, so the charter skipper can delete the charter copy in the middle of the charter. Check this is intended.", "The charter skipper sees the overview colour editing tools (Magically Place Colours, palette) on the copy. This is fine if intended, because the copy is theirs."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_charter_round1.py", "/app/test_reports/pytest/pytest_charter_round1.xml"],
+  "action_items": [
+    "Fix test_charter_round1.py under the default pytest.ini (-n 2 --dist loadscope): TestCharterSwitchedOff and TestCharterFlow run on different workers at the same time. Both rewrite the 'Admin - disabled features' doc, so TestCharterFlow.test_register_and_list gets 403 'switched off' and 18 of 21 fail. Put both classes in one class or use an xdist_group / module-level ordering. With -n 0 all 21 pass.",
+    "Make test_put_locked_boat_ignored safe: if the charter lock wasn't set because an earlier step failed, its PUT really renames pro main's vessel to 'TEST_HACKED'. This happened during my -n 2 run and I set it back to 'TEST_Kia Ora'. Skip it unless ST shows a lock, or restore the vessel in cleanup().",
+    "Optional: drop the repeated skipper name in the returned walkthrough Ship's Log label."
+  ],
+  "critical_code_review_comments": [
+    "CharterTermsDialog works out the steps on the client from boat.zone_maps, while the backend checks walk_stops(doc). They match today, but if the copy's pins change after the dialog loads, the UI count and the 400 check can disagree. Consider using terms.stops as the source of truth for the count and the ready state.",
+    "accept_charter_terms calls my_charter twice (once inside charter_terms). Small extra DB round trip.",
+    "The walkthrough list in the Ship's Log label is cut at 900 characters with no ellipsis or marker."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (21/21 with -n 0; the default -n 2 run is flaky because of the shared feature flag)", "frontend": "100%"},
+  "seed_data_creation": "Temporary only, all cleaned up: feature row 4 label set back to 'Charter Registrations Feature; charteruser@gmail.com'; TEST_pin_* pins and walk_skip removed; charters and the charter copy deleted; charter_lock unset; TEST_ shipsLog/myTodo/pushed_items pulled; pro main vessel set back to 'TEST_Kia Ora' after the test-suite side effect. Beta accepted the app Terms of Service gate in the browser (tos_version updated).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro main has no pins by default; add TEST_ pins to the Galley (f634a094...) / Galley 2 (e7b33faf...) maps. The charter copy boat_id is 'ch' + the first 12 chars of charter_id. The beta browser may show the app TOS gate (terms-agree-checkbox, terms-accept-btn). Run test_charter_round1.py with -n 0 until the xdist race is fixed.",
+  "rca of the issue": "Suite flake: pytest.ini loadscope runs the two test classes in parallel, and both edit the global 'Admin - disabled features' template. One worker puts in 'enabled for nobody' while the other is registering, which gives 403, and the later steps then run without a lock (vessel gets overwritten)."
+}

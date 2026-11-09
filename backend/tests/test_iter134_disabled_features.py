@@ -29,7 +29,7 @@ def set_items(items):
 
 class TestDisabledFeatures:
     @pytest.fixture(autouse=True, scope="class")
-    def restore(self):
+    def restore(self, flags_lock):
         before = (_db().list_templates.find_one({"custom": True, "name": NAME}, {"items": 1}) or {}).get("items")
         yield
         set_items(before if before is not None else DEFAULT)

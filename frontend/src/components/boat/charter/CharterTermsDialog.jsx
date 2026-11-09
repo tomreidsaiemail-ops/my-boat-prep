@@ -32,9 +32,11 @@ export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClos
   if (!terms) return null;
   const close = () => { sessionStorage.setItem(seenKey(boat.boat_id), "1"); setOpen(false); onClosed?.(); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
-  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })));
-  const seen = steps.filter((s) => ticked.includes(stopId(s))).length;
-  const ready = terms.responsibilities.every((r) => ticked.includes(r.id)) && seen === steps.length;
+  // The server's stop list decides what must be ticked; the zone maps supply the photos.
+  const want = new Set((terms.stops || []).map((s) => s.id));
+  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))).filter((s) => want.has(stopId(s)));
+  const seen = (terms.stops || []).filter((s) => ticked.includes(s.id)).length;
+  const ready = terms.responsibilities.every((r) => ticked.includes(r.id)) && seen === (terms.stops || []).length;
   const accept = async () => {
     setBusy(true);
     try {

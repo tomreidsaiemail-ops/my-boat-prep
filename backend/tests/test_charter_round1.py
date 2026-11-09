@@ -34,7 +34,7 @@ def cleanup():
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup_module_data():
+def setup_module_data(flags_lock):
     cleanup()
     feat = {"custom": True, "name": "Admin - disabled features"}
     rows = (mdb.list_templates.find_one(feat, {"items": 1}) or {}).get("items")
@@ -57,7 +57,11 @@ def setup_module_data():
     cleanup()
 
 
-class TestCharterSwitchedOff:
+ST = {}
+
+
+# One class: the steps share state and must run in order on one xdist worker.
+class TestCharterFlow:
     def test_register_blocked_when_disabled(self):
         feat = {"custom": True, "name": "Admin - disabled features"}
         rows = (mdb.list_templates.find_one(feat, {"items": 1}) or {}).get("items") or []
@@ -69,12 +73,6 @@ class TestCharterSwitchedOff:
         finally:
             mdb.list_templates.update_one(feat, {"$set": {"items": rows}})
 
-
-ST = {}
-
-
-# One class: the steps share state and must run in order on one xdist worker.
-class TestCharterFlow:
     def test_register_and_list(self):
         r = s(PRO).post(f"{BASE_URL}/api/charters", json={"boat_id": "main", "name": "TEST_Claim Skipper", "email": NEW_EMAIL, "start": "2027-01-01", "end": "2027-01-07"})
         assert r.status_code == 200, r.text
@@ -198,6 +196,8 @@ class TestCharterFlow:
         assert b["charter"]["vessel"] == "TEST_Kia Ora" and b["vessel"] == "TEST_Kia Ora"
 
     def test_put_locked_boat_ignored(self):
+        if not (mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"charter_lock": 1}) or {}).get("charter_lock"):
+            pytest.skip("owner boat isn't locked (an earlier step failed)")
         p = s(PRO)
         st = p.get(f"{BASE_URL}/api/me/boat", params={"boat_id": "main"}).json()
         st["boat"]["vessel"] = "TEST_HACKED"

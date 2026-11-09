@@ -247,8 +247,9 @@ async def accept_charter_terms(boat_id: BoatQ, payload: TermsIn, user: dict = De
     if stops:
         who = c.get("name") or user.get("name") or "the charter skipper"
         listed = "; ".join(s["label"] for s in stops)
+        listed = listed if len(listed) <= 900 else f"{listed[:897].rstrip()}..."
         item = {"id": int(now.timestamp() * 1000), "checked": False, "ts": now.isoformat(),
-                "label": f"Charter walkthrough signed off by {who} on {now.date().isoformat()} ({len(stops)} {'stop' if len(stops) == 1 else 'stops'}): {listed[:900]}"}
+                "label": f"Charter walkthrough signed off by {who} on {now.date().isoformat()} ({len(stops)} {'stop' if len(stops) == 1 else 'stops'}): {listed}"}
         await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id},
                                        {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
     return {"accepted_at": now.isoformat()}
@@ -269,7 +270,8 @@ def charter_entries(items: list, name: str, taken: set) -> list:
             while iid in taken:
                 iid += 1
         taken.add(iid)
-        out.append({**i, "id": iid, "label": f"Charter skipper {name}: {i['label'].strip()}", "charter": name})
+        label = i["label"].strip()
+        out.append({**i, "id": iid, "label": label if label.startswith("Charter ") and name in label else f"Charter skipper {name}: {label}", "charter": name})
     return out
 
 
