@@ -44,7 +44,7 @@ export const MagicLimitDialog = () => {
             {limit ? info?.detail : info ? `You have ${info.left} of ${info.of} Magic generations left.` : "Loading your balance..."}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <p className="text-sm text-[var(--muted)]">Every account starts with {info?.free_total ?? 50} free. Each top-up is added on top of what you have left and never expires.</p>
+        {info && <p className="text-sm text-[var(--muted)]">Every account starts with {info.free_total} free. Each top-up is added on top of what you have left and never expires.</p>}
         <div className="flex flex-col gap-2">
           {packs.map((p) => (
             <button key={p.id} type="button" className="btn-solid h-12 justify-center gap-2" disabled={!!busy} onClick={() => buy(p.id)} data-testid={`magic-buy-${p.id}-btn`}>

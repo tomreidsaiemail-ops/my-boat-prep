@@ -14,7 +14,7 @@ const nudgeLowBalance = (res) => {
   if (localStorage.getItem("mbp_magic_nudge") === today) return;
   localStorage.setItem("mbp_magic_nudge", today);
   toast("Only 3 Magic generations left", {
-    id: "magic-low", duration: 8000, description: "Top up with 50 more any time.",
+    id: "magic-low", duration: 8000, description: "Top up any time from Buy more Magic.",
     action: { label: "Buy more", onClick: openMagicBuy },
   });
 };

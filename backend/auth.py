@@ -169,7 +169,7 @@ async def google_sign_in(payload: GoogleCodeIn, request: Request, response: Resp
 
 
 class TermsIn(BaseModel):
-    version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$")
+    version: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}(-[0-9A-Za-z]{1,20})?$")
 
 
 @router.post("/auth/accept-terms", response_model=UserOut)

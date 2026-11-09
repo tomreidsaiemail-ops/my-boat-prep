@@ -1,4 +1,4 @@
-# Top-up checkout fix (iteration 57): POST /api/payments/topup-checkout retry-by-email on unusable stored customer,
+# Top-up checkout fix (iteration 57, updated it135 for NZ$10/50 single pack): POST /api/payments/topup-checkout retry-by-email on unusable stored customer,
 # Stripe errors -> 502 readable detail, tier gating (free 403, preview admin ok), 429-dialog path, Pro checkout regression.
 import os
 import sys
@@ -58,36 +58,34 @@ class TestTopupCheckout:
         assert r.status_code == 200, r.text
         d = r.json()
         assert d["checkout_url"].startswith("https://checkout.stripe.com/")
-        _check_session(d["session_id"], 500)
+        _check_session(d["session_id"], 1000)
         tx = DB.payment_transactions.find_one({"session_id": d["session_id"]})
-        assert tx["pack_size"] == 20 and tx["credited"] is False
+        assert tx["pack_size"] == 50 and tx["credited"] is False
 
     def test_pro_big(self):
-        r = topup(PRO, "big")
-        assert r.status_code == 200, r.text
-        cs = _check_session(r.json()["session_id"], 1500)
-        assert cs.metadata["pack_size"] == "100"
+        # running-total model (iteration 135): only the "small" pack exists
+        assert topup(PRO, "big").status_code == 422
 
     def test_from_429_limit(self):
-        today = datetime.now(timezone.utc).date().isoformat()
-        DB.magic_quota.update_one({"user_id": PRO_ID}, {"$set": {"daily_used": 20, "last_reset_date": today}}, upsert=True)
+        DB.magic_quota.update_one({"user_id": PRO_ID}, {"$set": {"free_used": 50, "purchased_allowance": 0}}, upsert=True)
         q = s(PRO).get(f"{BASE_URL}/api/magic/quota").json()
-        assert q["free_left"] == 0
-        for pack in ("small", "big"):
-            r = topup(PRO, pack)
-            assert r.status_code == 200, r.text
+        assert q["free_left"] == 0 and q["left"] == 0
+        r = topup(PRO, "small")
+        assert r.status_code == 200, r.text
 
     def test_bogus_customer_retries_by_email(self):
         DB.users.update_one({"user_id": PRO_ID}, {"$set": {"stripe_customer_id": "cus_DOESNOTEXIST123"}})
         try:
             r = topup(PRO, "small")
             assert r.status_code == 200, r.text
-            cs = _check_session(r.json()["session_id"], 500)
+            cs = _check_session(r.json()["session_id"], 1000)
             assert cs.customer_email == "test.user.pro@example.com"
         finally:
             DB.users.update_one({"user_id": PRO_ID}, {"$unset": {"stripe_customer_id": ""}})
 
     def test_free_403(self):
+        if s(FREE).get(f"{BASE_URL}/api/auth/me").json().get("premium"):
+            pytest.skip("launch_free mode: every account is premium")
         r = topup(FREE)
         assert r.status_code == 403
         assert r.json()["detail"] == "Upgrade to Pro to use this feature"
@@ -105,6 +103,8 @@ class TestTopupCheckout:
 
     def test_pro_subscription_checkout_regression(self):
         r = s(FREE).post(f"{BASE_URL}/api/payments/checkout", json={"origin_url": BASE_URL})
+        if r.status_code == 400 and "launch" in r.text:
+            pytest.skip("launch_free mode: Pro checkout disabled")
         assert r.status_code == 200, r.text
         assert r.json()["checkout_url"].startswith("https://checkout.stripe.com/")
 

@@ -62,16 +62,16 @@ class TestDailyLimit:
     # Shared Magic pool (db.magic_quota): exhausted free + no purchased -> 429 daily_limit before AI, no ai_scans doc
     def test_429_when_shared_pool_exhausted(self):
         today = datetime.now(timezone.utc).date().isoformat()
-        DB.app_settings.update_one({"key": "magic_quota"}, {"$set": {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}}, upsert=True)
-        DB.magic_quota.update_one({"user_id": "test-user-beta"}, {"$set": {"daily_used": 20, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
+        # running-total model (it135): settings are free_total/pack_size/pack_price; exhaust with free_used
+        DB.magic_quota.update_one({"user_id": "test-user-beta"}, {"$set": {"free_used": 50, "purchased_allowance": 0}}, upsert=True)
         before = DB.ai_scans.count_documents({"user_id": "test-user-beta"})
         try:
             r = post(BETA)
             assert r.status_code == 429
-            assert r.json()["code"] == "daily_limit" and "daily limit of 20 Magic generations" in r.json()["detail"]
+            assert r.json()["code"] == "daily_limit" and "used all your Magic generations" in r.json()["detail"]
             assert DB.ai_scans.count_documents({"user_id": "test-user-beta"}) == before
         finally:
-            DB.magic_quota.delete_one({"user_id": "test-user-beta"})
+            DB.magic_quota.update_one({"user_id": "test-user-beta"}, {"$set": {"free_used": 0}})
 
 
 @pytest.mark.skipif(not REAL_AI, reason="real AI disabled")

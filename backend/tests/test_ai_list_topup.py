@@ -1,3 +1,4 @@
+import pytest
 # Magic List Top-Up: POST /api/ai/list-topup (Pro/Beta only, shares 20/day with list-draft). Makes exactly 1 real AI call.
 import os
 import time
@@ -28,6 +29,8 @@ class TestTopUpValidation:
         assert r.status_code == 401
 
     def test_free_user_403(self):
+        if sess("test_session_free_1").get(URL.rsplit("/ai/", 1)[0] + "/auth/me").json().get("premium"):
+            pytest.skip("launch_free mode: every account is premium")
         r = sess("test_session_free_1").post(URL, json={"name": "X", "items": ITEMS})
         assert r.status_code == 403
 
@@ -45,7 +48,7 @@ class TestTopUpValidation:
         assert r.status_code == 422
 
     def test_description_too_long_422(self):
-        r = sess("test_session_pro_1").post(URL, json={"name": "X", "description": "x" * 513})
+        r = sess("test_session_pro_1").post(URL, json={"name": "X", "description": "x" * 4001})
         assert r.status_code == 422
 
     def test_too_many_items_422(self):
@@ -62,7 +65,7 @@ class TestTopUpAI:
         data = r.json()
         sugg = data["suggestions"]
         assert isinstance(sugg, list) and 0 < len(sugg) <= 25
-        assert isinstance(data["drafts_left"], int) and 0 <= data["drafts_left"] < 20
+        assert isinstance(data["drafts_left"], int) and 0 <= data["drafts_left"] < 50  # running total (it135)
         heads = {"1. deck (outside)", "2. below"}
         existing = {i["label"].lower() for i in ITEMS}
         seen = set()

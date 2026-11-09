@@ -35,6 +35,15 @@ class TestFaqRead:
         items = get_faq(who)
         assert any(i["id"] == 1 and i["question"].startswith("Does My Boat Prep") for i in items)
 
+    def test_new_magic50_version_accepted(self):
+        # TERMS_VERSION "2026-06-magic50" (it135) must be accepted, else acceptance never syncs to the server
+        try:
+            r = requests.post(f"{API}/auth/accept-terms", json={"version": "2026-06-magic50"}, headers=H("beta"), timeout=20)
+            assert r.status_code == 200, r.text
+            assert r.json()["tos_version"] == "2026-06-magic50"
+        finally:
+            mdb.users.update_one({"user_id": "test-user-beta"}, {"$set": {"tos_version": "2026-06-magic50"}})
+
     def test_unauth_401(self):
         assert requests.get(f"{API}/faq", timeout=20).status_code == 401
 
@@ -45,6 +54,15 @@ class TestFaqWrite:
         for who in ("free", "pro", "beta"):
             r = requests.put(f"{API}/admin/faq", json={"items": []}, headers=H(who), timeout=20)
             assert r.status_code == 403, who
+
+    def test_new_magic50_version_accepted(self):
+        # TERMS_VERSION "2026-06-magic50" (it135) must be accepted, else acceptance never syncs to the server
+        try:
+            r = requests.post(f"{API}/auth/accept-terms", json={"version": "2026-06-magic50"}, headers=H("beta"), timeout=20)
+            assert r.status_code == 200, r.text
+            assert r.json()["tos_version"] == "2026-06-magic50"
+        finally:
+            mdb.users.update_one({"user_id": "test-user-beta"}, {"$set": {"tos_version": "2026-06-magic50"}})
 
     def test_unauth_401(self):
         assert requests.put(f"{API}/admin/faq", json={"items": []}, timeout=20).status_code == 401
@@ -87,6 +105,15 @@ class TestFeedback:
         r = requests.post(f"{API}/feedback", json=body, headers=H("free"), timeout=20)
         assert r.status_code == 422
 
+    def test_new_magic50_version_accepted(self):
+        # TERMS_VERSION "2026-06-magic50" (it135) must be accepted, else acceptance never syncs to the server
+        try:
+            r = requests.post(f"{API}/auth/accept-terms", json={"version": "2026-06-magic50"}, headers=H("beta"), timeout=20)
+            assert r.status_code == 200, r.text
+            assert r.json()["tos_version"] == "2026-06-magic50"
+        finally:
+            mdb.users.update_one({"user_id": "test-user-beta"}, {"$set": {"tos_version": "2026-06-magic50"}})
+
     def test_unauth_401(self):
         assert requests.post(f"{API}/feedback", json={"title": "a", "message": "b"}, timeout=20).status_code == 401
 
@@ -115,9 +142,18 @@ class TestFeedback:
 # --- Terms acceptance ---
 class TestTerms:
     def test_bad_version_422(self):
-        for v in ("june", "2026-6", "", "2026-06-01x"):
+        for v in ("june", "2026-6", "", "2026-06-<x>", "2026-06-" + "a" * 21):
             r = requests.post(f"{API}/auth/accept-terms", json={"version": v}, headers=H("beta"), timeout=20)
             assert r.status_code == 422, v
+
+    def test_new_magic50_version_accepted(self):
+        # TERMS_VERSION "2026-06-magic50" (it135) must be accepted, else acceptance never syncs to the server
+        try:
+            r = requests.post(f"{API}/auth/accept-terms", json={"version": "2026-06-magic50"}, headers=H("beta"), timeout=20)
+            assert r.status_code == 200, r.text
+            assert r.json()["tos_version"] == "2026-06-magic50"
+        finally:
+            mdb.users.update_one({"user_id": "test-user-beta"}, {"$set": {"tos_version": "2026-06-magic50"}})
 
     def test_unauth_401(self):
         assert requests.post(f"{API}/auth/accept-terms", json={"version": "2026-06"}, timeout=20).status_code == 401

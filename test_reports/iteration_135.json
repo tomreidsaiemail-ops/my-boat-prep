@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the Magic running-total change (50 free once, +50 for NZ$10) on backend and frontend. Backend: rewrote tests/test_magic_quota.py for the new model (22 tests) and updated 5 older test files that still assumed the daily model. Final run: 43 passed, 3 skipped (skips are because launch_free makes everyone premium). Frontend at 390x844 with the pro user: the terms gate shows because the version is old and the Service Agreement includes the new paragraph; the menu shows '50 of 50 left'; the Buy dialog shows one 'Buy +50 for NZ$10' button; Stripe checkout shows '+50 Magic generations NZ$10.00'. Topping up from 3 left gave the 'Magic top-up added!' page and then '53 of 53 left'. When out of Magic, the dialog title is \"You've used all your Magic\" with the right detail. The admin 'Free Magic and top-up' section saves, validates and was restored to 50/50/10. Found and fixed one critical bug: /api/auth/accept-terms rejected the new TERMS_VERSION '2026-06-magic50' (422), so accepting the terms never saved to the server.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/accept-terms", "issue": "FIXED by testing agent. TermsIn.version pattern ^[0-9]{4}-[0-9]{2}(-[0-9]{2})?$ rejected '2026-06-magic50' with 422. TermsGate swallows the error, so acceptance stayed only in localStorage and users were asked again on every new device, browser or after clearing storage. Pattern is now ^[0-9]{4}-[0-9]{2}(-[0-9A-Za-z]{1,20})?$", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "quota.credit_topup", "issue": "fill is computed from a separate read after $inc (not atomic). A Magic use at the same moment could make 'of' off by one. Negligible."},
+      {"endpoint": "fish.py refund", "issue": "Picks free vs purchased by comparing free_used before and after, which can be wrong if requests run at the same time. Better to have _run return the source from consume()."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "lib/api.js low-balance toast", "issues": ["Hardcoded 'Top up with 50 more any time.' and MagicLimitDialog fallback '?? 50'. These ignore the admin-set pack_size and free_total. Read them from the quota response instead."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_magic_quota.py", "/app/backend/tests/test_topup_checkout_fix.py", "/app/backend/tests/test_ai_list_topup.py", "/app/backend/tests/test_faq_feedback_terms.py", "/app/backend/tests/test_ai_scan.py", "/app/backend/tests/test_doctor_aisles_templates.py", "/app/backend/tests/manual_credit_topup_webhook.py", "/app/test_reports/pytest/pytest_it135.xml"],
+  "action_items": [
+    "Check the accept-terms pattern fix in auth.py and keep it, or change TERMS_VERSION to match the old pattern.",
+    "Replace the hardcoded 50 in the api.js nudge toast and the MagicLimitDialog fallback with values from the server.",
+    "Product check: AI endpoints use require_premium and MagicBalance only shows for premium users. When launch_free ends, 'Free' accounts cannot use their 50 free Magic. Confirm this is intended, or say 'Pro accounts' in the terms.",
+    "Optional: make fish.py refund use the source returned by consume()."
+  ],
+  "critical_code_review_comments": [
+    "auth.py TermsIn pattern was not updated with TERMS_VERSION (fixed).",
+    "Old test files test_ai_scan.py and test_doctor_aisles_templates.py wrote daily_limit and daily_used back into app_settings and magic_quota, which would undo the migration's cleanup. Updated to free_used.",
+    "test_topup_checkout_fix.py creates real Stripe test checkout sessions and leaves pending payment_transactions rows (it did this before too).",
+    "Under xdist loadscope, test_magic_quota.py and test_topup_checkout_fix.py both change test-user-pro's magic_quota on different workers. This caused one flaky failure (test_09). Run them with -n 0 or one file at a time."
+  ],
+  "updated_files": ["/app/backend/auth.py", "/app/backend/tests/test_magic_quota.py", "/app/backend/tests/test_topup_checkout_fix.py", "/app/backend/tests/test_ai_list_topup.py", "/app/backend/tests/test_faq_feedback_terms.py", "/app/backend/tests/test_ai_scan.py", "/app/backend/tests/test_doctor_aisles_templates.py", "/app/backend/tests/manual_credit_topup_webhook.py"],
+  "success_rate": {"backend": "100% (43 passed, 3 skipped) after the accept-terms fix", "frontend": "100% of tested flows"},
+  "flaky_tests": ["test_magic_quota.py::test_09_purchased_after_free failed once (1 of 3 runs) only when run in parallel with test_topup_checkout_fix.py. Cause: both modules change test-user-pro's quota. Not an app bug."],
+  "seed_data_creation": "None kept. test-user-pro and test-user-beta magic_quota reset to free_used 0, purchased 0, no fill. TEST payment_transactions removed by session id. Settings restored to 50/50/10. test-user-pro and test-user-beta tos_version are now '2026-06-magic50' (accepted during testing). test-admin-1 and test-user-free are still '2026-06'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Running-total model: magic_quota {free_used, purchased_allowance, fill}. To exhaust: set free_used 50, purchased 0. In the headless browser the Stripe hosted Pay button does not finish (tried 3 times; address filled manually). To credit a real session, use tests/manual_credit_topup_webhook.py <sid> <user_id>, then open /payment/success?kind=topup&session_id=<sid>. launch_free (FIRST200) makes every user premium, so free-tier 403 tests skip. Run the magic test files with -n 0 to avoid shared-user races.",
+  "rca of the issue": "TERMS_VERSION changed from '2026-06' to '2026-06-magic50', but the backend TermsIn regex only allowed YYYY-MM or YYYY-MM-DD. TermsGate posts accept-terms in a useEffect with .catch(() => {}), so the 422 was silent. The gate went away locally (localStorage) but the server tos_version stayed '2026-06'. Reproduced: in a new browser context the gate came back after accepting. Fix: widen the pattern. Verified: accept-terms returns 200, the server tos_version updates, and a new context no longer shows the gate."
+}

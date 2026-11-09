@@ -41,8 +41,8 @@ def test_doctor_shared_quota_429():
     # Shared Magic pool: exhausted -> doctor 429 daily_limit; validation errors still 422 (not 429)
     db = _db()
     today = datetime.now(timezone.utc).date().isoformat()
-    db.app_settings.update_one({"key": "magic_quota"}, {"$set": {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0}}, upsert=True)
-    db.magic_quota.update_one({"user_id": "test-user-pro"}, {"$set": {"daily_used": 20, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
+    # running-total model (it135): exhaust with free_used
+    db.magic_quota.update_one({"user_id": "test-user-pro"}, {"$set": {"free_used": 50, "purchased_allowance": 0}}, upsert=True)
     try:
         r = requests.post(f"{BASE_URL}/api/ai/doctor-ask", json={"log_agree": True, "question": "headache"}, headers=PRO, timeout=60)
         assert r.status_code == 429, r.text
@@ -50,7 +50,7 @@ def test_doctor_shared_quota_429():
         r2 = requests.post(f"{BASE_URL}/api/ai/mpa/aisles", json={"items": ["  "], "aisles": AISLES}, headers=PRO, timeout=60)
         assert r2.status_code == 422
     finally:
-        db.magic_quota.delete_one({"user_id": "test-user-pro"})
+        db.magic_quota.update_one({"user_id": "test-user-pro"}, {"$set": {"free_used": 0}})
 
 
 def test_doctor_free_403():
