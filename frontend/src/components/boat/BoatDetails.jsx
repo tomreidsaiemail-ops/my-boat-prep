@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, ChevronUp, Fish, Martini, Ship, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Fish, Home, Martini, Ship, Sparkles } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { RESUME_ZONE, identityFull, onAskDetailsForZone } from "@/components/boat/zone/CreateOverviewButton";
 
 const petCount = (boat) => (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim()).length;
 
@@ -50,7 +51,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, onBartender, speak, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
+export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onHome, onFish, onBartender, speak, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -73,7 +74,19 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
     toast.info(`Every boat needs a name, so ${lastName.current} was put back`);
   };
   // Closing without a zone map: remind once per close; "Not now" carries on as before.
-  const closeMore = () => { setMore(false); if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.(); };
+  // Opened by "Create Zone Map Overview (Schematic)": go back to it once the boat details are filled in.
+  const forZone = useRef(false);
+  useEffect(() => onAskDetailsForZone(() => { forZone.current = true; setMore(true); }), []);
+  const closeMore = () => {
+    setMore(false);
+    if (forZone.current) {
+      forZone.current = false;
+      if (identityFull(boat)) setTimeout(() => window.dispatchEvent(new Event(RESUME_ZONE)), 300);
+      else toast.message("Add the boat type, make, model and year of manufacture to create a Zone Map Overview");
+      return;
+    }
+    if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.();
+  };
   const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
   const dialog = <>
     <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={closeMore} returnFocus={moreRef} onMakeKit={onMakeKit}
@@ -102,6 +115,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onFish, o
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
         <ArrangeIcon /> <span>Lists</span>
       </button>}
+      {onHome && <button type="button" onClick={onHome} className={magicIcon} title="Home (Boat Inventory)" aria-label="Home (Boat Inventory)" data-testid="boat-details-home-btn"><Home className="h-5 w-5" /></button>}
       {onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
       {onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}
     </div>

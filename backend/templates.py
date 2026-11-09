@@ -443,12 +443,32 @@ BOAT_TYPES_ADMIN = [
     (BOAT_TYPES_LIST, "The choices in Boat type (Additional details), in this order. Skippers can still pick Other... and type their own.", DEFAULT_BOAT_TYPES),
 ]
 
+ZONE_MAP_HOW_TO = [
+    ("Admin - Help Panel - How To Make A Zone Map", "Shown as 'How to make a zone map' in Boat Inventory and in the Help menu.", [
+        "When initially setting up your boat type, make, model and year of manufacture",
+        "e.g. Yacht - Sloop, Beneteau, Oceanis 411, 2002",
+        "You have the option of creating a zone map schematic, you should do this and then choose the option to 'Magically place colours'.",
+        "The magic marine navigator does a really good job of figuring out where your cockpit, galley and saloon are and it will generate a bunch of default lockers for you too, like fridge and freezer.",
+        "You can rename these later, or add your own special cupboard and locker names.",
+        "Most cockpits have a port lazarette, this will be created for you in the cockpit which is always a gold colour.",
+        "All starboard zones have a green theme, and port ones have a red theme.",
+        "To immediately start magic scanning that port lazarette, scroll down and look for port lazarette under the gold cockpit icon, click 'Show only this zone', expand port lazarette, and click 'Upload image for magic scan'.",
+        "To scan a new cupboard, just click the gold Cockpit button in 'ADD CUPBOARDS BY ZONE'.",
+        "If you have a box in the cupboard, take it out, empty the box, scan it, and put the contents back in the box.",
+        "You can put the box back in the cupboard, and the box 'cupboard' in the app can then be put inside the cupboard it came from.",
+        "A really good feature is to do this with your receipts folder, or box, or manuals box - lay all the manuals out so that magic scan can see them all and let it scan.",
+        "Annotate anything like Autopilot Manual, with Raymarine or whatever.",
+        "You can then find that autopilot manual buried in a box buried in a cupboard when your autopilot stops working!",
+    ]),
+]
+
+
 
 
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

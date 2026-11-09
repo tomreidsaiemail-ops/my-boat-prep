@@ -71,7 +71,7 @@ async def save_map_pins(boat_id: BoatPath, map_id: MapPath, payload: ZonePinsIn,
 
 @router.post("/boats/{boat_id}/zone-maps")
 async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: str = Form(default="", max_length=40), colour: str = Form(default="", max_length=20),
-                       user: dict = Depends(require_premium)):
+                       kind: str = Form(default="", pattern=r"^(overview)?$"), user: dict = Depends(require_premium)):
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1})
     if doc is None:
@@ -106,6 +106,9 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: st
         names = {(m.get("name") or "").lower() for m in maps}
         name = next(n for n in [zone, *(f"{zone} {k}" for k in range(2, MAX_BOAT_MAPS + 2))] if n.lower() not in names)
         entry.update({"name": name, "colour": zone_colour, "colour_manual": True, "zone": zone})
+    if kind == "overview":  # The skipper's own schematic or photo, used as a Zone Map Overview after the existing ones.
+        n = sum(1 for m in maps if m.get("kind") == "overview")
+        entry.update({"kind": "overview", "swatches": [], "name": f"My zone map overview{f' {n + 1}' if n else ''}"})
     res = await db.user_boats.update_one({**key, f"zone_maps.{MAX_BOAT_MAPS - 1}": {"$exists": False}}, {"$push": {"zone_maps": entry}})
     if not res.modified_count:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")

@@ -14,9 +14,10 @@ import { MapNameField } from "@/components/boat/zone/MapNameField";
 import { ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { OverviewMap, OverviewView } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
+import { CreateOverviewButton } from "@/components/boat/zone/CreateOverviewButton";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
-const HELP_NAME = "admin - help panel - zone map help";
+const HELP_NAME = "admin - help panel - how to make a zone map";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the cupboards onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
@@ -165,6 +166,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           )) : <p data-testid="zone-map-help-default">{DEFAULT_HELP}</p>}
         </HelpPanel>
       )}
+      {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
       {steps.length > 0 && (
         <button type="button" className="btn-solid h-10 justify-center gap-2 text-sm" onClick={() => setWalking(true)} data-testid="crew-walkthrough-btn">
           <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
