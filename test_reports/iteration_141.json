@@ -1,0 +1,27 @@
+{
+  "summary": "Tested Home icon, Create Zone Map Overview (Schematic) button flow (missing details -> Additional details -> resume -> choice dialog -> upload / Magic Mariner), POST zone-maps kind=overview backend, and the new 'How To Make A Zone Map' admin help list (zone panel + hamburger Help menu). All requested features work end-to-end on mobile (390x844) for pro user.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "verified": [
+    "boat-details-home-btn sits left of boat-details-fish-btn (x 234 vs 282), title 'Home (Boat Inventory)'; from 'Meal Plan - Sample' it switches to Boat Inventory and list-selector is scrolled to top (y=0)",
+    "zone-map-help title 'How to make a zone map', 14 lines (zone-map-help-line-0..13) from admin list; first line matches; zone-overview-create-btn is the next sibling with text 'Create Zone Map Overview (Schematic)'",
+    "pro main year_built was already '' -> click shows toast 'First add your boat type, make, model and year of manufacture' and additional-details-dialog opens; filled boat-year-input 2015 and pressed Escape -> zone-overview-choice-dialog appeared automatically (no zone-map-ask dialog)",
+    "Upload via zone-overview-upload-btn -> POST /api/boats/main/zone-maps 200, 'Zone Map Overviews (1)' -> '(2)', 'My zone map overview 2' rendered after 'Full interior', toast 'Your Zone Map Overview was added after the existing one'",
+    "With details complete, create button goes straight to choice dialog; zone-overview-magic-btn opens zone-plans-dialog (Magic Mariner) and Escape closes it",
+    "Hamburger Help submenu has app-menu-help-how-to-make-a-zone-map 'How To Make A Zone Map...' opening help dialog with the same lines",
+    "Backend: kind=overview appended at end with swatches [] and correct name, image served as JPEG; kind=other -> 422 and no change; unauth -> 401; admin-lists returns 'Admin - Help Panel - How To Make A Zone Map' with 14 items, single seeded doc in list_templates"
+  ],
+  "test_report_links": ["/app/backend/tests/test_zone_overview_create.py", "/app/test_reports/pytest/iter141.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CreateOverviewButton (and its RESUME_ZONE listener) is only mounted while the Zone map section is expanded; if the section collapses/unmounts while Additional details is open the resume is silently lost (low risk).",
+    "Opening the Magic Mariner dialog immediately starts AI generation (Drawing 0 of 4) even if the user just wants to look; cancelling after opening may still spend Magic - consider confirming cost first (product decision).",
+    "Note: free test user is premium because of launch_free promo, so require_premium does not block free users on this endpoint currently (expected during launch)."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_overview_create.py"],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "100% (6/6 flows)"},
+  "seed_data_creation": "None kept. Created and deleted: 1 overview on pro main via pytest, 1 via UI (fd4830cd...), 1 accidental overview on free user's own 'main' boat (deleted, free zone_maps back to []). pro main boat.year_built restored to '' (was '' before testing; model/make/type untouched). pro main zone_maps back to [Full interior, Galley, Galley 2].",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "pro main boat year_built is '' by default, so the create-overview button always triggers the details step first. The UI Magic button kicked off one zone-schematics AI job (cancelled) during testing. Run tests with: cd /app/backend && REACT_APP_BACKEND_URL=... python -m pytest tests/test_zone_overview_create.py (pytest.ini adds -n)."
+}
