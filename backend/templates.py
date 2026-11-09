@@ -131,6 +131,19 @@ async def list_categories(_: dict = Depends(get_current_user)):
     return {"items": [{"label": i["label"]} for i in items]}
 
 
+BOAT_TYPES_LIST = "Admin - Boat types"
+DEFAULT_BOAT_TYPES = ["Yacht - Sloop", "Yacht - Sloop, Solent Rigged", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner",
+                      "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"]
+
+
+@router.get("/boat-types")
+async def boat_types(_: dict = Depends(get_current_user)):
+    """The boat type choices, from the private admin list "Admin - Boat types" (built-in list if it's missing or empty)."""
+    doc = await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(BOAT_TYPES_LIST)}\s*$", "$options": "i"}}, {"_id": 0, "items": 1})
+    types = list(dict.fromkeys(t for t in ((i.get("label") or "").strip() for i in (doc or {}).get("items") or []) if t))
+    return {"types": types or DEFAULT_BOAT_TYPES}
+
+
 ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ")
 
 
@@ -426,11 +439,16 @@ DISABLED_FEATURES = [
      ["Speak Button Feature; enabled for nobody", "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody"]),
 ]
 
+BOAT_TYPES_ADMIN = [
+    (BOAT_TYPES_LIST, "The choices in Boat type (Additional details), in this order. Skippers can still pick Other... and type their own.", DEFAULT_BOAT_TYPES),
+]
+
+
 
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

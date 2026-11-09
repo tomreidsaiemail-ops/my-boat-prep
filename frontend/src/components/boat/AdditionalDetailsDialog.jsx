@@ -11,8 +11,8 @@ import { WeightPanel } from "@/components/boat/weights/WeightPanel";
 import { switchWeights } from "@/lib/weights";
 import { useCrewDiet } from "@/lib/crewDiet";
 import { zoneMapLabel } from "@/components/boat/zone/ZoneSchematicsDialog";
+import useBoatTypes from "@/hooks/useBoatTypes";
 
-const BOAT_TYPES = ["Yacht - Sloop", "Yacht - Cutter Rigged", "Yacht - Ketch", "Yacht - Yawl", "Yacht - Schooner", "Catamaran", "Trimaran", "Trawler", "Motor Cruiser", "Launch", "Runabout", "RIB"];
 const OTHER = "__other";
 const IDENTITY_NEEDED = "Please fill in Make, Model and Year of manufacture first";
 const identityReady = (b) => !!(b.make?.trim() && b.model?.trim() && /^\d{4}$/.test(b.year_built || ""));
@@ -28,15 +28,16 @@ export const pobText = (boat) => {
 };
 
 const BoatTypeField = ({ value, onChange }) => {
-  const [other, setOther] = useState(!!value && !BOAT_TYPES.includes(value));
-  useEffect(() => { if (value) setOther(!BOAT_TYPES.includes(value)); }, [value]);
+  const types = useBoatTypes();
+  const [other, setOther] = useState(!!value && !types.includes(value));
+  useEffect(() => { if (value) setOther(!types.includes(value)); }, [value, types]);
   const pick = (v) => { setOther(v === OTHER); onChange(v === OTHER ? "" : v); };
   return (
     <label htmlFor="boat-type" className="flex min-w-0 flex-col gap-1">
       <span className="field-label">Boat type</span>
       <select id="boat-type" value={other ? OTHER : value || ""} onChange={(e) => pick(e.target.value)} className="field-input" data-testid="boat-type-select">
         <option value="">Choose...</option>
-        {BOAT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        {types.map((t) => <option key={t} value={t}>{t}</option>)}
         <option value={OTHER}>Other...</option>
       </select>
       {other && <input value={value} maxLength={60} placeholder="e.g. Gaff Cutter" onChange={(e) => onChange(e.target.value)} className="field-input" aria-label="Your boat type" data-testid="boat-type-other-input" />}
