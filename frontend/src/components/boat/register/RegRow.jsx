@@ -18,10 +18,11 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp }) =
         <div className="mt-1 flex flex-wrap gap-1">
           <RegStatus status={entry.status} testId={`${t}-status`} />
           {quick && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-900" data-testid={`${t}-quick-reg`}>
-              <Zap className="h-3.5 w-3.5 fill-amber-300 text-amber-600" /> Registered via Quick Reg{entry.requested_at ? " · details requested" : ""}
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-900" title="Registered via Quick Reg" data-testid={`${t}-quick-reg`}>
+              <Zap className="h-4 w-4 fill-amber-400 text-amber-600" /> Quick Reg
             </span>
           )}
+          {quick && entry.requested_at && <span className="text-[11px] font-bold text-[var(--muted)]" data-testid={`${t}-quick-requested`}>Details requested {localWhen(entry.requested_at)}</span>}
           {crewAdded && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-extrabold text-green-800" data-testid={`${t}-crew-added`}>
               <CheckCircle2 className="h-3.5 w-3.5 text-[var(--green)]" /> Crew member added registration details

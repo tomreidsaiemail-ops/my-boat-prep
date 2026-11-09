@@ -54,7 +54,7 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
   });
   const saveForLater = async () => {
     try { await queueCatch(snapshot()); } catch { toast.error("Couldn't save the photo on this phone"); return; }
-    toast.success("Saved with its GPS and time. Tap Identify queued catches when you have a signal.", { duration: 6000 });
+    toast.success("Saved with its GPS and time. Tap Identify queued catches when you have a signal.", { duration: 3500, position: "top-center" });
     reset(); setQueueKey((k) => k + 1);
   };
   const ask = async () => {

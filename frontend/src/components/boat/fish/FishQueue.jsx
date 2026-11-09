@@ -38,7 +38,12 @@ export const FishQueue = ({ userId, online, refreshKey, onIdentified, onLogged }
         if (data.not_fish) toast.error(`Photo from ${localWhen(c.taken_at)}: ${data.message}`, { duration: 8000 });
         else { done += 1; if (data.log_item) onLogged(data.log_item); }
       } catch (err) {
-        toast.error(apiError(err, !err.response ? "Lost the signal. The rest of your photos are still waiting." : "The Magic Fish Whisperer couldn't look at that photo. It's still waiting."));
+        if (err.response?.status === 400) {
+          await dropCatch(c.id);
+          toast.error(`Photo from ${localWhen(c.taken_at)}: ${apiError(err)} It was taken off the queue.`, { duration: 8000 });
+          continue;
+        }
+        toast.error(err.response ? `${apiError(err)} Your photos are still waiting.` : "Lost the signal. Your photos are still waiting.", { duration: 8000 });
         break;
       }
     }

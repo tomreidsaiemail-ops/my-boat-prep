@@ -1,0 +1,34 @@
+{
+  "summary": "Tested (A) Quick Reg on the Crew Register and (B) the Magic Fish Whisperer offline queue, backend and frontend at 390x844. Backend: 13/13 pytest passed (tests/test_quickreg_fishqueue.py, 2 real AI calls). Quick Reg add gives registered + quick_reg + registered_at. Without quick it is unregistered, and parties ignore quick. Name+email are required. The bulk request skips Quick Reg entries. Requesting by id keeps the status registered and sets requested_at. /mine hides the entry before the request (PUT is a 404) and lists it after. PUT /mine sets quick_reg false and crew_added_at and the details replace it. A later request is skipped. summary_html shows 'Registered (Quick Reg)'. caught_at is kept as created_at (identified_at is set, the Ship's Log item is added) and a date over 90 days old falls back to now. Frontend skipper: reg-entry-quick-help and reg-entry-quick-btn show for a new crew member and not for edit or party. An empty Quick Reg gives a validation toast. Quick Reg with name+email gives REGISTERED, the lightning badge, registered-at, and the email/WhatsApp titles 'Email/WhatsApp Ask them to add their registration details'. The WhatsApp message (copied when there is no phone) uses the Quick Reg wording. After the request the badge reads '· details requested'. Beta crew: crew-reg-dialog appears with name/email prefilled. Submitting shows the done screen, and the skipper's row then shows reg-row-<id>-crew-added with a tick, no Quick Reg badge and no ask buttons. A normal registration completed by crew (free user, done via the API) also shows the tick. Fish: manual offline toggle -> ask button reads 'No signal: save to identify later' -> toast and queue item with time + GPS text (or 'No GPS position'). The identify button is disabled with 'Identify when you have a signal'. Remove works and the queue survives a reload. Back online: toast '2 fish photos are waiting to be identified' with an Open action that opens the dialog. Nothing is identified automatically. Identify processed a trout (Rainbow Trout, catch log, created_at = the original taken_at, Ship's Log entry, label using the original time) and the not-fish photo (removed, not-fish toast). An aborted request or a 503 keeps the item queued.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "FishWhispererDialog at 390x844", "issue": "The 6 s success toast 'Saved with its GPS and time...' sits over fish-ask-btn, which is at the bottom of the dialog. elementFromPoint at the button's centre returned the toast. A skipper queuing several catches in a row must wait for the toast to go or their tap hits the toast. A forced click at those coordinates did not queue the 2nd and 3rd photos.", "selector": "[data-testid=fish-ask-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Identify queued catches failure", "issue": "FishQueue's fallback text 'Lost the signal. The rest of your photos are still waiting.' / '...It's still waiting.' never shows. apiError returns its own 'No connection. You need signal for this.' for no-response errors and returns the server detail for 4xx/5xx, so the user isn't told the photos are still queued. The item itself does stay queued, which is correct.", "affected_selectors": ["[data-testid=fish-queue-identify-btn]"]}
+    ],
+    "design_issues": [
+      {"screen": "Crew Register row (390px)", "issues": ["The 'Registered via Quick Reg · details requested' badge wraps to 3-4 lines in a narrow column because 4 icon buttons share the row. The lightning icon is tiny, almost a dot."]},
+      {"screen": "Reg entry dialog", "issues": ["The Date of birth field uses the browser's native date picker (mm/dd/yyyy) rather than a shadcn calendar. This was already there before this change."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_quickreg_fishqueue.py", "/app/test_reports/pytest/pytest_quickreg_fish.xml"],
+  "action_items": [
+    "Move the fish-queue success toast so it doesn't cover fish-ask-btn on mobile (e.g. shorter duration, top position, or dismiss it on the next photo pick)",
+    "In FishQueue.identifyAll, build the error text yourself (for example: err.response ? `${apiError(err)} It's still waiting.` : 'Lost the signal...') instead of passing a fallback that apiError never uses",
+    "Optional: a permanent 4xx (e.g. photo too big, quota used up) stops the loop on the first item every time and blocks the rest; consider skipping that item or labelling it in the queue"
+  ],
+  "critical_code_review_comments": [
+    "fishQueue.js: the IndexedDB blob store works in Chromium. Check it on iOS Safari standalone PWA (Blob in IDB used to be unsupported or flaky there).",
+    "fish.py: caught_at more than 90 days old or invalid silently becomes now. That's acceptable, but the frontend isn't told.",
+    "crew_register.send_requests: Quick Reg requests also set boat_id, which is fine. The bulk path correctly skips quick_open entries.",
+    "The network-status toggle is behind the fish dialog's modal overlay, so the skipper must close the dialog to go online. Expected modal behaviour, noted only."
+  ],
+  "updated_files": ["/app/backend/tests/test_quickreg_fishqueue.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "~95% (all flows work; 1 toast overlap UX issue, 1 error copy issue)"},
+  "seed_data_creation": "None left over. TEST_ crew_register entries for test-user-pro were deleted (the register is empty again, as before; beta was not on it before and isn't now). The TEST fish catches from pytest and the UI Rainbow Trout catch (a57ef6d2...) were deleted along with their Ship's Log / pushed_items entries (shipsLog back to 19). Photo objects in object storage are orphaned.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Crew register path: boat-crew-btn -> crew-register-open-btn -> crew-register-dialog. Beta's prompt is crew-reg-dialog with crew-reg-<field>-input. Fish: app-menu-btn -> app-menu-fish-item. Go offline/online with network-status (sync-confirm-ok-btn). Close the fish dialog before toggling because the overlay covers the header. Use /tmp/trout.jpg (Unsplash photo-1510130387422-82bed34b37e9) as a real fish photo. Run pytest with -n 0 for the ordered file. Each browser_automation call is a fresh context, so the IndexedDB queue only persists within one run."
+}
