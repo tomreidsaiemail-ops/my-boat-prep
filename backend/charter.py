@@ -40,7 +40,6 @@ DEFAULT_TERMS = [
 EMPTY_BOAT = ("route_start", "route_dest", "depart", "arrive", "weather", "skipper_phone", "shore_email")
 DEFAULT_IDS = ("leavingDock", "returningDock", "arrivingDest", "safety", "riggingChecks", "routeHazards", "crewPrep", "provisions", "mealPlan",
                "head", "engineService", "electricalService", "myTodo", "shipsLog", "grabBag", "mayDay", "panPan", "boatBudget")
-STATE_KEYS = ("boat", "registry", "data", "areas", "template_versions", "list_ts", "sec_ts")
 
 
 def norm(s: str) -> str:
@@ -68,12 +67,12 @@ class CharterIn(BaseModel):
 
 
 class TermsIn(BaseModel):
-    ticked: List[str] = Field(default_factory=list, max_length=300)
+    ticked: List[str] = Field(default_factory=list, max_length=1000)
 
 
 def public(c: dict) -> dict:
     return {k: c.get(k) for k in ("charter_id", "boat_id", "vessel", "name", "email", "start", "end", "status", "created_at",
-                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "delete_at", "deleted_at", "copy_boat_id")}
+                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "delete_at", "deleted_at", "copy_boat_id", "walk_stops")}
 
 
 async def template_lines(pattern) -> Optional[List[str]]:
@@ -81,8 +80,27 @@ async def template_lines(pattern) -> Optional[List[str]]:
     return [i.get("label", "").strip() for i in (tpl or {}).get("items") or [] if i.get("label", "").strip()] if tpl else None
 
 
+def stocked_areas(areas: list) -> list:
+    """Every cupboard comes across with its contents, except Food & Drink cupboards (and the cupboards inside them), which are emptied."""
+    by_id = {a.get("id"): a for a in areas}
+
+    def fnd(a, seen=()):
+        if a.get("food") or a.get("drinks"):
+            return True
+        parent = by_id.get(a.get("parent_id"))
+        return bool(parent) and a.get("id") not in seen and fnd(parent, (*seen, a.get("id")))
+    return [{**a, "items": []} if fnd(a) else a for a in areas]
+
+
+def walk_stops(doc: dict) -> List[dict]:
+    """Every labelled spot on every zone map: the charter skipper walks them all (no stops are skipped like for crew)."""
+    names = {a.get("id"): a.get("name") for a in doc.get("areas") or []}
+    return [{"id": f"{m['id']}:{p['id']}", "label": f"{m.get('name') or m.get('zone') or 'Zone map'}: {names.get(p.get('area_id')) or p.get('label')}"}
+            for m in doc.get("zone_maps") or [] for p in m.get("pins") or []]
+
+
 def charter_copy(src: dict, names: set, c: dict) -> dict:
-    """Only the hand-over lists (unticked), empty Ship's Log and To Do, empty cupboards, no routes, crew or invites."""
+    """Only the hand-over lists (unticked), empty Ship's Log and To Do, the zone maps and their colours, every cupboard (Food & Drink ones emptied), no routes, crew or invites."""
     keep = []
     for lst in src.get("registry") or []:
         n = norm(lst.get("name"))
@@ -93,8 +111,8 @@ def charter_copy(src: dict, names: set, c: dict) -> dict:
     gone = sorted({lst["id"] for lst in src.get("registry") or [] if lst["id"] not in ids} | {i for i in DEFAULT_IDS if i not in ids})
     data = {k: ([] if k in ("shipsLog", "myTodo") else [{**i, "checked": False} for i in v]) for k, v in (src.get("data") or {}).items() if k in ids}
     boat = {**(src.get("boat") or {}), **{f: "" for f in EMPTY_BOAT}, "skipper": c["name"], "log_email": c["email"]}
-    areas = [{**a, "items": []} for a in src.get("areas") or []]
-    return {"boat": boat, "registry": keep, "data": data, "areas": areas, "template_versions": src.get("template_versions") or {},
+    areas = stocked_areas(src.get("areas") or [])
+    return {"boat": boat, "registry": keep, "data": data, "areas": areas, "zone_maps": src.get("zone_maps") or [], "template_versions": src.get("template_versions") or {},
             "list_ts": {}, "sec_ts": {}, "engine_log": [], "electrical_log": [], "rigging_log": [], "deleted_lists": gone,
             "emergency_checked": {}, "list_hidden": []}
 
@@ -194,7 +212,7 @@ async def hand_over(charter_id: str, user: dict = Depends(get_current_user)):
 
 
 async def my_charter(user: dict, boat_id: str) -> tuple[dict, dict]:
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "charter": 1, "registry": 1, "data": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "charter": 1, "areas": 1, "zone_maps": 1})
     if not doc or not doc.get("charter"):
         raise HTTPException(status_code=404, detail="Charter boat not found")
     c = await db.charters.find_one({"charter_id": doc["charter"]["charter_id"]}, {"_id": 0, "copy_state": 0})
@@ -204,21 +222,36 @@ async def my_charter(user: dict, boat_id: str) -> tuple[dict, dict]:
 @router.get("/charter-terms")
 async def charter_terms(boat_id: BoatQ, user: dict = Depends(get_current_user)):
     doc, c = await my_charter(user, boat_id)
-    return {"terms": await template_lines(TERMS_LIST) or DEFAULT_TERMS, "responsibilities": c.get("responsibilities") or [],
-            "accepted_at": c.get("terms_accepted_at"), "ticked": c.get("resp_ticked") or [], "start": c.get("start"), "end": c.get("end"),
+    return {"terms": await template_lines(TERMS_LIST) or DEFAULT_TERMS, "responsibilities": c.get("responsibilities") or [], "stops": walk_stops(doc),
+            "accepted_at": c.get("terms_accepted_at"), "ticked": (c.get("resp_ticked") or []) + (c.get("walk_ticked") or []), "start": c.get("start"), "end": c.get("end"),
             "owner_name": c.get("owner_name", ""), "vessel": c.get("vessel", "")}
 
 
 @router.post("/charter-terms")
 async def accept_charter_terms(boat_id: BoatQ, payload: TermsIn, user: dict = Depends(get_current_user)):
     terms = await charter_terms(boat_id, user)
+    if terms["accepted_at"]:
+        return {"accepted_at": terms["accepted_at"]}
     need = {i["id"] for i in terms["responsibilities"]}
     if not need.issubset(set(payload.ticked)):
         raise HTTPException(status_code=400, detail="Tick every charter skipper responsibility before you accept")
+    stops = terms["stops"]
+    if not {s["id"] for s in stops}.issubset(set(payload.ticked)):
+        raise HTTPException(status_code=400, detail="Tick every stop of the Zone Map Walk Through before you accept")
     doc, c = await my_charter(user, boat_id)
-    now = datetime.now(timezone.utc).isoformat()
-    await db.charters.update_one({"charter_id": doc["charter"]["charter_id"]}, {"$set": {"terms_accepted_at": now, "resp_ticked": sorted(need)}})
-    return {"accepted_at": now}
+    if (doc["charter"] or {}).get("returned_at"):
+        raise HTTPException(status_code=423, detail="This charter has ended, so the charter copy is read only")
+    now = datetime.now(timezone.utc)
+    await db.charters.update_one({"charter_id": doc["charter"]["charter_id"]}, {"$set": {
+        "terms_accepted_at": now.isoformat(), "resp_ticked": sorted(need), "walk_ticked": [s["id"] for s in stops], "walk_stops": [s["label"] for s in stops]}})
+    if stops:
+        who = c.get("name") or user.get("name") or "the charter skipper"
+        listed = "; ".join(s["label"] for s in stops)
+        item = {"id": int(now.timestamp() * 1000), "checked": False, "ts": now.isoformat(),
+                "label": f"Charter walkthrough signed off by {who} on {now.date().isoformat()} ({len(stops)} {'stop' if len(stops) == 1 else 'stops'}): {listed[:900]}"}
+        await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id},
+                                       {"$push": {"data.shipsLog": item, "pushed_items": {"list": "shipsLog", "item": item}}, "$set": {"updated_at": now.isoformat()}})
+    return {"accepted_at": now.isoformat()}
 
 
 KEEP_DAYS = 7

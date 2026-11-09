@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Anchor, Check, Loader2 } from "lucide-react";
+import { Anchor, Check, Footprints, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { fmtDay, fmtPeriod, isOverdue } from "@/lib/charter";
 import { EndCharter } from "@/components/boat/charter/EndCharter";
 import { localWhen } from "@/lib/timeAgo";
+import { boatMapUrl } from "@/components/boat/ZoneMap";
+import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
+import { AgreementWalkthrough, stopId } from "@/components/boat/agreement/AgreementParts";
 
 const seenKey = (boatId) => `mbp_charter_terms_seen_${boatId}`;
 
-// The charter skipper signs the Charter Boat Terms and Conditions, ticking off the owner's charter skipper responsibilities.
-export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
+// The charter skipper signs the Charter Boat Terms and Conditions, ticking off the owner's charter skipper responsibilities
+// and every stop of the Zone Map Walk Through (none are skipped for a charter skipper).
+export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClosed }) => {
   const [terms, setTerms] = useState(null);
+  const [walking, setWalking] = useState(false);
   const [open, setOpen] = useState(false);
   const [ticked, setTicked] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -27,12 +32,15 @@ export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
   if (!terms) return null;
   const close = () => { sessionStorage.setItem(seenKey(boat.boat_id), "1"); setOpen(false); onClosed?.(); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
-  const ready = terms.responsibilities.every((r) => ticked.includes(r.id));
+  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })));
+  const seen = steps.filter((s) => ticked.includes(stopId(s))).length;
+  const ready = terms.responsibilities.every((r) => ticked.includes(r.id)) && seen === steps.length;
   const accept = async () => {
     setBusy(true);
     try {
       const { data } = await api.post("/charter-terms", { ticked }, { params: { boat_id: boat.boat_id } });
       setTerms((t) => ({ ...t, accepted_at: data.accepted_at })); toast.success("Charter Boat Terms and Conditions accepted. Enjoy your charter!"); close();
+      window.dispatchEvent(new Event("mbp:refresh-boat"));
     } catch (e) { toast.error(apiError(e, "Couldn't save, please try again")); } finally { setBusy(false); }
   };
   return (
@@ -53,12 +61,25 @@ export const CharterTermsDialog = ({ boat, online, forceOpen, onClosed }) => {
             ))}
           </div>
         )}
+        {steps.length > 0 && (
+          <div className="flex flex-col gap-1.5" data-testid="charter-walk-section">
+            <p className="field-label" data-testid="charter-walk-count">Zone Map Walk Through ({seen} of {steps.length} ticked)</p>
+            <p className="text-xs text-[var(--muted)]">Find every labelled spot on board, including the bilge pumps and bungs, and tick each one once you&apos;ve seen it.</p>
+            {!terms.accepted_at && (
+              <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(true)} data-testid="charter-walk-start-btn">
+                <Footprints className="h-4 w-4" /> {seen ? "Carry on the walkthrough" : "Start the walkthrough"}
+              </button>
+            )}
+            <AgreementWalkthrough steps={steps} areas={areas} ticked={ticked} onChange={terms.accepted_at ? () => {} : setTicked} />
+          </div>
+        )}
         {terms.accepted_at ? <p className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm font-bold text-green-900" data-testid="charter-terms-accepted"><Check className="h-4 w-4" /> Accepted {localWhen(terms.accepted_at)}</p> : (
           <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!ready || busy || !online} onClick={accept} data-testid="charter-terms-accept-btn">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Anchor className="h-4 w-4" />} I accept the Charter Boat Terms and Conditions
           </button>
         )}
         <button type="button" className="btn-ghost h-11 justify-center" onClick={close} data-testid="charter-terms-later-btn">{terms.accepted_at ? "Close" : "Later"}</button>
+        {walking && <CrewWalkthrough steps={steps} areas={areas} ticked={ticked} onTick={tick} onClose={() => setWalking(false)} onOpenArea={() => {}} />}
       </DialogContent>
     </Dialog>
   );

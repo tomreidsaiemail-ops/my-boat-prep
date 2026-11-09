@@ -25,6 +25,12 @@ const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded }) 
         {c.handed_at && <span>Handed over {localWhen(c.handed_at)}</span>}
         {c.status === "handed_over" && <span data-testid={`charter-row-claimed-${c.charter_id}`}>{c.claimed_at ? `Charter skipper has the boat since ${localWhen(c.claimed_at)}` : "Waiting for the charter skipper to log in with that email"}</span>}
         {c.terms_accepted_at && <span data-testid={`charter-row-terms-${c.charter_id}`}>Charter Boat Terms and Conditions accepted {localWhen(c.terms_accepted_at)}</span>}
+        {c.walk_stops?.length > 0 && (
+          <details data-testid={`charter-row-walk-${c.charter_id}`}>
+            <summary className="cursor-pointer font-bold text-emerald-800">Zone Map Walk Through signed off ({c.walk_stops.length} {c.walk_stops.length === 1 ? "stop" : "stops"})</summary>
+            <ul className="mt-1 list-disc pl-5">{c.walk_stops.map((s, i) => <li key={i}>{s}</li>)}</ul>
+          </details>
+        )}
         {c.status === "handed_over" && isOverdue(c) && <span className="font-bold text-amber-900" data-testid={`charter-row-overdue-${c.charter_id}`}>The charter ended {fmtDay(c.end)}. End it to unlock {vessel} and bring back the logs.</span>}
         {c.returned_at && <span data-testid={`charter-row-returned-${c.charter_id}`}>Charter ended {localWhen(c.returned_at)}{c.status === "returned" && c.delete_at ? `. Charter copy read only until ${localWhen(c.delete_at)}, then deleted` : ""}</span>}
         {c.deleted_at && <span data-testid={`charter-row-deleted-${c.charter_id}`}>Charter copy deleted {localWhen(c.deleted_at)}</span>}

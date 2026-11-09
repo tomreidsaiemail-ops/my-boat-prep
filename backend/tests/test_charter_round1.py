@@ -9,6 +9,7 @@ from pymongo import MongoClient
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 mdb = MongoClient(os.environ.get("MONGO_URL", "mongodb://localhost:27017"))[os.environ.get("DB_NAME", "test_database")]
 PRO, BETA, FREE = "test_session_pro_1", "test_session_beta_1", "test_session_free_1"
+PIN = {"id": "TEST_pin_bilge", "x": 0.5, "y": 0.5, "label": "TEST_Bilge pump", "area_id": None}
 RESP_ID = "custom_TEST_charter_resp"
 NEW_EMAIL = f"test.charter.{uuid.uuid4().hex[:8]}@example.com"
 NEW_UID, NEW_TOKEN = f"test-charter-{uuid.uuid4().hex[:8]}", f"test_session_charter_{uuid.uuid4().hex[:8]}"
@@ -26,7 +27,8 @@ def cleanup():
     mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main"},
                               {"$unset": {"charter_lock": "", f"data.{RESP_ID}": ""},
                                "$pull": {"registry": {"id": RESP_ID}, "data.shipsLog": {"charter": {"$regex": "^TEST_"}},
-                                         "data.myTodo": {"charter": {"$regex": "^TEST_"}}, "pushed_items": {"item.charter": {"$regex": "^TEST_"}}}})
+                                         "data.myTodo": {"charter": {"$regex": "^TEST_"}}, "pushed_items": {"item.charter": {"$regex": "^TEST_"}},
+                                         "zone_maps.$[].pins": {"id": PIN["id"]}, "walk_skip": {"$regex": PIN["id"]}}})
     mdb.users.delete_one({"user_id": NEW_UID})
     mdb.user_sessions.delete_one({"session_token": NEW_TOKEN})
 
@@ -42,6 +44,13 @@ def setup_module_data():
         "$push": {"registry": {"id": RESP_ID, "name": "Charter - charter skipper responsibilities"}},
         "$set": {f"data.{RESP_ID}": [{"id": 9001, "label": "TEST_Check the bilge daily", "checked": True},
                                      {"id": 9002, "label": "TEST_No night sailing", "checked": False}]}})
+    # One labelled spot on the first zone map, which the owner leaves out of the crew walkthrough: the charter skipper still walks it.
+    own = mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"zone_maps": 1})
+    first = ((own or {}).get("zone_maps") or [None])[0]
+    if first:
+        mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main", "zone_maps.id": first["id"]},
+                                  {"$push": {"zone_maps.$.pins": PIN, "walk_skip": f"{first['id']}:{PIN['id']}"}})
+        ST["map"] = first
     yield
     if rows is not None:
         mdb.list_templates.update_one(feat, {"$set": {"items": rows}})
@@ -172,7 +181,14 @@ class TestCharterFlow:
         assert "Engine Service" not in names and "TEST_My YT" not in names
         assert cp["data"]["shipsLog"] == [] and cp["data"]["myTodo"] == []
         assert all(not i.get("checked") for v in cp["data"].values() for i in v)
-        assert len(cp["areas"]) == len(ST["before"]["areas"]) and all(a["items"] == [] for a in cp["areas"])
+        assert len(cp["areas"]) == len(ST["before"]["areas"])
+        src = {a["id"]: a for a in ST["before"]["areas"]}
+        for a in cp["areas"]:
+            want = [] if (a.get("food") or a.get("drinks")) else src[a["id"]].get("items")
+            assert a["items"] == want, a["name"]
+        assert [m["id"] for m in cp["zone_maps"]] == [m["id"] for m in ST["before"].get("zone_maps") or []]
+        assert [m.get("swatches") for m in cp["zone_maps"]] == [m.get("swatches") for m in ST["before"].get("zone_maps") or []]
+        assert not cp.get("walk_skip")
         assert cp["boat"]["route_start"] == "" and cp["boat"]["route_dest"] == "" and cp["boat"]["skipper"] == "TEST_Beta Skipper"
         assert cp["crew"] == [] and cp["boat"]["vessel"] == "TEST_Kia Ora"
         assert mdb.crew_invites.count_documents({"owner_id": "test-user-beta", "boat_id": ST["copy"]}) == 0
@@ -212,6 +228,13 @@ class TestCharterFlow:
         assert [r["label"] for r in d["responsibilities"]] == ["TEST_Check the bilge daily", "TEST_No night sailing"]
         assert d["accepted_at"] is None
         ids = [r["id"] for r in d["responsibilities"]]
+        stops = [x["id"] for x in d["stops"]]
+        if ST.get("map"):
+            assert f"{ST['map']['id']}:{PIN['id']}" in stops
+            assert any(x["label"].endswith(": TEST_Bilge pump") for x in d["stops"])
+            no_walk = b.post(f"{BASE_URL}/api/charter-terms", params={"boat_id": ST["copy"]}, json={"ticked": ids})
+            assert no_walk.status_code == 400 and "Walk Through" in no_walk.text
+        ids += stops
         bad = b.post(f"{BASE_URL}/api/charter-terms", params={"boat_id": ST["copy"]}, json={"ticked": ids[:1]})
         assert bad.status_code == 400
         assert s(PRO).get(f"{BASE_URL}/api/charter-terms", params={"boat_id": "main"}).status_code == 404
@@ -219,7 +242,15 @@ class TestCharterFlow:
         assert ok.status_code == 200 and ok.json()["accepted_at"]
         assert b.get(f"{BASE_URL}/api/charter-terms", params={"boat_id": ST["copy"]}).json()["accepted_at"]
         rows = s(PRO).get(f"{BASE_URL}/api/charters", params={"boat_id": "main"}).json()["charters"]
-        assert next(c for c in rows if c["charter_id"] == ST["beta"])["terms_accepted_at"]
+        row = next(c for c in rows if c["charter_id"] == ST["beta"])
+        assert row["terms_accepted_at"] and len(row["walk_stops"]) == len(stops)
+        cp = mdb.user_boats.find_one({"owner_id": "test-user-beta", "boat_id": ST["copy"]})
+        walk = [i for i in cp["data"]["shipsLog"] if i["label"].startswith("Charter walkthrough signed off by TEST_Beta Skipper")]
+        assert len(walk) == (1 if stops else 0)
+        # Accepting again doesn't add a second entry.
+        assert b.post(f"{BASE_URL}/api/charter-terms", params={"boat_id": ST["copy"]}, json={"ticked": ids}).status_code == 200
+        cp = mdb.user_boats.find_one({"owner_id": "test-user-beta", "boat_id": ST["copy"]})
+        assert len([i for i in cp["data"]["shipsLog"] if i["label"].startswith("Charter walkthrough")]) == len(walk)
 
     def test_beta_can_edit_copy(self):
         b = s(BETA)
@@ -240,16 +271,19 @@ class TestCharterFlow:
         r = s(PRO).post(f"{BASE_URL}/api/charters/{ST['beta']}/return")
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["status"] == "returned" and d["returned_at"] and d["delete_at"] and d["log_entries"] == 1 and d["todo_entries"] == 1
+        walked = 1 if ST.get("map") else 0
+        assert d["status"] == "returned" and d["returned_at"] and d["delete_at"] and d["log_entries"] == 1 + walked and d["todo_entries"] == 1
         print("emailed:", d["emailed"])
         after = mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"_id": 0})
         assert not after.get("charter_lock") and after["updated_at"] > own["updated_at"]
         log, todo = after["data"]["shipsLog"], after["data"]["myTodo"]
-        assert len(log) == n_log + 1 and len(todo) == n_todo + 1
-        assert log[-1]["label"] == "Charter skipper TEST_Beta Skipper: TEST_Left the marina" and log[-1]["charter"] == "TEST_Beta Skipper"
+        assert len(log) == n_log + 1 + walked and len(todo) == n_todo + 1
+        mine = [i for i in log if i.get("charter") == "TEST_Beta Skipper"]
+        assert "Charter skipper TEST_Beta Skipper: TEST_Left the marina" in [i["label"] for i in mine]
+        assert len([i for i in mine if "Charter walkthrough signed off" in i["label"]]) == walked
         assert len({i["id"] for i in log}) == len(log)
         assert todo[-1]["label"] == "Charter skipper TEST_Beta Skipper: TEST_fix winch"
-        assert {p["item"]["id"] for p in after.get("pushed_items") or []} >= {log[-1]["id"], todo[-1]["id"]}
+        assert {p["item"]["id"] for p in after.get("pushed_items") or []} >= {i["id"] for i in mine} | {todo[-1]["id"]}
 
     def test_owner_boat_editable_again_and_keeps_charter_entries(self):
         p = s(PRO)
