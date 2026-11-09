@@ -25,7 +25,8 @@ const NoteEditor = ({ c, imperial, disabled, onSave }) => {
   const [weight, setWeight] = useState(c.weight_kg ? String(+(imperial ? c.weight_kg / LB : c.weight_kg).toFixed(2)) : "");
   const save = () => {
     const w = parseFloat(weight);
-    const kg = w > 0 ? +(imperial ? w * LB : w).toFixed(3) : null;
+    let kg = w > 0 ? +(imperial ? w * LB : w).toFixed(3) : null;
+    if (kg > 1500) { toast.error(`That's over ${imperial ? "3,300 lb" : "1,500 kg"}. Check the weight.`); kg = c.weight_kg || null; setWeight(kg ? String(+(imperial ? kg / LB : kg).toFixed(2)) : ""); }
     if ((note.trim() || "") !== (c.note || "") || kg !== (c.weight_kg || null)) onSave({ note: note.trim().slice(0, 300), weight_kg: kg });
   };
   return (
@@ -33,7 +34,7 @@ const NoteEditor = ({ c, imperial, disabled, onSave }) => {
       <input value={note} onChange={(e) => setNote(e.target.value)} onBlur={save} maxLength={300} disabled={disabled} placeholder="Note, e.g. caught trolling off the point"
         className="field-input h-9 min-w-0 flex-1 text-xs" data-testid={`fish-queue-note-${c.id}`} />
       <input value={weight} onChange={(e) => setWeight(e.target.value.replace(/[^\d.]/g, ""))} onBlur={save} inputMode="decimal" disabled={disabled} placeholder={imperial ? "lb" : "kg"}
-        aria-label={`Weight in ${imperial ? "pounds" : "kilograms"}`} className="field-input h-9 w-16 text-xs" data-testid={`fish-queue-weight-${c.id}`} />
+        aria-label={`Weight in ${imperial ? "pounds" : "kilograms"}`} className="field-input h-9 !w-20 shrink-0 text-xs" data-testid={`fish-queue-weight-${c.id}`} />
     </div>
   );
 };
@@ -65,6 +66,10 @@ export const FishQueue = ({ userId, online, imperial, refreshKey, onIdentified, 
         if (err.response?.status === 400) {
           await dropCatch(c.id);
           toast.error(`Photo from ${localWhen(c.taken_at)}: ${apiError(err)} It was taken off the queue.`, { duration: 8000 });
+          continue;
+        }
+        if (err.response?.status === 422) {
+          toast.error(`Photo from ${localWhen(c.taken_at)}: check its note and weight, then try again. It's still waiting.`, { duration: 8000 });
           continue;
         }
         toast.error(err.response ? `${apiError(err)} Your photos are still waiting.` : "Lost the signal. Your photos are still waiting.", { duration: 8000 });

@@ -24,7 +24,13 @@ export const queuedCatches = async (userId) => ((await run("readonly", (s) => s.
   .filter((c) => c.user_id === userId).sort((a, b) => a.taken_at.localeCompare(b.taken_at));
 export const dropCatch = (id) => run("readwrite", (s) => s.delete(id));
 export const updateCatch = async (id, patch) => {
-  const all = (await run("readonly", (s) => s.getAll())) || [];
-  const c = all.find((x) => x.id === id);
-  if (c) await run("readwrite", (s) => s.put({ ...c, ...patch }));
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    const s = tx.objectStore(STORE);
+    // One transaction, so a photo removed meanwhile isn't brought back.
+    s.get(id).onsuccess = (e) => { if (e.target.result) s.put({ ...e.target.result, ...patch }); };
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
 };

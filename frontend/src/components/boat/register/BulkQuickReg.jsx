@@ -18,16 +18,18 @@ export const BulkQuickReg = ({ open, onDone, onClose }) => {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const people = parsePeople(text);
+  const ready = people.filter((p) => p.email);
   const close = () => { setText(""); setResult(null); onClose(); };
   const save = async () => {
-    if (!people.length) { toast.error("Paste at least one name and email"); return; }
-    if (people.length > 50) { toast.error("Up to 50 people at a time"); return; }
+    if (!ready.length) { toast.error("Paste at least one name and email"); return; }
+    if (ready.length > 50) { toast.error("Up to 50 people at a time"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/crew-register/quick-bulk", { people });
-      setResult(data);
+      const { data } = await api.post("/crew-register/quick-bulk", { people: ready });
+      const noEmail = people.filter((p) => !p.email).map((p) => ({ name: p.name || "A line", reason: "No email found" }));
+      setResult({ ...data, skipped: [...noEmail, ...data.skipped] });
       if (data.added.length) { toast.success(`${data.added.length} crew registered with Quick Reg`); onDone(); }
-      if (!data.skipped.length) close();
+      if (!data.skipped.length && !noEmail.length) close();
     } catch (e) { toast.error(apiError(e, "Couldn't add them, please try again")); } finally { setBusy(false); }
   };
   return (
@@ -56,8 +58,8 @@ export const BulkQuickReg = ({ open, onDone, onClose }) => {
         )}
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={close} data-testid="bulk-quick-cancel-btn">{result ? "Done" : "Cancel"}</button>
-          <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" disabled={busy || !people.length} onClick={save} data-testid="bulk-quick-save-btn">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />} Quick Reg {people.length || ""}
+          <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" disabled={busy || !ready.length || !!result} onClick={save} data-testid="bulk-quick-save-btn">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />} Quick Reg {ready.length || ""}
           </button>
         </div>
       </DialogContent>
