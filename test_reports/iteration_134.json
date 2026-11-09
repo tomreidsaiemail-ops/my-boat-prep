@@ -1,0 +1,27 @@
+{
+  "summary": "Admin - disabled features (speak, sync_stores). Backend: 8/8 pytest pass. GET /api/me/features: defaults disable both for all users including the admin. Email matching is case-insensitive. 'Home Page Speak Button Feature' and 'Food & Drinks Cupboards Magically Feature' rows are matched correctly. Deleting a row or clearing all rows turns the feature on for everyone. POST /api/ai/mpa/consumed returns 403 'This feature is switched off for now' when the feature is off and does not return 403 when it is on. The template is seeded once (migration disabled_features_list), private, and listed in /admin/templates. Frontend (390x844): with defaults there is no home-speak-btn, crew-speak-btn, QR window Speak, app-menu-sync-stores-item or qr-scan-sync-btn. With pro+free on the Speak row and pro+beta on the Sync row: pro sees home-speak-btn (Speak dialog opens), the QR window Speak, qr-scan-sync-btn (opens the Sync dialog) and the menu Sync item (the dialog opens with text box and Work it out). Beta sees the Sync item but no Speak. Free crew sees crew-speak-btn but no Sync. With all rows deleted, beta sees both. Template restored to the exact defaults.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Sync Food & Drink Cupboards dialog", "issues": ["The dialog's own 'Speak' mic button (stores/MicButton.jsx, data-testid stores-mic-btn) is not gated by the 'speak' feature. A user listed only on the Sync row (e.g. user2/user3 in the spec) still sees a Speak button inside the Sync dialog. The user said the Speak row controls EVERY Speak button, so this is probably a miss. Confirm with the user, or gate MicButton with useFeature('speak')."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter134_disabled_features.py", "/app/test_reports/pytest/pytest_iter134.xml"],
+  "action_items": [
+    "Decide whether to gate the stores-mic-btn 'Speak' in SyncStoresDialog with useFeature('speak'). It is currently shown to sync-only users."
+  ],
+  "critical_code_review_comments": [
+    "feature_key needs the substring 'magical' for sync_stores. If the admin renames the row to e.g. 'Sync Cupboards Magic', it no longer matches, so the feature silently turns on for everyone. Consider matching 'cupboard' plus 'magic', or 'sync'.",
+    "The Speak test ids are `${testId}-btn` (home-speak-btn, crew-speak-btn), not home-speak/crew-speak as the review request said.",
+    "useFeature caches the disabled list at module level and in localStorage for the whole session. An admin change only reaches an open app after a reload. Acceptable, just noting it.",
+    "Header date field uses the browser's native date input (existing, not in scope)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter134_disabled_features.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% for requested flows (1 design/spec gap noted)"},
+  "seed_data_creation": "None. The template items were edited temporarily in Mongo and restored exactly to the 2 default rows (updated_at untouched).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "QR window opens via /?scan_area=amw1pvdq802hq&b=main&o=test-user-pro (pro Fridge). Free user's last_boat is the crew boat c_test-user-pro_main, where crew-speak-btn shows (behind the crew agreement dialog). Use window.__mbpFakeSpeech to fake speech. Pytest: export REACT_APP_BACKEND_URL first. The test class restores the template defaults in teardown."
+}

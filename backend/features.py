@@ -16,7 +16,7 @@ def feature_key(name: str):
     n = name.lower()
     if "speak" in n:
         return "speak"
-    if "cupboard" in n and "magical" in n:
+    if "sync" in n or ("cupboard" in n and "magic" in n):
         return "sync_stores"
     return None
 

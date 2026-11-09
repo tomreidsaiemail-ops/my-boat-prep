@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Mic, Square } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { useFeature } from "@/lib/features";
 
 const LIMIT_MS = 60000;
 const pickType = () => ["audio/webm", "audio/mp4", "audio/ogg"].find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || "";
 
+export const MicButton = (props) => (useFeature("speak") ? <MicControl {...props} /> : null);
+
 // Record a short voice note; the AI turns it into text for onText.
-export const MicButton = ({ onText, disabled, params }) => {
+const MicControl = ({ onText, disabled, params }) => {
   const [state, setState] = useState("idle");
   const rec = useRef(null);
   const timer = useRef(null);
