@@ -89,7 +89,7 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, focusPin, onSignOff, onZone }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, onZoneDefaults, focusPin, onSignOff, onZone }) => {
   const help = useAdminLists(HELP_PREFIX, online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
@@ -184,7 +184,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
             {schematicLabel(details) && <span className="text-[var(--navy)]" data-testid="zone-overviews-schematic">{schematicLabel(details)}</span>}
           </p>
           {overviews.map((m) => (
-            <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps}
+            <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps} onZoneDefaults={onZoneDefaults}
               removing={removing === m.id} onRemove={() => removeMap(m)} onColour={openColour} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
           ))}
           {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}

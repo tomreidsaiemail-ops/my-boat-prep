@@ -6,6 +6,7 @@ import { localWhen } from "@/lib/timeAgo";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { FishReport } from "@/components/boat/fish/FishReport";
 import { CatchMap } from "@/components/boat/fish/CatchMap";
+import { CatchOfTheTrip } from "@/components/boat/fish/CatchOfTheTrip";
 
 // Every catch the Magic Fish Whisperer has looked at: photo, species, size, place and date.
 export const CatchLog = ({ online, imperial, refreshKey, onCount, view = "list" }) => {
@@ -42,6 +43,8 @@ export const CatchLog = ({ online, imperial, refreshKey, onCount, view = "list" 
   if (view === "map") return <CatchMap catches={list} imperial={imperial} onOpen={setOpen} />;
   if (!list.length) return <p className="rounded-md border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="catch-log-empty">No catches yet. Photo your first fish and it will be saved here.</p>;
   return (
+    <div className="flex flex-col gap-3">
+    <CatchOfTheTrip list={list} imperial={imperial} onOpen={setOpen} />
     <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="catch-log-list">
       {list.map((c) => (
         <li key={c.catch_id}>
@@ -57,5 +60,6 @@ export const CatchLog = ({ online, imperial, refreshKey, onCount, view = "list" 
         </li>
       ))}
     </ul>
+    </div>
   );
 };

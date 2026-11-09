@@ -87,7 +87,7 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
           <Tab on={tab === "log"} onClick={() => setTab("log")} testId="fish-tab-log">Catch log{count ? ` (${count})` : ""}</Tab>
           <Tab on={tab === "map"} onClick={() => setTab("map")} testId="fish-tab-map">Catch map</Tab>
         </div>
-        {tab === "new" && <FishQueue userId={user?.user_id} online={online} refreshKey={queueKey} onLogged={onLogged} onIdentified={() => setLogKey((k) => k + 1)} />}
+        {tab === "new" && <FishQueue userId={user?.user_id} online={online} imperial={imperial} refreshKey={queueKey} onLogged={onLogged} onIdentified={() => setLogKey((k) => k + 1)} />}
         <div className={tab === "new" ? "hidden" : ""}><CatchLog online={online} imperial={imperial} refreshKey={logKey} onCount={setCount} view={tab === "map" ? "map" : "list"} /></div>
         {tab === "new" && (result ? (
           <>

@@ -145,6 +145,37 @@ async def add_entry(payload: EntryIn, user: dict = Depends(get_current_user)):
     return public(e)
 
 
+class QuickPerson(BaseModel):
+    name: str = Field(default="", max_length=60)
+    email: str = Field(default="", max_length=254)
+
+
+class QuickBulkIn(BaseModel):
+    people: List[QuickPerson] = Field(min_length=1, max_length=50)
+
+
+@router.post("/quick-bulk")
+async def quick_bulk(payload: QuickBulkIn, user: dict = Depends(get_current_user)):
+    """Bulk Quick Reg: a pasted list of names and emails, each registered straight away. Bad or repeated lines are skipped with a reason."""
+    room = 300 - await db.crew_register.count_documents({"owner_id": user["user_id"]})
+    added, skipped, now = [], [], datetime.now(timezone.utc).isoformat()
+    for p in payload.people:
+        label = p.name.strip() or p.email.strip() or "A line"
+        try:
+            data = clean(Details(name=p.name, email=p.email), ("name", "email"))
+            await no_duplicate(user, "crew", data["email"])
+        except HTTPException as e:
+            skipped.append({"name": label, "reason": e.detail})
+            continue
+        if len(added) >= room:
+            skipped.append({"name": label, "reason": "Your register is full (300 people)"})
+            continue
+        await db.crew_register.insert_one({"entry_id": str(uuid.uuid4()), "owner_id": user["user_id"], "kind": "crew", **data, "email_key": email_key(data["email"]),
+                                           "status": "registered", "quick_reg": True, "registered_at": now, "created_at": now, "updated_at": now})
+        added.append(data["name"])
+    return {"added": added, "skipped": skipped}
+
+
 @router.put("/{entry_id}")
 async def edit_entry(entry_id: EntryPath, payload: Details, user: dict = Depends(get_current_user)):
     e = await mine(user, entry_id)

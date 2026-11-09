@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Mail, RefreshCw, UserPlus } from "lucide-react";
+import { Loader2, Mail, RefreshCw, UserPlus, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -8,6 +8,7 @@ import { requestMessage, waLink } from "@/lib/crewRegister";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { RegRow } from "@/components/boat/register/RegRow";
 import { RegEntryDialog } from "@/components/boat/register/RegEntryDialog";
+import { BulkQuickReg } from "@/components/boat/register/BulkQuickReg";
 import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButton";
 
 const Section = ({ title, hint, empty, rows, testId, children }) => (
@@ -27,6 +28,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
   const { user } = useAuth();
   const [reg, setReg] = useState({ crew: [], parties: [] });
   const [editing, setEditing] = useState(null);
+  const [bulk, setBulk] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [busy, setBusy] = useState({});
   const load = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(data)).catch(() => {}), []);
@@ -90,6 +92,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
         </Section>
         <div className="flex flex-col gap-2">
           <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => add("crew")} data-testid="reg-add-crew-btn"><UserPlus className="h-4 w-4" /> Add crew member</button>
+          <button type="button" className="btn-ghost h-11 justify-center gap-2 border-amber-500 bg-amber-50" onClick={() => guard() && setBulk(true)} data-testid="reg-bulk-quick-btn"><Zap className="h-4 w-4 fill-amber-400 text-amber-600" /> Bulk Quick Reg: paste names and emails</button>
           {waiting > 0 && (
             <button type="button" className="btn-ghost h-11 justify-center gap-2" disabled={!!busy.all} onClick={() => request(null, true, "all")} data-testid="reg-send-all-btn">
               {busy.all ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Email registration request to everyone not registered ({waiting})
@@ -104,6 +107,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
           {reg.parties.length > 0 && <EmailPartiesButton boatId={boatId} online={online} premium={premium} onUpgrade={onUpgrade} testId="reg-email-parties-btn" />}
         </div>
         <RegEntryDialog entry={editing} onSaved={load} onClose={() => setEditing(null)} />
+        <BulkQuickReg open={bulk} onDone={load} onClose={() => setBulk(false)} />
         <ConfirmDelete item={deleting} title={`Remove ${deleting?.name || ""}?`} note="They're removed from your register. Crew already on a boat stay on it." testId="reg-delete" confirmLabel="Remove" onConfirm={remove} onClose={() => setDeleting(null)} />
       </DialogContent>
     </Dialog>

@@ -14,6 +14,7 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
+import { zoneDefaultAreas } from "@/lib/zoneDefaults";
 import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
@@ -241,6 +242,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     onChange((list) => [...list, ...names.filter((n) => !list.some((a) => same(a.name, n))).map((name) => ({ id: ids[name], name, items: [] }))]);
     return ids;
   };
+  // Magically Place Colours found these zones: give each its usual cupboards (Galley: Fridge, Pantry...), never doubling one up.
+  const addZoneDefaults = (swatches) => {
+    const fresh = zoneDefaultAreas(swatches, areas);
+    if (fresh.length) onChange((list) => [...list, ...zoneDefaultAreas(swatches, list)]);
+    return fresh.length;
+  };
   const [focus, setFocus] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
   const pinFor = {};
@@ -376,7 +383,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} details={details} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
+        boat={boat} details={details} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} onZoneDefaults={addZoneDefaults} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})

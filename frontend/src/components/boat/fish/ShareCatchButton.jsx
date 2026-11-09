@@ -4,17 +4,17 @@ import { Loader2, Share2 } from "lucide-react";
 import { catchCard, shareText } from "@/lib/catchCard";
 
 // Shares the catch card through the phone's share sheet; on a computer it downloads the card instead.
-export const ShareCatchButton = ({ c, size }) => {
+export const ShareCatchButton = ({ c, size, title = "", label = "Share my catch", testId = "fish-share-btn" }) => {
   const [busy, setBusy] = useState(false);
   const share = async () => {
     setBusy(true);
     try {
-      const blob = await catchCard(c, size);
-      const name = `${c.report.species.common_name.replace(/[^\w]+/g, "-").toLowerCase()}-catch.jpg`;
+      const blob = await catchCard(c, size, title);
+      const name = `${c.report.species.common_name.replace(/[^\w]+/g, "-").toLowerCase()}-${title ? "catch-of-the-trip" : "catch"}.jpg`;
       const file = new File([blob], name, { type: "image/jpeg" });
-      const text = shareText(c, size);
+      const text = shareText(c, size, title);
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `My catch: ${c.report.species.common_name}`, text });
+        await navigator.share({ files: [file], title: title || `My catch: ${c.report.species.common_name}`, text });
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -30,8 +30,8 @@ export const ShareCatchButton = ({ c, size }) => {
     } finally { setBusy(false); }
   };
   return (
-    <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={share} disabled={busy} data-testid="fish-share-btn">
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} Share my catch
+    <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={share} disabled={busy} data-testid={testId}>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {label}
     </button>
   );
 };

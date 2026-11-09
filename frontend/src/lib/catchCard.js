@@ -26,7 +26,7 @@ const cover = (ctx, img) => {
 };
 
 // A shareable picture card: photo, species, size, place name (never the exact GPS spot) and date.
-export const catchCard = async (c, size) => {
+export const catchCard = async (c, size, title = "") => {
   const r = c.report;
   const shell = r.kind === "shellfish";
   const canvas = document.createElement("canvas");
@@ -42,6 +42,14 @@ export const catchCard = async (c, size) => {
   ctx.fillRect(0, PHOTO_H, W, H - PHOTO_H);
   ctx.fillStyle = shell ? "#7E3FBF" : "#F28C28";
   ctx.fillRect(0, PHOTO_H, W, 14);
+  if (title) {
+    ctx.font = "800 40px 'Public Sans', system-ui, sans-serif";
+    const tw = Math.min(ctx.measureText(title).width, W - 128);
+    ctx.fillStyle = "#fbbf24";
+    ctx.fillRect(40, 40, tw + 48, 76);
+    ctx.fillStyle = "#0f172a";
+    ctx.fillText(fit(ctx, title, W - 128), 64, 92);
+  }
   const x = 64;
   const max = W - x * 2;
   let y = PHOTO_H + 110;
@@ -63,4 +71,4 @@ export const catchCard = async (c, size) => {
   return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
 };
 
-export const shareText = (c, size) => [`My catch: ${c.report.species.common_name}`, size, c.report.place?.name, "Identified by the Magic Fish Whisperer on My Boat Prep (myboatprep.com)"].filter(Boolean).join(" · ");
+export const shareText = (c, size, title = "") => [title || `My catch: ${c.report.species.common_name}`, title && c.report.species.common_name, size, c.report.place?.name, "Identified by the Magic Fish Whisperer on My Boat Prep (myboatprep.com)"].filter(Boolean).join(" · ");

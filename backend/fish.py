@@ -106,12 +106,13 @@ def parse_fish(text: str) -> dict:
 
 
 def _out(d: dict) -> dict:
-    return {k: d.get(k) for k in ("catch_id", "created_at", "lat", "lon", "position", "report")}
+    return {k: d.get(k) for k in ("catch_id", "created_at", "lat", "lon", "position", "report", "note")}
 
 
 @router.post("/ai/fish")
 async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Form(None, ge=-90, le=90), lon: Optional[float] = Form(None, ge=-180, le=180),
                          position: str = Form("", max_length=80), when: str = Form("", max_length=40), caught_at: str = Form("", max_length=40),
+                         note: str = Form("", max_length=300), weight_kg: Optional[float] = Form(None, gt=0, le=1500),
                          boat_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,40}$"), owner_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,80}$"),
                          user: dict = Depends(require_premium)):
     if file.content_type not in TYPES:
@@ -121,6 +122,11 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
         raise HTTPException(status_code=400, detail="That photo is too big (max 3 MB)")
     where = f"Caught at latitude {lat:.5f}, longitude {lon:.5f}." if lat is not None and lon is not None else "The GPS position isn't known, so give general advice and say where rules depend on location."
     prompt = f"{where}\nLocal date and time: {_s(when, 40) or 'unknown'}.\nIdentify this catch and give the full Magic Fish Whisperer report."
+    note = _s(note, 300)
+    if weight_kg:
+        prompt += f"\nThe skipper weighed it at {weight_kg:g} kg; use that weight."
+    if note:
+        prompt += f"\nThe skipper's note: {note}"
     before = (await db.magic_quota.find_one({"user_id": user["user_id"]}, {"_id": 0, "free_used": 1}) or {}).get("free_used", 0)
     report, left = await _run(user, "fish", prompt, parse_fish, {"name": "Magic Fish Whisperer", "count": 1}, FISH, "The Magic Fish Whisperer", image=data)
     if report["not_fish"]:
@@ -128,6 +134,8 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
         await quota.refund(user["user_id"], "free" if after > before else "purchased")
         return {"not_fish": True, "message": report["message"], "asks_left": await quota.left(user["user_id"])}
     catch_id = uuid.uuid4().hex
+    if weight_kg:  # The skipper's own weight replaces the AI's estimate.
+        report["size"] = {**(report.get("size") or {}), "weight_kg": round(weight_kg, 3), "weighed": True}
     now = datetime.now(timezone.utc)
     try:  # Photos queued offline keep the time they were taken.
         taken = datetime.fromisoformat(caught_at.replace("Z", "+00:00")) if caught_at else None
@@ -139,7 +147,7 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
     except requests.RequestException:
         stored = None
     doc = {"catch_id": catch_id, "user_id": user["user_id"], "photo_path": (stored or {}).get("path"), "content_type": file.content_type, "lat": lat, "lon": lon,
-           "position": _s(position, 80), "report": report, "is_deleted": False, "created_at": (taken or now).isoformat(),
+           "position": _s(position, 80), "report": report, "is_deleted": False, "created_at": (taken or now).isoformat(), **({"note": note} if note else {}),
            **({"identified_at": now.isoformat()} if taken else {})}
     await db.fish_catches.insert_one(doc)
     log_item = await log_catch(user, boat_id, owner_id, doc, _s(when, 40))
@@ -151,11 +159,12 @@ def catch_label(doc: dict, who: str, when: str) -> str:
     sp, size = r["species"], r["size"]
     name = sp["common_name"] + (f" ({sp['scientific_name']})" if sp.get("scientific_name") else "")
     bits = [f"{size['count']} of them" if (size.get("count") or 0) > 1 else "", f"{size['length_cm']:g} cm" if size.get("length_cm") else "",
-            f"about {size['weight_kg']:g} kg" if size.get("weight_kg") else ""]
+            f"{'weighed' if size.get('weighed') else 'about'} {size['weight_kg']:g} kg" if size.get("weight_kg") else ""]
     pos = doc.get("position") or (f"{doc['lat']:.5f}, {doc['lon']:.5f}" if doc.get("lat") is not None and doc.get("lon") is not None else "")
     where = ", ".join(x for x in (r["place"].get("name"), pos and f"position {pos}") if x)
     return (f"Catch on {when or datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')} by {who}: {name}"
-            + (f", {', '.join(b for b in bits if b)}" if any(bits) else "") + (f", at {where}" if where else "") + ". Identified by the Magic Fish Whisperer.")[:2000]
+            + (f", {', '.join(b for b in bits if b)}" if any(bits) else "") + (f", at {where}" if where else "") + ". Identified by the Magic Fish Whisperer."
+            + (f" Note: {doc['note']}" if doc.get("note") else ""))[:2000]
 
 
 async def log_catch(user: dict, boat_id: str, owner_id: str, doc: dict, when: str):

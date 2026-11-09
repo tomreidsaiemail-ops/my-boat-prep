@@ -24,7 +24,11 @@ export const sizeText = (size, imperial) => {
   const out = [];
   if (size.count > 1) out.push(`${size.count} of them`);
   if (size.length_cm) out.push(imperial ? `${(size.length_cm / 2.54).toFixed(1)} in (${size.length_cm} cm)` : `${size.length_cm} cm (${(size.length_cm / 2.54).toFixed(1)} in)`);
-  if (size.weight_kg) out.push(imperial ? `about ${(size.weight_kg * 2.20462).toFixed(1)} lb (${size.weight_kg} kg)` : `about ${size.weight_kg} kg (${(size.weight_kg * 2.20462).toFixed(1)} lb)`);
+  if (size.weight_kg) {
+    const lb = (size.weight_kg * 2.20462).toFixed(1);
+    const w = imperial ? `${lb} lb (${size.weight_kg} kg)` : `${size.weight_kg} kg (${lb} lb)`;
+    out.push(size.weighed ? `${w}, weighed` : `about ${w}`);
+  }
   return out.join(" · ");
 };
 
@@ -70,7 +74,8 @@ export const FishReport = ({ c, imperial, preview }) => {
           <p className="text-xs text-[var(--muted)]">{localWhen(c.created_at)}</p>
         </div>
       </div>
-      {r.size.how && <p className="text-xs text-[var(--muted)]" data-testid="fish-size-how">Size estimate: {r.size.how}</p>}
+      {r.size.how && !r.size.weighed && <p className="text-xs text-[var(--muted)]" data-testid="fish-size-how">Size estimate: {r.size.how}</p>}
+      {c.note && <p className="rounded-md bg-sky-50 px-3 py-2 text-sm" data-testid="fish-note"><b>Your note:</b> {c.note}</p>}
       <ShareCatchButton c={c} size={sizeText(r.size, imperial)} />
       {r.toxins?.length > 0 && <Section title="Watch out" tone="bg-red-50" testId="fish-toxins"><p className="flex items-center gap-1 font-bold text-[var(--red)]"><AlertTriangle className="h-4 w-4" /> Never eat {shell ? "seafood" : "a fish"} you're unsure is safe.</p><Bullets items={r.toxins} /></Section>}
       {shell && (r.safety?.biotoxins?.length > 0 || r.safety?.gathering?.length > 0) && <Section title="Biotoxins and safe gathering" tone="bg-red-50" testId="fish-shell-safety">

@@ -29,7 +29,7 @@ export const OverviewView = ({ src, swatches = [] }) => (
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
-export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour }) => {
+export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour, onZoneDefaults }) => {
   const [swatches, setSwatches] = useState(map.swatches || []);
   const [selected, setSelected] = useState(null);
   const [armed, setArmed] = useState(null);
@@ -89,7 +89,8 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/zone-maps/${map.id}/auto-swatches`, {}, { timeout: 90000 });
       onMaps(data.zone_maps);
-      toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}. Drag any that need nudging.`);
+      const made = onZoneDefaults?.((data.zone_maps.find((m) => m.id === map.id) || {}).swatches || []) || 0;
+      toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}${made ? ` and added ${made} ${made === 1 ? "cupboard" : "cupboards"} for those zones` : ""}. Drag any that need nudging.`, { duration: 6000 });
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't place the colours")); }
     finally { setPlacing(false); }
   };

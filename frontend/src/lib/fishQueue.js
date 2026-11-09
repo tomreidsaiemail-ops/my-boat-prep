@@ -23,3 +23,8 @@ export const queueCatch = (c) => run("readwrite", (s) => s.put({ ...c, id: `${Da
 export const queuedCatches = async (userId) => ((await run("readonly", (s) => s.getAll())) || [])
   .filter((c) => c.user_id === userId).sort((a, b) => a.taken_at.localeCompare(b.taken_at));
 export const dropCatch = (id) => run("readwrite", (s) => s.delete(id));
+export const updateCatch = async (id, patch) => {
+  const all = (await run("readonly", (s) => s.getAll())) || [];
+  const c = all.find((x) => x.id === id);
+  if (c) await run("readwrite", (s) => s.put({ ...c, ...patch }));
+};
