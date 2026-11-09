@@ -1,0 +1,27 @@
+{
+  "summary": "Tested the Charter Handback Report and the Charter Feedback Prompt end to end at 390x844, using a real charter (registered and handed over via the API, terms accepted, 1 Ship's Log entry and 1 To Do item added on the copy). ACTIVE copy (beta): charter-skipper-banner shows and there is no charter-feedback-card. After the return, the OWNER report before any rating shows handback-no-feedback ('TEST_Beta Skipper hasn't rated the charter yet.'), and the row has no rating. CHARTER SKIPPER on the returned copy: charter-ended-banner and then charter-feedback-card. Send with no stars shows the toast 'Pick 1 to 5 stars first'. Picking 4 stars, typing a comment and sending shows the toast 'Thanks! Pro Tester can see your rating', and the button reads 'Rating sent' (disabled). Picking 5 stars changes it to 'Update my rating' (enabled). Updating works, and after a reload it shows 5 stars, the comment and 'Rating sent'. No horizontal overflow (scrollWidth 390). OWNER: the charter row shows 'Rated' with 5 of 5 stars and a 'Handback report' button. The dialog shows the summary, the dates (handed over, handed back, terms accepted), 5 stars plus the quoted comment plus the time, the Zone Map Walk Through (1 stop, ticked), the Ship's Log (2 entries with times) and the To Do list (1). At 390px it fits: dialog 0-390, scrollWidth equals clientWidth, document scrollWidth 390. handback-print-btn calls window.print (stubbed, called once). With print media emulated, no element outside .print-area is visible, the buttons are hidden, and the report sits at 0,0 full width. page.pdf() puts the full report on page 1. Close works. Everything requested passes.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Handback report print", "issues": [
+        "The PDF has 3 pages: the report on page 1, then 2 blank pages. The cause is that visibility:hidden keeps the hidden app's layout height (body was 2563px). Optional fix: in @media print, use body:has(.print-area) > *:not([role=dialog]) { display:none } or something similar, instead of only visibility.",
+        "The dialog's X close icon still prints in the top-right corner. Optional fix: add print:hidden to the DialogContent close button."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/tests/charter_fb_setup.py", "/app/tests/charter_fb_log.py"],
+  "action_items": [
+    "Optional (cosmetic): stop the 2 trailing blank pages when printing the Handback report, and hide the dialog X in print."
+  ],
+  "critical_code_review_comments": [
+    "Radix's scroll lock sets overflow:hidden on body during print. Today the report fits on page 1, so this is fine. A very long Ship's Log could still print correctly, because .print-area is absolute and has no max-height in print. Worth checking once with about 60 entries."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not re-run (covered by test_charter_round1.py)", "frontend": "100%"},
+  "seed_data_creation": "Temporary only, all cleaned up: the flag label was set back to 'Charter Registrations Feature; charteruser@gmail.com'; the TEST_pin1 pin was pulled; the charter and the copy were deleted; charter_lock was unset; the TEST_ charter shipsLog/myTodo/pushed_items entries were pulled from pro main (vessel still 'TEST_Kia Ora'). One feedback record existed only on the deleted charter.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Setup helpers: /app/tests/charter_fb_setup.py create|return (writes /tmp/charter_ids.json) and /app/tests/charter_fb_log.py (adds a TEST_ log and todo entry on the copy). These need the flag enabled for pro and a pin on a pro main zone map first. The copy boat option testid is boat-option-ch<first 12 chars of charter_id>."
+}
