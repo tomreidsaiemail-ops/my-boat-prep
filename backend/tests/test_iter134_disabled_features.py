@@ -30,8 +30,9 @@ def set_items(items):
 class TestDisabledFeatures:
     @pytest.fixture(autouse=True, scope="class")
     def restore(self):
+        before = (_db().list_templates.find_one({"custom": True, "name": NAME}, {"items": 1}) or {}).get("items")
         yield
-        set_items(DEFAULT)
+        set_items(before if before is not None else DEFAULT)
 
     def test_seeded_once_private(self):
         d = _db()
@@ -79,3 +80,20 @@ class TestDisabledFeatures:
     def test_restore(self):
         set_items(DEFAULT)
         assert feats("pro") == ["charter", "speak", "sync_stores"]
+
+
+def test_email_override_matching():
+    import os, sys
+    sys.path.insert(0, "/app/backend")
+    os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
+    from features import EMAIL, feature_key, same_email
+    me = same_email("CharterUser@gmail.com")
+    for label, on in [("Charter Registrations Feature; charteruser@gmail.com", True),
+                      ("Charter Registrations Feature: Charter.User+boat@Gmail.com.", True),
+                      ("Charter Registrations Feature; <charteruser@gmail.com>, b@c.co", True),
+                      ("Charter Registrations Feature; enabled for nobody", False),
+                      ("Charter Registrations Feature; other@gmail.com", False)]:
+        assert feature_key(EMAIL.sub("", label).partition(";")[0]) == "charter"
+        assert (me in {same_email(e) for e in EMAIL.findall(label)}) == on, label
+    # A charter-sounding email on another row must not turn that row into the charter switch.
+    assert feature_key(EMAIL.sub("", "Speak Button Feature; charteruser@gmail.com").partition(";")[0]) == "speak"

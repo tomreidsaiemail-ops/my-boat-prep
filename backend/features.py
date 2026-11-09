@@ -13,7 +13,15 @@ router = APIRouter(prefix="/api")
 LIST_NAME = "Admin - disabled features"
 DESCRIPTION = ("Features switched off while they're being improved. One line per feature: \"<Feature name>; enabled for nobody\", "
                "or list the emails that can use it, e.g. \"Speak Button Feature; user1@gmail.com, user2@gmail.com\". Delete a line to turn that feature on for everyone.")
-EMAIL = re.compile(r"[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+")
+EMAIL = re.compile(r"[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+
+
+def same_email(e: str) -> str:
+    """Lower-cased; Gmail ignores dots and +tags, so j.smith+boat@gmail.com is jsmith@gmail.com."""
+    local, _, domain = e.strip().lower().partition("@")
+    if domain in ("gmail.com", "googlemail.com"):
+        local, domain = local.split("+", 1)[0].replace(".", ""), "gmail.com"
+    return f"{local}@{domain}"
 
 
 def feature_key(name: str):
@@ -29,12 +37,13 @@ def feature_key(name: str):
 
 async def disabled_features(user: dict) -> list:
     tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(LIST_NAME)}\s*$", "$options": "i"}}, {"_id": 0, "items": 1})
-    me = (user.get("email") or "").strip().lower()
+    me = same_email(user.get("email") or "")
     off = set()
     for i in (tpl or {}).get("items") or []:
-        name, _, who = (i.get("label") or "").partition(";")
-        key = feature_key(name)
-        if key and me not in {e.lower() for e in EMAIL.findall(who)}:
+        label = i.get("label") or ""
+        key = feature_key(EMAIL.sub("", label).partition(";")[0])
+        # Emails count wherever they are on the line, so "Feature: a@b.com" or "Feature - a@b.com" still work.
+        if key and me not in {same_email(e) for e in EMAIL.findall(label)}:
             off.add(key)
     return sorted(off)
 
