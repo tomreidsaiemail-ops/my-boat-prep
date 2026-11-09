@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from emergentintegrations.llm.openai import OpenAISpeechToText
 from auth import get_current_user
 from crew_pro import magic_payer
+from features import require_feature
 from ai_lists import _run
 
 router = APIRouter(prefix="/api")
@@ -86,6 +87,7 @@ def parse_consumed(stock: List[StockItem]):
 
 @router.post("/ai/mpa/consumed")
 async def consumed(body: ConsumedIn, boat_id: BoatQ = None, owner: BoatQ = None, me: dict = Depends(get_current_user)):
+    await require_feature(me, "sync_stores")
     user = await magic_payer(me, boat_id, owner)
     lines = "\n".join(f"{n}. {s.name} x{s.qty}" + (f" ({s.area})" if s.area else "") for n, s in enumerate(body.stock, 1))
     prompt = (f"The skipper says this was used:\n\"\"\"{body.text}\"\"\"\n\nFood and drink stores on board (number. name xquantity (area)):\n{lines}\n\n"

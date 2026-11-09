@@ -124,6 +124,7 @@ import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
 import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
+import { useFeature } from "@/lib/features";
 
 const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log", riggingChecks: "rigging_log" };
 const SERVICE_META = {
@@ -157,6 +158,7 @@ export default function BoatPrep({ boatId, boats }) {
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
   const { state, mutate, pending, online, goOffline, goOnline, emailLog, crew, loaded } = useBoatStore(user.user_id, boats.current);
   const crewPro = crew && !!boats.current.owner_pro;
+  const syncOn = useFeature("sync_stores");
   const onBoard = useOnBoardCrew(boats.current.boat_id, online, !crew);
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
@@ -891,7 +893,7 @@ export default function BoatPrep({ boatId, boats }) {
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
       <Header helpPanels={helpPanels} gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
-        onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined}
+        onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
@@ -954,7 +956,7 @@ export default function BoatPrep({ boatId, boats }) {
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} details={boat} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
-              batchRequest={batchRequest} batchHelp={batchHelp} onSyncStores={!crew || crewPro ? () => openStores("syncStores") : undefined} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
+              batchRequest={batchRequest} batchHelp={batchHelp} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />

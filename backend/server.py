@@ -57,6 +57,7 @@ from photos import router as photos_router, init_storage, get_object  # noqa: E4
 from ai_scan import router as ai_scan_router  # noqa: E402
 from boat_trash import router as boat_trash_router, trash_boat  # noqa: E402
 from charter import router as charter_router, claim_charters  # noqa: E402
+from features import router as features_router  # noqa: E402
 from ai_lists import router as ai_lists_router  # noqa: E402
 from maint_ai import router as maint_ai_router  # noqa: E402
 from stores_ai import router as stores_ai_router  # noqa: E402
@@ -571,6 +572,7 @@ app.include_router(inventory_router)
 app.include_router(ai_scan_router)
 app.include_router(boat_trash_router)
 app.include_router(charter_router)
+app.include_router(features_router)
 app.include_router(paper_log_router)
 app.include_router(ai_lists_router)
 app.include_router(maint_ai_router)

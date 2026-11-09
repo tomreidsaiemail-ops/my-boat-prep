@@ -420,10 +420,17 @@ CHARTER_ADMIN = [
 ]
 
 
+DISABLED_FEATURES = [
+    ("Admin - disabled features", "Features switched off while they're being improved. One line per feature: \"<Feature name>; enabled for nobody\", "
+     "or list the emails that can use it, e.g. \"Speak Button Feature; user1@gmail.com, user2@gmail.com\". Delete a line to turn that feature on for everyone.",
+     ["Speak Button Feature; enabled for nobody", "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody"]),
+]
+
+
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

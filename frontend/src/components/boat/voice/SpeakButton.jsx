@@ -2,12 +2,15 @@ import { useRef, useState } from "react";
 import { Loader2, Mic } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SPEAK_EXAMPLES } from "@/lib/voiceCommand";
+import { useFeature } from "@/lib/features";
 
 const Recognition = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
 // Mic button using the phone's own speech recognition. `plan(text)` returns { message, ...} to confirm or { error };
 // `onConfirm(plan)` carries it out after the skipper taps OK.
-export const SpeakButton = ({ plan, onConfirm, examples = SPEAK_EXAMPLES, className = "", label = "Speak", testId = "speak" }) => {
+export const SpeakButton = (props) => (useFeature("speak") ? <SpeakControl {...props} /> : null);
+
+const SpeakControl = ({ plan, onConfirm, examples = SPEAK_EXAMPLES, className = "", label = "Speak", testId = "speak" }) => {
   const [state, setState] = useState(null);
   const rec = useRef(null);
   const listen = () => {
