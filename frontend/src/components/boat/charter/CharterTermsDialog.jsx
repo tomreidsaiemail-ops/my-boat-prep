@@ -33,8 +33,13 @@ export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClos
   const close = () => { sessionStorage.setItem(seenKey(boat.boat_id), "1"); setOpen(false); onClosed?.(); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
   // The server's stop list decides what must be ticked; the zone maps supply the photos.
+  // Cupboards in a coloured zone that aren't labelled on a photo are shown on their zone's photo (or the overview).
+  const pics = (boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }));
   const want = new Set((terms.stops || []).map((s) => s.id));
-  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))).filter((s) => want.has(stopId(s)));
+  const same = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+  const zonePic = (z) => pics.find((p) => p.map.kind !== "overview" && (same(p.map.zone, z) || same(p.map.name, z))) || pics.find((p) => p.map.kind === "overview") || pics[0];
+  const zoneSteps = (terms.stops || []).filter((s) => s.id.startsWith("zone:")).map((s) => ({ id: s.id, pic: zonePic(s.zone), pin: { id: s.id, area_id: s.area_id, label: s.label } })).filter((s) => s.pic);
+  const steps = [...walkSteps(pics).filter((s) => want.has(stopId(s))), ...zoneSteps];
   const seen = (terms.stops || []).filter((s) => ticked.includes(s.id)).length;
   const ready = terms.responsibilities.every((r) => ticked.includes(r.id)) && seen === (terms.stops || []).length;
   const accept = async () => {

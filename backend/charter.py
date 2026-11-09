@@ -93,10 +93,19 @@ def stocked_areas(areas: list) -> list:
 
 
 def walk_stops(doc: dict) -> List[dict]:
-    """Every labelled spot on every zone map: the charter skipper walks them all (no stops are skipped like for crew)."""
-    names = {a.get("id"): a.get("name") for a in doc.get("areas") or []}
-    return [{"id": f"{m['id']}:{p['id']}", "label": f"{m.get('name') or m.get('zone') or 'Zone map'}: {names.get(p.get('area_id')) or p.get('label')}"}
-            for m in doc.get("zone_maps") or [] for p in m.get("pins") or []]
+    """Every labelled spot on every zone map, then every cupboard in a coloured zone that isn't labelled on a photo.
+    The charter skipper walks them all (no stops are skipped like for crew)."""
+    areas = doc.get("areas") or []
+    names = {a.get("id"): a.get("name") for a in areas}
+    pins = [(m, p) for m in doc.get("zone_maps") or [] for p in m.get("pins") or []]
+    pinned = {p.get("area_id") for _, p in pins}
+    stops = [{"id": f"{m['id']}:{p['id']}", "label": f"{m.get('name') or m.get('zone') or 'Zone map'}: {names.get(p.get('area_id')) or p.get('label')}"} for m, p in pins]
+    zoned = [a for a in areas if isinstance(a.get("zone"), dict) and (a["zone"].get("label") or "").strip() and a.get("id") not in pinned]
+    return stops + [{"id": f"zone:{a['id']}", "label": f"{a['zone']['label']}: {a.get('name') or 'Cupboard'}", "area_id": a["id"], "zone": a["zone"]["label"]} for a in zoned]
+
+
+def pinned_spots(doc: dict) -> int:
+    return sum(len(m.get("pins") or []) for m in doc.get("zone_maps") or [])
 
 
 def charter_copy(src: dict, names: set, c: dict) -> dict:
@@ -194,6 +203,9 @@ async def hand_over(charter_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Boat not found")
     if src.get("charter_lock"):
         raise HTTPException(status_code=409, detail="This boat is already out on charter")
+    if not pinned_spots(src):
+        raise HTTPException(status_code=400, detail="Label at least one cupboard on a zone map photo first, so the charter skipper has a walkthrough to do. "
+                                                    "Open Zone Maps, pick a photo and use Label this map.")
     names = {norm(n) for n in (await template_lines(HANDOVER_LIST) or DEFAULT_HANDOVER)}
     now = datetime.now(timezone.utc).isoformat()
     lock = {"charter_id": charter_id, "name": c["name"], "email": c["email"], "start": c["start"], "end": c["end"]}

@@ -26,7 +26,7 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
   );
 };
 
-export const stopId = (step) => `${step.pic.key}:${step.pin.id}`;
+export const stopId = (step) => step.id || `${step.pic.key}:${step.pin.id}`;
 
 export const AgreementWalkthrough = ({ steps, areas, ticked, onChange }) => {
   if (!steps.length) return <p className="text-sm text-[var(--muted)]" data-testid="agreement-walkthrough-empty">The skipper hasn't labelled a zone map yet, so there are no stops to tick.</p>;

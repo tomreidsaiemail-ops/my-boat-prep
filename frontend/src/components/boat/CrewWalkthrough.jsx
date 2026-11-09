@@ -11,7 +11,7 @@ export const walkSteps = (pics, skip = []) => pics.flatMap((p) => (p.map?.pins |
 
 export const WalkStopContents = StopContents;
 
-const stopKey = (s) => `${s.pic.key}:${s.pin.id}`;
+const stopKey = (s) => s.id || `${s.pic.key}:${s.pin.id}`;
 
 // `ticked`/`onTick` (from the Boat Terms and Conditions) add an "I've seen it" tick to each stop.
 export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, ticked, onTick }) => {

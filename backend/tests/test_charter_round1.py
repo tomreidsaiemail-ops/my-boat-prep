@@ -51,7 +51,16 @@ def setup_module_data(flags_lock):
         mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main", "zone_maps.id": first["id"]},
                                   {"$push": {"zone_maps.$.pins": PIN, "walk_skip": f"{first['id']}:{PIN['id']}"}})
         ST["map"] = first
+    # A cupboard in a coloured zone but not labelled on a photo is a walkthrough stop too.
+    zoned = next((a for a in (mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"areas": 1}) or {}).get("areas") or []
+                  if a.get("name", "").startswith("TEST_")), None)
+    if zoned:
+        ST["zoned"] = zoned
+        mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main", "areas.id": zoned["id"]}, {"$set": {"areas.$.zone": {"label": "TEST_Saloon", "colour": "Green"}}})
     yield
+    if zoned:
+        undo = {"$set": {"areas.$.zone": zoned["zone"]}} if "zone" in zoned else {"$unset": {"areas.$.zone": ""}}
+        mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main", "areas.id": zoned["id"]}, undo)
     if rows is not None:
         mdb.list_templates.update_one(feat, {"$set": {"items": rows}})
     cleanup()
@@ -150,6 +159,13 @@ class TestCharterFlow:
         assert r2.status_code == 200
         ST["later"] = r2.json()["charter_id"]
         ST["before"] = mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"_id": 0})
+        if ST.get("map"):
+            # No labelled spot on any photo: the owner can't hand over (nothing to walk through).
+            mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"$set": {"zone_maps": [{**m, "pins": []} for m in ST["before"]["zone_maps"]]}})
+            blocked = p.post(f"{BASE_URL}/api/charters/{ST['beta']}/handover")
+            mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"$set": {"zone_maps": ST["before"]["zone_maps"]}})
+            assert blocked.status_code == 400 and "Label at least one cupboard" in blocked.text
+            assert not mdb.user_boats.find_one({"owner_id": "test-user-pro", "boat_id": "main"}).get("charter_lock")
         h = p.post(f"{BASE_URL}/api/charters/{ST['beta']}/handover")
         assert h.status_code == 200, h.text
         d = h.json()
@@ -232,6 +248,9 @@ class TestCharterFlow:
         if ST.get("map"):
             assert f"{ST['map']['id']}:{PIN['id']}" in stops
             assert any(x["label"].endswith(": TEST_Bilge pump") for x in d["stops"])
+        if ST.get("zoned"):
+            z = next(x for x in d["stops"] if x["id"] == f"zone:{ST['zoned']['id']}")
+            assert z["label"] == f"TEST_Saloon: {ST['zoned']['name']}" and z["zone"] == "TEST_Saloon" and z["area_id"] == ST["zoned"]["id"]
             no_walk = b.post(f"{BASE_URL}/api/charter-terms", params={"boat_id": ST["copy"]}, json={"ticked": ids})
             assert no_walk.status_code == 400 and "Walk Through" in no_walk.text
         ids += stops
