@@ -79,7 +79,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
       onDraft(lines.join("\n"));
       const swapped = bad.length ? ` ${bad.length} YouTube ${bad.length === 1 ? "link wasn't" : "links weren't"} found, so ${bad.length === 1 ? "it's" : "they're"} a YouTube search instead.` : "";
       const amazon = lines.some((l, i) => l !== before[i]) ? " Amazon links search Amazon for each item." : "";
-      setNote(`Items ready, edit them before you confirm.${swapped}${amazon} ${data.drafts_left} Magic generations left (free today + bought).`);
+      setNote(`Items ready, edit them before you confirm.${swapped}${amazon} ${data.drafts_left} Magic generations left.`);
     } catch (e) { setNote(apiError(e, "Magic List Generation couldn't create that list right now. Please try again.")); }
     setBusy(false);
   };

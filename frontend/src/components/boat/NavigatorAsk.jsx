@@ -16,7 +16,7 @@ const AnswerCard = ({ result, boat, left, onClose }) => (
     </div>
     <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
     <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
-    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left (free today + bought)</span>}
+    {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left</span>}
   </div>
 );
 

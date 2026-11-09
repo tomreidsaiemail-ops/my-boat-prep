@@ -29,7 +29,7 @@ export default function usePaperQueue(boatId) {
     })().catch((err) => {
       if (!alive.current || ctrl.signal.aborted) return;
       const msg = apiError(err, "Couldn't read that page. Try a clearer photo.");
-      // Daily Magic limit: stop the queue; each page can be retried later.
+      // Out of Magic: stop the queue; each page can be retried later.
       if (err?.response?.status === 429) setPages((ps) => ps.map((p) => (p.key === next.key || p.status === "queued" ? { ...p, status: "error", error: msg } : p)));
       else patch(next.key, { status: "error", error: msg });
     }).finally(() => { busy.current = false; inflight.current = null; if (alive.current) setPages((ps) => [...ps]); });

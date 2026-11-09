@@ -12,11 +12,11 @@ from db import db
 from auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api")
-DEFAULTS = {"daily_limit": 20, "pack_size": 20, "pack_price": 5.0, "big_pack_size": 100, "big_pack_price": 15.0}
+DEFAULTS = {"free_total": 50, "pack_size": 50, "pack_price": 10.0}
 PRO_LOOKUP_KEY = "pro_yearly"
-# Set per request from the X-Timezone header (see server.py middleware) so the day resets at the skipper's local midnight.
+# Set per request from the X-Timezone header (see server.py middleware); used for local dates.
 current_tz: ContextVar[str | None] = ContextVar("current_tz", default=None)
-# A dict the middleware creates per request; consume() fills free_left so the response can carry the X-Magic-Free-Left header.
+# A dict the middleware creates per request; consume() fills free_left (Magic left in total) for the X-Magic-Free-Left header.
 quota_note: ContextVar[dict | None] = ContextVar("quota_note", default=None)
 _price_cache: dict = {}
 
@@ -29,8 +29,7 @@ class QuotaExceeded(Exception):
 async def quota_exceeded_handler(_: Request, exc: QuotaExceeded):
     i = exc.info
     return JSONResponse(status_code=429, content={
-        "detail": f"You've reached your daily limit of {i['daily_limit']} Magic generations. Buy +{i['pack_size']} more for {i['price_text']}"
-                  + "".join(f", or +{p['size']} for {p['price_text']}" for p in i.get("packs", [])[1:]) + ".",
+        "detail": f"You've used all your Magic generations. Buy +{i['pack_size']} more for {i['price_text']}.",
         "code": "daily_limit", **i})
 
 
@@ -68,40 +67,49 @@ def local_today(tz: str | None = None) -> str:
 
 
 async def _fresh(user_id: str) -> dict:
-    """Creates the usage doc if needed and resets daily_used when the skipper's local day has changed."""
-    today = local_today()
-    await db.magic_quota.update_one({"user_id": user_id}, {"$setOnInsert": {"daily_used": 0, "purchased_allowance": 0, "last_reset_date": today}}, upsert=True)
-    doc = await db.magic_quota.find_one_and_update({"user_id": user_id, "last_reset_date": {"$ne": today}},
-                                                   {"$set": {"daily_used": 0, "last_reset_date": today}}, return_document=ReturnDocument.AFTER)
-    return doc or await db.magic_quota.find_one({"user_id": user_id}, {"_id": 0})
+    """Creates the usage doc if needed. Everyone gets the free Magic once (accounts from the old daily limit start fresh)."""
+    await db.magic_quota.update_one({"user_id": user_id}, {"$setOnInsert": {"free_used": 0, "purchased_allowance": 0}}, upsert=True)
+    await db.magic_quota.update_one({"user_id": user_id, "free_used": {"$exists": False}}, {"$set": {"free_used": 0}})
+    return await db.magic_quota.find_one({"user_id": user_id}, {"_id": 0})
 
 
 def packs(s: dict, currency: str) -> list:
-    return [{"id": "small", "size": s["pack_size"], "price": s["pack_price"], "price_text": price_text(s["pack_price"], currency)},
-            {"id": "big", "size": s["big_pack_size"], "price": s["big_pack_price"], "price_text": price_text(s["big_pack_price"], currency)}]
+    return [{"id": "small", "size": s["pack_size"], "price": s["pack_price"], "price_text": price_text(s["pack_price"], currency)}]
+
+
+def _left(s: dict, doc: dict) -> int:
+    return max(0, s["free_total"] - int(doc.get("free_used", 0))) + int(doc.get("purchased_allowance", 0))
 
 
 async def status(user_id: str) -> dict:
     s, doc = await get_settings(), await _fresh(user_id)
-    used, bought = int(doc.get("daily_used", 0)), int(doc.get("purchased_allowance", 0))
+    bought = int(doc.get("purchased_allowance", 0))
+    free_left, total = max(0, s["free_total"] - int(doc.get("free_used", 0))), _left(s, doc)
     currency, _ = await pro_currency()
-    return {**s, "daily_used": used, "purchased_allowance": bought, "free_left": max(0, s["daily_limit"] - used),
-            "left": max(0, s["daily_limit"] - used) + bought, "currency": currency, "price_text": price_text(s["pack_price"], currency),
-            "packs": packs(s, currency)}
+    # "X of Y left": Y is the free allowance until the first top-up, then the balance straight after the last top-up.
+    return {**s, "free_left": free_left, "purchased_allowance": bought, "left": total, "of": max(total, int(doc.get("fill") or s["free_total"])),
+            "currency": currency, "price_text": price_text(s["pack_price"], currency), "packs": packs(s, currency)}
+
+
+def _note_left(s: dict, doc: dict):
+    note = quota_note.get()
+    if note is not None and doc:
+        note["free_left"] = _left(s, doc)
 
 
 async def consume(user_id: str) -> str:
-    """Takes one Magic generation: today's free quota first, then purchased allowance. Returns the source used."""
+    """Takes one Magic generation: the free allowance first, then purchased allowance. Returns the source used."""
     s = await get_settings()
     await _fresh(user_id)
-    doc = await db.magic_quota.find_one_and_update({"user_id": user_id, "daily_used": {"$lt": s["daily_limit"]}}, {"$inc": {"daily_used": 1}},
+    doc = await db.magic_quota.find_one_and_update({"user_id": user_id, "free_used": {"$lt": s["free_total"]}}, {"$inc": {"free_used": 1}},
                                                    return_document=ReturnDocument.AFTER)
     if doc:
-        note = quota_note.get()
-        if note is not None:
-            note["free_left"] = max(0, s["daily_limit"] - int(doc["daily_used"]))
+        _note_left(s, doc)
         return "free"
-    if await db.magic_quota.find_one_and_update({"user_id": user_id, "purchased_allowance": {"$gt": 0}}, {"$inc": {"purchased_allowance": -1}}):
+    doc = await db.magic_quota.find_one_and_update({"user_id": user_id, "purchased_allowance": {"$gt": 0}}, {"$inc": {"purchased_allowance": -1}},
+                                                   return_document=ReturnDocument.AFTER)
+    if doc:
+        _note_left(s, doc)
         return "purchased"
     raise QuotaExceeded(await status(user_id))
 
@@ -111,7 +119,7 @@ async def refund(user_id: str, source: str):
     if note is not None:
         note.pop("free_left", None)
     if source == "free":
-        await db.magic_quota.update_one({"user_id": user_id, "daily_used": {"$gt": 0}}, {"$inc": {"daily_used": -1}})
+        await db.magic_quota.update_one({"user_id": user_id, "free_used": {"$gt": 0}}, {"$inc": {"free_used": -1}})
     else:
         await db.magic_quota.update_one({"user_id": user_id}, {"$inc": {"purchased_allowance": 1}})
 
@@ -135,7 +143,9 @@ async def credit_topup(session_id: str, meta: dict | None = None) -> bool:
     if not tx:
         return False
     await db.magic_quota.update_one({"user_id": tx["user_id"]}, {"$inc": {"purchased_allowance": int(tx["pack_size"])},
-                                                                 "$setOnInsert": {"daily_used": 0, "last_reset_date": local_today()}}, upsert=True)
+                                                                 "$setOnInsert": {"free_used": 0}}, upsert=True)
+    doc = await db.magic_quota.find_one({"user_id": tx["user_id"]}, {"_id": 0})
+    await db.magic_quota.update_one({"user_id": tx["user_id"]}, {"$set": {"fill": _left(await get_settings(), doc)}})
     return True
 
 
@@ -145,11 +155,9 @@ async def my_quota(user: dict = Depends(get_current_user)):
 
 
 class QuotaSettingsIn(BaseModel):
-    daily_limit: int = Field(ge=0, le=1000)
+    free_total: int = Field(ge=0, le=10000)
     pack_size: int = Field(ge=1, le=1000)
     pack_price: float = Field(ge=1, le=500)
-    big_pack_size: int | None = Field(default=None, ge=1, le=5000)
-    big_pack_price: float | None = Field(default=None, ge=1, le=1000)
 
 
 @router.get("/admin/settings/quota")
@@ -164,3 +172,13 @@ async def admin_set_quota(body: QuotaSettingsIn, admin: dict = Depends(require_a
     await db.app_settings.update_one({"key": "magic_quota"}, {"$set": {**vals, "updated_by": admin["email"], "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
     currency, _t = await pro_currency()
     return {**await get_settings(), "currency": currency}
+
+
+async def migrate_running_total():
+    """One-off switch from the daily limit to the running total: 50 free once, then 50 for 10."""
+    if await db.migrations.find_one({"_id": "magic_running_total"}):
+        return
+    await db.app_settings.update_one({"key": "magic_quota"}, {"$set": {"free_total": 50, "pack_size": 50, "pack_price": 10.0},
+                                                             "$unset": {"daily_limit": "", "big_pack_size": "", "big_pack_price": ""}})
+    await db.magic_quota.update_many({}, {"$set": {"free_used": 0}, "$unset": {"daily_used": "", "last_reset_date": "", "fill": ""}})
+    await db.migrations.insert_one({"_id": "magic_running_total", "at": datetime.now(timezone.utc).isoformat()})

@@ -1,4 +1,4 @@
-export const TERMS_VERSION = "2026-06";
+export const TERMS_VERSION = "2026-06-magic50";
 export const TERMS_UPDATED = "June 2026";
 export const TERMS_CONTACT = "tomreidsaiemail@gmail.com";
 
@@ -55,6 +55,7 @@ export const TERMS_SECTIONS = [
     body: [
       "You are responsible for keeping your sign-in details secure and for everything done through your account.",
       "The Free plan is supported by ads and has some limits. The Pro plan is a yearly subscription (currently NZD 49.99 per year, with launch offers such as FIRST5000 shown at checkout) paid securely through Stripe. Pro renews each year until you cancel; if you cancel, Pro stays active until the end of the period you have paid for. We may change plans and prices for future renewal periods with notice in the App.",
+      "Magic (AI) features share one running total of Magic generations. Every account gets 50 free Magic generations, once. When they are used up you can buy more in top-ups of 50 Magic generations for NZD 10 each, paid securely through Stripe. A top-up is added on top of any Magic you have left and does not expire. Top-ups are not refundable once any of the generations have been used.",
       "We may suspend or close accounts that misuse the App or break these Terms.",
     ],
   },

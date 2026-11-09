@@ -53,7 +53,7 @@ class CheckoutIn(BaseModel):
 
 
 class TopUpIn(CheckoutIn):
-    pack: Literal["small", "big"] = "small"
+    pack: Literal["small"] = "small"
 
 
 def _create_session(**kwargs):
@@ -128,8 +128,7 @@ async def topup_checkout(payload: TopUpIn, user: dict = Depends(require_premium)
         raise HTTPException(status_code=400, detail="Invalid origin")
     settings = await quota.get_settings()
     currency, tax_behavior = await quota.pro_currency()
-    pre = "big_" if payload.pack == "big" else ""
-    size, amount = int(settings[f"{pre}pack_size"]), int(round(settings[f"{pre}pack_price"] * 100))
+    size, amount = int(settings["pack_size"]), int(round(settings["pack_price"] * 100))
     meta = {"user_id": user["user_id"], "kind": "magic_topup", "pack_size": str(size)}
     price_data = {"currency": currency, "unit_amount": amount, "product_data": {"name": f"+{size} Magic generations", "description": "One-time top-up for My Boat Prep. Unused generations roll over until used."}}
     if tax_behavior in ("inclusive", "exclusive"):

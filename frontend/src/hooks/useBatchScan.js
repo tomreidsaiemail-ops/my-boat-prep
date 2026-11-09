@@ -29,7 +29,7 @@ export default function useBatchScan(boatId, params = { batch: true }) {
       .catch((err) => {
         if (!alive.current || ctrl.signal.aborted) return;
         const msg = apiError(err, "The AI scan didn't work");
-        // Daily Magic limit: stop the whole queue (the limit dialog is already open); each photo can be retried later.
+        // Out of Magic: stop the whole queue (the limit dialog is already open); each photo can be retried later.
         if (err?.response?.data?.code === "daily_limit") setEntries((es) => es.map((e) => (e.key === next.key || e.status === "queued" ? { ...e, status: "error", error: msg } : e)));
         else patch(next.key, { status: "error", error: msg });
       })

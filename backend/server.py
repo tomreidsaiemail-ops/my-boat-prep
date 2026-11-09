@@ -670,6 +670,7 @@ async def create_indexes():
     await seed_master_attributes()
     await add_spars_attributes()
     await seed_log_help()
+    await quota.migrate_running_total()
     await seed_common_names()
     await seed_terms_template()
     await seed_colour_presets()

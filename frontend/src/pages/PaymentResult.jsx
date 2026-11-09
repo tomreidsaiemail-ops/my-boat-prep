@@ -36,10 +36,10 @@ const MESSAGES = {
 
 const TOPUP = {
   ...MESSAGES,
-  paid: { Icon: CheckCircle2, title: "Magic top-up added!", text: "Your extra Magic generations are ready. They're used after your free daily ones and roll over until you use them." },
+  paid: { Icon: CheckCircle2, title: "Magic top-up added!", text: "Your extra Magic generations are ready. They're added on top of what you had left and never expire." },
   timeout: { Icon: Loader2, title: "Still confirming", text: "Your payment is taking longer than usual. The extra Magic generations are added by themselves once Stripe confirms it." },
-  error: { Icon: XCircle, title: "Payment not completed", text: "No money was taken. You can try again next time you reach the daily limit." },
-  cancel: { Icon: XCircle, title: "Top-up cancelled", text: "No problem, nothing was charged. Your free Magic generations come back at midnight." },
+  error: { Icon: XCircle, title: "Payment not completed", text: "No money was taken. You can try again from Buy more Magic in your account menu." },
+  cancel: { Icon: XCircle, title: "Top-up cancelled", text: "No problem, nothing was charged. You can top up any time from Buy more Magic." },
 };
 
 export default function PaymentResult({ success }) {
