@@ -1,0 +1,72 @@
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CloudOff, Loader2, MapPin, Sparkles, Trash2 } from "lucide-react";
+import { api, apiError } from "@/lib/api";
+import { dropCatch, queuedCatches } from "@/lib/fishQueue";
+import { localWhen } from "@/lib/timeAgo";
+
+export const catchForm = (c) => {
+  const form = new FormData();
+  form.append("file", c.blob, "catch.jpg");
+  if (c.lat != null && c.lon != null) { form.append("lat", c.lat); form.append("lon", c.lon); form.append("position", (c.position || "").slice(0, 80)); }
+  form.append("when", c.when);
+  if (c.taken_at) form.append("caught_at", c.taken_at);
+  if (c.boat_id) { form.append("boat_id", c.boat_id); if (c.owner_id) form.append("owner_id", c.owner_id); }
+  return form;
+};
+
+const Thumb = ({ blob }) => {
+  const [src, setSrc] = useState("");
+  useEffect(() => { const u = URL.createObjectURL(blob); setSrc(u); return () => URL.revokeObjectURL(u); }, [blob]);
+  return src ? <img src={src} alt="Queued catch" className="h-14 w-14 shrink-0 rounded-md border border-[var(--line)] object-cover" /> : null;
+};
+
+// Catches photographed offline, identified one by one when the skipper taps (each uses 1 Magic, just like online).
+export const FishQueue = ({ userId, online, refreshKey, onIdentified, onLogged }) => {
+  const [items, setItems] = useState([]);
+  const [busy, setBusy] = useState("");
+  const load = () => queuedCatches(userId).then(setItems).catch(() => setItems([]));
+  useEffect(() => { load(); }, [userId, refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!items.length) return null;
+  const identifyAll = async () => {
+    let done = 0;
+    for (const c of items) {
+      setBusy(c.id);
+      try {
+        const { data } = await api.post("/ai/fish", catchForm(c), { timeout: 150000 });
+        await dropCatch(c.id);
+        if (data.not_fish) toast.error(`Photo from ${localWhen(c.taken_at)}: ${data.message}`, { duration: 8000 });
+        else { done += 1; if (data.log_item) onLogged(data.log_item); }
+      } catch (err) {
+        toast.error(apiError(err, !err.response ? "Lost the signal. The rest of your photos are still waiting." : "The Magic Fish Whisperer couldn't look at that photo. It's still waiting."));
+        break;
+      }
+    }
+    setBusy("");
+    if (done) { toast.success(`${done} queued ${done === 1 ? "catch" : "catches"} identified and saved to your catch log`); onIdentified(); }
+    load();
+  };
+  const remove = async (id) => { await dropCatch(id); load(); };
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3" data-testid="fish-queue">
+      <p className="flex items-center gap-1.5 text-sm font-extrabold text-amber-950" data-testid="fish-queue-count"><CloudOff className="h-4 w-4" /> Waiting to identify ({items.length})</p>
+      <ul className="flex flex-col gap-2">
+        {items.map((c) => (
+          <li key={c.id} className="flex items-center gap-2" data-testid={`fish-queue-item-${c.id}`}>
+            <Thumb blob={c.blob} />
+            <div className="min-w-0 flex-1 text-xs">
+              <p className="font-bold">{localWhen(c.taken_at)}</p>
+              <p className="flex items-center gap-1 truncate text-[var(--muted)]"><MapPin className="h-3.5 w-3.5 shrink-0" /> {c.position || "No GPS position"}</p>
+            </div>
+            {busy === c.id ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+              <button type="button" className="icon-btn hover:text-[var(--red)]" disabled={!!busy} onClick={() => remove(c.id)} aria-label="Remove queued photo" data-testid={`fish-queue-remove-${c.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="btn-solid h-11 justify-center gap-2 disabled:opacity-40" disabled={!online || !!busy} onClick={identifyAll} data-testid="fish-queue-identify-btn">
+        {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Identifying...</> : <><Sparkles className="h-4 w-4" /> {online ? "Identify queued catches" : "Identify when you have a signal"}</>}
+      </button>
+    </section>
+  );
+};

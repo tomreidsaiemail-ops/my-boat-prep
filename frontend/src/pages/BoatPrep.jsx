@@ -125,6 +125,7 @@ import { CocktailList } from "@/components/boat/bartender/CocktailList";
 import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
+import { queuedCatches } from "@/lib/fishQueue";
 
 const SERVICE_LOGS = { engineService: "engine_log", electricalService: "electrical_log", riggingChecks: "rigging_log" };
 const SERVICE_META = {
@@ -700,6 +701,12 @@ export default function BoatPrep({ boatId, boats }) {
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
   const openMpa = () => (premium || crewPro ? guard() && setDialog({ type: "mpa" }) : askUpgrade("Magic Provisioning Assistant"));
   const openBartender = () => needPro("Magic Bartender") && guard() && setDialog({ type: "bartender" });
+  useEffect(() => {
+    if (!online) return;
+    queuedCatches(user.user_id).then((q) => q.length && toast.message(`${q.length} fish ${q.length === 1 ? "photo is" : "photos are"} waiting to be identified`, {
+      id: "fish-queue", duration: 10000, action: { label: "Open", onClick: () => setDialog({ type: "fish" }) },
+    })).catch(() => {});
+  }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
   const openFish = () => needPro("Magic Fish Whisperer") && guard() && setDialog({ type: "fish" });
   const flagArea = (id, key) => mutate((s) => ({ ...s, areas: (s.areas || []).map((a) => (a.id === id ? { ...a, [key]: !a[key] } : a)) }));
   const kids = Math.min(boat.children || 0, (boat.pob || 1) - 1);

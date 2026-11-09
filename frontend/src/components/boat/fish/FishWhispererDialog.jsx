@@ -1,12 +1,15 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Fish, Loader2, MapPin, RotateCcw, Sparkles } from "lucide-react";
+import { Camera, CloudOff, Fish, Loader2, MapPin, RotateCcw, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { MagicHelp } from "@/components/boat/MagicHelp";
 import { FishReport } from "@/components/boat/fish/FishReport";
 import { CatchLog } from "@/components/boat/fish/CatchLog";
+import { FishQueue, catchForm } from "@/components/boat/fish/FishQueue";
+import { queueCatch } from "@/lib/fishQueue";
+import { useAuth } from "@/context/AuthContext";
 
 const HELP = [
   "The Magic Fish Whisperer... is here to help you figure the species of fish you have caught and to use your GPS and give you some local fishing knowledge.",
@@ -28,6 +31,8 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
   const [result, setResult] = useState(null);
   const [count, setCount] = useState(null);
   const [logKey, setLogKey] = useState(0);
+  const [queueKey, setQueueKey] = useState(0);
+  const { user } = useAuth();
   const reset = () => { if (shot?.preview) URL.revokeObjectURL(shot.preview); setShot(null); setResult(null); };
   const close = () => { if (busy) return; reset(); setTab("new"); onClose(); };
   const pick = async (e) => {
@@ -37,26 +42,36 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
     let blob;
     try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a photo"); return; }
     reset();
-    setShot({ blob, preview: URL.createObjectURL(blob) });
+    const at = new Date();
+    setShot({ blob, preview: URL.createObjectURL(blob), at: at.toISOString(), gps: gps?.status === "ok" ? gps : null,
+      when: at.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) });
+  };
+  // Everything the Whisperer needs, captured now: the photo, where and when it was taken, and the boat whose log it goes in.
+  const snapshot = () => ({
+    blob: shot.blob, user_id: user?.user_id, taken_at: shot.at, when: shot.when,
+    ...(shot.gps ? { lat: shot.gps.lat, lon: shot.gps.lon, position: shot.gps.text } : {}),
+    ...(logParams?.boat_id ? { boat_id: logParams.boat_id, owner_id: logParams.owner_id || "" } : {}),
+  });
+  const saveForLater = async () => {
+    try { await queueCatch(snapshot()); } catch { toast.error("Couldn't save the photo on this phone"); return; }
+    toast.success("Saved with its GPS and time. Tap Identify queued catches when you have a signal.", { duration: 6000 });
+    reset(); setQueueKey((k) => k + 1);
   };
   const ask = async () => {
-    if (!online) { toast.error("The Magic Fish Whisperer needs a signal to look at your fish"); return; }
+    if (!online) { saveForLater(); return; }
     setBusy(true);
-    const form = new FormData();
-    form.append("file", shot.blob, "catch.jpg");
-    if (gps?.status === "ok") { form.append("lat", gps.lat); form.append("lon", gps.lon); form.append("position", gps.text.slice(0, 80)); }
-    form.append("when", new Date().toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }));
-    if (logParams?.boat_id) { form.append("boat_id", logParams.boat_id); if (logParams.owner_id) form.append("owner_id", logParams.owner_id); }
     try {
-      const { data } = await api.post("/ai/fish", form, { timeout: 150000 });
+      const { data } = await api.post("/ai/fish", catchForm(snapshot()), { timeout: 150000 });
       if (data.not_fish) toast.error(data.message, { duration: 8000 });
       else {
         setResult(data.catch); setLogKey((k) => k + 1);
         toast.success(`${data.catch.report.species.common_name} saved to your catch log${data.log_item ? " and the Ship's Log" : ""}`);
         if (data.log_item) onLogged(data.log_item);
       }
-    } catch (err) { toast.error(apiError(err, "The Magic Fish Whisperer couldn't look at that photo. Please try again.")); }
-    finally { setBusy(false); }
+    } catch (err) {
+      if (!err.response) { setBusy(false); saveForLater(); return; }
+      toast.error(apiError(err, "The Magic Fish Whisperer couldn't look at that photo. Please try again."));
+    } finally { setBusy(false); }
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
@@ -72,6 +87,7 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
           <Tab on={tab === "log"} onClick={() => setTab("log")} testId="fish-tab-log">Catch log{count ? ` (${count})` : ""}</Tab>
           <Tab on={tab === "map"} onClick={() => setTab("map")} testId="fish-tab-map">Catch map</Tab>
         </div>
+        {tab === "new" && <FishQueue userId={user?.user_id} online={online} refreshKey={queueKey} onLogged={onLogged} onIdentified={() => setLogKey((k) => k + 1)} />}
         <div className={tab === "new" ? "hidden" : ""}><CatchLog online={online} imperial={imperial} refreshKey={logKey} onCount={setCount} view={tab === "map" ? "map" : "list"} /></div>
         {tab === "new" && (result ? (
           <>
@@ -94,10 +110,11 @@ export const FishWhispererDialog = ({ open, online, gps, imperial, helpItems, lo
               </button>
             )}
             <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]" data-testid="fish-gps">
-              <MapPin className="h-4 w-4 shrink-0" /> {gps?.status === "ok" ? `Using your GPS: ${gps.text}` : "GPS position unavailable, so local rules will be general"}
+              <MapPin className="h-4 w-4 shrink-0" /> {(shot ? shot.gps : gps?.status === "ok" ? gps : null) ? `${shot ? "Taken at" : "Using your GPS:"} ${(shot?.gps || gps).text}` : "GPS position unavailable, so local rules will be general"}
             </p>
             <button type="button" className="btn-solid h-12 justify-center gap-2 disabled:opacity-40" onClick={ask} disabled={!shot || busy} data-testid="fish-ask-btn">
-              {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Whispering to your catch...</> : <><Sparkles className="h-4 w-4" /> Identify my catch</>}
+              {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Whispering to your catch...</>
+                : online ? <><Sparkles className="h-4 w-4" /> Identify my catch</> : <><CloudOff className="h-4 w-4" /> No signal: save to identify later</>}
             </button>
           </>
         ))}

@@ -3,7 +3,7 @@ import json
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Response, UploadFile
@@ -111,7 +111,7 @@ def _out(d: dict) -> dict:
 
 @router.post("/ai/fish")
 async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Form(None, ge=-90, le=90), lon: Optional[float] = Form(None, ge=-180, le=180),
-                         position: str = Form("", max_length=80), when: str = Form("", max_length=40),
+                         position: str = Form("", max_length=80), when: str = Form("", max_length=40), caught_at: str = Form("", max_length=40),
                          boat_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,40}$"), owner_id: str = Form("", pattern=r"^[A-Za-z0-9_-]{0,80}$"),
                          user: dict = Depends(require_premium)):
     if file.content_type not in TYPES:
@@ -128,12 +128,19 @@ async def fish_whisperer(file: UploadFile = File(...), lat: Optional[float] = Fo
         await quota.refund(user["user_id"], "free" if after > before else "purchased")
         return {"not_fish": True, "message": report["message"], "asks_left": await quota.left(user["user_id"])}
     catch_id = uuid.uuid4().hex
+    now = datetime.now(timezone.utc)
+    try:  # Photos queued offline keep the time they were taken.
+        taken = datetime.fromisoformat(caught_at.replace("Z", "+00:00")) if caught_at else None
+        taken = taken if taken and taken.tzinfo and now - timedelta(days=90) <= taken <= now + timedelta(minutes=5) else None
+    except ValueError:
+        taken = None
     try:
         stored = await asyncio.to_thread(put_object, f"{APP_NAME}/catches/{user['user_id']}/{catch_id}.{TYPES[file.content_type]}", data, file.content_type)
     except requests.RequestException:
         stored = None
     doc = {"catch_id": catch_id, "user_id": user["user_id"], "photo_path": (stored or {}).get("path"), "content_type": file.content_type, "lat": lat, "lon": lon,
-           "position": _s(position, 80), "report": report, "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat()}
+           "position": _s(position, 80), "report": report, "is_deleted": False, "created_at": (taken or now).isoformat(),
+           **({"identified_at": now.isoformat()} if taken else {})}
     await db.fish_catches.insert_one(doc)
     log_item = await log_catch(user, boat_id, owner_id, doc, _s(when, 40))
     return {"catch": {**_out(doc), "has_photo": bool(stored)}, "asks_left": left, "log_item": log_item}

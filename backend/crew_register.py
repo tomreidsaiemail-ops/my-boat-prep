@@ -36,6 +36,7 @@ class Details(BaseModel):
 
 class EntryIn(Details):
     kind: Literal["crew", "party"] = "crew"
+    quick: bool = False  # Quick Reg: the skipper registers the crew member straight away (name and email are enough).
 
 
 class CrewForm(Details):
@@ -136,8 +137,10 @@ async def add_entry(payload: EntryIn, user: dict = Depends(get_current_user)):
     if await db.crew_register.count_documents({"owner_id": user["user_id"]}) >= 300:
         raise HTTPException(status_code=400, detail="Your register is full (300 people)")
     now = datetime.now(timezone.utc).isoformat()
+    quick = payload.quick and payload.kind == "crew"
     e = {"entry_id": str(uuid.uuid4()), "owner_id": user["user_id"], "kind": payload.kind, **data, "email_key": email_key(data["email"]),
-         "status": "registered" if payload.kind == "party" else "unregistered", "created_at": now, "updated_at": now}
+         "status": "registered" if payload.kind == "party" or quick else "unregistered", "created_at": now, "updated_at": now,
+         **({"quick_reg": True, "registered_at": now} if quick else {})}
     await db.crew_register.insert_one(e)
     return public(e)
 
@@ -158,12 +161,14 @@ async def delete_entry(entry_id: EntryPath, user: dict = Depends(get_current_use
     return {"ok": True}
 
 
-def request_html(skipper: str, name: str, email: str, link: str) -> str:
+def request_html(skipper: str, name: str, email: str, link: str, quick: bool = False) -> str:
+    ask = (f'<p>{escape(skipper)} has registered you as crew on My Boat Prep with Quick Reg. Please add your own registration details, '
+           'like your next of kin, allergies and food preferences. You only do this once, and it keeps them ready for every trip.</p>') if quick else (
+           f'<p>{escape(skipper)} has asked you to register as crew on My Boat Prep. You only do this once, '
+           'and it keeps your contact, health and next of kin details ready for every trip.</p>')
     return (
         '<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
-        f'<h2 style="margin:0 0 12px">Hi {escape(name)}, please complete your crew registration</h2>'
-        f'<p>{escape(skipper)} has asked you to register as crew on My Boat Prep. You only do this once, '
-        'and it keeps your contact, health and next of kin details ready for every trip.</p>'
+        f'<h2 style="margin:0 0 12px">Hi {escape(name)}, please complete your crew registration</h2>{ask}'
         f'<p style="margin:24px 0"><a href="{escape(link)}" style="background:#0f172a;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Open My Boat Prep</a></p>'
         f'<p style="font-size:13px;color:#64748b">Sign up or log in with <b>{escape(email)}</b> and the app will show your registration form. '
         f'<b>When you are done, text {escape(skipper)} to say you have completed your registration.</b></p></div>'
@@ -178,7 +183,8 @@ async def send_requests(payload: RequestIn, request: Request, user: dict = Depen
     if payload.entry_ids is not None:
         q["entry_id"] = {"$in": payload.entry_ids}
     rows = await db.crew_register.find(q, {"_id": 0}).sort("created_at", 1).to_list(300)
-    todo = [r for r in rows if r.get("status") != "registered" and r.get("email")]
+    # Quick Reg crew are already registered: they're only asked to add their own details when the skipper picks them.
+    todo = [r for r in rows if r.get("email") and (r.get("status") != "registered" or (payload.entry_ids is not None and quick_open(r)))]
     now = datetime.now(timezone.utc)
     if payload.send_email:
         used = await db.register_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": now - timedelta(days=1)}})
@@ -189,9 +195,10 @@ async def send_requests(payload: RequestIn, request: Request, user: dict = Depen
     for r in todo:
         if payload.send_email:
             await send_email(to=[r["email"]], subject=f"{skipper} asks you to complete your crew registration",
-                             html=request_html(skipper, r["name"], r["email"], f"{public_base(request)}/"))
+                             html=request_html(skipper, r["name"], r["email"], f"{public_base(request)}/", quick_open(r)))
             await db.register_sends.insert_one({"owner_id": user["user_id"], "at": now})
-        await db.crew_register.update_one({"entry_id": r["entry_id"]}, {"$set": {"status": "pending", "requested_at": now.isoformat(), **({"boat_id": payload.boat_id} if payload.boat_id else {})}})
+        status = {} if quick_open(r) else {"status": "pending"}
+        await db.crew_register.update_one({"entry_id": r["entry_id"]}, {"$set": {**status, "requested_at": now.isoformat(), **({"boat_id": payload.boat_id} if payload.boat_id else {})}})
         sent.append(r["name"])
     return {"sent": sent, "skipped": [r["name"] for r in rows if r not in todo]}
 
@@ -213,7 +220,7 @@ def summary_html(skipper: str, crew: list, allergies: bool = False, boat: Option
     body = ""
     for c in crew:
         nok = "<br/>".join(escape(x) for x in (c.get("nok_name"), c.get("nok_phone"), c.get("nok_email")) if x)
-        status = "Registered" if c.get("status") == "registered" else "Not registered yet"
+        status = "Registered (Quick Reg)" if c.get("quick_reg") and c.get("status") == "registered" else "Registered" if c.get("status") == "registered" else "Not registered yet"
         vals = [escape(c.get("name", "")), escape(c.get("phone", "")), escape(c.get("email", "")), age(c.get("dob", "")),
                 f'{c["height_cm"]:g} cm' if c.get("height_cm") else "", nok] + ([f'<b style="color:#b91c1c">{escape(c.get("allergies") or "Not given")}</b>'] if allergies else []) + [status]
         body += "<tr>" + "".join(f"<td {cell}>{v}</td>" for v in vals) + "</tr>"
@@ -287,8 +294,16 @@ async def on_board(boat_id: BoatPath, user: dict = Depends(get_current_user)):
             "in_count": sum(1 for i in doc.get("crew") or [] if (rsvp.get(i) or {}).get("status") == "in")}
 
 
+def quick_open(r: dict) -> bool:
+    """A Quick Reg entry the crew member hasn't added their own details to yet."""
+    return bool(r.get("quick_reg")) and r.get("status") == "registered"
+
+
 async def asked(r: dict, user: dict) -> bool:
-    """A crew member can fill in an entry once the skipper has sent a request, invited them, or has them as crew."""
+    """A crew member can fill in an entry once the skipper has sent a request, invited them, or has them as crew.
+    Quick Reg entries only once the skipper has asked them to add their details."""
+    if quick_open(r):
+        return bool(r.get("requested_at"))
     if r["status"] == "pending":
         return True
     if await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 1}):
@@ -298,7 +313,8 @@ async def asked(r: dict, user: dict) -> bool:
 
 @router.get("/mine")
 async def my_requests(user: dict = Depends(get_current_user)):
-    rows = await db.crew_register.find({"kind": "crew", "email_key": email_key(user["email"]), "status": {"$ne": "registered"}, "owner_id": {"$ne": user["user_id"]}}, {"_id": 0}).to_list(20)
+    rows = await db.crew_register.find({"kind": "crew", "email_key": email_key(user["email"]), "owner_id": {"$ne": user["user_id"]},
+                                        "$or": [{"status": {"$ne": "registered"}}, {"quick_reg": True}]}, {"_id": 0}).to_list(20)
     out = []
     for r in rows:
         if not await asked(r, user):
@@ -338,6 +354,7 @@ async def submit_mine(entry_id: EntryPath, payload: CrewForm, user: dict = Depen
         raise HTTPException(status_code=404, detail="This registration request was cancelled. Ask your skipper for a new one.")
     await no_duplicate({"user_id": e["owner_id"]}, "crew", data["email"], entry_id)
     now = datetime.now(timezone.utc).isoformat()
-    upd = {**data, "email_key": email_key(data["email"]), "status": "registered", "registered_at": now, "user_id": user["user_id"], "updated_at": now}
+    upd = {**data, "email_key": email_key(data["email"]), "status": "registered", "registered_at": now, "user_id": user["user_id"], "updated_at": now,
+           "crew_added_at": now, "quick_reg": False}
     await db.crew_register.update_one({"entry_id": entry_id}, {"$set": upd})
     return {"status": "registered"}

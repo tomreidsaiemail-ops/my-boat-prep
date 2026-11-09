@@ -60,7 +60,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
   };
   const whatsApp = (e) => {
     if (!premium) { onUpgrade(); return; }
-    const text = requestMessage({ name: e.name, skipper: user.name || user.email, email: e.email });
+    const text = requestMessage({ name: e.name, skipper: user.name || user.email, email: e.email, quick: e.quick_reg && e.status === "registered" });
     if (e.phone && /\d{6,}/.test(e.phone.replace(/[^\d]/g, ""))) window.open(waLink(e.phone, text), "_blank", "noopener");
     else navigator.clipboard?.writeText(text).then(() => toast.success("No phone number saved, so the message is copied. Paste it into WhatsApp."), () => toast.error("Add their phone number to send by WhatsApp"));
     request([e.entry_id], false, e.entry_id);

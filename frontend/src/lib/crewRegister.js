@@ -23,9 +23,10 @@ export const toPayload = (v, fields = CREW_FIELDS) => Object.fromEntries(fields.
 
 export const missing = (v, fields = CREW_FIELDS) => fields.filter(({ k }) => !String(v[k] ?? "").trim()).map(({ k }) => k);
 
-export const requestMessage = ({ name, skipper, email }) => [
+export const requestMessage = ({ name, skipper, email, quick }) => [
   `*Hi ${name}, please complete your crew registration*`,
-  `${skipper} has asked you to register as crew on My Boat Prep. You only do this once.`,
+  quick ? `${skipper} has registered you as crew on My Boat Prep with Quick Reg. Please add your own details, like your next of kin, allergies and food preferences. You only do this once.`
+    : `${skipper} has asked you to register as crew on My Boat Prep. You only do this once.`,
   `\nOpen My Boat Prep: ${APP_URL}`,
   `Sign up or log in with ${email} and the app will show your registration form.`,
   `\n*When you're done, text me to say you've completed your registration.*`,
