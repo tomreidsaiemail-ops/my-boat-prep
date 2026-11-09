@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
 from launch import first200_running
-from auth import get_current_user, require_premium, to_user_out, UserOut
+from auth import get_current_user, to_user_out, UserOut
 import quota
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -122,7 +122,7 @@ async def _start_session(kwargs: dict, user: dict):
 
 
 @router.post("/payments/topup-checkout")
-async def topup_checkout(payload: TopUpIn, user: dict = Depends(require_premium)):
+async def topup_checkout(payload: TopUpIn, user: dict = Depends(get_current_user)):
     origin = payload.origin_url.rstrip("/").lower()
     if not ORIGIN_RE.match(origin):
         raise HTTPException(status_code=400, detail="Invalid origin")

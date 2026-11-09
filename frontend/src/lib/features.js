@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 
 // Features the admin has switched off for this user ("Admin - disabled features"); off until the server says otherwise.
 const KEY = "mbp_disabled_features";
-const DEFAULT = ["speak", "sync_stores"];
+const DEFAULT = ["charter", "speak", "sync_stores"];
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || DEFAULT; } catch { return DEFAULT; } };
 let current = null;
 let inflight = null;

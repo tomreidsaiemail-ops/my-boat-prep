@@ -10,6 +10,7 @@ import { CharterDialog } from "@/components/boat/charter/CharterDialog";
 import { EditRolesDialog } from "@/components/boat/EditRolesDialog";
 import { RsvpBadge, RsvpSummary } from "@/components/boat/Rsvp";
 import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
+import { useFeature } from "@/lib/features";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
@@ -54,6 +55,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   const [chartering, setChartering] = useState(false);
+  const charterOn = useFeature("charter");
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
   const [editing, setEditing] = useState(null);
   const [rota, setRota] = useState(false);
@@ -125,7 +127,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
           <ClipboardList className="h-4 w-4" /> Crew Registration
         </button>
-        {!boat?.charter && (
+        {!boat?.charter && charterOn && (
           <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setChartering(true) : toast.error("Go online to open Charter Registrations"))} data-testid="charter-open-btn">
             <Anchor className="h-4 w-4" /> Charter Registrations
           </button>

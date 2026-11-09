@@ -34,12 +34,31 @@ def cleanup():
 @pytest.fixture(scope="module", autouse=True)
 def setup_module_data():
     cleanup()
+    feat = {"custom": True, "name": "Admin - disabled features"}
+    rows = (mdb.list_templates.find_one(feat, {"items": 1}) or {}).get("items")
+    if rows is not None:
+        mdb.list_templates.update_one(feat, {"$set": {"items": [r for r in rows if "charter" not in r.get("label", "").lower()]}})
     mdb.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main"}, {
         "$push": {"registry": {"id": RESP_ID, "name": "Charter - charter skipper responsibilities"}},
         "$set": {f"data.{RESP_ID}": [{"id": 9001, "label": "TEST_Check the bilge daily", "checked": True},
                                      {"id": 9002, "label": "TEST_No night sailing", "checked": False}]}})
     yield
+    if rows is not None:
+        mdb.list_templates.update_one(feat, {"$set": {"items": rows}})
     cleanup()
+
+
+class TestCharterSwitchedOff:
+    def test_register_blocked_when_disabled(self):
+        feat = {"custom": True, "name": "Admin - disabled features"}
+        rows = (mdb.list_templates.find_one(feat, {"items": 1}) or {}).get("items") or []
+        mdb.list_templates.update_one(feat, {"$set": {"items": rows + [{"id": 999, "label": "Charter Registrations Feature; enabled for nobody"}]}})
+        try:
+            r = s(PRO).post(f"{BASE_URL}/api/charters", json={"boat_id": "main", "name": "TEST_Off", "email": "off@example.com", "start": "2031-01-01", "end": "2031-01-02"})
+            assert r.status_code == 403 and "switched off" in r.text
+            assert "charter" in s(PRO).get(f"{BASE_URL}/api/me/features").json()["disabled"]
+        finally:
+            mdb.list_templates.update_one(feat, {"$set": {"items": rows}})
 
 
 ST = {}

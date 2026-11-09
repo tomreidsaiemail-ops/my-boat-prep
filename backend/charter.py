@@ -17,6 +17,7 @@ from auth import get_current_user
 from crew import email_key, owned_boat
 from db import db
 from email_service import send_email
+from features import require_feature
 
 router = APIRouter(prefix="/api")
 BoatQ = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
@@ -132,6 +133,7 @@ async def list_charters(boat_id: BoatQ, user: dict = Depends(get_current_user)):
 
 @router.post("/charters")
 async def register_charter(payload: CharterIn, user: dict = Depends(get_current_user)):
+    await require_feature(user, "charter")
     doc = await owned_boat(user, payload.boat_id, allow_charter=True)
     if payload.end < payload.start:
         raise HTTPException(status_code=400, detail="The charter has to end on or after its first day")
@@ -165,6 +167,7 @@ async def remove_charter(charter_id: str, user: dict = Depends(get_current_user)
 
 @router.post("/charters/{charter_id}/handover")
 async def hand_over(charter_id: str, user: dict = Depends(get_current_user)):
+    await require_feature(user, "charter")
     c = await own_charter(user, charter_id)
     if c["status"] != "registered":
         raise HTTPException(status_code=400, detail="This charter has already been handed over")

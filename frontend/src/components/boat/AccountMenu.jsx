@@ -44,7 +44,7 @@ export const AccountMenu = () => {
           <span className="truncate text-xs font-normal text-[var(--muted)]" data-testid="account-email">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {user.premium && <><MagicBalance open={menuOpen} /><DropdownMenuSeparator /></>}
+        <MagicBalance open={menuOpen} /><DropdownMenuSeparator />
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin/analytics")} data-testid="account-analytics-item"><BarChart3 className="mr-2 h-4 w-4" />Analytics dashboard</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}

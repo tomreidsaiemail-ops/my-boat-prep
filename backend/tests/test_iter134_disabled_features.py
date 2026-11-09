@@ -7,7 +7,8 @@ from pymongo import MongoClient
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 NAME = "Admin - disabled features"
 DEFAULT = [{"id": 1, "label": "Speak Button Feature; enabled for nobody"},
-           {"id": 2, "label": "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody"}]
+           {"id": 2, "label": "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody"},
+           {"id": 3, "label": "Charter Registrations Feature; enabled for nobody"}]
 TOK = {"admin": "test_session_admin_1", "pro": "test_session_pro_1", "beta": "test_session_beta_1", "free": "test_session_free_1"}
 
 
@@ -44,7 +45,7 @@ class TestDisabledFeatures:
     def test_defaults_all_disabled(self):
         set_items(DEFAULT)
         for w in TOK:
-            assert feats(w) == ["speak", "sync_stores"], w
+            assert feats(w) == ["charter", "speak", "sync_stores"], w
 
     def test_consumed_403_when_off(self):
         r = requests.post(f"{BASE_URL}/api/ai/mpa/consumed", headers={"Authorization": f"Bearer {TOK['pro']}"},
@@ -77,4 +78,4 @@ class TestDisabledFeatures:
 
     def test_restore(self):
         set_items(DEFAULT)
-        assert feats("pro") == ["speak", "sync_stores"]
+        assert feats("pro") == ["charter", "speak", "sync_stores"]
