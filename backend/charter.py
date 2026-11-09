@@ -72,7 +72,7 @@ class TermsIn(BaseModel):
 
 def public(c: dict) -> dict:
     return {k: c.get(k) for k in ("charter_id", "boat_id", "vessel", "name", "email", "start", "end", "status", "created_at",
-                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "delete_at", "deleted_at", "copy_boat_id", "walk_stops")}
+                                  "handed_at", "claimed_at", "terms_accepted_at", "returned_at", "delete_at", "deleted_at", "copy_boat_id", "walk_stops", "feedback")}
 
 
 async def template_lines(pattern) -> Optional[List[str]]:
@@ -293,7 +293,51 @@ def thanks_html(c: dict, vessel: str) -> str:
             f"<p>Thank you for skippering <b>{e(vessel)}</b> on your charter from {e(c['start'])} to {e(c['end'])}. "
             f"{e(c.get('owner_name') or 'The owner')} has ended the charter and your Ship's Log and To Do List are now with them.</p>"
             f"<p>You can still look at your charter copy of {e(vessel)} in My Boat Prep for {KEEP_DAYS} days. It is read only and is then deleted.</p>"
+            f"<p>How was your charter? Open My Boat Prep, pick your charter copy of {e(vessel)} and give it a quick star rating. "
+            f"Only {e(c.get('owner_name') or 'the owner')} sees it.</p>"
             "<p>Fair winds,<br/>My Boat Prep</p></div>")
+
+
+def report_items(items: list) -> list:
+    """What the charter skipper wrote, kept on the charter so the Handback report outlives the 7-day copy."""
+    return [{"label": i["label"].strip(), "checked": bool(i.get("checked")), **({"ts": i["ts"]} if i.get("ts") else {})}
+            for i in items or [] if (i.get("label") or "").strip()]
+
+
+@router.get("/charters/{charter_id}/report")
+async def handback_report(charter_id: str, user: dict = Depends(get_current_user)):
+    c = await own_charter(user, charter_id)
+    if c["status"] not in ("returned", "deleted"):
+        raise HTTPException(status_code=400, detail="The Handback report is ready once the charter has ended")
+    log, todo = c.get("report_log"), c.get("report_todo")
+    if log is None and c.get("copy_owner"):
+        # Charters ended before reports existed: read the copy while it's still kept.
+        cp = await db.user_boats.find_one({"owner_id": c["copy_owner"], "boat_id": c.get("copy_boat_id")}, {"_id": 0, "data.shipsLog": 1, "data.myTodo": 1})
+        log, todo = report_items(((cp or {}).get("data") or {}).get("shipsLog")), report_items(((cp or {}).get("data") or {}).get("myTodo"))
+    return {**public(c), "owner_name": c.get("owner_name", ""), "ship_log": log or [], "todo": todo or [],
+            "responsibilities": c.get("responsibilities") or [], "feedback": c.get("feedback")}
+
+
+class FeedbackIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = Field(default="", max_length=1000)
+
+
+@router.get("/charter-feedback")
+async def get_feedback(boat_id: BoatQ, user: dict = Depends(get_current_user)):
+    doc, c = await my_charter(user, boat_id)
+    return {"can_rate": bool(doc["charter"].get("returned_at")), "feedback": c.get("feedback")}
+
+
+@router.post("/charter-feedback")
+async def give_feedback(boat_id: BoatQ, payload: FeedbackIn, user: dict = Depends(get_current_user)):
+    """The charter skipper rates the charter once it has ended; only the owner sees it."""
+    doc, c = await my_charter(user, boat_id)
+    if not doc["charter"].get("returned_at"):
+        raise HTTPException(status_code=400, detail="You can rate the charter once the owner has ended it")
+    fb = {"rating": payload.rating, "comment": payload.comment.strip(), "at": datetime.now(timezone.utc).isoformat()}
+    await db.charters.update_one({"charter_id": doc["charter"]["charter_id"]}, {"$set": {"feedback": fb}})
+    return {"feedback": fb}
 
 
 @router.post("/charters/{charter_id}/return")
@@ -316,7 +360,9 @@ async def end_charter(charter_id: str, user: dict = Depends(get_current_user)):
     # Unlock and merge first (only while this charter holds the lock), so a failure part-way can simply be retried.
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": c["boat_id"], "charter_lock.charter_id": charter_id}, upd)
     done = await db.charters.update_one({"charter_id": charter_id, "status": "handed_over"},
-                                        {"$set": {"status": "returned", "returned_at": now.isoformat(), "delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat()},
+                                        {"$set": {"status": "returned", "returned_at": now.isoformat(), "delete_at": (now + timedelta(days=KEEP_DAYS)).isoformat(),
+                                                  "report_log": report_items((copy or {}).get("data", {}).get("shipsLog")),
+                                                  "report_todo": report_items((copy or {}).get("data", {}).get("myTodo"))},
                                          "$unset": {"copy_state": ""}})
     if not done.modified_count:
         raise HTTPException(status_code=400, detail="Only a charter that is out can be ended")

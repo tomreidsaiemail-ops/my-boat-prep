@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Anchor, Loader2, Plus, Trash2 } from "lucide-react";
+import { Anchor, FileText, Loader2, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { api, apiError } from "@/lib/api";
 import { STATUS, fmtDay, fmtPeriod, isOverdue, onOrDayBefore } from "@/lib/charter";
 import { EndCharter } from "@/components/boat/charter/EndCharter";
 import { localWhen } from "@/lib/timeAgo";
+import { Stars } from "@/components/boat/charter/Stars";
+import { HandbackReport } from "@/components/boat/charter/HandbackReport";
 
 const blank = { name: "", email: "", start: "", end: "" };
 
-const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded }) => {
+const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded, onReport }) => {
   const st = STATUS[c.status] || STATUS.registered;
   return (
     <li className="flex flex-col gap-1.5 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`charter-row-${c.charter_id}`}>
@@ -34,7 +36,11 @@ const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded }) 
         {c.status === "handed_over" && isOverdue(c) && <span className="font-bold text-amber-900" data-testid={`charter-row-overdue-${c.charter_id}`}>The charter ended {fmtDay(c.end)}. End it to unlock {vessel} and bring back the logs.</span>}
         {c.returned_at && <span data-testid={`charter-row-returned-${c.charter_id}`}>Charter ended {localWhen(c.returned_at)}{c.status === "returned" && c.delete_at ? `. Charter copy read only until ${localWhen(c.delete_at)}, then deleted` : ""}</span>}
         {c.deleted_at && <span data-testid={`charter-row-deleted-${c.charter_id}`}>Charter copy deleted {localWhen(c.deleted_at)}</span>}
+        {c.feedback && <span className="flex items-center gap-1.5 font-bold text-[var(--navy)]" data-testid={`charter-row-rating-${c.charter_id}`}>Rated <Stars value={c.feedback.rating} size="h-3.5 w-3.5" testId={`charter-row-stars-${c.charter_id}`} /></span>}
       </div>
+      {["returned", "deleted"].includes(c.status) && (
+        <div className="flex"><button type="button" className="btn-ghost h-10 flex-1 justify-center gap-2" onClick={() => onReport(c)} data-testid={`charter-report-btn-${c.charter_id}`}><FileText className="h-4 w-4" /> Handback report</button></div>
+      )}
       {c.status === "handed_over" && <div className="flex"><EndCharter c={c} vessel={vessel} online={online} onEnded={onEnded} /></div>}
       {c.status === "registered" && (
         <div className="flex gap-2">
@@ -55,6 +61,7 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
   const [error, setError] = useState("");
   const [handing, setHanding] = useState(null);
   const [removing, setRemoving] = useState(null);
+  const [report, setReport] = useState(null);
   const load = () => api.get("/charters", { params: { boat_id: boat.boat_id } }).then(({ data }) => { setRows(data.charters); setLists(data.handover_lists); }).catch(() => {});
   useEffect(() => { if (open && online) { load(); setForm(blank); setError(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setError(""); };
@@ -101,7 +108,7 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
             {busy === "add" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Register charter
           </button>
         </form>
-        {rows.length ? <ul className="flex flex-col gap-2" data-testid="charter-list">{rows.map((c) => <CharterRow key={c.charter_id} c={c} busy={!!busy || !online} vessel={vessel} online={online} onHandOver={setHanding} onRemove={setRemoving} onEnded={() => { load(); onHandedOver?.(); }} />)}</ul>
+        {rows.length ? <ul className="flex flex-col gap-2" data-testid="charter-list">{rows.map((c) => <CharterRow key={c.charter_id} c={c} busy={!!busy || !online} vessel={vessel} online={online} onHandOver={setHanding} onRemove={setRemoving} onReport={setReport} onEnded={() => { load(); onHandedOver?.(); }} />)}</ul>
           : <p className="text-sm text-[var(--muted)]" data-testid="charter-empty">No charters yet.</p>}
         <ConfirmDelete item={handing ? {} : null} danger={false} testId="charter-handover" title={`Hand ${vessel} over to ${handing?.name || ""}?`} confirmLabel="Hand over" cancelLabel="Not yet"
           note={handNote}
@@ -115,6 +122,7 @@ export const CharterDialog = ({ open, boat, vessel, online, onClose, onHandedOve
           )}
         </ConfirmDelete>
         <ConfirmDelete item={removing ? { name: `${removing.name}'s charter` } : null} testId="charter-remove" onConfirm={remove} onClose={() => setRemoving(null)} />
+        {report && <HandbackReport charterId={report.charter_id} vessel={vessel} onClose={() => setReport(null)} />}
       </DialogContent>
     </Dialog>
   );

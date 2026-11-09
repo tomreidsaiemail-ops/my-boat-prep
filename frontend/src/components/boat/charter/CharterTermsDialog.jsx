@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { fmtDay, fmtPeriod, isOverdue } from "@/lib/charter";
 import { EndCharter } from "@/components/boat/charter/EndCharter";
+import { CharterFeedback } from "@/components/boat/charter/CharterFeedback";
 import { localWhen } from "@/lib/timeAgo";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -102,9 +103,12 @@ export const CharterBanner = ({ entry, online, onTerms, onEnded }) => {
     </div>
   );
   if (entry.charter?.returned_at) return (
-    <p className="rounded-lg border-2 border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900" data-testid="charter-ended-banner">
-      <b>Charter ended</b> {localWhen(entry.charter.returned_at)}. Thank you for skippering {entry.charter.vessel}! This copy is read only{entry.charter.delete_at ? ` and is deleted ${localWhen(entry.charter.delete_at)}` : ""}.
-    </p>
+    <>
+      <p className="rounded-lg border-2 border-slate-400 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900" data-testid="charter-ended-banner">
+        <b>Charter ended</b> {localWhen(entry.charter.returned_at)}. Thank you for skippering {entry.charter.vessel}! This copy is read only{entry.charter.delete_at ? ` and is deleted ${localWhen(entry.charter.delete_at)}` : ""}.
+      </p>
+      <CharterFeedback boat={entry} online={online} />
+    </>
   );
   if (entry.charter) return (
     <p className="flex flex-wrap items-center gap-x-2 rounded-lg border-2 border-amber-500 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950" data-testid="charter-skipper-banner">

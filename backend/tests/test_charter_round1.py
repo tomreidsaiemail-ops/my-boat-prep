@@ -312,6 +312,27 @@ class TestCharterFlow:
         boats = p.get(f"{BASE_URL}/api/me/boats").json()["boats"]
         assert not next(b for b in boats if b["boat_id"] == "main" and not b["crew"]).get("charter_lock")
 
+    def test_handback_report_and_feedback(self):
+        b, p = s(BETA), s(PRO)
+        assert b.get(f"{BASE_URL}/api/charters/{ST['beta']}/report").status_code == 404
+        r = p.get(f"{BASE_URL}/api/charters/{ST['beta']}/report")
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["name"] == "TEST_Beta Skipper" and d["returned_at"] and d["terms_accepted_at"]
+        assert "TEST_Left the marina" in [i["label"] for i in d["ship_log"]]
+        assert [i["label"] for i in d["todo"]] == ["TEST_fix winch"] and d["feedback"] is None
+        assert len(d["walk_stops"]) == (len([i for i in d["ship_log"] if i["label"].startswith("Charter walkthrough")]) and len(d["walk_stops"]))
+        g = b.get(f"{BASE_URL}/api/charter-feedback", params={"boat_id": ST["copy"]}).json()
+        assert g == {"can_rate": True, "feedback": None}
+        assert b.post(f"{BASE_URL}/api/charter-feedback", params={"boat_id": ST["copy"]}, json={"rating": 6}).status_code == 422
+        f = b.post(f"{BASE_URL}/api/charter-feedback", params={"boat_id": ST["copy"]}, json={"rating": 4, "comment": " TEST_Lovely boat "})
+        assert f.status_code == 200 and f.json()["feedback"]["comment"] == "TEST_Lovely boat"
+        assert p.get(f"{BASE_URL}/api/charters/{ST['beta']}/report").json()["feedback"]["rating"] == 4
+        row = next(c for c in p.get(f"{BASE_URL}/api/charters", params={"boat_id": "main"}).json()["charters"] if c["charter_id"] == ST["beta"])
+        assert row["feedback"]["rating"] == 4
+        # Another charter that isn't over yet: no report, no rating.
+        assert p.get(f"{BASE_URL}/api/charters/{ST['later']}/report").status_code == 400
+
     def test_copy_read_only_for_charter_skipper(self):
         b = s(BETA)
         boats = b.get(f"{BASE_URL}/api/me/boats").json()["boats"]
