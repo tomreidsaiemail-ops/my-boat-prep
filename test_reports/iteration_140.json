@@ -1,0 +1,17 @@
+{
+  "summary": "Retested only the 3 issues from iteration_139, at 390x844 as pro (test_session_pro_1). All 3 are FIXED. (1) updateCatch race: typed a note, then clicked fish-queue-remove straight away. The item was removed. Did the same with a weight on a second item. After a reload, IndexedDB held only the 1 untouched item, so neither removed photo came back. (2) Weight validation: 1600 kg on blur showed the toast \"That's over 1,500 kg. Check the weight.\", cleared the input, and saved weight_kg as null in IDB. 422 branch: route-intercepted POST /api/ai/fish to return 422 for the first item and 200 not_fish for the second. Both calls were made. Toasts: 'check its note and weight, then try again. It's still waiting.' and 'TEST_not a fish'. The queue ended with 1 item (the 422 one kept, the not_fish one dropped), so the loop carried on. (3) Bulk Quick Reg: with 4 lines (2 valid, 1 with no email, 1 with the bad email 'bad@x') the button showed 'Quick Reg 2'. The save added 2, and bulk-quick-skipped listed both 'No email found' lines. The button was then disabled, and a forced second click sent no second POST (1 POST in total). Editing the text re-enabled it and cleared the skipped box.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: 'bad@x' lines are shown as 'No email found'. An 'invalid email' wording would be clearer.",
+    "The 3,300 lb limit check is untested here (the imperial path wasn't exercised). The code converts lb to kg before the 1500 check, so it should behave the same."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100% (3/3 retests)"},
+  "seed_data_creation": "Created 2 crew_register rows (test_a_qr139/test_b_qr139@example.com, owner_id test-user-pro) and deleted them by email. The register for pro is empty again. The IndexedDB mbp_fish_queue was deleted after the tests. AI was mocked via route intercept, so no Magic was used.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Fish dialog covers network-status. To go online: Escape, then the 'Discard changes' button, then network-status, then sync-confirm-ok-btn, then reopen via app-menu-btn and app-menu-fish-item. Crew dialog: window.dispatchEvent(new Event('mbp:open-crew')), then crew-register-open-btn, then reg-bulk-quick-btn. The crew_register field is owner_id (not user_id)."
+}
