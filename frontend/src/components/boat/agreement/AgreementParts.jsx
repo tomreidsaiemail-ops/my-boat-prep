@@ -4,9 +4,10 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { WalkStopContents, isCommentStop } from "@/components/boat/CrewWalkthrough";
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
+import { CupboardPhoto } from "@/components/boat/inventory/CupboardPhoto";
 
 // One Zone Map Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
-const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
+const Stop = ({ step, pins, areas, ticked, onTick, n, boat }) => {
   const [open, setOpen] = useState(false);
   const area = areas.find((a) => a.id === step.pin.area_id);
   const note = isCommentStop(step);
@@ -25,6 +26,7 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
         <SkipperComment text={step.pic.map?.comment} testId={`agreement-stop-${n}-skipper-comment`} />
         {!note && <SkipperComment text={area?.comment} label="Cupboard comment" testId={`agreement-stop-${n}-cupboard-comment`} />}
+        {!note && <CupboardPhoto boat={boat} area={area} testId={`agreement-stop-${n}-cupboard-photo`} />}
         {!note && <WalkStopContents area={area} areas={areas} />}
       </>}
     </li>
@@ -33,12 +35,17 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
 
 export const stopId = (step) => step.id || `${step.pic.key}:${step.pin.id}`;
 
-export const AgreementWalkthrough = ({ steps, areas, ticked, onChange }) => {
+// `onOpenStop(n)`: ticking a stop not yet seen opens the walkthrough on it instead.
+export const AgreementWalkthrough = ({ steps, areas, ticked, onChange, onOpenStop, boat }) => {
   if (!steps.length) return <p className="text-sm text-[var(--muted)]" data-testid="agreement-walkthrough-empty">The skipper hasn't labelled a zone map or commented on one yet, so there are no stops to tick.</p>;
-  const toggle = (id) => onChange(ticked.includes(id) ? ticked.filter((x) => x !== id) : [...ticked, id]);
+  const toggle = (id, n) => {
+    if (ticked.includes(id)) onChange(ticked.filter((x) => x !== id));
+    else if (onOpenStop) onOpenStop(n);
+    else onChange([...ticked, id]);
+  };
   return (
     <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="agreement-walkthrough">
-      {steps.map((s, n) => <Stop key={stopId(s)} step={s} pins={s.pic.map.pins.filter((p) => steps.some((x) => x.pic.key === s.pic.key && x.pin.id === p.id))} n={n} areas={areas} ticked={ticked.includes(stopId(s))} onTick={() => toggle(stopId(s))} />)}
+      {steps.map((s, n) => <Stop key={stopId(s)} step={s} pins={s.pic.map.pins.filter((p) => steps.some((x) => x.pic.key === s.pic.key && x.pin.id === p.id))} n={n} areas={areas} boat={boat} ticked={ticked.includes(stopId(s))} onTick={() => toggle(stopId(s), n)} />)}
     </ul>
   );
 };

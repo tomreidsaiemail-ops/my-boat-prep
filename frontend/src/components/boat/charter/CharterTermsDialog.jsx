@@ -87,7 +87,7 @@ export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClos
           </button>
         )}
         <button type="button" className="btn-ghost h-11 justify-center" onClick={close} data-testid="charter-terms-later-btn">{terms.accepted_at ? "Close" : "Later"}</button>
-        {walking && <CrewWalkthrough steps={steps} areas={areas} ticked={ticked} onTick={tick} onClose={() => setWalking(false)} onOpenArea={() => {}} />}
+        {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onTick={tick} onClose={() => setWalking(false)} onOpenArea={() => {}} />}
       </DialogContent>
     </Dialog>
   );

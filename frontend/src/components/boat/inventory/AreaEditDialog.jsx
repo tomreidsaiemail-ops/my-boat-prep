@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
+import { Move } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CupboardPhotoField } from "@/components/boat/inventory/CupboardPhoto";
 
 export const WHERE_MAX = 80;
 export const AREA_COMMENT_MAX = 300;
 
 // Rename a cupboard and say where it is in its zone, e.g. "Under the port saloon seat, aft end".
-export const AreaEditDialog = ({ area, zoneName, onSave, onClose }) => {
+export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, onMove }) => {
   const [name, setName] = useState("");
   const [where, setWhere] = useState("");
   const [comment, setComment] = useState("");
+  const [photo, setPhoto] = useState(null);
   const [error, setError] = useState("");
-  useEffect(() => { if (area) { setName(area.name || ""); setWhere(area.where || ""); setComment(area.comment || ""); setError(""); } }, [area]);
+  useEffect(() => { if (area) { setName(area.name || ""); setWhere(area.where || ""); setComment(area.comment || ""); setPhoto(area.photo || null); setError(""); } }, [area]);
   const submit = (e) => {
     e.preventDefault();
-    const res = onSave(name.trim(), where.trim().slice(0, WHERE_MAX), comment.trim().slice(0, AREA_COMMENT_MAX));
+    const res = onSave(name.trim(), where.trim().slice(0, WHERE_MAX), comment.trim().slice(0, AREA_COMMENT_MAX), photo);
     if (typeof res === "string") setError(res);
   };
   return (
@@ -35,6 +38,8 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose }) => {
                 className="field-input !h-auto min-h-[64px] !py-2" data-testid="inventory-comment-input" />
               <span className="flex justify-between gap-2 text-xs text-[var(--muted)]"><span>Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span><span data-testid="inventory-comment-count">{comment.length}/{AREA_COMMENT_MAX}</span></span></label>
           )}
+          {!area?.parent_id && boat && <CupboardPhotoField boat={boat} online={online} photo={photo} onChange={setPhoto} />}
+          {onMove && <button type="button" className="btn-ghost h-11 justify-center gap-2 text-sm" onClick={onMove} data-testid="inventory-move-items-btn"><Move className="h-4 w-4" /> Move Cupboard Items</button>}
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="inventory-rename-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
             <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="inventory-rename-cancel-btn">Cancel</button>

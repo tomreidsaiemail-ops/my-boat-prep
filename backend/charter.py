@@ -121,7 +121,7 @@ def charter_copy(src: dict, names: set, c: dict) -> dict:
     data = {k: ([] if k in ("shipsLog", "myTodo") else [{**i, "checked": False} for i in v]) for k, v in (src.get("data") or {}).items() if k in ids}
     boat = {**(src.get("boat") or {}), **{f: "" for f in EMPTY_BOAT}, "skipper": c["name"], "log_email": c["email"]}
     areas = stocked_areas(src.get("areas") or [])
-    return {"boat": boat, "registry": keep, "data": data, "areas": areas, "zone_maps": src.get("zone_maps") or [], "template_versions": src.get("template_versions") or {},
+    return {"boat": boat, "registry": keep, "data": data, "areas": areas, "zone_maps": src.get("zone_maps") or [], "area_photos": src.get("area_photos") or [], "template_versions": src.get("template_versions") or {},
             "list_ts": {}, "sec_ts": {}, "engine_log": [], "electrical_log": [], "rigging_log": [], "deleted_lists": gone,
             "emergency_checked": {}, "list_hidden": []}
 

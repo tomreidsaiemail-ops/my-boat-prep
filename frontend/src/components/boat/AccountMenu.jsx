@@ -7,6 +7,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { SignOutDialog } from "@/components/boat/SignOutDialog";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { pendingAgreement } from "@/lib/pendingAgreement";
 import { MagicBalance } from "@/components/boat/MagicBalance";
 
 const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
@@ -25,9 +27,11 @@ export const AccountMenu = () => {
   const { openPlan } = useUpgrade();
   const navigate = useNavigate();
   const [warnCount, setWarnCount] = useState(0);
+  const [termsFor, setTermsFor] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   if (!user) return null;
-  const signOut = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
+  const leave = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
+  const signOut = () => { const v = pendingAgreement(); if (v) setTermsFor(v); else leave(); };
   return (
     <>
     <DropdownMenu onOpenChange={setMenuOpen}>
@@ -53,6 +57,9 @@ export const AccountMenu = () => {
         <DropdownMenuItem onSelect={signOut} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ConfirmDelete item={termsFor ? {} : null} testId="signout-terms" title="Boat Terms and Conditions not accepted yet"
+      note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Zone Map Walk Through.`}
+      confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); leave(); }} onClose={() => setTermsFor("")} />
     <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
     </>
   );

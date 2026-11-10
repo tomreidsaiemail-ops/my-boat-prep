@@ -64,6 +64,7 @@ from stores_ai import router as stores_ai_router  # noqa: E402
 from go_decision import router as go_decision_router  # noqa: E402
 import setup_stripe  # noqa: E402
 from distress_email import router as distress_email_router  # noqa: E402
+from area_photos import router as area_photos_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
 
@@ -587,6 +588,7 @@ app.include_router(quota.router)
 app.include_router(crew_register_router)
 app.include_router(zone_schematics_router)
 app.include_router(distress_email_router)
+app.include_router(area_photos_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
 

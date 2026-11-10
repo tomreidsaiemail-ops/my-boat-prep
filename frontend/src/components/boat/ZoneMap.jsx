@@ -234,7 +234,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           {open?.map && <SkipperComment text={open.map.comment} testId="zone-map-full-comment" />}
         </DialogContent>
       </Dialog>
-      {walking && <CrewWalkthrough steps={steps} areas={areas} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff} />}
+      {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff} />}
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>

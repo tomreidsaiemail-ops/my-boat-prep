@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { Check, ChevronDown, Link2, Loader2, MapPin, Move, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Link2, Loader2, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, onMove, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -85,6 +85,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
+        {readOnly && photoButton && <div className="shrink-0 pr-1">{photoButton}</div>}
         {!readOnly && (
           <div className="flex shrink-0 items-center pr-0.5 [&_.icon-btn]:w-[34px] sm:pr-1 sm:[&_.icon-btn]:w-11">
             {onToggleFood && <button type="button" className={`icon-btn ${area.food ? "text-emerald-800" : "text-[var(--muted)]"}`} onClick={onToggleFood} aria-pressed={!!area.food}
@@ -96,7 +97,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
               <span className={`inline-flex h-[20px] w-[20px] items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${area.drinks ? "border-purple-700 bg-purple-700 text-white" : "border-current"}`}>D</span>
             </button>}
             {zoneButton}
-            {onMove && <button type="button" className="icon-btn" aria-label="Move items to another cupboard" title="Move items" onClick={onMove} data-testid={`inventory-area-move-${area.id}`}><Move className="h-[18px] w-[18px]" /></button>}
+            {photoButton}
             <button type="button" className="icon-btn" aria-label="Rename cupboard or say where it is" onClick={onRename} data-testid={`inventory-area-rename-${area.id}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label="Delete cupboard" onClick={onDelete} data-testid={`inventory-area-delete-${area.id}`}><Trash2 className="h-[18px] w-[18px]" /></button>
           </div>

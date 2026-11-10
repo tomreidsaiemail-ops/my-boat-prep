@@ -48,7 +48,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })), boat.walk_skip || []);
   const [ticked, setTicked] = useState(data.agreement?.stops || []);
   const [busy, setBusy] = useState("");
-  const [walking, setWalking] = useState(false);
+  const [walking, setWalking] = useState(null);
   const [quick, setQuick] = useState(false);
   const accepted = !!data.agreement?.accepted_at;
   const fullAt = !accepted && steps.length ? data.walkthrough?.full_at : null;
@@ -57,6 +57,8 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const [before, setBefore] = useState([]);
   const pickQuick = (v) => { setQuick(v); if (v) { setBefore(ticked); setTicked(steps.map(stopId)); } else setTicked(before); };
   const tick = (id) => setTicked((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
+  const seen = (id) => setTicked((t) => (t.includes(id) ? t : [...t, id]));
+  const nextStop = Math.max(0, steps.findIndex((s) => !ticked.includes(stopId(s))));
 
   const save = async (accept) => {
     const same = !accept && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
@@ -94,14 +96,14 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
             </label>
           )}
           {steps.length > 0 && !accepted && !quick && (
-            <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(true)} data-testid="agreement-start-walkthrough-btn">
+            <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(nextStop)} data-testid="agreement-start-walkthrough-btn">
               <Footprints className="h-4 w-4" /> {ticked.length ? "Carry on the walkthrough" : "Start the walkthrough"}
             </button>
           )}
-          <AgreementWalkthrough steps={steps} areas={areas} ticked={ticked} onChange={accepted ? () => {} : setTicked} />
+          <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />
         </Section>
         <AcceptButtons accepted={accepted} ready={ready} busy={busy} onAccept={() => save(true)} onLater={() => save(false)} />
-        {walking && <CrewWalkthrough steps={steps} areas={areas} ticked={ticked} onTick={tick} onClose={() => setWalking(false)} onOpenArea={() => {}} />}
+        {walking !== null && <CrewWalkthrough steps={steps} areas={areas} boat={boat} start={walking} ticked={ticked} onTick={tick} onSeen={seen} onClose={() => setWalking(null)} onOpenArea={() => {}} />}
       </DialogContent>
     </Dialog>
   );

@@ -14,6 +14,7 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
+import { CupboardPhotoButton } from "@/components/boat/inventory/CupboardPhoto";
 import { zoneDefaultAreas } from "@/lib/zoneDefaults";
 import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
@@ -317,12 +318,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
-  const renameArea = (name, where, comment) => {
+  const renameArea = (name, where, comment, photo) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
     const scope = area.parent_id ? subsOf(area.parent_id) : tops;
     if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
-    setArea(area.id, ({ where: _w, comment: _c, ...a }) => ({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}) }));
+    setArea(area.id, ({ where: _w, comment: _c, photo: _p, ...a }) => ({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}), ...(photo ? { photo } : {}) }));
     setDialog(null);
     return true;
   };
@@ -369,7 +370,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
         onDeleteItem={(i) => setDialog({ type: "deleteItem", area: a, item: i })}
-        onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })} onMove={readOnly ? undefined : () => startMove(a)}
+        onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })}
+        photoButton={boat && !parent ? <CupboardPhotoButton boat={boat} area={a} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
         zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>
@@ -445,7 +447,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         </button>
       )}
       <SuggestAreasDialog open={dialog?.type === "suggest"} names={suggestions} onClose={() => setDialog(null)} onConfirm={(names) => { addSuggested(names); setDialog(null); }} />
-      <AreaEditDialog area={dialog?.type === "rename" ? dialog.area : null} zoneName={dialog?.type === "rename" ? zones[dialog.area.id]?.map : ""} onSave={renameArea} onClose={() => setDialog(null)} />
+      <AreaEditDialog area={dialog?.type === "rename" ? dialog.area : null} zoneName={dialog?.type === "rename" ? zones[dialog.area.id]?.map : ""} onSave={renameArea} onClose={() => setDialog(null)}
+        boat={boat} online={online} onMove={readOnly || dialog?.type !== "rename" ? undefined : () => startMove(dialog.area)} />
       <TextDialog open={dialog?.type === "sub"} title={dialog?.type === "sub" ? `Add a folder or box to ${dialog.area.name}` : ""} confirmLabel="Add" testId="inventory-sub"
         description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. Only the list is kept, not the photo."
         placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => setDialog(null)} />

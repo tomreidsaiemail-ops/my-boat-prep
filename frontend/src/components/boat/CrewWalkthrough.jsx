@@ -5,6 +5,7 @@ import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { StopContents } from "@/components/boat/inventory/FolderPeek";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
+import { CupboardPhoto } from "@/components/boat/inventory/CupboardPhoto";
 
 // Every pin, photo by photo, in the order they were placed, less any the skipper left out of the walkthrough.
 // A photo with no labels but a Skipper's comment is one stop of its own.
@@ -19,9 +20,11 @@ export const WalkStopContents = StopContents;
 
 const stopKey = (s) => s.id || `${s.pic.key}:${s.pin.id}`;
 
-// `ticked`/`onTick` (from the Boat Terms and Conditions) add an "I've seen it" tick to each stop.
-export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, ticked, onTick }) => {
-  const [pos, setN] = useState(0);
+// `ticked`/`onTick` (from the Boat Terms and Conditions) add an "I've seen it" tick to each stop; `onSeen` ticks each stop as it's shown.
+export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, ticked, onTick, onSeen, start = 0, boat }) => {
+  const [pos, setN] = useState(start);
+  const seenKey = steps.length ? stopKey(steps[Math.min(pos, steps.length - 1)]) : "";
+  useEffect(() => { if (seenKey && onSeen) onSeen(seenKey); }, [seenKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [signing, setSigning] = useState(false);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => { if (!steps.length) onClose(); }, [steps.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -46,6 +49,7 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <SkipperComment text={step.pic.map?.comment} testId="walkthrough-skipper-comment" />
         {!note && <SkipperComment text={area?.comment} label="Cupboard comment" testId="walkthrough-cupboard-comment" />}
+        {!note && <CupboardPhoto boat={boat} area={area} testId="walkthrough-cupboard-photo" />}
         {!note && <WalkStopContents area={area} areas={areas} />}
         {onTick && (
           <label className={`flex min-h-11 items-center gap-3 rounded-md border-[1.5px] px-3 font-bold ${ticked.includes(stopKey(step)) ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="walkthrough-seen">
