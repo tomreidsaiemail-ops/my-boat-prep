@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, Wrench, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { MagicEngineerIcon } from "@/components/boat/MagicEngineerIcon";
 
 const historyLines = (entries) => entries.slice(0, 8).map((e) => [
   `${e.date}:`, e.hours !== undefined ? `${e.hours} hrs` : e.electrician && `by ${e.electrician}`, e.engine_type && `(${e.engine_type})`, e.items?.length && `did ${e.items.join(", ")}`, e.notes && `notes: ${e.notes}`,
@@ -54,7 +55,7 @@ export const EngineerAsk = ({ engineType = "", entries, online, locked, onUpgrad
 
   return (
     <div className="col-span-2 flex flex-col gap-2" data-testid="engineer-ask-panel">
-      <label htmlFor="engineer-question" className="field-label">ASK THE MAGIC MARINE ENGINEER</label>
+      <label htmlFor="engineer-question" className="field-label flex items-center gap-2"><MagicEngineerIcon className="h-5 w-5 text-[var(--navy)]" testId="engineer-ask-icon" /> ASK THE MAGIC MARINE ENGINEER</label>
       <div className="flex items-start gap-2">
         <textarea id="engineer-question" value={question} onChange={(e) => { setQuestion(e.target.value); setWarning(false); }} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
           placeholder={electrical ? "e.g. the house battery is flat every morning" : "e.g. the engine is making a rattling sound"} className="field-input min-w-0 flex-1 resize-none leading-snug placeholder-shown:overflow-hidden placeholder-shown:text-ellipsis placeholder-shown:whitespace-nowrap" data-testid="engineer-question-input" />
