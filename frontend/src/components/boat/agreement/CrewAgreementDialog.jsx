@@ -27,9 +27,10 @@ const Roles = ({ roles, onRead, busy }) => (roles.length ? roles.map((r, k) => (
     <p className="whitespace-pre-wrap" data-testid={`agreement-role-${k}-briefing`}>{r.briefing || "No briefing from the skipper for this role yet."}</p>
     {r.briefing && (r.read_at
       ? <span className="inline-flex items-center gap-1 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900" data-testid={`agreement-role-${k}-read`}><Check className="h-3.5 w-3.5" strokeWidth={3} /> Read {new Date(r.read_at).toLocaleDateString()}</span>
-      : <button type="button" className="btn-solid h-9 self-start px-3 text-xs" disabled={busy === r.role} onClick={() => onRead(r.role)} data-testid={`agreement-role-${k}-read-btn`}>
-          {busy === r.role ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} I've read it
-        </button>)}
+      : <label className="flex items-center gap-2 self-start rounded-md border-[1.5px] border-[var(--navy)] bg-white px-2.5 py-1.5 text-sm font-bold" data-testid={`agreement-role-${k}-read-btn`}>
+          {busy === r.role ? <Loader2 className="h-5 w-5 animate-spin" /> : <input type="checkbox" checked={false} onChange={() => onRead(r.role)} className="h-5 w-5 accent-emerald-700" data-testid={`agreement-role-${k}-read-checkbox`} />}
+          I&apos;ve read the {r.role} briefing
+        </label>)}
   </div>
 )) : <p className="text-sm text-[var(--muted)]" data-testid="agreement-no-roles">The skipper hasn't given you a role yet.</p>);
 
@@ -60,7 +61,14 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const seen = (id) => setTicked((t) => (t.includes(id) ? t : [...t, id]));
   const nextStop = Math.max(0, steps.findIndex((s) => !ticked.includes(stopId(s))));
 
+  const unread = (data.roles || []).filter((r) => r.briefing && !r.read_at);
+  const [briefWarn, setBriefWarn] = useState(false);
   const save = async (accept) => {
+    if (accept && unread.length) {
+      setBriefWarn(true);
+      document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     const same = !accept && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
     if (accepted || (same && data.agreement)) { onClose(); return; }
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
@@ -87,7 +95,11 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
         </DialogHeader>
         {data.terms.length > 0 && <Section title="Standard terms" testId="agreement-standard-terms"><Lines lines={data.terms} testId="agreement-standard-lines" /></Section>}
         {boatLines.length > 0 && <Section title={`${vessel}'s terms`} testId="agreement-boat-terms"><Lines lines={boatLines} testId="agreement-boat-lines" /></Section>}
-        <Section title="Your role briefing" testId="agreement-roles"><Roles roles={data.roles} onRead={read} busy={reading} /></Section>
+        <Section title="Your role briefing" testId="agreement-roles">
+          <Roles roles={data.roles} onRead={read} busy={reading} />
+          {briefWarn && unread.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-briefing-warning">
+            Please read your role briefing{unread.length > 1 ? "s" : ""} and tick {unread.length > 1 ? "each one" : "it"} off ({unread.map((r) => r.role).join(", ")}) before you accept.</p>}
+        </Section>
         <Section title={`Zone Map Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
           {fullAt && (
             <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-semibold ${quick ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="agreement-quick">

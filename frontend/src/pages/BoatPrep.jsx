@@ -976,7 +976,7 @@ export default function BoatPrep({ boatId, boats }) {
         <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && SERVICE_LOGS[active.id] && (
-        <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
+        <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} boat={boat} onBoatChange={updateBoat} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}

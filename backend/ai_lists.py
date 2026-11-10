@@ -220,6 +220,30 @@ async def engine_ask(body: EngineAskIn, user: dict = Depends(require_premium)):
     return {"answer": answer, "asks_left": left}
 
 
+ELECTRICIAN = ("You are the Magic Marine Engineer in the My Boat Prep app: an experienced, practical marine electrician helping a boat skipper with their boat's DC and AC electrics. "
+               "Answer in plain English using short paragraphs or a short numbered list. Start with the most likely causes, then simple checks the skipper can do on board "
+               "with a multimeter, then say when to isolate the batteries or call a qualified marine electrician. Use the system voltage: on 12V systems voltage drop, undersized cable "
+               "and loose or corroded connections on high-draw kit (windlass, bow thruster, induction hob, inverter) are common. Use the battery levels and the kit on board given. "
+               "Mention safety (battery gases, short circuits, shore power) where it matters. Keep it under 250 words. Plain text only: no markdown, headings, asterisks or code.")
+
+
+class ElectricalAskIn(EngineAskIn):
+    voltage: str = Field(default="12", max_length=8)
+    equipment: List[str] = Field(default_factory=list, max_length=10)
+    batteries: List[str] = Field(default_factory=list, max_length=10)
+
+
+@router.post("/ai/electrical-ask")
+async def electrical_ask(body: ElectricalAskIn, user: dict = Depends(require_premium)):
+    clean = lambda xs: ", ".join(str(x).strip()[:80] for x in xs if str(x).strip()) or "none given"  # noqa: E731
+    history = "\n".join(f"- {h}" for h in body.history) or "(none logged)"
+    prompt = (f"Boat battery system voltage: {body.voltage.strip() or '12'}V\nKit on board: {clean(body.equipment)}\nBattery levels now: {clean(body.batteries)}\n"
+              f"Recent electrical service history:\n{history}\n"
+              f'The skipper asks:\n"""{body.question.replace(chr(34) * 3, chr(39) * 3)}"""')
+    answer, left = await _run(user, "electrical", prompt, parse_answer, {"question": body.question[:200]}, ELECTRICIAN, "Magic Marine Engineer answer")
+    return {"answer": answer, "asks_left": left}
+
+
 PROVISIONER = ("You are the Magic Provisioning Assistant in the My Boat Prep app. You suggest practical shopping amounts for a boat trip. "
                "Allow sensible safety margins for drinking water. Children eat and drink about half as much as adults. Reply with JSON only, no prose and no code fences.")
 

@@ -3,6 +3,7 @@ import { FileDown, Gauge, Loader2, Lock, Sailboat, Trash2, Zap } from "lucide-re
 import { ValidationBar } from "@/components/boat/ActionBar";
 import { ServiceDue } from "@/components/boat/ServiceDue";
 import { EngineerAsk } from "@/components/boat/EngineerAsk";
+import { ElectricalInputs, electricalContext } from "@/components/boat/service/ElectricalInputs";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 
@@ -43,7 +44,7 @@ const EngineTypeHead = ({ type }) => (
 
 const NOTES_MAX = 2000;
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint, boat, onBoatChange }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
   const [value, setValue] = useState("");
@@ -100,6 +101,9 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={`${k.prefix}-date-input`} /></label>
         </div>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
+        {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
+        {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, 300))} />}
         {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
