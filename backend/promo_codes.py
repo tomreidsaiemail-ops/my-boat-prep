@@ -12,6 +12,7 @@ from db import db
 from billing import FIRST5000_LOOKUP
 from payments import PRO_LOOKUP_KEY, _price, first5000_running
 from launch import first200_running
+import joincrew
 
 router = APIRouter(prefix="/api/admin/promo-codes")
 CODE_RE = re.compile(r"^[A-Z0-9_-]{3,30}$")
@@ -41,7 +42,7 @@ def _out(d: dict, usage: dict | None) -> dict:
     u = (usage or {}).get(d["stripe_promo_id"], {})
     return {"code": d["code"], "percent_off": d["percent_off"], "expires_at": d["expires_at"], "created_at": d["created_at"],
             "times_redeemed": u.get("times_redeemed") if usage is not None else None,
-            "active": u.get("active", False) and d["expires_at"] > datetime.now(timezone.utc).isoformat()}
+            "active": (u.get("active", False) or bool(d.get("box_off"))) and d["expires_at"] > datetime.now(timezone.utc).isoformat()}
 
 
 class First5000In(BaseModel):
@@ -73,6 +74,10 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
     try:
         price = await asyncio.to_thread(_pro_price)
         usage = await asyncio.to_thread(_stripe_usage)
+        for d in docs:
+            if d.get("box_off"):
+                c = await asyncio.to_thread(stripe.Coupon.retrieve, d["stripe_coupon_id"])
+                usage[d["stripe_promo_id"]] = {"times_redeemed": c.times_redeemed, "active": True}
         base = {"amount": price.unit_amount / 100, "currency": price.currency.upper()}
     except stripe.error.StripeError:
         usage, base = None, None
@@ -116,4 +121,6 @@ async def create_promo_code(payload: PromoIn, admin: dict = Depends(require_admi
            "stripe_coupon_id": coupon.id, "stripe_promo_id": promo.id,
            "created_at": datetime.now(timezone.utc).isoformat(), "created_by": admin["user_id"]}
     await db.promo_codes.insert_one({**doc})
+    if code == joincrew.CODE:
+        await joincrew.lock_stripe_box()
     return _out(doc, {promo.id: {"times_redeemed": 0, "active": True}})

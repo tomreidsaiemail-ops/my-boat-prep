@@ -12,6 +12,7 @@ from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
 from launch import first200_running
 from auth import get_current_user, to_user_out, UserOut
 import quota
+import joincrew
 
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 PRO_LOOKUP_KEY = "pro_yearly"
@@ -63,7 +64,7 @@ async def _local_promo(code: str):
 
 
 @router.post("/payments/promo/check")
-async def check_promo(payload: PromoCheckIn, _: dict = Depends(get_current_user)):
+async def check_promo(payload: PromoCheckIn, user: dict = Depends(get_current_user)):
     code = payload.code.strip().upper()
     if code == "FIRST5000":
         if await first5000_running():
@@ -72,6 +73,8 @@ async def check_promo(payload: PromoCheckIn, _: dict = Depends(get_current_user)
     d = await _local_promo(code)
     if not d:
         raise HTTPException(status_code=400, detail=f"{code} isn't a valid promo code, or it has expired")
+    if code == joincrew.CODE:
+        await joincrew.check(user)
     return {"code": d["code"], "percent_off": d["percent_off"], "automatic": False}
 
 
@@ -103,6 +106,9 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     promo = await _local_promo(code) if code and code != "FIRST5000" else None
     if code and code != "FIRST5000" and not promo:
         raise HTTPException(status_code=400, detail=f"{code} isn't a valid promo code, or it has expired")
+    if promo and promo["code"] == joincrew.CODE:
+        await joincrew.check(user)
+        await joincrew.lock_stripe_box()
     meta = {"user_id": user["user_id"], "lookup_key": lookup, "first5000": "1" if launch else "0", **({"promo_code": promo["code"]} if promo else {})}
     f, p = full.unit_amount / 100, price.unit_amount / 100
     note = (f"FIRST5000 launch offer: 50% off. You pay NZD {p:.2f} for your first year and NZD {p:.2f} again at your first renewal, "
@@ -116,7 +122,9 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         custom_text={"submit": {"message": note}},
     )
     # Stripe takes either a pre-applied code or the code box on its page, not both.
-    if promo:
+    if promo and promo["code"] == joincrew.CODE:
+        kwargs["discounts"] = [{"coupon": promo["stripe_coupon_id"]}]
+    elif promo:
         kwargs["discounts"] = [{"promotion_code": promo["stripe_promo_id"]}]
     else:
         kwargs["allow_promotion_codes"] = True
@@ -129,7 +137,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     await db.payment_transactions.insert_one({
         "session_id": session.id, "user_id": user["user_id"], "lookup_key": lookup,
         "amount": float(price.unit_amount or 0) / 100, "currency": price.currency,
-        "status": "initiated", "payment_status": "pending", "created_at": now, "updated_at": now,
+        "status": "initiated", "payment_status": "pending", "created_at": now, "updated_at": now, **({"promo_code": promo["code"]} if promo else {}),
     })
     return {"checkout_url": session.url, "session_id": session.id}
 
@@ -185,7 +193,7 @@ async def topup_checkout(payload: TopUpIn, user: dict = Depends(get_current_user
     return {"checkout_url": session.url, "session_id": session.id}
 
 
-async def _mark_paid(session_id: str, subscription_id: str | None, user_id: str | None):
+async def _mark_paid(session_id: str, subscription_id: str | None, user_id: str | None, promo_code: str | None = None):
     await db.payment_transactions.update_one(
         {"session_id": session_id, "payment_status": {"$ne": "paid"}},
         {"$set": {"status": "completed", "payment_status": "paid", "stripe_subscription_id": subscription_id,
@@ -193,6 +201,8 @@ async def _mark_paid(session_id: str, subscription_id: str | None, user_id: str 
     )
     if subscription_id and user_id:
         await apply_subscription(user_id, await retrieve_subscription(subscription_id))
+    if user_id and promo_code == joincrew.CODE:
+        await joincrew.award(user_id, session_id)
 
 
 @router.get("/payments/status/{session_id}")
@@ -208,7 +218,7 @@ async def payment_status(session_id: str):
                     await quota.credit_topup(session_id)
                     record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
             elif s.payment_status == "paid" or s.status == "complete":
-                await _mark_paid(session_id, s.subscription, record.get("user_id"))
+                await _mark_paid(session_id, s.subscription, record.get("user_id"), (s.metadata or {}).get("promo_code"))
                 record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
         except stripe.error.StripeError:
             pass
@@ -235,7 +245,8 @@ async def stripe_webhook(request: Request):
         if obj.get("payment_status") == "paid":
             await quota.credit_topup(obj["id"], obj.get("metadata") or {})
     elif t == "checkout.session.completed":
-        await _mark_paid(obj["id"], obj.get("subscription"), (obj.get("metadata") or {}).get("user_id"))
+        meta = obj.get("metadata") or {}
+        await _mark_paid(obj["id"], obj.get("subscription"), meta.get("user_id"), meta.get("promo_code"))
     elif t == "checkout.session.expired":
         await db.payment_transactions.update_one({"session_id": obj["id"], "payment_status": {"$ne": "paid"}},
                                                  {"$set": {"status": "expired", "payment_status": "expired"}})

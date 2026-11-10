@@ -761,3 +761,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Quick Invite + trip timing + Planning help (DONE, see CHANGELOG.md)
 
 ## 2026-06 Role briefing tick box + Electrical MME + collapsible batteries (DONE, see CHANGELOG.md)
+
+### 2026-06 JOINCREW coupon
+- JOINCREW (admin promo list) only accepted for users who are crew with accepted terms on someone else's boat; message: "The JOINCREW code is only available to registered crew members who have accepted boat terms." Once only per user (users.joincrew).
+- Applied by coupon id at checkout; its Stripe promotion code is switched off (promo_codes.box_off) so it can't be typed on Stripe's page. First year only (coupon duration once), renews at full price.
+- On paid checkout (webhook or status poll) joincrew.award: each skipper of those boats gets +10 Magic generations (magic_quota.purchased_allowance), user_boats.joincrew_applied.{uid}=true, users.joincrew {at, session_id, email_key, skippers}.
+- Skipper-only JOINCREW tick (JoinCrewBadge) on crew cards and Crew Register rows; follows the user even after de-registering (matched by user / email_key).

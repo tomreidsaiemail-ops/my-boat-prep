@@ -51,6 +51,7 @@ from bartender import router as bartender_router  # noqa: E402
 from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
+import joincrew  # noqa: E402
 import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
@@ -645,6 +646,8 @@ async def create_indexes():
         await db.user_boats.drop_index("owner_id_1")
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
+    await db.users.create_index("joincrew.email_key", sparse=True)
+    asyncio.create_task(joincrew.lock_stripe_box())
     await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
     await db.user_boats.create_index("charter_expires_at", expireAfterSeconds=0)
     await db.deleted_boats.create_index([("owner_id", 1), ("boat_id", 1)])

@@ -10,7 +10,7 @@ from db import db
 from auth import get_current_user, require_premium
 from email_service import send_email
 from urls import public_base
-from crew import email_key, owned_boat, BoatPath
+from crew import email_key, owned_boat, BoatPath, tick
 
 router = APIRouter(prefix="/api/crew-register")
 DAILY_SEND_LIMIT = 60
@@ -103,7 +103,10 @@ async def list_register(user: dict = Depends(get_current_user)):
     walks = await db.walkthroughs.find({"owner_id": user["user_id"]}, {"_id": 0}).sort("at", 1).to_list(1000)
     boats = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip() or "Your boat"
              async for b in db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
+    keys = [r["email_key"] for r in rows if r["kind"] == "crew" and r.get("email_key")]
+    jcs = {u["joincrew"]["email_key"]: u["joincrew"] async for u in db.users.find({"joincrew.email_key": {"$in": keys}}, {"_id": 0, "joincrew": 1})}
     for r in rows:
+        r["joincrew"] = tick(jcs.get(r.get("email_key")), user["user_id"]) if r["kind"] == "crew" else None
         r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"], "full_at": w.get("full_at") or w["at"], "quick": bool(w.get("quick"))}
                              for w in walks if w["email_key"] == r.get("email_key") and w["boat_id"] in boats] if r["kind"] == "crew" else []
         r.pop("email_key", None)

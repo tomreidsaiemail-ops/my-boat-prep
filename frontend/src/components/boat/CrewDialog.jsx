@@ -13,6 +13,7 @@ import { WatchRotaDialog } from "@/components/boat/WatchRotaDialog";
 import { useFeature } from "@/lib/features";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
+import { JoinCrewBadge } from "@/components/boat/crew/JoinCrewBadge";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
 import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
 import { SendShoppingButton } from "@/components/boat/SendShoppingButton";
@@ -172,6 +173,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
                 {regBadge(m.email, `crew-member-${m.user_id}`, !m.agreement?.accepted_at)}
                 <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} quick={!!m.trip_quick?.[g.id]} testId={`crew-member-${m.user_id}`} />
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
+                <JoinCrewBadge jc={m.joincrew} testId={tid(`crew-member-${m.user_id}-joincrew`, g)} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} provisions={provisions} online={online} testId={`crew-member-${m.user_id}`} />

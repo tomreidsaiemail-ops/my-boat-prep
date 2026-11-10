@@ -1,5 +1,6 @@
 import { CheckCircle2, Loader2, Mail, MessageCircle, Pencil, Trash2, X, Zap } from "lucide-react";
 import { RegStatus } from "@/components/boat/register/RegStatus";
+import { JoinCrewBadge } from "@/components/boat/crew/JoinCrewBadge";
 import { localWhen, timeAgo } from "@/lib/timeAgo";
 
 export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onClearWalk }) => {
@@ -28,6 +29,7 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onC
               <CheckCircle2 className="h-3.5 w-3.5 text-[var(--green)]" /> Crew member added registration details
             </span>
           )}
+          <JoinCrewBadge jc={entry.joincrew} testId={`${t}-joincrew`} />
           {(entry.walkthroughs || []).map((w) => (
             <span key={w.boat_id} className="inline-flex flex-wrap items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-extrabold text-green-800" data-testid={`${t}-walkthrough-${w.boat_id}`}>
               <CheckCircle2 className="h-3.5 w-3.5 text-[var(--green)]" /> {w.vessel} Walkthrough {w.quick ? `quick accept ${localWhen(w.at)} (full walk-through ${timeAgo(w.full_at)})` : localWhen(w.at)}

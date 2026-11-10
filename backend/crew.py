@@ -59,7 +59,7 @@ def _hash(token: str) -> str:
 
 async def owned_boat(user: dict, boat_id: str, allow_charter: bool = False) -> dict:
     doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "charter_lock": 1, "charter": 1, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1, "crew_joined": 1,
-                                                "crew_trips": 1, "trip_notes": 1, "trip_rsvp": 1})
+                                                "crew_trips": 1, "trip_notes": 1, "trip_rsvp": 1, "joincrew_applied": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if doc.get("charter_lock") and not allow_charter:
@@ -304,10 +304,15 @@ async def crew_prep_progress(owner_id: str, boat_id: str) -> dict:
     return {k: {"list_id": lid, "list_name": name, **prep_counts(data.get(lid) or [])} for k, (lid, name) in lists.items()}
 
 
+def tick(jc: dict | None, skipper_id: str) -> dict | None:
+    """The skipper's JOINCREW tick for a crew member who used the code, and whether this skipper got the reward."""
+    return {"at": jc.get("at"), "rewarded": skipper_id in (jc.get("skippers") or [])} if jc else None
+
+
 @router.get("/boats/{boat_id}/crew")
 async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     doc = await owned_boat(user, boat_id, allow_charter=True)
-    members = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(100)
+    members = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1, "joincrew": 1}).to_list(100)
     roles = doc.get("crew_roles") or {}
     now = datetime.now(timezone.utc).isoformat()
     invites = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "expires_at": {"$gt": now}},
@@ -337,6 +342,7 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     crew = [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
              "agreement": agreements.get(m["user_id"]), "shopping_sent": shop.get(email_key(m.get("email", ""))), "briefings": role_info(m["user_id"], roles.get(m["user_id"], [])),
              "trips": trips_of(doc, m["user_id"]), "trip_rsvp": trip_rsvps(doc, m["user_id"]), "trip_quick": trip_quick(doc, m["user_id"]),
+             "joincrew": tick(m.get("joincrew") or ({"at": None} if (doc.get("joincrew_applied") or {}).get(m["user_id"]) else None), user["user_id"]),
              **(joined.get(m["user_id"]) or {})} for m in members]
     return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""), "trip_notes": trip_notes(doc),

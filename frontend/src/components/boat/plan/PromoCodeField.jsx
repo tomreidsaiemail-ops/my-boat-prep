@@ -40,7 +40,7 @@ export const PromoCodeField = ({ base, applied, onApplied, disabled }) => {
       <label htmlFor="plan-promo-input" className="field-label flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" /> Promo code</label>
       <div className="flex gap-2">
         <input id="plan-promo-input" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/\s/g, "")); setMsg(null); }} maxLength={40}
-          placeholder="e.g. JOINCREW" autoCapitalize="characters" autoComplete="off" className="field-input min-w-0 flex-1 font-mono uppercase" data-testid="plan-promo-input" />
+          placeholder="Enter your code" autoCapitalize="characters" autoComplete="off" className="field-input min-w-0 flex-1 font-mono uppercase" data-testid="plan-promo-input" />
         <button type="submit" className="btn-ghost h-12 shrink-0 px-4" disabled={busy || disabled} data-testid="plan-promo-apply-btn">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} Apply
         </button>
