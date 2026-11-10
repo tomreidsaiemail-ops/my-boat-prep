@@ -14,11 +14,12 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
   const [photo, setPhoto] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => { if (area) { setName(area.name || ""); setWhere(area.where || ""); setComment(area.comment || ""); setPhoto(area.photo || null); setError(""); } }, [area]);
-  const submit = (e) => {
-    e.preventDefault();
+  const save = () => {
     const res = onSave(name.trim(), where.trim().slice(0, WHERE_MAX), comment.trim().slice(0, AREA_COMMENT_MAX), photo);
     if (typeof res === "string") setError(res);
+    return res === true;
   };
+  const submit = (e) => { e.preventDefault(); save(); };
   return (
     <Dialog open={!!area} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" data-testid="inventory-rename-dialog">
@@ -38,8 +39,8 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
                 className="field-input !h-auto min-h-[64px] !py-2" data-testid="inventory-comment-input" />
               <span className="flex justify-between gap-2 text-xs text-[var(--muted)]"><span>Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span><span data-testid="inventory-comment-count">{comment.length}/{AREA_COMMENT_MAX}</span></span></label>
           )}
-          {!area?.parent_id && boat && <CupboardPhotoField boat={boat} online={online} photo={photo} onChange={setPhoto} />}
-          {onMove && <button type="button" className="btn-ghost h-11 justify-center gap-2 text-sm" onClick={onMove} data-testid="inventory-move-items-btn"><Move className="h-4 w-4" /> Move Cupboard Items</button>}
+          {!area?.parent_id && boat && !boat.owner_id && <CupboardPhotoField boat={boat} online={online} photo={photo} onChange={setPhoto} />}
+          {onMove && <button type="button" className="btn-ghost h-11 justify-center gap-2 text-sm" onClick={() => { if (save()) onMove(); }} data-testid="inventory-move-items-btn"><Move className="h-4 w-4" /> Move Cupboard Items</button>}
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="inventory-rename-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
             <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="inventory-rename-cancel-btn">Cancel</button>

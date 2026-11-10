@@ -108,3 +108,8 @@
 
 ## 2026-06 Remove crew walkthrough badge
 - Crew Registration walkthrough badge has an x (RegRow onClearWalk) -> confirm -> DELETE /api/crew-register/{entry_id}/walkthroughs/{boat_id}: deletes walkthroughs (no quick accept) and unsets agreements.<uid> on that boat so crew on board redo the agreement + full walkthrough. Self-tested (UI + curl).
+
+## 2026-06 Crew T&C launch, auto-tick walkthrough, cupboard photos
+- CrewAgreement opens once per app load per boat while not accepted (module Set, was sessionStorage - caused no launch after re-join). Not-accepted bar is red. Sign out warns crew with unaccepted terms (lib/pendingAgreement.js + AccountMenu signout-terms dialog).
+- Agreement walkthrough auto-ticks each stop as shown (CrewWalkthrough onSeen/start); "Carry on" resumes at first unticked; ticking an unseen stop opens the walkthrough at that stop (AgreementWalkthrough onOpenStop). "Walk through again" when all ticked.
+- Cupboard photo: area.photo {id,v}; POST/GET /api/boats/{boat_id}/area-photos (backend/area_photos.py, boat doc area_photos, unused pruned after 1 day, max 80); copied into charter copies. Field in Edit cupboard (skipper only); shown on walkthrough stops after the cupboard comment; inventory row image icon replaces the Move icon; "Move Cupboard Items" button in Edit cupboard saves then opens Move. Tested iteration_146.

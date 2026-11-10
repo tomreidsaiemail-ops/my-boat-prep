@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { setPendingAgreement } from "@/lib/pendingAgreement";
-
-const shown = new Set();
 import { ChevronRight, FileCheck2, FileDown, FileWarning, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
 import { downloadAgreement } from "@/lib/agreementPdf";
 import { CrewAgreementDialog } from "@/components/boat/agreement/CrewAgreementDialog";
+
+const shown = new Set();
 
 // Crew view: opens the agreement once after joining, then a bar shows whether it's been accepted.
 export const CrewAgreement = ({ boat, vessel, areas, online }) => {

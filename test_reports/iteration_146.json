@@ -1,0 +1,33 @@
+{
+  "summary": "Tested the crew agreement auto-open, auto-tick, open-at-stop, red bar, sign-out warning and cupboard photo / Move Cupboard Items changes, on the backend and the frontend at 1920x800 and 390x844. Skipper: test_session_pro_1. Crew: test_session_free_1, plus temporary sessions for the sign-out tests. Backend: a new pytest file tests/test_area_photos.py has 10 tests and all pass. They cover owner upload and get, crew get with ?owner=, 404 for a non-crew user, 401 when not signed in, 400 for a bad type or a file over 3 MB, 404 for an unknown boat, and 422 for a bad photo id. Frontend: every requested flow works. The agreement opened by itself on the shared boat, opened again after a reload, and stayed closed after 'Not now' when switching boats away and back. The bar was red (rgb(220,38,38) with white text) and turned emerald once accepted. The walkthrough ticked each stop as it was shown: exiting at stop 1 left 1 of 2 ticked [T,F]. 'Carry on' resumed at Stop 2 of 2, which was ticked automatically. Unticking in the list unticks. Ticking an unticked stop opens the walkthrough at that stop (Stop 1 of 2 and Stop 2 of 2), and it gets ticked. Accept works and shows its toast. The sign-out warning dialog showed the right text. Stay kept the crew member signed in, and Sign out anyway went to /login. There was no warning for crew who had accepted or for the skipper. Cupboard photo: the field sits under the comment. Upload shows a preview with Replace and Remove. Save keeps area.photo on the server. Remove + Save takes the icon away. The Move icon is gone and only cupboards with a photo show the image icon. The icon's dialog shows the photo and the comment, for both skipper and crew. Move Cupboard Items opens move-area-dialog, or shows the toast 'Freezer has nothing to move yet'. The cupboard photo appears after the Cupboard comment in the skipper walkthrough, the crew agreement walkthrough and the expanded agreement stop. One real bug: crew can upload a cupboard photo, but it goes to the wrong boat.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AreaEditDialog / CupboardPhotoField (crew on a shared boat)", "issue": "Crew can edit Food/Drink cupboards, so Edit cupboard shows the Cupboard photo field to crew. CupboardPhotoField POSTs to /api/boats/${boat.boat_id}/area-photos with boat_id 'main'. The backend keys this on owner_id=current user, so the photo is saved to the CREW member's OWN boat 'main' (test-user-free has one). The preview then GETs ?owner=test-user-pro and gets a 404, so the image is broken (naturalWidth 0). If crew pressed Save, area.photo would sync to the skipper's boat pointing at a photo nobody can load. If the crew member has no own boat with that id, they get a 404 'Boat not found' toast. Reproduced: crew on TEST_Kia Ora -> pencil on Pantry -> Add a photo -> POST 200, GET 404.", "selector": "[data-testid=cupboard-photo-field]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Boat Inventory rows", "issues": ["Only rows with a photo show the photo icon, so their F/D/zone icons sit one slot further left than rows without one (Fridge vs Pantry). Consider a fixed-width placeholder slot to keep the columns lined up."]},
+      {"screen": "Crew agreement", "issues": ["When every stop is already ticked the button still says 'Carry on the walkthrough' and starts at stop 1 (findIndex -1 -> 0). 'Walk through again' would be a clearer label."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_area_photos.py", "/app/test_reports/pytest/area_photos.xml"],
+  "action_items": [
+    "Fix crew cupboard photo uploads. Either hide CupboardPhotoField when boat.owner_id is set (crew view), or have the backend accept ?owner= on POST, check that the user is in crew, save the photo to the owner's doc, and have the frontend send owner. Hiding it is simplest and matches the read-only intent for crew.",
+    "Optional: keep the inventory row icon columns lined up when there is no photo icon."
+  ],
+  "critical_code_review_comments": [
+    "area_photos.py: the POST only works on the uploader's own boat (no crew/owner support), which causes the crew bug above. GET correctly checks crew when owner differs.",
+    "area_photos.py: uploads run read-modify-write on area_photos with $set (no $push), so two uploads at the same moment could lose one entry. Low risk.",
+    "Pruning only removes entries from area_photos. The stored objects are never deleted. That is acceptable because storage has no delete API, but it should be noted.",
+    "InventoryList: 'Move Cupboard Items' replaces the Edit dialog with the Move dialog, so unsaved edits in Edit cupboard (name, comment or a just-uploaded photo) are silently lost. Consider saving first or warning.",
+    "CrewAgreement: the module-level Set 'shown' is placed between import statements. It works, but move it below the imports for lint and ordering.",
+    "CrewWalkthrough onSeen ticks again when a stop is revisited (Back/Next) after the crew member unticked it inside the walkthrough. This is probably acceptable."
+  ],
+  "updated_files": ["/app/backend/tests/test_area_photos.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "95% (all requested flows pass; one crew-path bug)"},
+  "seed_data_creation": "Left on the pro boat 'main': Fridge (amw1pvdq802hq) now has photo {id 888bae6c-40d2-4d8f-ae65-625f4248dd1a} (a 400x300 blue JPEG) and keeps its comment. Pantry has a photo added then removed, so it has none. Some unused area_photos entries from the pytest run will be pruned after a day. Crew test-user-free's agreement on pro/main is now ACCEPTED (accepted_at set, both stops ticked). Reset with $unset agreements.test-user-free to retest. A crew upload entry was removed from test-user-free's own boat by its id. The temporary sessions test_session_*_t146 were deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The crew boat key is c_test-user-pro_main in boat-switcher. Crew can edit Food/Drink cupboards (rename buttons are visible), so they are not fully read-only. The shared boat has 2 walkthrough stops (Galley photo: Fridge, Pantry). Signing out deletes the session server-side, so use a temporary db.user_sessions token for sign-out tests. The prompt queue shows crew-reg-dialog after the agreement closes."
+}

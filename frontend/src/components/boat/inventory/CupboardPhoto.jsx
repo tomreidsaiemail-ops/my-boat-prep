@@ -48,9 +48,9 @@ export const CupboardPhoto = ({ boat, area, testId }) => {
 };
 
 // Boat Inventory: an icon on the cupboard row shows it has a photo; tap to see it.
-export const CupboardPhotoButton = ({ boat, area }) => {
+export const CupboardPhotoButton = ({ boat, area, placeholder }) => {
   const [open, setOpen] = useState(false);
-  if (!areaPhotoUrl(boat, area.photo)) return null;
+  if (!areaPhotoUrl(boat, area.photo)) return placeholder ? <span className="icon-btn invisible" aria-hidden="true" /> : null;
   return (
     <>
       <button type="button" className="icon-btn" aria-label={`See the photo of ${area.name}`} title="Cupboard photo" onClick={() => setOpen(true)} data-testid={`inventory-area-photo-${area.id}`}><ImageIcon className="h-[18px] w-[18px]" /></button>

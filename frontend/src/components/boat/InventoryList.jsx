@@ -371,7 +371,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
         onDeleteItem={(i) => setDialog({ type: "deleteItem", area: a, item: i })}
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })}
-        photoButton={boat && !parent ? <CupboardPhotoButton boat={boat} area={a} /> : null}
+        photoButton={boat && !parent ? <CupboardPhotoButton boat={boat} area={a} placeholder={!ro} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
         zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>

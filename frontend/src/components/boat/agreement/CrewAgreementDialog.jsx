@@ -97,7 +97,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           )}
           {steps.length > 0 && !accepted && !quick && (
             <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(nextStop)} data-testid="agreement-start-walkthrough-btn">
-              <Footprints className="h-4 w-4" /> {ticked.length ? "Carry on the walkthrough" : "Start the walkthrough"}
+              <Footprints className="h-4 w-4" /> {ready ? "Walk through again" : ticked.length ? "Carry on the walkthrough" : "Start the walkthrough"}
             </button>
           )}
           <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />
