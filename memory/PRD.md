@@ -743,5 +743,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06 Home icon (boat-details-home-btn, 'Home (Boat Inventory)') left of the Fish icon -> pickList('boatInventory'). 'Create Zone Map Overview (Schematic)' button (zone/CreateOverviewButton.jsx) under 'How to make a zone map': missing boat type/make/model/year -> opens Additional details (event mbp:open-boat-details-for-zone), resumes on close (mbp:zone-overview-create); existing overview -> choice: upload own (POST zone-maps kind=overview, appended) or Magic Mariner (ZoneSchematicsDialog /use appends); none -> Magic Mariner. Help moved to 'Admin - Help Panel - How To Make A Zone Map' (migration zone_map_how_to_help, 14 lines), also in Hamburger Help. Tested iteration_141.
 
 ## 2026-06 Mayday / Pan-Pan distress emails (DONE, see CHANGELOG.md)
-- Shore contact + Coastguard emails in Boat Details; background coastguard/shore emails from Mayday & Pan-Pan panels; hidden offline. Endpoint POST /api/distress-email.
+- Shore contact email in Boat Details; background shore-contact email when Mayday / Pan-Pan opened online (coastguard email removed for legal reasons). Endpoint POST /api/distress-email.
 - Backlog: P2 Ship's log notes -> tidy log entries (Universal Key); P2 item-by-item offline merge of areas (sync_merge.py); P3 split BoatPrep.jsx.

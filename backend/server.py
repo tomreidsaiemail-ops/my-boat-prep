@@ -118,7 +118,6 @@ class BoatDetails(BaseModel):
     log_email: str = ""
     shore_email: str = ""
     shore_enabled: bool = False
-    coastguard_email: str = ""
     boat_type: str = ""
     pob: int = Field(default=1)
     children: int = 0

@@ -18,7 +18,6 @@ Line = Annotated[str, Field(max_length=600)]
 class DistressEmailIn(BaseModel):
     kind: Literal["mayDay", "panPan"]
     to: str = Field(min_length=3, max_length=254)
-    target: Literal["coastguard", "shore"]
     vessel: str = Field(default="", max_length=80)
     callsign: str = Field(default="", max_length=40)
     position: str = Field(default="", max_length=120)
@@ -54,6 +53,6 @@ async def send_distress_email(p: DistressEmailIn, user: dict = Depends(get_curre
     now = datetime.now(timezone.utc)
     subject = distress_subject(p)
     email_id = await send_email(to=[to], subject=subject, html=distress_html(p, subject, now.strftime("%Y-%m-%d %H:%M")))
-    await db.distress_emails.insert_one({"id": str(uuid.uuid4()), "user_id": user["user_id"], "kind": p.kind, "target": p.target,
+    await db.distress_emails.insert_one({"id": str(uuid.uuid4()), "user_id": user["user_id"], "kind": p.kind,
                                          "to": to, "subject": subject, "email_id": email_id, "created_at": now.isoformat()})
     return {"ok": True, "subject": subject}

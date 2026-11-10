@@ -91,3 +91,4 @@
 - Opening Mayday/Pan-Pan (header or list, online): inline Yes/No prompt for coastguard; shore contact emailed automatically once per session per kind. Re-fires when coming back online on the panel.
 - Subject "MAYDAY|PAN-PAN VESSEL NAME X, CALLSIGN: Y, POSITION Z"; body = all panel text. Position = live fix, else last known fix with time (localStorage mbp_last_fix), else UNKNOWN.
 - Backend: POST /api/distress-email (backend/distress_email.py), 30/day per user, logged in db.distress_emails. Tested: iteration_142 (100%).
+- 2026-06 follow-up: Coastguard email REMOVED (legal). Field, prompt, button and boat.coastguard_email (unset in DB) gone. Only the shore contact auto-email (once per session per kind) remains; /api/distress-email no longer takes `target`.
