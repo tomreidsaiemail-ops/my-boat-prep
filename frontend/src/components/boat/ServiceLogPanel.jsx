@@ -70,18 +70,20 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
     <>
     {(engine || (kind === "electrical_log" && boat)) && (
       <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`${k.prefix}-mme-group`}>
-        {engine && <div className="col-span-2 grid grid-cols-[1.6fr_1fr] items-end gap-2" data-testid="engine-type-row">
+        {engine && <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--line)] bg-[var(--panel)] p-2.5" data-testid="engine-inputs">
+        <div className="grid grid-cols-[1.4fr_1fr] items-end gap-2" data-testid="engine-type-row">
           <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
             <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>
-          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Cruising speed</span>
+          <label className="flex min-w-0 flex-col gap-1"><span className="field-label whitespace-nowrap">Cruising speed</span>
             <span className="relative">
               <input value={cruise ?? "6"} onChange={(e) => /^\d{0,2}([.,]\d?)?$/.test(e.target.value) && onCruise(e.target.value.replace(",", "."))} inputMode="decimal" placeholder="6"
                 className="field-input w-full min-w-0 px-1.5 pr-9 text-sm" data-testid="cruise-speed-input" />
               <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">kn</span>
             </span>
           </label>
+        </div>
+        {cruiseHint}
         </div>}
-        {engine && cruiseHint}
         {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
         {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
