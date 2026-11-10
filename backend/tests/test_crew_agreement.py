@@ -22,7 +22,7 @@ def s(tok):
 
 
 def boat_state():
-    roles = [{"id": 1, "label": "1. Racing Roles"}, {"id": 2, "label": "Radio Operator", "indent": True, "briefing": "Race channel is RPNYC VHF 77"},
+    roles = [{"id": 1, "label": "1. Racing Roles"}, {"id": 2, "label": "Radio Operator", "indent": True, "briefing": "Race channel is Yacht Club VHF 77"},
              {"id": 3, "label": "Helm", "indent": True}]
     return {"boat": {"vessel": "TEST_Agreement", "skipper": "TEST_Sk", "callsign": "TEST_CS", "log_email": "o@example.com"},
             "registry": [{"id": "custom_roles", "name": "Crew Roles", "isSystem": False}], "data": {"custom_roles": roles},
@@ -57,8 +57,8 @@ def test_email_html_has_briefing():
     for k, v in ENV.items():
         os.environ.setdefault(k, v)
     from crew import invite_html
-    html = invite_html("Sk", "Boat", "t@example.com", "https://x/", ["Radio Operator"], "", {"radio operator": "Race channel is RPNYC VHF 77"}, "Tom")
-    assert "Role briefing - Radio Operator" in html and "RPNYC VHF 77" in html and "Hi Tom" in html
+    html = invite_html("Sk", "Boat", "t@example.com", "https://x/", ["Radio Operator"], "", {"radio operator": "Race channel is Yacht Club VHF 77"}, "Tom")
+    assert "Role briefing - Radio Operator" in html and "Yacht Club VHF 77" in html and "Hi Tom" in html
 
 
 def test_full_agreement_flow():
@@ -78,7 +78,7 @@ def test_full_agreement_flow():
     assert a.status_code == 200, a.text
     a = a.json()
     assert a["boat_terms"] == "Shoes off below"
-    assert a["roles"] == [{"role": "Radio Operator", "briefing": "Race channel is RPNYC VHF 77", "read_at": None}]
+    assert a["roles"] == [{"role": "Radio Operator", "briefing": "Race channel is Yacht Club VHF 77", "read_at": None}]
     assert isinstance(a["terms"], list) and a["agreement"] is None
 
     body = {"owner_id": PRO_ID, "boat_id": BOAT, "stops": ["m1:p1"], "accept": True}

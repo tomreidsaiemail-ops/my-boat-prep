@@ -21,7 +21,7 @@ def s(tok):
 
 
 def boat_state():
-    roles = [{"id": 1, "label": "Helm"}, {"id": 2, "label": "Radio Operator", "briefing": "Race channel is RPNYC VHF 77"}]
+    roles = [{"id": 1, "label": "Helm"}, {"id": 2, "label": "Radio Operator", "briefing": "Race channel is Yacht Club VHF 77"}]
     prep = [{"id": 11, "label": "1. Kit"}, {"id": 12, "label": "Lifejacket", "indent": True, "checked": True}, {"id": 13, "label": "Boots", "indent": True}]
     return {"boat": {"vessel": "TEST_Prep", "skipper": "TEST_Sk", "callsign": "TEST_CS", "log_email": "o@example.com"},
             "registry": [{"id": "custom_roles", "name": "Crew Roles", "isSystem": False}, {"id": "custom_tom", "name": "Crew Prep - Tom", "isSystem": False},

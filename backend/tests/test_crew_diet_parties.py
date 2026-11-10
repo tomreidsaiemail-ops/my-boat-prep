@@ -32,7 +32,7 @@ class TestPartiesEmail:
         return r.json()
 
     def test_01_setup(self):
-        TestPartiesEmail.p1 = self._add({"kind": "party", "name": "TEST RPNYC", "phone": "+64 21 111", "email": "test.rpnyc@example.com"})["entry_id"]
+        TestPartiesEmail.p1 = self._add({"kind": "party", "name": "TEST Yacht Club", "phone": "+64 21 111", "email": "test.rpnyc@example.com"})["entry_id"]
         TestPartiesEmail.p2 = self._add({"kind": "party", "name": "TEST Coastguard", "phone": "+64 21 222", "email": "test.cg@example.com"})["entry_id"]
         TestPartiesEmail.c1 = self._add({"kind": "crew", "name": "TEST Dick", "email": "test.dick@example.com"})["entry_id"]
         TestPartiesEmail.c2 = self._add({"kind": "crew", "name": "TEST Harry", "email": "test.harry@example.com"})["entry_id"]
@@ -64,7 +64,7 @@ class TestPartiesEmail:
         r = requests.post(f"{R}/parties-email", json={"crew_ids": [self.c1, "00000000-0000-0000-0000-000000000009"], "party_id": self.p1}, headers=PRO)
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["sent_to"] == "TEST RPNYC" and d["email"] == "test.rpnyc@example.com"
+        assert d["sent_to"] == "TEST Yacht Club" and d["email"] == "test.rpnyc@example.com"
         assert d["crew"] == 1
         assert d["unregistered"] == ["TEST Dick"]
 
