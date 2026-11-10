@@ -7,6 +7,8 @@ import { downloadAgreement } from "@/lib/agreementPdf";
 import { CrewAgreementDialog } from "@/components/boat/agreement/CrewAgreementDialog";
 
 const shown = new Set();
+// Joining (or re-joining) a boat always brings the Terms and Conditions up again.
+export const forgetShownAgreements = () => shown.clear();
 
 // Crew view: opens the agreement once after joining, then a bar shows whether it's been accepted.
 export const CrewAgreement = ({ boat, vessel, areas, online }) => {

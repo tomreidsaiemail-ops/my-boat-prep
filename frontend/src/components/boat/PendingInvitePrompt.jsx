@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { holdPrompt } from "@/lib/promptQueue";
+import { forgetShownAgreements } from "@/components/boat/agreement/CrewAgreement";
 
 const LATER_KEY = "mbp_invites_later";
 const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
@@ -28,6 +29,7 @@ export const PendingInvitePrompt = ({ boats }) => {
     try {
       const { data } = await api.post(`/crew/invites/${inv.invite_id}/${kind}`);
       if (kind === "accept") {
+        forgetShownAgreements();
         await boats.refresh();
         boats.select(data.key);
         toast.success(`Welcome aboard ${inv.vessel}! It's now in your boat picker`);
