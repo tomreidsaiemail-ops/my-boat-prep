@@ -772,3 +772,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - JOINCREW offer line ("Use coupon code JOINCREW to get a great discount, and bump your Skipper's "magic credits".") in crew Boat Terms dialog (above accept), toast after accept, WhatsApp invite message (after "Join on My Boat Prep") and invite email; only while JOINCREW is live (joincrew.live) and, in terms, for crew who haven't used it / aren't Pro.
 - Skipper reward per JOINCREW (promo_codes.skipper_reward, default 10, editable in Admin); reward email to each rewarded skipper.
 - Admin promo codes: Edit (discount/expiry/reward; discount/expiry change moves to a new Stripe coupon, old promo switched off, prior_uses kept) and Delete (switch off in Stripe + remove); change log db.promo_code_log shown at bottom of /admin/promos.
+
+### 2026-06 FIRST200 exception list
+- app_settings.first200.exceptions (emails, lowercase), managed on /admin/promos (First200Exceptions.jsx, PUT /api/admin/promo-codes/first200/exceptions, logged in promo_code_log as "FIRST200 exceptions").
+- Listed emails see the app as if FIRST200 is off: premium/launch_free false (launch.first200_cached(email)), /payments/offer first200 false, checkout allowed (JOINCREW usable), no FIRST200 banner in the app (First5000Banner launchFree prop). Login page banner is pre-sign-in so it still shows.

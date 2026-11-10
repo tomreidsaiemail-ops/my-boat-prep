@@ -12,7 +12,7 @@ from auth import require_admin
 from db import db
 from billing import FIRST5000_LOOKUP
 from payments import PRO_LOOKUP_KEY, _price, first5000_running
-from launch import first200_running
+from launch import first200_exceptions, first200_running
 import joincrew
 
 router = APIRouter(prefix="/api/admin/promo-codes")
@@ -77,6 +77,30 @@ async def set_first200(payload: First5000In, admin: dict = Depends(require_admin
     return {"running": payload.running, **await _set_promo("first200", payload.running, admin)}
 
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class ExceptionsIn(BaseModel):
+    emails: list[str] = Field(max_length=500)
+
+
+@router.put("/first200/exceptions")
+async def set_first200_exceptions(payload: ExceptionsIn, admin: dict = Depends(require_admin)):
+    emails = sorted({e.strip().lower() for e in payload.emails if e.strip()})
+    bad = [e for e in emails if not EMAIL_RE.match(e)]
+    if bad:
+        raise HTTPException(status_code=400, detail=f"That doesn't look like an email address: {bad[0]}")
+    await first200_running(fresh=True)
+    old = set(first200_exceptions())
+    added, removed = [e for e in emails if e not in old], sorted(old - set(emails))
+    if not added and not removed:
+        raise HTTPException(status_code=400, detail="Nothing has changed")
+    await db.app_settings.update_one({"key": "first200"}, {"$set": {"key": "first200", "exceptions": emails}}, upsert=True)
+    await _log(admin, "edited", "FIRST200 exceptions", "; ".join(([f"added {', '.join(added)}"] if added else []) + ([f"removed {', '.join(removed)}"] if removed else [])))
+    await first200_running(fresh=True)
+    return {"first200_exceptions": first200_exceptions()}
+
+
 def _usage(docs: list) -> dict:
     usage = _stripe_usage()
     for d in docs:
@@ -96,7 +120,7 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
         usage, base = None, None
     first = await asyncio.to_thread(_price, FIRST5000_LOOKUP)
     log = await db.promo_code_log.find({}, {"_id": 0}).sort("at", -1).to_list(200)
-    return {"base_price": base, "first5000": await first5000_running(), "first200": await first200_running(fresh=True), "first5000_price": first.unit_amount / 100 if first else None,
+    return {"base_price": base, "first5000": await first5000_running(), "first200": await first200_running(fresh=True), "first5000_price": first.unit_amount / 100 if first else None, "first200_exceptions": first200_exceptions(),
             "codes": [_out(d, usage) for d in docs], "log": log}
 
 

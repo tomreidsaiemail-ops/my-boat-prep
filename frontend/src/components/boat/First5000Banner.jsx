@@ -12,11 +12,12 @@ const Close = ({ onClick }) => (
 );
 
 // Launch banner: FIRST200 (free for everyone) or FIRST5000 (50% off), only while the admin has one running.
-export const First5000Banner = ({ variant = "app", onUpgrade }) => {
+// In the app, FIRST200 is hidden for users on the exception list (launchFree false).
+export const First5000Banner = ({ variant = "app", onUpgrade, launchFree = true }) => {
   const [offer, setOffer] = useState(null);
   const [hiddenAt, setHiddenAt] = useState(0);
   useEffect(() => { api.get("/payments/offer/public").then(({ data }) => setOffer(data)).catch(() => {}); }, []);
-  const promo = offer?.first200 ? "first200" : offer?.first5000 ? "first5000" : null;
+  const promo = offer?.first200 ? (launchFree ? "first200" : null) : offer?.first5000 ? "first5000" : null;
   if (!promo) return null;
   if (variant === "app" && Math.max(hiddenAt, Number(localStorage.getItem(hideKey(promo)) || 0)) > Date.now()) return null;
   const close = () => { const until = Date.now() + WEEK; localStorage.setItem(hideKey(promo), String(until)); setHiddenAt(until); };

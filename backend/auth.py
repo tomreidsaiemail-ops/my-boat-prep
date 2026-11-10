@@ -54,7 +54,7 @@ def to_user_out(u: dict) -> UserOut:
     role = u.get("role", "free")
     return UserOut(
         user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", ""),
-        role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro") or first200_cached(), launch_free=first200_cached(),
+        role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro") or first200_cached(email), launch_free=first200_cached(email),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),

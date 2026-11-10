@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
-from launch import first200_running
+from launch import first200_for, first200_running
 from auth import get_current_user, to_user_out, UserOut
 import quota
 import joincrew
@@ -32,15 +32,15 @@ def _price(lookup: str):
     return data[0] if data else None
 
 
-async def _offer() -> dict:
+async def _offer(email: str | None = None) -> dict:
     full, first = await asyncio.gather(asyncio.to_thread(_price, PRO_LOOKUP_KEY), asyncio.to_thread(_price, FIRST5000_LOOKUP))
-    return {"first5000": await first5000_running(), "first200": await first200_running(), "price": (full.unit_amount / 100) if full else None,
+    return {"first5000": await first5000_running(), "first200": await (first200_for(email) if email else first200_running()), "price": (full.unit_amount / 100) if full else None,
             "first5000_price": (first.unit_amount / 100) if first else None}
 
 
 @router.get("/payments/offer")
-async def offer(_: dict = Depends(get_current_user)):
-    return await _offer()
+async def offer(user: dict = Depends(get_current_user)):
+    return await _offer(user["email"])
 
 
 # Public so the login page can show the FIRST5000 banner before sign-in.
@@ -95,7 +95,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Invalid origin")
     if to_user_out(user).has_subscription:
         raise HTTPException(status_code=400, detail="You already have Pro")
-    if await first200_running(fresh=True):
+    if await first200_for(user["email"], fresh=True):
         raise HTTPException(status_code=400, detail="My Boat Prep Pro is free for everyone during the FIRST200 launch, no payment needed")
     launch = await first5000_running()
     lookup = FIRST5000_LOOKUP if launch else PRO_LOOKUP_KEY

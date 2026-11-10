@@ -5,6 +5,7 @@ import { api, apiError } from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PromoCodeForm } from "@/components/admin/PromoCodeForm";
 import { PromoCodeLog } from "@/components/admin/PromoCodeLog";
+import { First200Exceptions } from "@/components/admin/First200Exceptions";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Pacific/Auckland" });
@@ -91,6 +92,7 @@ export const PromoCodesAdmin = () => {
           </span>
         </label>
       )}
+      {data && <First200Exceptions emails={data.first200_exceptions} onSaved={(list) => { setData((d) => ({ ...d, first200_exceptions: list })); load().catch(() => {}); }} />}
       {data && (
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 p-3" data-testid="first5000-toggle">
           <Checkbox checked={!!data.first5000} onCheckedChange={(v) => setPromo("first5000", !!v)} className="mt-0.5 h-5 w-5" data-testid="first5000-checkbox" />
