@@ -20,7 +20,7 @@ export const InviteCloseCheck = ({ check, onKeep, onClose }) => {
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row justify-end gap-2">
           <AlertDialogCancel className="btn-ghost mt-0 px-4" data-testid="invite-close-check-back-btn">{unsaved ? "Go back" : "Back"}</AlertDialogCancel>
-          <AlertDialogAction className={`btn-solid px-4 ${unsaved ? "!bg-[var(--red)]" : ""}`} onClick={onClose} data-testid="invite-close-check-close-btn">{unsaved ? "Close without inviting" : "OK, I'll send it"}</AlertDialogAction>
+          <AlertDialogAction className={`btn-solid px-4 ${unsaved ? "!bg-[var(--red)]" : ""}`} onClick={() => setTimeout(onClose, 0)} data-testid="invite-close-check-close-btn">{unsaved ? "Close without inviting" : "OK, I'll send it"}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
