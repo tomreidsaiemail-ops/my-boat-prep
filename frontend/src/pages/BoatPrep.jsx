@@ -406,9 +406,14 @@ export default function BoatPrep({ boatId, boats }) {
     if (!guard()) return;
     const ids = new Set(shown.map((i) => i.id));
     const next = items.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i));
-    const before = new Map(items.filter((i) => ids.has(i.id)).map((i) => [i.id, !!i.checked]));
+    const before = new Map(items.filter((i) => ids.has(i.id)).map((i) => [i.id, i]));
     setTicks((list) => list.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i)));
-    toast(on ? `Ticked all ${ids.size} items` : `Unticked all ${ids.size} items`, { duration: 6000, action: { label: "Undo", onClick: () => setTicks((list) => list.map((i) => (before.has(i.id) ? { ...i, checked: before.get(i.id) } : i))) } });
+    toast(on ? `Ticked all ${ids.size} items` : `Unticked all ${ids.size} items`, { duration: 6000, action: { label: "Undo", onClick: () => setItems((list) => list.map((i) => {
+      const b = before.get(i.id);
+      if (!b) return i;
+      const { checked_by, ...rest } = i; // eslint-disable-line no-unused-vars
+      return { ...rest, checked: !!b.checked, ...(b.checked_by ? { checked_by: b.checked_by } : {}) };
+    })) } });
     if (active.id === "leavingDock" && !crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
   };
   const remove = (id) => {

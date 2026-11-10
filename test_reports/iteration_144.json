@@ -1,0 +1,27 @@
+{
+  "summary": "Tested the crew 'Ticked by' name on Done badges end to end, on the backend and in the UI (desktop 1920x800, and mobile 390x844 with has_touch and real CDP touch events). Backend: when crew save a tick, the server stamps checked_by from crew_names ('TEST Free Crew') and ignores any spoofed client value, both on a state change and when nothing changed. Unticking removes checked_by. This works on normal lists (riggingChecks) and on Mayday. UI: the crew tick from the boat switcher on the shared boat c_test-user-pro_main synced. The skipper sees the Done badge with data-ticked-by and title='Ticked by TEST Free Crew'. On desktop the name is hidden until hover, shows on hover and hides again on mouse leave. On mobile, holding the badge for 650ms shows '· Ticked by TEST Free Crew', the item stays ticked, and the name hides after about 3s. A second hold also keeps the item ticked. A quick tap on the row or on the badge still unticks. When the skipper unticks and re-ticks an item, it shows Done with no name and the server's checked_by is cleared. Crew have no Select All. Skipper Select All keeps names on items that were already ticked and clears them on items it changes. Undo restores the ticks. Mayday ticking by skipper and crew works. Regression: the merge_crew tests are 14/15 in parallel mode. One failure, test_aisles_crew_no_role_403, comes from a race on shared crew_roles between xdist workers and passes 9/9 with -n 0. Not related to this change.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Checklist on mobile 390px", "issues": ["When '· Ticked by TEST Free Crew' shows, the green pill wraps to 2 lines on narrow rows. It still reads fine; consider whitespace-nowrap or a smaller font."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_ticked_by.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: Undo after the skipper's Select All brings back ticks that crew made, but without their names, because setTicks stamps ''. Consider having Undo restore the earlier checked_by too.",
+    "Optional: tests/test_cooks_rota_mpa_galley.py fails now and then under xdist because workers race on set_roles. Consider an xdist_group or a serial mark."
+  ],
+  "critical_code_review_comments": [
+    "server.py: the crew branch computes `by` from crew_names, falling back to user.name and then the email prefix. merge_crew_ticks only stamps when the checked state changes and the incoming ts is newer, so the name comes from the server and can't be spoofed. Good.",
+    "TickBadge: fired.current is reset on every pointerdown, so if a browser doesn't send a click after a long press, the next tap won't be swallowed. Good.",
+    "The client trims nothing and the server cuts names to 60 characters. Harmless."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_ticked_by.py"],
+  "success_rate": {"backend": "100% (4/4 new; regression 14/15, one flaky failure from parallel workers, unrelated)", "frontend": "100%"},
+  "seed_data_creation": "None. Rigging Checks items 201 and 202 and Mayday items 101 and 102 were ticked and then unticked; all are back to unticked.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Crew = test_session_free_1 on owner test-user-pro boat 'main' (params boat_id=main&owner=test-user-pro). The riggingChecks list (ids 200-214) is a good target list. Mobile long-press was tested with a new browser context (has_touch=True) plus CDP Input.dispatchTouchEvent."
+}

@@ -22,7 +22,7 @@ export const TickBadge = ({ item }) => {
     <span className="tick-badge group select-none [-webkit-touch-callout:none]" title={`Ticked by ${by}`} data-testid={`checklist-item-ticked-${item.id}`} data-ticked-by={by}
       onPointerDown={start} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop} onClickCapture={swallow} onContextMenu={(e) => e.preventDefault()}>
       <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Done
-      <span className={`normal-case tracking-normal ${held ? "inline" : "hidden [@media(hover:hover)]:group-hover:inline"}`} data-testid={`checklist-item-ticked-by-${item.id}`}>· Ticked by {by}</span>
+      <span className={`whitespace-nowrap normal-case tracking-normal ${held ? "inline" : "hidden [@media(hover:hover)]:group-hover:inline"}`} data-testid={`checklist-item-ticked-by-${item.id}`}>· Ticked by {by}</span>
     </span>
   );
 };

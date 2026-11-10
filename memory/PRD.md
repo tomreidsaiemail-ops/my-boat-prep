@@ -747,3 +747,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Backlog: P2 Ship's log notes -> tidy log entries (Universal Key); P2 item-by-item offline merge of areas (sync_merge.py); P3 split BoatPrep.jsx.
 
 ## 2026-06 Skipper's comment on zone map photos (DONE, see CHANGELOG.md)
+
+## 2026-06 Crew "Ticked by" on Done badge (DONE, see CHANGELOG.md)
