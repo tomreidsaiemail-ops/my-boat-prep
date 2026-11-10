@@ -45,6 +45,7 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
         <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <SkipperComment text={step.pic.map?.comment} testId="walkthrough-skipper-comment" />
+        {!note && <SkipperComment text={area?.comment} label="Cupboard comment" testId="walkthrough-cupboard-comment" />}
         {!note && <WalkStopContents area={area} areas={areas} />}
         {onTick && (
           <label className={`flex min-h-11 items-center gap-3 rounded-md border-[1.5px] px-3 font-bold ${ticked.includes(stopKey(step)) ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="walkthrough-seen">

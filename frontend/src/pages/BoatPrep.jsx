@@ -49,7 +49,7 @@ import { BoatWatermark } from "@/components/boat/BoatWatermark";
 import useInventoryShared from "@/hooks/useInventoryShared";
 import useListOrdering, { useListSetting } from "@/hooks/useListOrdering";
 import useFolds from "@/hooks/useFolds";
-import { applyMove } from "@/lib/inventoryMove";
+import { applyMove, newAreaItemId } from "@/lib/inventoryMove";
 
 const INVENTORY_LIST = { id: "boatInventory", name: "Boat Inventory", isInventory: true };
 import useTemplates from "@/hooks/useTemplates";
@@ -727,6 +727,11 @@ export default function BoatPrep({ boatId, boats }) {
     })).catch(() => {});
   }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
   const openFish = () => needPro("Magic Fish Whisperer") && guard() && setDialog({ type: "fish" });
+  const addAreasNamed = (names) => {
+    const ids = Object.fromEntries(names.map((n) => [n, newAreaItemId()]));
+    mutate((s) => ({ ...s, areas: [...(s.areas || []), ...names.filter((n) => !(s.areas || []).some((a) => a.name.trim().toLowerCase() === n.trim().toLowerCase())).map((name) => ({ id: ids[name], name, items: [] }))] }));
+    return ids;
+  };
   const flagArea = (id, key) => mutate((s) => ({ ...s, areas: (s.areas || []).map((a) => (a.id === id ? { ...a, [key]: !a[key] } : a)) }));
   const kids = Math.min(boat.children || 0, (boat.pob || 1) - 1);
   const barList = registry.find((l) => l.kind === BARTENDER_KIND);
@@ -925,7 +930,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
-        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} />
+        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} />
       <CharterBanner entry={boats.current} online={online} onTerms={() => setCharterTerms((n) => n + 1)} onEnded={() => boats.refresh()} />
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />

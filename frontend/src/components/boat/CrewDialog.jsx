@@ -51,7 +51,7 @@ const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange }) => {
+export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   const [chartering, setChartering] = useState(false);
@@ -133,7 +133,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           </button>
         )}
         {chartering && <CharterDialog open boat={boat} vessel={name} online={online} onClose={() => setChartering(false)} onHandedOver={onCharterChange} />}
-        <WalkStopsPicker boat={boat} areas={areas} online={online} onSaved={onWalkSkip} />
+        <WalkStopsPicker boat={boat} areas={areas} online={online} onSaved={onWalkSkip} onMaps={onMaps} onAddAreas={onAddAreas} />
         <div className="flex gap-2">
           <button type="button" className="btn-solid h-12 flex-1 justify-center gap-2" onClick={openInvite} data-testid="crew-invite-open-btn">
             <UserPlus className="h-4 w-4" /> Invite crew

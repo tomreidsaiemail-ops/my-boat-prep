@@ -23,9 +23,9 @@ const Nudge = ({ onNudge }) => (
   </div>
 );
 
-const PinForm = ({ pin, areas, zoneName, onSave, onDelete, onCancel, onNudge }) => {
+const PinForm = ({ pin, areas, zoneName, prefer, onSave, onDelete, onCancel, onNudge }) => {
   const linked = areas.some((a) => a.id === pin.area_id);
-  const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : areas.find((a) => !a.parent_id)?.id || NEW);
+  const [areaId, setAreaId] = useState(linked ? pin.area_id : pin.label ? NEW : (areas.some((a) => a.id === prefer) && prefer) || areas.find((a) => !a.parent_id)?.id || NEW);
   const [name, setName] = useState(linked ? "" : pin.label || "");
   const [error, setError] = useState("");
   const save = () => {
@@ -57,7 +57,8 @@ const PinForm = ({ pin, areas, zoneName, onSave, onDelete, onCancel, onNudge }) 
   );
 };
 
-export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, onClose }) => {
+// `focusArea` (from Walkthrough stops) is the cupboard the skipper came to label; it's picked for the next new label.
+export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, onClose, focusArea }) => {
   const img = useRef(null);
   const [pins, setPins] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -68,7 +69,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
   const zone = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
   const zones = areaZones(boat, areas);
-  const choicesFor = (pin) => areas.filter((a) => !a.parent_id && (!zone || zones[a.id]?.colour === zone || a.id === pin.area_id));
+  const choicesFor = (pin) => areas.filter((a) => !a.parent_id && (!zone || zones[a.id]?.colour === zone || a.id === pin.area_id || a.id === focusArea?.id));
   const place = (e) => {
     const r = img.current.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
@@ -104,11 +105,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight">Label this zone map</DialogTitle>
           <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its cupboard. Drag a label to move it, or tap it to fine-tune with the arrows, change or remove it.</DialogDescription>
+          {focusArea && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900" data-testid="zone-pin-focus-hint">Tap the photo where {focusArea.name} is, then Place label and Save labels.</p>}
         </DialogHeader>
         <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
           onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}
           highlight={editing?.pin.id} imgClass="max-h-[60vh] w-full rounded-md object-contain" testId="zone-pin-photo" />
-        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
+        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} prefer={focusArea?.id} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
           onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
         {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}

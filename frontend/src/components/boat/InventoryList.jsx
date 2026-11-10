@@ -317,12 +317,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
-  const renameArea = (name, where) => {
+  const renameArea = (name, where, comment) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
     const scope = area.parent_id ? subsOf(area.parent_id) : tops;
     if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
-    setArea(area.id, ({ where: _w, ...a }) => ({ ...a, name, ...(where ? { where } : {}) }));
+    setArea(area.id, ({ where: _w, comment: _c, ...a }) => ({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}) }));
     setDialog(null);
     return true;
   };

@@ -24,6 +24,7 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
         <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
         <SkipperComment text={step.pic.map?.comment} testId={`agreement-stop-${n}-skipper-comment`} />
+        {!note && <SkipperComment text={area?.comment} label="Cupboard comment" testId={`agreement-stop-${n}-cupboard-comment`} />}
         {!note && <WalkStopContents area={area} areas={areas} />}
       </>}
     </li>

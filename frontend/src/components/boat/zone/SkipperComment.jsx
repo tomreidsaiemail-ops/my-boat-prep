@@ -5,10 +5,10 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const SkipperComment = ({ text, testId }) => (text || "").trim() ? (
+export const SkipperComment = ({ text, testId, label = "Skipper's comment" }) => (text || "").trim() ? (
   <div className="flex gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--navy)]" data-testid={testId}>
     <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0" />
-    <p className="min-w-0 whitespace-pre-line"><b>Skipper&apos;s comment:</b> {text.trim()}</p>
+    <p className="min-w-0 whitespace-pre-line"><b>{label}:</b> {text.trim()}</p>
   </div>
 ) : null;
 
