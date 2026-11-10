@@ -1,1 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="9" time="2.759" timestamp="2026-11-10T07:54:07.506345+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_get_crew_trip_shape" time="0.221" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_invite_already_crew_on_trip" time="0.174" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_409_second_trip_while_pending_and_same_trip_replace" time="0.399" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_invite_trip2_persists_trip_fields" time="0.214" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_bad_trip_id_422" time="0.123" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_voyage_notes_per_trip" time="0.357" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_crew_voyage_trips_and_pending_aboard" time="0.184" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_rsvp_per_trip_and_clear" time="0.491" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_rsvp_unknown_trip_accepted" time="0.523" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="9" time="2.799" timestamp="2026-11-10T08:57:10.962998+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_get_crew_trip_shape" time="0.170"><failure message="AssertionError: assert ['routeHazard...custom_trip2'] == ['routeHazards']&#10;  &#10;  Left contains one more item: 'custom_trip2'&#10;  Use -v to get more diff">self = &lt;tests.test_crew_trips.TestCrewTrips object at 0xfabbe2e6f250&gt;
+
+    def test_get_crew_trip_shape(self):
+        r = s(PRO).get(f"{BASE_URL}/api/boats/main/crew")
+        assert r.status_code == 200
+        d = r.json()
+        assert "routeHazards" in d["trip_notes"]
+        beta = next(m for m in d["crew"] if m["user_id"] == "test-user-beta")
+        free = next(m for m in d["crew"] if m["user_id"] == "test-user-free")
+        assert TRIP2 in beta["trips"]
+&gt;       assert free["trips"] == ["routeHazards"]
+E       AssertionError: assert ['routeHazard...custom_trip2'] == ['routeHazards']
+E         
+E         Left contains one more item: 'custom_trip2'
+E         Use -v to get more diff
+
+tests/test_crew_trips.py:28: AssertionError</failure></testcase><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_invite_already_crew_on_trip" time="0.133" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_409_second_trip_while_pending_and_same_trip_replace" time="0.325" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_invite_trip2_persists_trip_fields" time="0.207" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_bad_trip_id_422" time="0.127" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_voyage_notes_per_trip" time="0.321" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_crew_voyage_trips_and_pending_aboard" time="0.212"><failure message="assert ([])">self = &lt;tests.test_crew_trips.TestCrewTrips object at 0xfabbe1ac1390&gt;
+
+    def test_crew_voyage_trips_and_pending_aboard(self):
+        b = s(BETA)
+        v = b.get(f"{BASE_URL}/api/crew/voyage", params={"owner_id": "test-user-pro", "boat_id": "main"})
+        assert v.status_code == 200
+        t = {x["trip_id"]: x for x in v.json()["trips"]}
+        assert t[TRIP2]["name"] == "Route Planning - 2"
+        p = b.get(f"{BASE_URL}/api/crew/pending").json()["invites"]
+        mine = [i for i in p if i["vessel"] == "TEST_Kia Ora"]
+&gt;       assert mine and mine[0]["aboard"] is True and mine[0]["trip_name"] == "Route Planning"
+E       assert ([])
+
+tests/test_crew_trips.py:83: AssertionError</failure></testcase><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_rsvp_per_trip_and_clear" time="0.414" /><testcase classname="tests.test_crew_trips.TestCrewTrips" name="test_rsvp_unknown_trip_rejected" time="0.520" /></testsuite></testsuites>

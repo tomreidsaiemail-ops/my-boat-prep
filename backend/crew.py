@@ -244,7 +244,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     if any(email_key(m.get("email", "")) == key and payload.trip_id in trips_of(doc, m["user_id"]) for m in crew):
         raise HTTPException(status_code=400, detail=f"They're already crew on {trip_name}")
     waiting = [i async for i in db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key, "declined_at": None,
-                                                      "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0, "name": 1, "trip_id": 1, "trip_name": 1})]
+                                                      "quick": {"$ne": True}, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0, "name": 1, "trip_id": 1, "trip_name": 1})]
     first = next((i for i in waiting if (i.get("trip_id") or DEFAULT_TRIP) != payload.trip_id), None)
     if first:
         raise HTTPException(status_code=409, detail=f"{first.get('name') or 'They'} has yet to respond to the first join request ({first.get('trip_name') or 'Route Planning'}). "

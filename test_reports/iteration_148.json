@@ -1,0 +1,44 @@
+{
+  "summary": "Tested Quick Invite, the Route Planning label changes, Estimated Finish, trip info on crew cards and the Planning Routes help, at 1920x800 and 390x844. Backend: new tests/test_quick_invite.py, 8 of 9 pass. FAILURE: a Quick Invite for someone with no account cannot be removed. DELETE /api/boats/{id}/invites/{invite_id} returns 422 because its path only accepts a 36-char UUID, and quick ids look like 'quick_<email>_<boat>'. The UI 'Remove Quick Invite' button shows the raw toast \"String should match pattern '^[a-f0-9-]{36}$'\". Working: (1) Route Planning - 2 labels: 'Event or Trip name (optional)', 'Start date and time (optional)', new 'Estimated Finish date and time (optional)'. Finish is saved per trip (survives reload; the original Route Planning stays empty). 'Fill from' adds 'Event or trip: TEST_Event2, Mon, 21 Dec 2026, 10:00 am' and 'Estimated finish: Wed, 23 Dec 2026, 04:30 pm'. (2) Trip group links and per-card links show 'Route Planning - 2 · TEST_Event2, Mon, 21 Dec 2026, 10:00 am'. (3) Hamburger Help lists 'Planning Routes And Inviting Crew...' and the dialog has 12 lines. The routes-crew-help panel sits right under Add photo. (4) Invite window: Quick Invite button is below Copy link only, with the hint. Without a pick it shows 'Pick a registered crew member at the top first...'. Pick then Quick Invite: success toast saying nothing was sent, form clears, card in the trip group shows 'Joined (by Skipper's Quick Invite) · hasn't signed in...', 'Yes, they're in (by Skipper's Quick Invite)', I'm in badge and Walkthrough pending. (5) First sign-in simulated: /api/me/boats claims the invite. They are crew on that trip only, rsvp in by quick, roles kept, no agreement, /crew/pending empty. In the UI as that user: boat picker shows TEST_Kia Ora CREW, the red Boat Terms bar (rgb 220,38,38), I'm in pressed, and the quick note. (6) Errors: a second Quick Invite for a joined user on the same trip gives 400 'already crew on Route Planning - 2'. A pending normal invite for another trip gives 409. Own email gives 400. Unauthenticated gives 401. A Quick Invite to another trip for existing crew adds that trip with quick rsvp. (7) Free crew voyage card shows the quick note. Tapping I'm in left the note on screen until reload (local state bug), which I FIXED in VoyageCard.jsx and re-verified: Can't make it and I'm in both remove the note.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "DELETE /api/boats/{boat_id}/invites/{invite_id}", "issue": "Path pattern ^[a-f0-9-]{36}$ rejects quick invite ids ('quick_<email_key>_<boat_id>' from quick_invite.py:75), so it returns 422. 'Remove Quick Invite' in the crew dialog never works for crew with no account yet. Fix: widen the pattern (e.g. ^[A-Za-z0-9_@.+-]{1,120}$), or give quick invites a uuid4 invite_id.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/boats/{boat_id}/quick-invite", "issue": "Quick Invite again for a person with no account on the SAME trip gives no 'already crew' error. It silently deletes and re-inserts the invite (UI shows a second success toast)."},
+      {"endpoint": "POST /api/boats/{boat_id}/quick-invite", "issue": "Quick Invite for a person with no account to a SECOND trip returns 409 'has yet to respond to the first join request'. They can't respond to a quick invite, so the message is wrong. Also, delete_many would have dropped the first trip's quick invite, because only one quick invite per email/boat is supported."},
+      {"endpoint": "crew_register.py:290 registration email event line", "issue": "Includes event_name and event_at but not the new finish_at (the invite notes do include it)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VoyageCard", "issue": "FIXED: after the crew tapped I'm in or Can't make it, the 'I'm in was set by the Skipper's Quick Invite' note stayed until reload, because local state didn't clear rsvp_quick.", "selector": "[data-testid=voyage-quick-note-custom_trip2]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Remove Quick Invite (no-account crew)", "issue": "Backend returns 422 and the toast shows a raw pydantic message. When it is fixed, the success toast reads 'Invite cancelled'; it could say 'Quick Invite removed'.", "affected_selectors": ["[data-testid=crew-invite-quick_<email>_main-remove-btn]"]}
+    ],
+    "design_issues": [
+      {"screen": "Crew dialog trip group header at 390px", "issues": ["With an event name and start date the header overflows: the '3 joined · 1 invited' count is pushed past the right edge and clipped ('3 joi'). The TripLink button needs min-w-0 or the row needs flex-wrap."]},
+      {"screen": "Trip timing", "issues": ["Start and Estimated Finish use the browser's native datetime-local picker (same as Departure), not a shadcn calendar."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_quick_invite.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix DELETE /api/boats/{boat_id}/invites/{invite_id}: its path pattern rejects quick invite ids (or use uuid ids for quick invites)",
+    "Quick Invite for someone with no account: return 'already invited/crew on <trip>' when a quick invite for the same trip exists. Decide how a second trip should work for them (support several trips, or change the 409 wording for quick)",
+    "Fix the trip group header overflow at 390px (min-w-0 on TripLink or flex-wrap)",
+    "Optionally add finish_at to the registration email event line"
+  ],
+  "critical_code_review_comments": [
+    "quick_invite.py: invite_id f'quick_{key}_{boat_id}'[:120] has no matching route pattern anywhere (cancel, accept and decline all need UUIDs)",
+    "quick_invite.py:70 delete_many removes ALL invites for that email on the boat, including a normal invite for the same trip. That's fine, but the 'pending' 409 check also counts quick invites as pending",
+    "claim_quick runs on every GET /api/me/boats (an extra find per call). That's acceptable, but it could be limited to users with no crew links",
+    "A crew member whose register entry is 'unregistered' gets the Crew Registration form popup on first sign-in. That's existing behaviour, but it cuts against the 'crew has nothing to do' aim of Quick Invite, unless the skipper used Bulk Quick Reg"
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/VoyageCard.jsx (reply(): rsvp_quick:false in local state)", "/app/backend/tests/test_quick_invite.py (new)"],
+  "success_rate": {"backend": "89% (8/9)", "frontend": "92% (removing a quick invite fails; the note bug is fixed)"},
+  "seed_data_creation": "Temporary TEST_ register entries, users and sessions were created and removed. Pro boat custom_trip2 weather now also has event_at 2026-12-21T10:00 and finish_at 2026-12-23T16:30 (TEST data, left so trip links show the start). Free crew's trip_rsvp.custom_trip2 was restored to {status: in, by: quick}.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat main: crew test-user-free (routeHazards + custom_trip2, quick in on trip2) and test-user-beta (both trips, no replies). No crew_invites for test-user-pro. WARNING: tests/test_crew_trips.py (iteration 147) calls DELETE /api/boats/main/rsvp, which wipes every rsvp, including free's quick rsvp. It also has stale assertions (free['trips']==['routeHazards'] and a pending-aboard check), so 2 of its tests now fail because the data changed, not because of app bugs. On first load the free crew and new crew users get a crew-reg-dialog popup, so press Escape. Open the crew dialog with window.dispatchEvent(new Event('mbp:open-crew')) and a list with CustomEvent('mbp:open-list',{detail:id}). A new users doc needs tos_version '2026-06-magic50' to skip the ToS gate."
+}

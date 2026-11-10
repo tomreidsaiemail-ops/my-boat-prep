@@ -50,7 +50,7 @@ export const VoyageCard = ({ boat, online }) => {
     setBusy(`${trip.trip_id}:${status}`);
     try {
       await api.post("/crew/rsvp", { ...params, status, trip_id: trip.trip_id });
-      setVoyage((v) => ({ ...v, trips: v.trips.map((t) => (t.trip_id === trip.trip_id ? { ...t, rsvp: status } : t)) }));
+      setVoyage((v) => ({ ...v, trips: v.trips.map((t) => (t.trip_id === trip.trip_id ? { ...t, rsvp: status, rsvp_quick: false } : t)) }));
       toast.success(status === "in" ? "The skipper can see you're in" : "The skipper can see you can't make it");
       return true;
     } catch (e) { toast.error(apiError(e, "Couldn't send your reply, please try again")); return false; }

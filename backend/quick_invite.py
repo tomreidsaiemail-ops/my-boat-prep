@@ -1,4 +1,5 @@
 import re
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List
 
@@ -60,19 +61,22 @@ async def quick_invite(boat_id: BoatPath, payload: QuickIn, user: dict = Depends
     roles = [r.strip()[:40] for r in payload.roles if r.strip()]
     now = datetime.now(timezone.utc)
     pending = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key, "declined_at": None,
-                                          "expires_at": {"$gt": now.isoformat()}}, {"_id": 0, "trip_id": 1, "trip_name": 1}).to_list(20)
-    other = next((p for p in pending if (p.get("trip_id") or DEFAULT_TRIP) != payload.trip_id), None)
+                                          "expires_at": {"$gt": now.isoformat()}}, {"_id": 0, "invite_id": 1, "trip_id": 1, "trip_name": 1, "quick": 1}).to_list(20)
+    same = [p for p in pending if (p.get("trip_id") or DEFAULT_TRIP) == payload.trip_id]
+    if any(p.get("quick") for p in same):
+        raise HTTPException(status_code=400, detail=f"{name or email} is already Quick Invited to {trip_name}")
+    other = next((p for p in pending if not p.get("quick") and (p.get("trip_id") or DEFAULT_TRIP) != payload.trip_id), None)
     if other:
         raise HTTPException(status_code=409, detail=f"{name or email} has yet to respond to the first join request ({other.get('trip_name') or 'Route Planning'}). Once they join, you can ask them to join another trip.")
     found = await _user_for(email)
     if found and found["user_id"] in (doc.get("crew") or []) and payload.trip_id in trips_of(doc, found["user_id"]):
         raise HTTPException(status_code=400, detail=f"{name or email} is already crew on {trip_name}")
-    await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key})
+    await db.crew_invites.delete_many({"invite_id": {"$in": [p["invite_id"] for p in same]}})
     if found:
         await apply_quick(user["user_id"], boat_id, doc, found["user_id"], name, payload.trip_id, roles, now.isoformat())
         return {"joined": True}
     # Not signed up yet: they join the moment they first sign in with this email.
-    await db.crew_invites.insert_one({"invite_id": f"quick_{key}_{boat_id}"[:120], "owner_id": user["user_id"], "boat_id": boat_id, "email": email,
+    await db.crew_invites.insert_one({"invite_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "email": email,
                                       "email_key": key, "name": name, "roles": roles, "trip_id": payload.trip_id, "trip_name": trip_name,
                                       "quick": True, "declined_at": None, "created_at": now.isoformat(),
                                       "expires_at": (now + timedelta(days=365)).isoformat()})

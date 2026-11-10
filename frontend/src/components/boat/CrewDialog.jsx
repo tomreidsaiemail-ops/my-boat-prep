@@ -185,7 +185,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
               badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
-              onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
+              onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), i.quick ? "Quick Invite removed" : "Invite cancelled")} />
           ))}
           </TripGroup>)); })()}
         </div>

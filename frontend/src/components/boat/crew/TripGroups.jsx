@@ -15,7 +15,7 @@ export const tripGroups = (trips, crew, invites) => {
 };
 
 export const TripLink = ({ trip, onOpen, testId }) => (
-  <button type="button" className="inline-flex max-w-full items-center gap-1 text-left text-xs font-extrabold text-[var(--navy)] underline underline-offset-2" onClick={() => onOpen(trip.id)} data-testid={testId}>
+  <button type="button" className="inline-flex min-w-0 max-w-full items-center gap-1 text-left text-xs font-extrabold text-[var(--navy)] underline underline-offset-2" onClick={() => onOpen(trip.id)} data-testid={testId}>
     <MapIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{trip.name}{trip.event || trip.start ? ` · ${[trip.event, trip.start].filter(Boolean).join(", ")}` : ""}</span>
   </button>
 );
@@ -24,7 +24,7 @@ const SHADES = ["border-sky-300 bg-sky-50", "border-amber-300 bg-amber-50"];
 
 export const TripGroup = ({ group, n, onOpen, onClear, children }) => (
   <section className={`flex flex-col gap-2 rounded-md border-2 p-2 ${SHADES[n % 2]}`} data-testid={`crew-trip-group-${group.id}`}>
-    <div className="flex items-center justify-between gap-2 px-1">
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-1">
       <TripLink trip={group} onOpen={(id) => { onOpen?.(); openList(id); }} testId={`crew-trip-link-${group.id}`} />
       <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{group.crew.length} joined · {group.invites.length} invited</span>
     </div>
