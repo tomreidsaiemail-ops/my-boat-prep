@@ -86,6 +86,7 @@ import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
 import { routeNotes } from "@/lib/routeNotes";
+import { DEFAULT_TRIP, isTripList, tripBoat, tripsWithPlans } from "@/lib/trips";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
@@ -320,6 +321,8 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
+  // Trip names on crew cards open their Route Planning list.
+  useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
@@ -795,7 +798,7 @@ export default function BoatPrep({ boatId, boats }) {
     const cat = org.byId[source.id]?.cat;
     const category = cat >= 0 ? listCats[cat].name : null;
     const stampNow = Date.now();
-    const made = fresh.map((name, n) => ({ id: `custom_${stampNow}${n ? `_${n}` : ""}`, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}) }));
+    const made = fresh.map((name, n) => ({ id: `custom_${stampNow}${n ? `_${n}` : ""}`, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}), ...(isTripList(source) ? { trip: true } : {}) }));
     mutate((s) => ({ ...s, registry: [...s.registry, ...made], data: { ...s.data, ...Object.fromEntries(made.map((l) => [l.id, copied.map((i) => ({ ...i }))])) } }));
     setActiveId(made[made.length - 1].id);
     setDialog(null);
@@ -864,6 +867,10 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
   const patchWeather = (patch) => mutate((s) => ({ ...s, boat: { ...s.boat, weather: { ...(s.boat.weather || {}), ...patch } } }), { count: false });
+  // A Route Planning copy keeps its own start, destination and timings in boat.trips.
+  const patchTrip = (id, fn) => mutate((s) => { const all = s.boat.trips || {}; return { ...s, boat: { ...s.boat, trips: { ...all, [id]: fn(all[id] || {}) } } }; }, { count: false });
+  const tripChange = (id) => (id === DEFAULT_TRIP ? updateBoat : (k, v) => patchTrip(id, (t) => ({ ...t, [k]: v })));
+  const tripWeather = (id) => (id === DEFAULT_TRIP ? patchWeather : (p) => patchTrip(id, (t) => ({ ...t, weather: { ...(t.weather || {}), ...p } })));
   const logDecision = () => {
     const entry = departureDecision(boat);
     mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] },
@@ -1044,10 +1051,10 @@ export default function BoatPrep({ boatId, boats }) {
             hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
             placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
           {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
-          {!crew && active.id === "routeHazards" && (
-            <NavigatorAsk key={boatId} boat={boat} onChange={updateBoat} onWeather={patchWeather} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+          {!crew && isTripList(active) && (
+            <NavigatorAsk key={`${boatId}-${active.id}`} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
-          {crew && active.id === "routeHazards" && <WeatherPhotos boat={boat} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
+          {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
@@ -1126,7 +1133,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
-      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />

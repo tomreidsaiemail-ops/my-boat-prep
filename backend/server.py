@@ -158,6 +158,12 @@ class BoatDetails(BaseModel):
     depart: Dict[str, Any] = Field(default_factory=dict)
     arrive: Dict[str, Any] = Field(default_factory=dict)
     weather: Dict[str, Any] = Field(default_factory=dict)
+    trips: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("trips", mode="before")
+    @classmethod
+    def trips_size(cls, v):
+        return v if isinstance(v, dict) and len(v) <= 30 and len(json.dumps(v, default=str)) <= 120000 else {}
 
     @field_validator(*TANK_FIELDS, mode="before")
     @classmethod

@@ -12,6 +12,7 @@ import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
 import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
+import { DEFAULT_TRIP } from "@/lib/trips";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -28,12 +29,18 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState([]);
   const [notes, setNotes] = useState("");
+  const [trip, setTrip] = useState(DEFAULT_TRIP);
+  const cur = trips.find((t) => t.id === trip) || { id: trip, name: "Route Planning", plan };
+  const savedFor = (id) => (id === DEFAULT_TRIP ? info.voyage_notes : info.trip_notes?.[id]) || "";
+  const planFor = (id) => (trips.find((t) => t.id === id) || { plan }).plan || "";
+  const tripPlan = cur.plan ?? plan;
+  const pickTrip = (id) => { setTrip(id); setNotes(savedFor(id) || planFor(id)); setTouched(false); setError(""); };
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -58,16 +65,20 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
     if (!open) return;
     setQueue([]); setSent({}); setCheck(null);
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || info.voyage_notes || plan); setTouched(!!draft?.notes);
+    const t = trips.some((x) => x.id === draft?.trip) ? draft.trip : trips[0]?.id || DEFAULT_TRIP;
+    setTrip(t);
+    setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || savedFor(t) || planFor(t)); setTouched(!!draft?.notes);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (open && !touched) setNotes(info.voyage_notes || plan); }, [info.voyage_notes]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open && !touched) setNotes(savedFor(trip) || tripPlan); }, [info.voyage_notes, info.trip_notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const editNotes = (v) => { setTouched(true); setNotes(v); };
 
   const shopping = shoppingFor(provisions, crewName);
   const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
-  const saveNotes = () => { if (online && notes.trim() !== (info.voyage_notes || "")) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes }).then(onInvited).catch(() => {}); };
+  const saveNotes = () => { if (online && notes.trim() !== savedFor(trip)) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes, trip_id: trip }).then(onInvited).catch(() => {}); };
+  // One join request at a time: a registered crew member still to answer another trip's invite can't be asked again yet.
+  const waitingOn = (mail) => (info.invites || []).find((i) => !i.declined_at && (i.email || "").toLowerCase() === mail.toLowerCase() && (i.trip_id || DEFAULT_TRIP) !== trip);
 
   const send = async (mode) => {
     if (!premium) { onUpgrade(); return; }
@@ -77,7 +88,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
     const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email" }, { timeout: 30000 });
+      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
@@ -111,7 +122,18 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
           <DialogTitle className="font-display text-xl font-extrabold">Invite crew to {name}</DialogTitle>
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
         </DialogHeader>
-        <RegisterPicker open={open} online={online} email={email} onPick={(c) => { setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); }} />
+        {trips.length > 1 && (
+          <label className="flex flex-col gap-1.5">
+            <span className="field-label">Which trip (Route Planning list)?</span>
+            <select value={trip} data-no-dirty onChange={(e) => pickTrip(e.target.value)} className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-trip-select">
+              {trips.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+        )}
+        <RegisterPicker open={open} online={online} email={email} onPick={(c) => {
+          const w = waitingOn(c.email || "");
+          if (w) { toast.warning(`${c.name || c.email} has yet to respond to the first join request (${w.trip_name || "Route Planning"}). Once they join, you can ask them to join another trip.`, { duration: 7000 }); return; }
+          setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); }} />
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-[2fr_3fr] items-end gap-2" data-testid="crew-invite-who-row">
             <label className="flex min-w-0 flex-col gap-1.5">
@@ -136,7 +158,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
           )}
         </div>
         <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={pickRoles}
-          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes }); })} />
+          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes, trip }); })} />
         {onSaveBriefing && (
           <label className="-mt-2 flex items-start gap-2 text-sm font-semibold text-[var(--navy)]" data-testid="role-briefing-toggle">
             <input type="checkbox" data-no-dirty checked={prompt} onChange={(e) => togglePrompt(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="role-briefing-toggle-input" />
@@ -148,8 +170,8 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
         <div className="flex flex-col gap-1.5">
           <div className="flex items-end justify-between gap-2">
             <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
-            {plan && notes !== plan && (
-              <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => { editNotes(plan); }} data-testid="voyage-notes-fill-btn">Fill from Route Planning</button>
+            {tripPlan && notes !== tripPlan && (
+              <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => { editNotes(tripPlan); }} data-testid="voyage-notes-fill-btn">Fill from {cur.name}</button>
             )}
           </div>
           <textarea id="voyage-notes" data-no-dirty value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
@@ -157,7 +179,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", roleGroups
             className="field-input !h-auto min-h-[9rem] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
           <p className="text-xs text-[var(--muted)]">Suggested from Route Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>
         </div>
-        <RsvpSummary crew={info.crew || []} />
+        <RsvpSummary crew={(info.crew || []).filter((m) => (m.trips || [DEFAULT_TRIP]).includes(trip)).map((m) => ({ ...m, rsvp: m.trip_rsvp?.[trip] || null }))} title={trips.length > 1 ? `${cur.name} replies` : undefined} />
         {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}
         {qrFor && (
           <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-[var(--navy)] bg-white p-4 text-center" data-testid="crew-invite-qr-panel">

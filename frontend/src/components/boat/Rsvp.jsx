@@ -12,14 +12,14 @@ export const RsvpBadge = ({ status, testId }) => {
   return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${s.cls}`} data-testid={testId}><Icon className="h-3 w-3" />{s.text}</span>;
 };
 
-export const RsvpSummary = ({ crew, onClear }) => {
+export const RsvpSummary = ({ crew, onClear, title = "Voyage replies", testId = "rsvp-summary" }) => {
   const by = (st) => crew.filter((m) => m.rsvp === st).map((m) => m.name || m.email);
   const yes = by("in"), no = by("out");
   if (!crew.length) return null;
   return (
-    <div className="flex flex-col gap-1 rounded-md border-[1.5px] border-[var(--line)] bg-slate-50 p-3 text-sm" data-testid="rsvp-summary">
+    <div className="flex flex-col gap-1 rounded-md border-[1.5px] border-[var(--line)] bg-slate-50 p-3 text-sm" data-testid={testId}>
       <div className="flex items-center justify-between gap-2">
-        <span className="field-label">Voyage replies</span>
+        <span className="field-label">{title}</span>
         {onClear && (yes.length + no.length > 0) && (
           <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={onClear} data-testid="rsvp-clear-btn">Clear replies</button>
         )}

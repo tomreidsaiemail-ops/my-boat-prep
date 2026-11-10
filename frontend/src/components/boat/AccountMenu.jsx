@@ -34,7 +34,9 @@ export const AccountMenu = () => {
   if (!user) return null;
   const leave = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
   const afterRsvp = () => { const v = pendingAgreement(); if (v) setTermsFor(v); else leave(); };
-  const signOut = () => { const send = pendingRsvp(); if (send) setRsvpSend(() => send); else afterRsvp(); };
+  const signOut = () => { const ask = pendingRsvp(); if (ask) setRsvpSend(ask); else afterRsvp(); };
+  // Crew on several trips are asked about each one they haven't answered.
+  const nextRsvp = () => { setRsvpSend(null); setTimeout(() => { const ask = pendingRsvp(); if (ask) setRsvpSend(ask); else afterRsvp(); }, 150); };
   return (
     <>
     <DropdownMenu onOpenChange={setMenuOpen}>
@@ -60,7 +62,7 @@ export const AccountMenu = () => {
         <DropdownMenuItem onSelect={signOut} data-testid="account-logout-item"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    <SignOutRsvpDialog send={rsvpSend} onDone={() => { setRsvpSend(null); afterRsvp(); }} onClose={() => setRsvpSend(null)} />
+    <SignOutRsvpDialog ask={rsvpSend} onDone={nextRsvp} onClose={() => setRsvpSend(null)} />
     <ConfirmDelete item={termsFor ? {} : null} testId="signout-terms" title="Boat Terms and Conditions not accepted yet"
       note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Zone Map Walk Through.`}
       confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); leave(); }} onClose={() => setTermsFor("")} />

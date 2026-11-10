@@ -32,7 +32,7 @@ export const PendingInvitePrompt = ({ boats }) => {
         forgetShownAgreements();
         await boats.refresh();
         boats.select(data.key);
-        toast.success(`Welcome aboard ${inv.vessel}! It's now in your boat picker`);
+        toast.success(inv.aboard ? `You're on ${inv.trip_name || "the trip"} too` : `Welcome aboard ${inv.vessel}! It's now in your boat picker`);
       } else toast.message(`Invite to ${inv.vessel} declined`);
       next();
     } catch (e) { toast.error(apiError(e, "Couldn't do that, please try again")); next(); }
@@ -43,14 +43,15 @@ export const PendingInvitePrompt = ({ boats }) => {
     <Dialog open onOpenChange={(o) => !o && act("later")}>
       <DialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="pending-invite-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl font-extrabold">Join the crew of {inv.vessel}?</DialogTitle>
+          <DialogTitle className="font-display text-xl font-extrabold">{inv.aboard ? `Join ${inv.trip_name || "another trip"} on ${inv.vessel}?` : `Join the crew of ${inv.vessel}?`}</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="pending-invite-text">
-            {inv.skipper} has invited you aboard {inv.vessel}. You'll see the boat's checklists on your phone and can tick items as you go.
+            {inv.aboard ? `${inv.skipper} has asked you to join another trip on ${inv.vessel}: ${inv.trip_name || "Route Planning"}.`
+              : `${inv.skipper} has invited you aboard ${inv.vessel}${inv.trip_name ? ` for ${inv.trip_name}` : ""}. You'll see the boat's checklists on your phone and can tick items as you go.`}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!!busy} onClick={() => act("accept")} data-testid="pending-invite-join-btn">
-            {busy === "accept" && <Loader2 className="h-4 w-4 animate-spin" />} Join {inv.vessel}
+            {busy === "accept" && <Loader2 className="h-4 w-4 animate-spin" />} {inv.aboard ? `Join ${inv.trip_name || "this trip"}` : `Join ${inv.vessel}`}
           </button>
           <div className="flex gap-2">
             <button type="button" className="btn-ghost h-11 flex-1 justify-center" disabled={!!busy} onClick={() => act("later")} data-testid="pending-invite-later-btn">Not now</button>

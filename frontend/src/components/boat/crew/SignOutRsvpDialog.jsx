@@ -5,11 +5,11 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Asked on sign out when crew haven't told the skipper whether they're coming.
-export const SignOutRsvpDialog = ({ send, onDone, onClose }) => {
+export const SignOutRsvpDialog = ({ ask, onDone, onClose }) => {
   const [busy, setBusy] = useState("");
   const answer = async (status) => {
     setBusy(status);
-    const ok = await send(status);
+    const ok = await ask.send(status);
     setBusy("");
     if (ok) onDone();
   };
@@ -20,11 +20,11 @@ export const SignOutRsvpDialog = ({ send, onDone, onClose }) => {
     </button>
   );
   return (
-    <AlertDialog open={!!send} onOpenChange={(o) => !o && !busy && onClose()}>
+    <AlertDialog open={!!ask} onOpenChange={(o) => !o && !busy && onClose()}>
       <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="signout-rsvp-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-display text-xl font-extrabold">Can you make it?</AlertDialogTitle>
-          <AlertDialogDescription className="text-left text-sm text-[var(--navy)]" data-testid="signout-rsvp-note">We&apos;ll inform the Skipper.</AlertDialogDescription>
+          <AlertDialogDescription className="text-left text-sm text-[var(--navy)]" data-testid="signout-rsvp-note">{ask?.name && <b className="block text-base">{ask.name}</b>}We&apos;ll inform the Skipper.</AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex gap-2">
           <Btn status="out" icon={X} cls="border-[var(--navy)] bg-white text-[var(--navy)]">No</Btn>

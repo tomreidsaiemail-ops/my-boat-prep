@@ -23,13 +23,16 @@ import { RegStatus } from "@/components/boat/register/RegStatus";
 import { RoleBubble } from "@/components/boat/crew/RoleBubble";
 import { CrewFacts, ReadyBadge, readyToSail } from "@/components/boat/crew/CrewFacts";
 import { CrewTotals } from "@/components/boat/crew/CrewTotals";
+import { TripGroup, TripLink, tripGroups } from "@/components/boat/crew/TripGroups";
+import { openList } from "@/lib/trips";
 
 const bubblesFor = (p, joined, testId) => (p.briefings || (p.roles || []).map((role) => ({ role, has_briefing: false })))
   .map((b, k) => <RoleBubble key={b.role} b={b} who={p.name || p.email} joined={joined} testId={`${testId}-role-${k}`} />);
 
-const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId }) => (
+const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId, top }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
     <div className="min-w-0 flex-1">
+      {top}
       <p className="truncate text-sm font-bold">{title}</p>
       <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
       {badge}
@@ -51,7 +54,7 @@ const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId
   </li>
 );
 
-export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas }) => {
+export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [inviting, setInviting] = useState(false);
   const [chartering, setChartering] = useState(false);
@@ -142,7 +145,6 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
             <Clock className="h-4 w-4" /> {info.watch_rota ? "Watch rota" : "Make watch rota"}
           </button>
         </div>
-        <RsvpSummary crew={info.crew} onClear={info.voyage_notes || info.crew.some((m) => m.rsvp) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null} />
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing
             {info.crew.length > 0 && (() => { const n = info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], provisions)).length; return (
@@ -154,10 +156,14 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
           </button>
         </div>
         <CrewTotals crew={info.crew} invites={info.invites} reg={reg} boat={weightBoat} />
-        <ul className="shrink-0 divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="crew-list">
-          {info.crew.length + info.invites.length === 0 && <li className="p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</li>}
-          {info.crew.map((m) => (
-            <Row key={m.user_id} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.rsvp || null} label="Remove from crew" testId={`crew-member-${m.user_id}`}
+        <div className="flex shrink-0 flex-col gap-3" data-testid="crew-list">
+          {info.crew.length + info.invites.length === 0 && <p className="rounded-md border-[1.5px] border-[var(--line)] p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</p>}
+          {(() => { const seen = new Set(); const tid = (base, g) => (seen.has(base) ? `${base}-trip-${g.id}` : (seen.add(base), base)); return tripGroups(trips, info.crew, info.invites).map((g, n) => (
+          <TripGroup key={g.id} group={g} n={n} onOpen={onClose}
+            onClear={n === 0 && info.crew.some((m) => Object.values(m.trip_rsvp || {}).some(Boolean)) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null}>
+          {g.crew.map((m) => (
+            <Row key={m.user_id} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
+              top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-member-${m.user_id}-trip-${g.id}`} />}
               badge={<>
                 {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
                 {regBadge(m.email, `crew-member-${m.user_id}`)}
@@ -170,14 +176,16 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
-          {info.invites.map((i) => (
+          {g.invites.map((i) => (
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+              top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-invite-${i.invite_id}-trip`} />}
               badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
           ))}
-        </ul>
+          </TripGroup>)); })()}
+        </div>
         {info.crew.length > 1 && (
           <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => sendBriefings(null)} disabled={!!sending || !online} data-testid="crew-briefings-all-btn">
             {sending === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Resend role briefings to all crew
@@ -185,7 +193,7 @@ export const CrewDialog = ({ open, boat, name, plan, roleGroups = [], briefings 
         )}
         <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
-        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} plan={plan} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
+        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {
             sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));

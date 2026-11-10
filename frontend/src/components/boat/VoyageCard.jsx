@@ -6,6 +6,26 @@ import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { RotaList } from "@/components/boat/RotaList";
 import { setPendingRsvp } from "@/lib/pendingAgreement";
+import { DEFAULT_TRIP, openList } from "@/lib/trips";
+
+const TripReply = ({ trip, many, busy, onReply }) => {
+  const Btn = ({ status, icon: Icon, children, on }) => (
+    <button type="button" onClick={() => onReply(trip, status)} disabled={!!busy} aria-pressed={trip.rsvp === status} data-testid={`voyage-rsvp-${status}-btn${trip.trip_id === DEFAULT_TRIP ? "" : `-${trip.trip_id}`}`}
+      className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-md border-2 text-sm font-bold [transition:background-color_.15s,color_.15s] ${trip.rsvp === status ? on : "border-[var(--navy)] bg-white text-[var(--navy)]"}`}>
+      {busy === `${trip.trip_id}:${status}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />} {children}
+    </button>
+  );
+  return (
+    <div className="flex flex-col gap-2" data-testid={`voyage-trip-${trip.trip_id}`}>
+      {many && <button type="button" className="self-start text-left text-sm font-extrabold text-[var(--navy)] underline underline-offset-2" onClick={() => openList(trip.trip_id)} data-testid={`voyage-trip-link-${trip.trip_id}`}>{trip.name}</button>}
+      {trip.notes && <p className="whitespace-pre-line text-sm leading-relaxed" data-testid={`voyage-notes-text${trip.trip_id === DEFAULT_TRIP ? "" : `-${trip.trip_id}`}`}><LinkedText text={trip.notes} testId="voyage-notes" /></p>}
+      <div className="flex gap-2">
+        <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I&apos;m in</Btn>
+        <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can&apos;t make it</Btn>
+      </div>
+    </div>
+  );
+};
 
 export const VoyageCard = ({ boat, online }) => {
   const { user } = useAuth();
@@ -23,39 +43,28 @@ export const VoyageCard = ({ boat, online }) => {
     return () => document.removeEventListener("visibilitychange", onFocus);
   }, [online, boat.owner_id, boat.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const reply = async (status) => {
+  const reply = async (trip, status) => {
     if (!online) { toast.error("Go online to reply to the skipper"); return false; }
-    setBusy(status);
+    setBusy(`${trip.trip_id}:${status}`);
     try {
-      await api.post("/crew/rsvp", { ...params, status });
-      setVoyage((v) => ({ ...v, rsvp: status }));
+      await api.post("/crew/rsvp", { ...params, status, trip_id: trip.trip_id });
+      setVoyage((v) => ({ ...v, trips: v.trips.map((t) => (t.trip_id === trip.trip_id ? { ...t, rsvp: status } : t)) }));
       toast.success(status === "in" ? "The skipper can see you're in" : "The skipper can see you can't make it");
       return true;
     } catch (e) { toast.error(apiError(e, "Couldn't send your reply, please try again")); return false; }
     finally { setBusy(""); }
   };
-  const unanswered = online && !!voyage && (!!voyage.notes || !!voyage.rota) && !voyage.rsvp;
-  useEffect(() => { setPendingRsvp(unanswered ? reply : null); return () => setPendingRsvp(null); }); // eslint-disable-line react-hooks/exhaustive-deps
+  // A trip shows when the skipper wrote notes for it, or the crew member was asked on a Route Planning copy; the watch rota shows on its own.
+  const trips = (voyage?.trips || []).filter((t) => t.notes || t.trip_id !== DEFAULT_TRIP);
+  const many = trips.length > 1 || trips.some((t) => t.trip_id !== DEFAULT_TRIP);
+  const open = online ? trips.find((t) => !t.rsvp) : null;
+  useEffect(() => { setPendingRsvp(open ? { name: many ? open.name : "", send: (status) => reply(open, status) } : null); return () => setPendingRsvp(null); }); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!voyage?.notes && !voyage?.rota) return null;
-  const Btn = ({ status, icon: Icon, children, on }) => (
-    <button type="button" onClick={() => reply(status)} disabled={!!busy} aria-pressed={voyage.rsvp === status} data-testid={`voyage-rsvp-${status}-btn`}
-      className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-md border-2 text-sm font-bold [transition:background-color_.15s,color_.15s] ${voyage.rsvp === status ? on : "border-[var(--navy)] bg-white text-[var(--navy)]"}`}>
-      {busy === status ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />} {children}
-    </button>
-  );
+  if (!trips.length && !voyage?.rota) return null;
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--navy)] bg-white p-3.5" data-testid="voyage-card">
-      <h2 className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-tight"><MapIcon className="h-4 w-4" /> Planned voyage</h2>
-      {voyage.notes && (
-        <>
-          <p className="whitespace-pre-line text-sm leading-relaxed" data-testid="voyage-notes-text"><LinkedText text={voyage.notes} testId="voyage-notes" /></p>
-          <div className="flex gap-2">
-            <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I'm in</Btn>
-            <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can't make it</Btn>
-          </div>
-        </>
-      )}
+      <h2 className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-tight"><MapIcon className="h-4 w-4" /> Planned voyage{many ? "s" : ""}</h2>
+      {trips.map((t) => <TripReply key={t.trip_id} trip={t} many={many} busy={busy} onReply={reply} />)}
       {voyage.rota && (
         <div className="flex flex-col gap-1.5" data-testid="voyage-rota">
           <p className="field-label">Watch rota <span className="normal-case tracking-normal text-[var(--muted)]">· your watches are highlighted</span></p>
