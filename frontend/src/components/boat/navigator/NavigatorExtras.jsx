@@ -23,23 +23,38 @@ export const NavigatorReminders = () => (
 
 import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
-const When = ({ id, label, value, onChange }) => (
+const When = ({ id, label, value, onChange, warn }) => (
   <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
-    <span className="field-label">{label}</span>
-    <input id={id} type="datetime-local" value={value || ""} onChange={(e) => onChange(e.target.value)} className="field-input w-full !text-sm" data-testid={`${id}-input`} />
+    <span className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</span>
+    <input id={id} type="datetime-local" value={value || ""} onChange={(e) => onChange(e.target.value)} aria-invalid={!!warn}
+      className={`field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`} data-testid={`${id}-input`} />
   </label>
 );
 
+// Departure and Start are normally the same day (racers leave the dock an hour or so before the start), so flag anything else.
+const day = (v) => (v || "").slice(0, 10);
+const timingAnomaly = (w) => {
+  if (!w.event_at) return "";
+  if (!w.depart_at) return "There's a Start date and time but no Departure date and time. Check this is right.";
+  if (day(w.depart_at) !== day(w.event_at)) return "Departure and Start are on different days. Check this is right.";
+  return "";
+};
+
 // Departure, optional race/event and where crew meet, kept with the passage plan.
-export const TripTiming = ({ weather = {}, onChange }) => (
+export const TripTiming = ({ weather = {}, onChange }) => {
+  const warn = timingAnomaly(weather);
+  // Start follows Departure until the skipper sets a different Start.
+  const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
+  return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
-    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={(v) => onChange({ depart_at: v })} />
+    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} />
     <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
       <span className="field-label">Event or Trip name (optional)</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. RPNYC Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className="field-input text-base normal-case tracking-normal" data-testid="navigator-event-name-input" />
     </label>
-    <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} />
+    <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
+    {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
     <When id="navigator-finish-at" label="Estimated Finish date and time (optional)" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} />
     <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
       <span className="field-label">Meet up details</span>
@@ -47,7 +62,8 @@ export const TripTiming = ({ weather = {}, onChange }) => (
         className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-meetup-input" />
     </label>
   </div>
-);
+  );
+};
 
 export const WhyGoing = ({ value, onChange }) => (
   <label className="flex flex-col gap-1.5">
