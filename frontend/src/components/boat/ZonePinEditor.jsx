@@ -62,7 +62,8 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const [pins, setPins] = useState([]);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { setPins(pic?.map.pins || []); setEditing(null); }, [pic]);
+  const [comment, setComment] = useState("");
+  useEffect(() => { setPins(pic?.map.pins || []); setComment(pic?.map.comment || ""); setEditing(null); }, [pic]);
   if (!pic) return null;
   // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
   const zone = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
@@ -92,7 +93,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
     });
     setBusy(true);
     try {
-      onMaps((await api.put(`/boats/${boat.boat_id}/zone-maps/${pic.map.id}/pins`, { pins: linked })).data.zone_maps);
+      onMaps((await api.put(`/boats/${boat.boat_id}/zone-maps/${pic.map.id}/pins`, { pins: linked, comment: comment.trim() })).data.zone_maps);
       toast.success(`${linked.length} ${linked.length === 1 ? "label" : "labels"} saved on this zone map`);
       onClose();
     } catch (e) { toast.error(apiError(e, "Couldn't save the labels")); } finally { setBusy(false); }
@@ -111,6 +112,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
           onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
         {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}
+        <label className="flex flex-col gap-1" htmlFor="zone-map-comment">
+          <span className="field-label">Skipper&apos;s comment</span>
+          <textarea id="zone-map-comment" value={comment} maxLength={500} rows={2} onChange={(e) => setComment(e.target.value)} placeholder="e.g. Above the Nav Desk is the switch board"
+            className="field-input min-h-[64px] py-2" data-testid="zone-map-comment-input" />
+          <span className="text-xs text-[var(--muted)]">Shown under this photo for every cupboard on it, including in the Crew walkthrough.</span>
+        </label>
         <DialogFooter className="gap-2">
           <button type="button" className="btn-ghost" onClick={onClose} data-testid="zone-pin-editor-cancel-btn">Cancel</button>
           <button type="button" className="btn-solid" disabled={busy || !!editing} onClick={save} data-testid="zone-pin-editor-save-btn">

@@ -29,7 +29,7 @@ async def _read_picture(file: UploadFile) -> bytes:
 
 def boat_maps(doc: dict) -> list:
     return [{"id": m["id"], "v": m.get("updated_at", ""), "pins": m.get("pins") or [], "name": m.get("name", ""), "colour": m.get("colour", ""),
-             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or [], "zone": m.get("zone", "")}
+             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or [], "zone": m.get("zone", ""), "comment": m.get("comment", "")}
             for m in fill_colours(doc.get("zone_maps") or [])]
 
 
@@ -50,6 +50,7 @@ class ZonePin(BaseModel):
 
 class ZonePinsIn(BaseModel):
     pins: List[ZonePin] = Field(max_length=60)
+    comment: Optional[str] = Field(default=None, max_length=500)
 
     @field_validator("pins")
     @classmethod
@@ -63,7 +64,10 @@ class ZonePinsIn(BaseModel):
 async def save_map_pins(boat_id: BoatPath, map_id: MapPath, payload: ZonePinsIn, user: dict = Depends(get_current_user)):
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     pins = [p.model_dump() for p in payload.pins]
-    res = await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {"$set": {"zone_maps.$.pins": pins}})
+    update = {"zone_maps.$.pins": pins}
+    if payload.comment is not None:
+        update["zone_maps.$.comment"] = payload.comment.strip()
+    res = await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {"$set": update})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Zone map not found")
     return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}

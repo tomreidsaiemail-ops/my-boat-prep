@@ -15,6 +15,7 @@ import { ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { OverviewMap, OverviewView } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
 import { CreateOverviewButton } from "@/components/boat/zone/CreateOverviewButton";
+import { RemoveMapConfirm, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
 const HELP_NAME = "admin - help panel - how to make a zone map";
@@ -121,6 +122,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   };
   const [failed, setFailed] = useState({});
   const [removing, setRemoving] = useState(null);
+  const [warnRemove, setWarnRemove] = useState(null);
   const all = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
   const overviews = all.filter((m) => m.kind === "overview");
   const own = all.filter((m) => m.kind !== "overview");
@@ -144,8 +146,9 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
     setExpanded((x) => !x);
   };
   if (!pics.length && !overviews.length && !admin && !canEdit) return null;
-  const removeMap = async (m) => {
+  const removeMap = async (m, sure = false) => {
     if (!online) { toast.error("You need a signal to remove a zone map"); return; }
+    if (!sure && (m.comment || "").trim()) { setWarnRemove(m); return; }
     setRemoving(m.id);
     try { onBoatMaps((await api.delete(`/boats/${boat.boat_id}/zone-maps/${m.id}`)).data.zone_maps); toast.success("Zone map removed"); }
     catch (e) { toast.error(apiError(e, "Couldn't remove the zone map")); } finally { setRemoving(null); }
@@ -198,6 +201,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           {p.map && !canEdit && p.map.name && <p className="text-sm font-bold text-[var(--navy)]" data-testid={`boat-zone-map-title-${p.key}`}>{p.map.name}</p>}
           <PinnedPhoto src={p.src} alt={p.map?.name || `Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
             onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
+          <SkipperComment text={p.map?.comment} testId={`boat-zone-map-comment-${p.key}`} />
           {p.map && canEdit && (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <MapNameField boat={boat} map={p.map} online={online} onMaps={onBoatMaps} />
@@ -226,10 +230,12 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         <DialogContent className="max-w-3xl rounded-lg border-2 border-[var(--navy)] p-2" data-testid="zone-map-dialog" aria-describedby={undefined}>
           <DialogTitle className="sr-only">Zone map</DialogTitle>
           {open?.swatches ? <OverviewView src={open.src} swatches={open.swatches} /> : open && <PinnedPhoto src={open.src} alt="Boat zone map" pins={pinsFor(open.map?.pins)} areas={areas} onPin={(pin) => { setOpen(null); tapPin(pin); }} highlight={open.highlight}
-            imgClass="max-h-[80vh] w-full object-contain" testId="zone-map-full" />}
+            imgClass="max-h-[75vh] w-full object-contain" testId="zone-map-full" />}
+          {open?.map && <SkipperComment text={open.map.comment} testId="zone-map-full-comment" />}
         </DialogContent>
       </Dialog>
       {walking && <CrewWalkthrough steps={steps} areas={areas} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff} />}
+      <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>
   );

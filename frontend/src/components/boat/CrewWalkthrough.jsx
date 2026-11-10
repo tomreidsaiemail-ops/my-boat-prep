@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { StopContents } from "@/components/boat/inventory/FolderPeek";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 // Every pin, photo by photo, in the order they were placed, less any the skipper left out of the walkthrough.
 export const walkSteps = (pics, skip = []) => pics.flatMap((p) => (p.map?.pins || []).map((pin) => ({ pic: p, pin })))
@@ -34,8 +35,10 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
           <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · here's what's stowed in this spot.</DialogDescription>
         </DialogHeader>
+        <CupboardName name={pinName(step.pin, areas)} testId="walkthrough-cupboard-name" />
         <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
+        <SkipperComment text={step.pic.map?.comment} testId="walkthrough-skipper-comment" />
         <WalkStopContents area={area} areas={areas} />
         {onTick && (
           <label className={`flex min-h-11 items-center gap-3 rounded-md border-[1.5px] px-3 font-bold ${ticked.includes(stopKey(step)) ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="walkthrough-seen">

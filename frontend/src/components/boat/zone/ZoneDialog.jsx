@@ -7,6 +7,7 @@ import { shrink } from "@/components/boat/PhotoPicker";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { LIGHT, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { zoneChecklist } from "@/lib/zoneChecklist";
+import { SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 export const slug = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -77,9 +78,12 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, 
           <DialogDescription>{zone.colour} zone. Photos of {zone.label} take {zone.colour}, and every cupboard you scan here is filed under {zone.label}.</DialogDescription>
         </DialogHeader>
         {big ? (
-          <div className="relative" data-testid={`${t}-big`}>
-            <img src={boatMapUrl(boat, big)} alt={big.name || zone.label} className="max-h-[60vh] w-full rounded-md object-contain" />
-            <button type="button" className="icon-btn absolute right-1 top-1 bg-white" aria-label="Back to the zone photos" onClick={() => setBig(null)} data-testid={`${t}-big-close`}><X className="h-5 w-5" /></button>
+          <div className="flex flex-col gap-2" data-testid={`${t}-big`}>
+            <div className="relative">
+              <img src={boatMapUrl(boat, big)} alt={big.name || zone.label} className="max-h-[60vh] w-full rounded-md object-contain" />
+              <button type="button" className="icon-btn absolute right-1 top-1 bg-white" aria-label="Back to the zone photos" onClick={() => setBig(null)} data-testid={`${t}-big-close`}><X className="h-5 w-5" /></button>
+            </div>
+            <SkipperComment text={big.comment} testId={`${t}-big-comment`} />
           </div>
         ) : photos.length ? (
           <div className="grid grid-cols-3 gap-2" data-testid={`${t}-photos`}>

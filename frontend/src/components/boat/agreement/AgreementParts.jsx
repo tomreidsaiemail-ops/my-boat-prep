@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { WalkStopContents } from "@/components/boat/CrewWalkthrough";
+import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 // One Zone Map Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
 const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
@@ -18,8 +19,10 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
         </button>
       </div>
       {open && <>
+        <CupboardName name={pinName(step.pin, areas)} testId={`agreement-stop-${n}-cupboard-name`} />
         <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
+        <SkipperComment text={step.pic.map?.comment} testId={`agreement-stop-${n}-skipper-comment`} />
         <WalkStopContents area={area} areas={areas} />
       </>}
     </li>
