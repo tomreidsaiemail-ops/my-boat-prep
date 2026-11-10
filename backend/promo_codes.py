@@ -193,6 +193,8 @@ async def edit_promo_code(code: CodePath, payload: PromoEditIn, admin: dict = De
         raise HTTPException(status_code=400, detail="Nothing has changed")
     upd = {"skipper_reward": reward} if jc else {}
     if percent != d["percent_off"] or expires_at != d["expires_at"]:
+        if expires_at <= datetime.now(timezone.utc).isoformat():
+            raise HTTPException(status_code=400, detail="This code has expired, pick a new expiry date")
         # Stripe discounts can't be changed, so the code moves to a new one; people who already used it keep what they paid.
         try:
             used = await asyncio.to_thread(_old_uses, d)

@@ -13,7 +13,7 @@ from email_service import send_email
 CODE = "JOINCREW"
 REWARD = 10
 NOT_CREW = "The JOINCREW code is only available to registered crew members who have accepted boat terms."
-OFFER = "Use coupon code JOINCREW to get a great discount, and bump your Skipper's \"magic credits\""
+OFFER = "Use coupon code JOINCREW to get a great discount, and bump your Skipper's \"magic credits\"."
 log = logging.getLogger(__name__)
 
 

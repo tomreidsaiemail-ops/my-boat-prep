@@ -767,3 +767,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Applied by coupon id at checkout; its Stripe promotion code is switched off (promo_codes.box_off) so it can't be typed on Stripe's page. First year only (coupon duration once), renews at full price.
 - On paid checkout (webhook or status poll) joincrew.award: each skipper of those boats gets +10 Magic generations (magic_quota.purchased_allowance), user_boats.joincrew_applied.{uid}=true, users.joincrew {at, session_id, email_key, skippers}.
 - Skipper-only JOINCREW tick (JoinCrewBadge) on crew cards and Crew Register rows; follows the user even after de-registering (matched by user / email_key).
+
+### 2026-06 JOINCREW follow-ups
+- JOINCREW offer line ("Use coupon code JOINCREW to get a great discount, and bump your Skipper's "magic credits".") in crew Boat Terms dialog (above accept), toast after accept, WhatsApp invite message (after "Join on My Boat Prep") and invite email; only while JOINCREW is live (joincrew.live) and, in terms, for crew who haven't used it / aren't Pro.
+- Skipper reward per JOINCREW (promo_codes.skipper_reward, default 10, editable in Admin); reward email to each rewarded skipper.
+- Admin promo codes: Edit (discount/expiry/reward; discount/expiry change moves to a new Stripe coupon, old promo switched off, prior_uses kept) and Delete (switch off in Stripe + remove); change log db.promo_code_log shown at bottom of /admin/promos.

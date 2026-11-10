@@ -1,0 +1,32 @@
+{
+  "summary": "Tested JOINCREW follow-ups end to end. Backend: 9/9 pytest pass (list includes log and JOINCREW skipper_reward; 403 for non-admin on GET/PUT/DELETE; create, edit, 'Nothing has changed', past-expiry 400, 422 validation, delete, then 404 on repeat delete/edit; deleted code gets 400 on /payments/promo/check; beta gets the exact JOINCREW NOT_CREW 400; free user who already used it gets 400; /boats/main/crew has joincrew_live true and the free member's badge shows reward 12, rewarded true). UI at 390px and 1920px: admin rows have Edit/Delete; created QATEST1, edit form opens inline with read-only code, prefilled 15% and 2027-06-30, the edit note shows and there is no reward input for this code; 'Nothing has changed' error shows; 15→30 updates the row, toast and log row 0; the delete dialog removes the row, logs 'deleted' and shows a toast. JOINCREW edit form shows the reward input (12); changing it to 10 and 21% to 20% updates the row and the log ('discount 21% → 20%; skipper reward +12 → +10 Magic'). Skipper (pro) sees the crew card badge 'JOINCREW · +12 Magic' and the reg-row-*-joincrew badge. The invite WhatsApp preview has the offer line straight after 'Join on My Boat Prep: https://myboatprep.com'. Invite email HTML was rendered locally (nothing sent) and contains the escaped offer. After unsetting users.joincrew, joincrew_offer became true. The crew Boat Terms dialog shows agreement-joincrew-offer above the accept buttons both before and after accepting. Accepting shows the 'Got a boat of your own?' toast plus the thanks toast.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "PUT /api/admin/promo-codes/{code}", "issue": "If a code has already expired and the admin changes only the percent, the expiry check is skipped (check=False) and Stripe is asked to make a coupon with a redeem_by in the past. That fails with the generic 'Stripe couldn't update that code'. A clearer message (e.g. 'This code has expired, pick a new expiry date') would help."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew Boat Terms accept (mobile)", "issues": ["After Accept, the Crew Registration prompt opens straight away and the 12s JOINCREW offer toast sits over the bottom of the registration form fields. Minor."]},
+      {"screen": "Offer text", "issues": ["The user's exact line ends with a period ('...\"magic credits\".'). JOINCREW_OFFER has no trailing period, so the WhatsApp message and the email line end without one. The dialog and toast add '. Enter it when you upgrade to Pro.' themselves. Check this with the user."]},
+      {"screen": "Invite email", "issues": ["The email has no literal 'Join on My Boat Prep: https://myboatprep.com' line. The offer paragraph sits right after the 'Open My Boat Prep' button, which is the closest equivalent. Acceptable."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_promo_edit_delete_joincrew.py", "/app/test_reports/pytest/promo_edit.xml"],
+  "action_items": [
+    "Optional: add a trailing period to JOINCREW_OFFER / joincrew.OFFER for the WhatsApp and email line, to match the user's exact text (then remove the extra '.' added in JoinCrewOffer.jsx).",
+    "Optional: when editing an already-expired code without moving its expiry date, give a clear 400 message.",
+    "Optional: delay the offer toast, or let it show only after the crew registration prompt, so it doesn't cover the form."
+  ],
+  "critical_code_review_comments": [
+    "promo_codes.edit_promo_code: the expiry check is skipped when the expiry is unchanged, so an expired code edited for percent only fails at Stripe with a generic message.",
+    "promo_code_log grows without limit (GET returns the latest 200). Fine for now.",
+    "joincrew.award: the reward email is sent inside the loop with try/except per skipper. Good. The award is idempotent through the $exists guard."
+  ],
+  "updated_files": ["/app/backend/tests/test_promo_edit_delete_joincrew.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created and deleted promo codes TESTQAPY1, QATEST1 and QATEST2 (all deleted; they stay in the change log). Left JOINCREW at 20%, expiry 01/01/2029, reward 10 (box_off true). Unset users.joincrew for test-user-free and user_boats.joincrew_applied.test-user-free (as instructed), so the crew badge no longer shows. Temporarily unset agreements.test-user-free.accepted_at on test-user-pro/main and then accepted again through the UI, so accepted_at now has a new timestamp (2026-11-10T22:13).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Free user picks the shared boat with boat-option-c_test-user-pro_main and must dismiss the crew-reg-later-btn prompt first. test-user-free now has NO users.joincrew, so test_crew_joincrew_badge in the new test file will fail until the record is set again (skippers:['test-user-pro'], reward:12) plus joincrew_applied. The admin promo page is /admin/promos. Don't delete JOINCREW or TEST88978X."
+}
