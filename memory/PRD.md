@@ -759,3 +759,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Trips per Route Planning copy (DONE, see CHANGELOG.md)
 
 ## 2026-06 Quick Invite + trip timing + Planning help (DONE, see CHANGELOG.md)
+
+## 2026-06 Role briefing tick box + Electrical MME + collapsible batteries (DONE, see CHANGELOG.md)

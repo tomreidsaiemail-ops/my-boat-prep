@@ -100,10 +100,10 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.dateLabel || "Service date"}</span>
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={`${k.prefix}-date-input`} /></label>
         </div>
-        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine || kind === "electrical_log" ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
         {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
         {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
-          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, 300))} />}
+          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
         {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}

@@ -1,0 +1,41 @@
+{
+  "summary": "Tested the crew agreement role briefing tick boxes, the Electrical Service inputs and Magic Marine Engineer, battery status sync and collapse between Electrical Service and Leaving the Dock, and regressions. Viewports 390x844 and 1920x800. Backend: new tests/test_electrical_ask.py, 6/6 pass (auth and 422 validation). One real AI call was made through the UI and returned an answer. (1) Crew agreement works. Crew test-user-free was given the roles Port Trim and Foredeck (headsail/spinnaker), both with briefings, and the agreement was reset with stops pre-ticked. Each unread briefing shows an unchecked agreement-role-k-read-checkbox labelled 'I've read the <role> briefing', not a button. Accept with 2 unread keeps the dialog open and shows agreement-briefing-warning: 'Please read your role briefings and tick each one off (Port Trim, Foredeck (headsail/spinnaker)) before you accept.' After ticking one, the warning updates to the singular wording and lists only the other role, and Accept is still blocked. Each tick shows the green 'Read 11/10/2026' badge and a toast. After both are ticked the warning disappears, Accept works, and the bar reads 'Boat Terms and Conditions accepted'. (2) Electrical Service works, with one input bug. The grey box electrical-inputs (rgb 226,232,240) sits above the engineer-ask-panel. 12V is selected by default. Typing 'Other' 36 selects no preset and persists after reload. The 5 kit checkboxes persist after reload. LevelPickers level-electrical-bat-engine/house-* and the toggle render. The MME sends voltage/equipment/batteries (body: voltage '24', equipment ['Bow thruster','Inverter'], batteries ['Engine battery: Full','House bank: 3/4']). There is no engine type warning, the answer card mentions 24V, inverter and the 3/4 house bank, and '49 Magic generations left' shows. Add to Notes fills electrical-notes-input but cuts it to 300 chars. (3) Sync works both ways. A level picked on Electrical shows on Leaving the Dock and the reverse. Collapsing on Electrical shows 'Engine battery: Full · House bank: 3/4' as the summary on both lists. Expanding on Leaving the Dock brings the big buttons back on both (localStorage mbp_battery_collapsed). (4) Regressions pass. With Engine type blank, the Engine Service MME shows engineer-type-warning. Leaving the Dock departure-log-checkbox is disabled with 'Pick a level for every tank and battery first.' until fuel/gas/water are picked. With the batteries collapsed (and set) it is enabled and logging works. The Arriving at Destination batteries render (arrive-battery-status). NOTE: the pro boat TEST_Kia Ora has no Leaving Dock / Arriving lists in its registry. Sync, departure and arrival were therefore tested with a temporary pro user TEST_el149, which was deleted afterwards.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "BoatDetails.battery_voltage", "issue": "Any string up to 8 chars is accepted, so '.' or 'abc' can be stored and sent to the AI as '.V'. Consider validating it as a number (e.g. pattern ^\\d{1,3}(\\.\\d)?$)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ElectricalInputs Voltage 'Other' input", "issue": "You can't type any value that starts with a preset. Typing '240' gives '0' and '12.6' gives '.6', and 120, 480, 24.5, 48.x fail the same way. When the partial value becomes '12'/'24'/'48', onChange sets the preset, so `other` turns false and the input value clears to ''. The next keystroke then starts from empty. '.' alone is also accepted and saved. Fix: keep a local draft string (or an 'other' flag) for the input, and only select a preset when its button is clicked, or commit on blur.", "selector": "[data-testid=electrical-voltage-other-input]", "priority": "MEDIUM"},
+      {"component": "Electrical MME Add to Notes", "issue": "The electrical notes input has maxLength 300 and addToNotes slices to 300, so a typical 1,300-char answer is cut mid-sentence. Engine Service uses NOTES_MAX 2000. Raise the electrical limit, or warn that it was trimmed.", "selector": "[data-testid=electrical-notes-input]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Crew agreement Accept when walkthrough stops are not ticked", "issue": "AcceptButtons only shows the 'Tick every stop of the Zone Map Walk Through first' toast. The role briefing warning does not appear until all stops are ticked, so a crew member with unread briefings and unticked stops is not told about the briefings on the first Accept. Consider showing agreement-briefing-warning alongside the toast (call save/briefing check before the ready check).", "affected_selectors": ["[data-testid=agreement-accept-btn]", "[data-testid=agreement-briefing-warning]"]}
+    ],
+    "design_issues": [
+      {"screen": "Electrical Service voltage row at 390px", "issues": ["The 'Other' input wraps onto its own line and is about 218px wide despite w-20, because .field-input overrides the width. The 'V' suffix then sits far right. A fixed width (e.g. !w-20) would keep it on the 12V/24V/48V row."]},
+      {"screen": "Arrival checks", "issues": ["The collapse state is global (mbp_battery_collapsed), so it also collapses the battery pickers on Arriving at Destination / Returning to Dock (arrive-battery-status). This is probably fine, but the spec only mentioned Electrical and Leaving the Dock."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_electrical_ask.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix the Voltage 'Other' input so that values like 240, 120, 12.6 and 24.5 can be typed (local draft state; presets only via buttons). Reject a non-numeric voltage",
+    "Show the role briefing warning on Accept even when walkthrough stops are not yet ticked (or show both messages)",
+    "Raise the electrical notes limit (300) so Add to Notes doesn't cut the MME answer mid-sentence (Engine uses 2000)",
+    "Optional: fix the 'Other' input width at 390px"
+  ],
+  "critical_code_review_comments": [
+    "ElectricalInputs Voltage: onChange(e.target.value || '12') plus `other = !PRESETS.includes(value)` makes the input controlled by the saved value, which causes the preset-prefix bug",
+    "CrewAgreementDialog Roles: the checkbox is checked={false} and replaced by a spinner while saving. That's fine, but the label testid is still 'agreement-role-k-read-btn' (legacy name)",
+    "BatteryStatus useCollapsed: each instance listens to a window event. It works, but there is no 'storage' event listener, so other open tabs won't sync (minor)",
+    "electricalContext batteries uses levelLabel 'not set' for unpicked batteries, which is sent to the AI as 'Engine battery: not set'. That's acceptable"
+  ],
+  "updated_files": ["/app/backend/tests/test_electrical_ask.py (new)"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "90% (all requested flows work; the Other voltage input bug and the 300-char notes truncation are open)"},
+  "seed_data_creation": "Crew agreement: temporarily set crew_roles.test-user-free to [Port Trim, Foredeck (headsail/spinnaker)] and reset agreements.test-user-free. Both were RESTORED: the agreement is back to the original accepted_at 2026-11-10T06:42:10.719857, the 2 stops are restored, and crew_roles.test-user-free is unset as it was. The briefing_reads I created were deleted, and walkthroughs.at/full_at were reset to 2026-11-10T06:42:10. Pro boat TEST_Kia Ora: battery_voltage/electrical were unset and boat.depart was reset to {} (its original state). A temporary user TEST_el149 (session TEST_sess_el149) and all its docs (users, user_sessions, user_boats, ai_usage, magic_quota, ai_drafts, user_activity) were deleted.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test-user-pro boat 'main' (TEST_Kia Ora) has no leavingDock/arrivingDest/returningDock in its registry, so use a temp pro user (insert users + user_sessions with tos_version '2026-06-magic50') to test Leaving the Dock. Admin test-admin-1 must re-accept the ToS (version outdated). The crew agreement popup opens automatically on load for crew with an unaccepted agreement. Ticking a walkthrough stop opens the CrewWalkthrough overlay, so pre-set agreements.<uid>.stops in the DB to make it 'ready'."
+}

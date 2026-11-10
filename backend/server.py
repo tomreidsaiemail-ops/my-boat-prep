@@ -153,7 +153,7 @@ class BoatDetails(BaseModel):
     gas_kg: str = ""
     gas_extra: str = ""
     cruise_kn: str = "6"
-    battery_voltage: str = Field(default="12", max_length=8)
+    battery_voltage: str = Field(default="12", pattern=r"^(\d{1,3}(\.\d)?)?$")
     electrical: Dict[str, bool] = {}
     boat_weight: str = ""
     crew_weight: str = ""

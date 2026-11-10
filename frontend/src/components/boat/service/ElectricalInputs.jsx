@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BatteryStatus, batterySummary } from "@/components/boat/departure/BatteryStatus";
 import { SetupPrompt } from "@/components/boat/departure/DepartureCheck";
 
@@ -15,18 +16,27 @@ export const electricalContext = (boat) => ({
 });
 
 const Voltage = ({ value, onChange }) => {
-  const other = !PRESETS.includes(value);
+  const [draft, setDraft] = useState(PRESETS.includes(value) ? "" : value);
+  const other = !PRESETS.includes(value) || draft !== "";
+  const typed = (v) => {
+    if (!/^\d{0,3}([.,]\d?)?$/.test(v)) return;
+    const clean = v.replace(",", ".");
+    setDraft(clean);
+    if (/^\d{1,3}(\.\d)?$/.test(clean) && Number(clean) > 0) onChange(clean);
+  };
+  const preset = (v) => { setDraft(""); onChange(v); };
   return (
     <div className="flex flex-col gap-1.5" data-testid="electrical-voltage">
       <span className="field-label">Boat battery voltage</span>
       <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Boat battery voltage">
         {PRESETS.map((v) => (
-          <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)} data-testid={`electrical-voltage-${v}`}
-            className={`h-10 rounded-md border-2 px-3 text-sm font-extrabold ${value === v ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white"}`}>{v}V</button>
+          <button key={v} type="button" role="radio" aria-checked={!other && value === v} onClick={() => preset(v)} data-testid={`electrical-voltage-${v}`}
+            className={`h-10 rounded-md border-2 px-3 text-sm font-extrabold ${!other && value === v ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white"}`}>{v}V</button>
         ))}
         <label className="flex items-center gap-1 text-sm font-bold">
-          <input value={other ? value : ""} onChange={(e) => /^\d{0,3}([.,]\d?)?$/.test(e.target.value) && onChange(e.target.value.replace(",", ".") || "12")} inputMode="decimal" placeholder="Other"
-            className={`field-input h-10 w-20 px-2 text-sm ${other ? "!border-[var(--navy)]" : ""}`} aria-label="Other voltage" data-testid="electrical-voltage-other-input" />V
+          <input value={draft} onChange={(e) => typed(e.target.value)} onBlur={() => { if (!draft || !/^\d{1,3}(\.\d)?$/.test(draft) || !Number(draft)) preset(PRESETS.includes(value) && !draft ? value : "12"); }}
+            inputMode="decimal" placeholder="Other"
+            className={`field-input h-10 !w-20 px-2 text-sm ${other ? "!border-[var(--navy)]" : ""}`} aria-label="Other voltage" data-testid="electrical-voltage-other-input" />V
         </label>
       </div>
     </div>

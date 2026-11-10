@@ -50,12 +50,12 @@ export const AgreementWalkthrough = ({ steps, areas, ticked, onChange, onOpenSto
   );
 };
 
-export const AcceptButtons = ({ accepted, ready, busy, onAccept, onLater }) => {
+export const AcceptButtons = ({ accepted, ready, busy, onAccept, onLater, onTry = () => true }) => {
   if (accepted) return <button type="button" className="btn-solid h-12 justify-center" onClick={onLater} data-testid="agreement-close-btn">Close</button>;
   return (
     <div className="flex flex-col gap-2">
       <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!!busy}
-        onClick={() => (ready ? onAccept() : toast.error("Tick every stop of the Zone Map Walk Through first"))} data-testid="agreement-accept-btn">
+        onClick={() => { if (!onTry()) return; if (ready) onAccept(); else toast.error("Tick every stop of the Zone Map Walk Through first"); }} data-testid="agreement-accept-btn">
         {busy === "accept" && <Loader2 className="h-4 w-4 animate-spin" />} I have read and accept
       </button>
       <button type="button" className="btn-ghost h-11 justify-center gap-2" disabled={!!busy} onClick={onLater} data-testid="agreement-later-btn">

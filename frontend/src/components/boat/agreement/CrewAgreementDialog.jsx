@@ -63,12 +63,14 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
 
   const unread = (data.roles || []).filter((r) => r.briefing && !r.read_at);
   const [briefWarn, setBriefWarn] = useState(false);
+  const briefingsDone = () => {
+    if (!unread.length) return true;
+    setBriefWarn(true);
+    document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
+  };
   const save = async (accept) => {
-    if (accept && unread.length) {
-      setBriefWarn(true);
-      document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    if (accept && !briefingsDone()) return;
     const same = !accept && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
     if (accepted || (same && data.agreement)) { onClose(); return; }
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
@@ -114,7 +116,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           )}
           <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />
         </Section>
-        <AcceptButtons accepted={accepted} ready={ready} busy={busy} onAccept={() => save(true)} onLater={() => save(false)} />
+        <AcceptButtons accepted={accepted} ready={ready} busy={busy} onTry={briefingsDone} onAccept={() => save(true)} onLater={() => save(false)} />
         {walking !== null && <CrewWalkthrough steps={steps} areas={areas} boat={boat} start={walking} ticked={ticked} onTick={tick} onSeen={seen} onClose={() => setWalking(null)} onOpenArea={() => {}} />}
       </DialogContent>
     </Dialog>
