@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { TopUpHistory } from "@/components/boat/TopUpHistory";
+import { PromoCodeField, discounted } from "@/components/boat/plan/PromoCodeField";
 
 const PERKS = ["No ads", "Export All lists in one go", "Email PDF and Email Ship's Log (with Shore Contact)",
   "Create your own lists", "Clone lists", "Rename lists", "More than one boat", "Crew sharing", "Boat inventory and area tags", "Hide help panels", "Unlimited My To Do List items"];
@@ -46,15 +47,19 @@ export const PlanDialog = ({ open, reason, onClose }) => {
   const { user, setUser } = useAuth();
   const [busy, setBusy] = useState(false);
   const [offer, setOffer] = useState(null);
+  const [promo, setPromo] = useState(null);
   useEffect(() => { if (open && user && !user.premium) api.get("/payments/offer").then(({ data }) => setOffer(data)).catch(() => {}); }, [open, user]);
   if (!user) return null;
   const full = offer?.price ? offer.price.toFixed(2) : "49.99";
   const first = offer?.first5000_price ? offer.first5000_price.toFixed(2) : "24.99";
+  const base = Number(offer?.first5000 ? first : full);
+  const label = promo ? `Upgrade to Pro: NZD ${discounted(base, promo.percent_off).toFixed(2)} (${promo.code})`
+    : offer?.first5000 ? `Upgrade to Pro: NZD ${first} (50% off)` : `Upgrade to Pro: NZD ${full} / year`;
 
   const upgrade = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post("/payments/checkout", { origin_url: window.location.origin });
+      const { data } = await api.post("/payments/checkout", { origin_url: window.location.origin, promo_code: promo?.code || "" });
       window.location.href = data.checkout_url;
     } catch (e) {
       toast.error(e.response?.data?.detail || "Couldn't start checkout. Check your signal and try again.");
@@ -90,11 +95,13 @@ export const PlanDialog = ({ open, reason, onClose }) => {
               <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950" data-testid="plan-first5000-offer">
                 <b>FIRST5000 launch offer: 50% off.</b> NZD {first} for your first year and NZD {first} again at your first renewal, then NZD {full} a year.</p>
             )}
+            <PromoCodeField base={base} applied={promo} onApplied={setPromo} disabled={!navigator.onLine} />
             <button type="button" className="btn-solid mt-1 w-full" onClick={upgrade} disabled={busy || !navigator.onLine} data-testid="plan-upgrade-btn">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
-              {!navigator.onLine ? "Go online to upgrade" : offer?.first5000 ? `Upgrade to Pro: NZD ${first} (50% off)` : `Upgrade to Pro: NZD ${full} / year`}
+              {!navigator.onLine ? "Go online to upgrade" : label}
             </button>
-            <p className="text-center text-xs text-[var(--muted)]" data-testid="plan-promo-hint">Have a promo code? Enter it on the Stripe payment page{offer?.first5000 ? ", it comes off the launch price too" : ""}.</p>
+            <p className="text-center text-xs text-[var(--muted)]" data-testid="plan-promo-hint">
+              {promo ? "Your code is already applied on the Stripe payment page." : `Codes come off your first year${offer?.first5000 ? ", on top of the launch price" : ""}.`}</p>
           </div>
         )}
       </DialogContent>

@@ -50,6 +50,29 @@ async def public_offer():
 
 class CheckoutIn(BaseModel):
     origin_url: str = Field(max_length=200)
+    promo_code: str = Field(default="", max_length=40)
+
+
+class PromoCheckIn(BaseModel):
+    code: str = Field(min_length=1, max_length=40)
+
+
+async def _local_promo(code: str):
+    d = await db.promo_codes.find_one({"code": code.strip().upper()}, {"_id": 0})
+    return d if d and d["expires_at"] > datetime.now(timezone.utc).isoformat() else None
+
+
+@router.post("/payments/promo/check")
+async def check_promo(payload: PromoCheckIn, _: dict = Depends(get_current_user)):
+    code = payload.code.strip().upper()
+    if code == "FIRST5000":
+        if await first5000_running():
+            return {"code": code, "automatic": True, "message": "FIRST5000 is already applied: 50% off your first year and first renewal."}
+        raise HTTPException(status_code=400, detail="The FIRST5000 launch offer has ended")
+    d = await _local_promo(code)
+    if not d:
+        raise HTTPException(status_code=400, detail=f"{code} isn't a valid promo code, or it has expired")
+    return {"code": d["code"], "percent_off": d["percent_off"], "automatic": False}
 
 
 class TopUpIn(CheckoutIn):
@@ -76,7 +99,11 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
     price, full = await asyncio.gather(asyncio.to_thread(_price, lookup), asyncio.to_thread(_price, PRO_LOOKUP_KEY))
     if not price or not full:
         raise HTTPException(status_code=500, detail="Pro plan not configured")
-    meta = {"user_id": user["user_id"], "lookup_key": lookup, "first5000": "1" if launch else "0"}
+    code = payload.promo_code.strip().upper()
+    promo = await _local_promo(code) if code and code != "FIRST5000" else None
+    if code and code != "FIRST5000" and not promo:
+        raise HTTPException(status_code=400, detail=f"{code} isn't a valid promo code, or it has expired")
+    meta = {"user_id": user["user_id"], "lookup_key": lookup, "first5000": "1" if launch else "0", **({"promo_code": promo["code"]} if promo else {})}
     f, p = full.unit_amount / 100, price.unit_amount / 100
     note = (f"FIRST5000 launch offer: 50% off. You pay NZD {p:.2f} for your first year and NZD {p:.2f} again at your first renewal, "
             f"then NZD {f:.2f} a year. A promo code comes off this year's NZD {p:.2f}." if launch
@@ -85,9 +112,14 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         line_items=[{"price": price.id, "quantity": 1}], mode="subscription",
         success_url=f"{origin}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{origin}/payment/cancel", metadata=meta, subscription_data={"metadata": meta},
-        client_reference_id=user["user_id"], adaptive_pricing={"enabled": False}, allow_promotion_codes=True,
+        client_reference_id=user["user_id"], adaptive_pricing={"enabled": False},
         custom_text={"submit": {"message": note}},
     )
+    # Stripe takes either a pre-applied code or the code box on its page, not both.
+    if promo:
+        kwargs["discounts"] = [{"promotion_code": promo["stripe_promo_id"]}]
+    else:
+        kwargs["allow_promotion_codes"] = True
     if user.get("stripe_customer_id"):
         kwargs["customer"] = user["stripe_customer_id"]
     else:
