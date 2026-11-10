@@ -114,3 +114,6 @@
 - Agreement walkthrough auto-ticks each stop as shown (CrewWalkthrough onSeen/start); "Carry on" resumes at first unticked; ticking an unseen stop opens the walkthrough at that stop (AgreementWalkthrough onOpenStop). "Walk through again" when all ticked.
 - Cupboard photo: area.photo {id,v}; POST/GET /api/boats/{boat_id}/area-photos (backend/area_photos.py, boat doc area_photos, unused pruned after 1 day, max 80); copied into charter copies. Field in Edit cupboard (skipper only); shown on walkthrough stops after the cupboard comment; inventory row image icon replaces the Move icon; "Move Cupboard Items" button in Edit cupboard saves then opens Move. Tested iteration_146.
 - 2026-06 follow-up: accepting an invite clears the in-memory "agreement shown" Set (forgetShownAgreements) so re-joining in the same page load still opens the T&C. Verified preview: fresh join opens T&C; 2nd join offers quick accept.
+
+## 2026-06 Sign-out RSVP ask
+- Crew signing out who have not replied to the voyage (VoyageCard shown: notes or rota, online, no rsvp) get "Can you make it? We'll inform the Skipper." (SignOutRsvpDialog): Yes = I'm in, No = Can't make it (same POST /crew/rsvp as the card), Back = stay. Then the T&C reminder, unsynced check, sign out. lib/pendingAgreement.js holds pendingRsvp. Self-tested Yes/No/Back.

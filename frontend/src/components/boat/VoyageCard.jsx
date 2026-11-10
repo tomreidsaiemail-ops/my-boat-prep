@@ -5,6 +5,7 @@ import { Check, Loader2, Map as MapIcon, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { RotaList } from "@/components/boat/RotaList";
+import { setPendingRsvp } from "@/lib/pendingAgreement";
 
 export const VoyageCard = ({ boat, online }) => {
   const { user } = useAuth();
@@ -22,17 +23,21 @@ export const VoyageCard = ({ boat, online }) => {
     return () => document.removeEventListener("visibilitychange", onFocus);
   }, [online, boat.owner_id, boat.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!voyage?.notes && !voyage?.rota) return null;
   const reply = async (status) => {
-    if (!online) { toast.error("Go online to reply to the skipper"); return; }
+    if (!online) { toast.error("Go online to reply to the skipper"); return false; }
     setBusy(status);
     try {
       await api.post("/crew/rsvp", { ...params, status });
       setVoyage((v) => ({ ...v, rsvp: status }));
       toast.success(status === "in" ? "The skipper can see you're in" : "The skipper can see you can't make it");
-    } catch (e) { toast.error(apiError(e, "Couldn't send your reply, please try again")); }
+      return true;
+    } catch (e) { toast.error(apiError(e, "Couldn't send your reply, please try again")); return false; }
     finally { setBusy(""); }
   };
+  const unanswered = online && !!voyage && (!!voyage.notes || !!voyage.rota) && !voyage.rsvp;
+  useEffect(() => { setPendingRsvp(unanswered ? reply : null); return () => setPendingRsvp(null); }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!voyage?.notes && !voyage?.rota) return null;
   const Btn = ({ status, icon: Icon, children, on }) => (
     <button type="button" onClick={() => reply(status)} disabled={!!busy} aria-pressed={voyage.rsvp === status} data-testid={`voyage-rsvp-${status}-btn`}
       className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-md border-2 text-sm font-bold [transition:background-color_.15s,color_.15s] ${voyage.rsvp === status ? on : "border-[var(--navy)] bg-white text-[var(--navy)]"}`}>
