@@ -1,7 +1,7 @@
 export const MEETUP_DEFAULT = "Pier X, Berth YYY, be onboard no later than ONE HOUR before DEPARTURE, as that is when the crew briefing will begin.";
 export const ROUTE_NOTE = "These planning details and more are on the Route Planning list when you log into My Boat Prep.";
 
-const when = (v) => {
+export const when = (v) => {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v || "")) return "";
   try { return new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(v)); } catch { return v; }
 };
@@ -16,7 +16,8 @@ export const routeNotes = (boat = {}) => {
     t(boat.route_dest) && `Destination: ${t(boat.route_dest)}`,
     t(w.why) && `Why we're going: ${t(w.why)}`,
     when(w.depart_at) && `Departure: ${when(w.depart_at)}`,
-    event && `Event: ${event}`,
+    event && `Event or trip: ${event}`,
+    when(w.finish_at) && `Estimated finish: ${when(w.finish_at)}`,
   ].filter(Boolean);
   if (!lines.length) return "";
   const meet = t(w.meetup ?? MEETUP_DEFAULT);

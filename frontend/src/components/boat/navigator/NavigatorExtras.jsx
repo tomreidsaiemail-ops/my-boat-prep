@@ -35,11 +35,12 @@ export const TripTiming = ({ weather = {}, onChange }) => (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
     <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={(v) => onChange({ depart_at: v })} />
     <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
-      <span className="field-label">Event name (optional)</span>
+      <span className="field-label">Event or Trip name (optional)</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. RPNYC Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className="field-input text-base normal-case tracking-normal" data-testid="navigator-event-name-input" />
     </label>
-    <When id="navigator-event-at" label="Event date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} />
+    <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} />
+    <When id="navigator-finish-at" label="Estimated Finish date and time (optional)" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} />
     <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
       <span className="field-label">Meet up details</span>
       <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}

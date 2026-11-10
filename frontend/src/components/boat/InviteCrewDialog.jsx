@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Link2, Loader2, Mail, MessageCircle, QrCode } from "lucide-react";
+import { Link2, Loader2, Mail, MessageCircle, QrCode, Zap } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
@@ -78,6 +78,22 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
   const saveNotes = () => { if (online && notes.trim() !== savedFor(trip)) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes, trip_id: trip }).then(onInvited).catch(() => {}); };
   // One join request at a time: a registered crew member still to answer another trip's invite can't be asked again yet.
+  const [picked, setPicked] = useState(null);
+  const [quickBusy, setQuickBusy] = useState(false);
+  const quick = async () => {
+    if (!premium) { onUpgrade(); return; }
+    if (!online) { setError("You're offline. Invite crew when you have signal."); return; }
+    if (!picked || (picked.email || "").toLowerCase() !== email.trim().toLowerCase()) { setError("Pick a registered crew member at the top first, then tap Quick Invite"); return; }
+    setQuickBusy(true); setError("");
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/quick-invite`, { entry_id: picked.entry_id, trip_id: trip, trip_name: cur.name, roles }, { timeout: 30000 });
+      toast.success(`${picked.name} is in for ${cur.name} (Quick Invite)${data.joined ? "" : ". They join the moment they first sign in"}. Nothing was sent to them.`);
+      sessionStorage.removeItem(INVITE_DRAFT);
+      setCrewName(""); setEmail(""); setRoles([]); setPicked(null);
+      onInvited({ name: picked.name, email: picked.email });
+    } catch (err) { setError(apiError(err, "Couldn't Quick Invite them, please try again")); }
+    finally { setQuickBusy(false); }
+  };
   const waitingOn = (mail) => (info.invites || []).find((i) => !i.declined_at && (i.email || "").toLowerCase() === mail.toLowerCase() && (i.trip_id || DEFAULT_TRIP) !== trip);
 
   const send = async (mode) => {
@@ -133,7 +149,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
         <RegisterPicker open={open} online={online} email={email} onPick={(c) => {
           const w = waitingOn(c.email || "");
           if (w) { toast.warning(`${c.name || c.email} has yet to respond to the first join request (${w.trip_name || "Route Planning"}). Once they join, you can ask them to join another trip.`, { duration: 7000 }); return; }
-          setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); }} />
+          setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); setPicked(c); }} />
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-[2fr_3fr] items-end gap-2" data-testid="crew-invite-who-row">
             <label className="flex min-w-0 flex-col gap-1.5">
@@ -195,6 +211,10 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
           <Btn mode="qr" icon={QrCode}>Show QR code to scan</Btn>
           <Btn mode="message" icon={MessageCircle}>Copy WhatsApp message</Btn>
           <Btn mode="link" icon={Link2}>Copy link only</Btn>
+          <button type="button" className="btn-ghost h-12 w-full justify-center gap-2 border-[var(--green)] text-emerald-800" disabled={!!busy || quickBusy} onClick={quick} data-testid="crew-invite-quick-btn">
+            {quickBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />} Quick Invite
+          </button>
+          <p className="text-xs text-[var(--muted)]" data-testid="crew-invite-quick-hint">Quick Invite: pick a registered crew member at the top. They&apos;re added as joined and &quot;I&apos;m in&quot; for this trip, with the walkthrough pending. Nothing is sent to them.</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="field-label">WhatsApp message preview</span>

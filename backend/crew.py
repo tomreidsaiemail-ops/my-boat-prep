@@ -33,6 +33,14 @@ def trip_rsvps(doc: dict, uid: str) -> dict:
     return out
 
 
+def trip_quick(doc: dict, uid: str) -> dict:
+    """Trips where the skipper's Quick Invite said I'm in for them (until they reply themselves)."""
+    out = {DEFAULT_TRIP: ((doc.get("rsvp") or {}).get(uid) or {}).get("by") == "quick"}
+    for t, m in (doc.get("trip_rsvp") or {}).items():
+        out[t] = ((m or {}).get(uid) or {}).get("by") == "quick"
+    return {t: True for t, q in out.items() if q}
+
+
 def trip_notes(doc: dict) -> dict:
     return {**(doc.get("trip_notes") or {}), DEFAULT_TRIP: doc.get("voyage_notes", "")}
 
@@ -303,7 +311,7 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     roles = doc.get("crew_roles") or {}
     now = datetime.now(timezone.utc).isoformat()
     invites = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "expires_at": {"$gt": now}},
-                                         {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1, "trip_id": 1, "trip_name": 1}).to_list(100)
+                                         {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1, "trip_id": 1, "trip_name": 1, "quick": 1}).to_list(100)
     rsvp = doc.get("rsvp") or {}
     names, agreements = doc.get("crew_names") or {}, doc.get("agreements") or {}
     prep = await crew_prep_progress(user["user_id"], boat_id)
@@ -328,7 +336,7 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
         i["briefings"] = role_info(None, i.get("roles") or [])
     crew = [{**m, "name": names.get(m["user_id"]) or m.get("name"), "roles": roles.get(m["user_id"], []), "rsvp": (rsvp.get(m["user_id"]) or {}).get("status"),
              "agreement": agreements.get(m["user_id"]), "shopping_sent": shop.get(email_key(m.get("email", ""))), "briefings": role_info(m["user_id"], roles.get(m["user_id"], [])),
-             "trips": trips_of(doc, m["user_id"]), "trip_rsvp": trip_rsvps(doc, m["user_id"]),
+             "trips": trips_of(doc, m["user_id"]), "trip_rsvp": trip_rsvps(doc, m["user_id"]), "trip_quick": trip_quick(doc, m["user_id"]),
              **(joined.get(m["user_id"]) or {})} for m in members]
     return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""), "trip_notes": trip_notes(doc),
@@ -428,8 +436,8 @@ async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,
     reg = doc.get("registry") or []
     names = {lst.get("id"): lst.get("name") for lst in reg}
     order = {lst.get("id"): n for n, lst in enumerate(reg)}
-    rs, notes = trip_rsvps(doc, uid), trip_notes(doc)
-    trips = [{"trip_id": t, "name": names.get(t) or "Route Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t)}
+    rs, notes, quick = trip_rsvps(doc, uid), trip_notes(doc), trip_quick(doc, uid)
+    trips = [{"trip_id": t, "name": names.get(t) or "Route Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t), "rsvp_quick": bool(quick.get(t))}
              for t in sorted(trips_of(doc, uid), key=lambda t: order.get(t, len(order)))]
     return {"notes": doc.get("voyage_notes", ""), "rsvp": rs[DEFAULT_TRIP], "rota": doc.get("watch_rota"), "trips": trips}
 
@@ -512,7 +520,7 @@ InvitePath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 
 @router.get("/crew/pending")
 async def pending_invites(user: dict = Depends(get_current_user)):
-    invs = await db.crew_invites.find({"email_key": email_key(user["email"]), "declined_at": None, "owner_id": {"$ne": user["user_id"]},
+    invs = await db.crew_invites.find({"email_key": email_key(user["email"]), "declined_at": None, "owner_id": {"$ne": user["user_id"]}, "quick": {"$ne": True},
                                        "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0}).sort("created_at", 1).to_list(20)
     out = []
     for inv in invs:

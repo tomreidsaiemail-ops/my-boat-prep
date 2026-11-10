@@ -64,6 +64,7 @@ from stores_ai import router as stores_ai_router  # noqa: E402
 from go_decision import router as go_decision_router  # noqa: E402
 import setup_stripe  # noqa: E402
 from distress_email import router as distress_email_router  # noqa: E402
+from quick_invite import router as quick_invite_router, claim_quick  # noqa: E402
 from area_photos import router as area_photos_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
@@ -439,6 +440,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
 @api_router.get("/me/boats")
 async def list_boats(user: dict = Depends(get_current_user)):
     await claim_charters(user)
+    await claim_quick(user)
     proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
@@ -594,6 +596,7 @@ app.include_router(quota.router)
 app.include_router(crew_register_router)
 app.include_router(zone_schematics_router)
 app.include_router(distress_email_router)
+app.include_router(quick_invite_router)
 app.include_router(area_photos_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 

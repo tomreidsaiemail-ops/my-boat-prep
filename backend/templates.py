@@ -443,6 +443,23 @@ BOAT_TYPES_ADMIN = [
     (BOAT_TYPES_LIST, "The choices in Boat type (Additional details), in this order. Skippers can still pick Other... and type their own.", DEFAULT_BOAT_TYPES),
 ]
 
+ROUTES_CREW_HELP = [
+    ("Admin - Help Panel - Planning Routes and Inviting Crew", "Shown in the Help menu and under Add photo on the photo and crew page.", [
+        "When planning a trip put the tentative details in Route Planning.",
+        "Also go into the photo and crew page, and go into the Crew Registration.",
+        "Choose Bulk Quick Reg. This will get them all registered without actually involving the crew. At least not yet.",
+        "You can then invite them by email, QR code or WhatsApp.",
+        "This is the way to go if you have just one trip planned.",
+        "However you can clone Route Planning and have a Route Planning - Sounds Late Feb, Early March.",
+        "When you have 2 trips at the same time - it is better to use Bulk Quick Reg, see the Crew Registration panel, and Quick Invite for the second trip. This way the crew member has nothing to do for the 2nd trip.",
+        "At some point closer to departure of the 2nd trip, you can get them to do an appropriate crew walkthrough.",
+        "You can also defer Crew Registration for the first trip but again nearer the time of departure send that out and get the Next of Kin details, and other vital details about your crew members.",
+        "For the 2nd trip, they do not need to be registered again, but it does no harm to confirm they still have that nut allergy.",
+        "Before the Start of your event or trip you want all crew fully registered and fully briefed on the boat, and this will require follow up by the skipper if they have chosen Quick Reg and Quick Invite.",
+        "This will be obvious to the skipper as the crew cards for each trip indicate that.",
+    ]),
+]
+
 ZONE_MAP_HOW_TO = [
     ("Admin - Help Panel - How To Make A Zone Map", "Shown as 'How to make a zone map' in Boat Inventory and in the Help menu.", [
         "When initially setting up your boat type, make, model and year of manufacture",
@@ -468,7 +485,7 @@ ZONE_MAP_HOW_TO = [
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:

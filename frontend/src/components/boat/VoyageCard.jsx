@@ -23,6 +23,7 @@ const TripReply = ({ trip, many, busy, onReply }) => {
         <Btn status="in" icon={Check} on="border-emerald-700 bg-emerald-700 text-white">I&apos;m in</Btn>
         <Btn status="out" icon={X} on="border-[var(--red)] bg-[var(--red)] text-white">Can&apos;t make it</Btn>
       </div>
+      {trip.rsvp_quick && trip.rsvp === "in" && <p className="text-xs font-bold text-emerald-800" data-testid={`voyage-quick-note${trip.trip_id === DEFAULT_TRIP ? "" : `-${trip.trip_id}`}`}>&quot;I&apos;m in&quot; was set by the Skipper&apos;s &quot;Quick Invite&quot;.</p>}
     </div>
   );
 };

@@ -16,7 +16,7 @@ export const tripGroups = (trips, crew, invites) => {
 
 export const TripLink = ({ trip, onOpen, testId }) => (
   <button type="button" className="inline-flex max-w-full items-center gap-1 text-left text-xs font-extrabold text-[var(--navy)] underline underline-offset-2" onClick={() => onOpen(trip.id)} data-testid={testId}>
-    <MapIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{trip.name}</span>
+    <MapIcon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{trip.name}{trip.event || trip.start ? ` · ${[trip.event, trip.start].filter(Boolean).join(", ")}` : ""}</span>
   </button>
 );
 

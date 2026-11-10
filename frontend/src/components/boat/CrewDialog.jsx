@@ -22,6 +22,7 @@ import { EmailPartiesButton } from "@/components/boat/register/EmailPartiesButto
 import { RegStatus } from "@/components/boat/register/RegStatus";
 import { RoleBubble } from "@/components/boat/crew/RoleBubble";
 import { CrewFacts, ReadyBadge, readyToSail } from "@/components/boat/crew/CrewFacts";
+import { RoutesCrewHelp } from "@/components/boat/crew/RoutesCrewHelp";
 import { CrewTotals } from "@/components/boat/crew/CrewTotals";
 import { TripGroup, TripLink, tripGroups } from "@/components/boat/crew/TripGroups";
 import { openList } from "@/lib/trips";
@@ -88,13 +89,14 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
     setRefreshing(false);
     toast.success("Crew, registrations and role briefings refreshed");
   };
-  const regBadge = (email, testId) => {
+  const regBadge = (email, testId, pendingWalk) => {
     const r = reg[(email || "").toLowerCase()];
     const walked = r?.walkthroughs?.some((w) => w.boat_id === boat.boat_id);
     return (
       <div className="mt-1 flex flex-wrap gap-1">
         <RegStatus status={r?.status || "unregistered"} testId={`${testId}-reg`} />
         {walked && <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-extrabold text-green-800" data-testid={`${testId}-walkthrough`}>Walkthrough done</span>}
+        {!walked && pendingWalk && <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-extrabold text-amber-800" data-testid={`${testId}-walkthrough-pending`}>Walkthrough pending</span>}
       </div>
     );
   };
@@ -127,6 +129,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
           <DialogDescription className="text-left text-sm">Crew see this boat on their own phones and can tick items. Only you can change anything else.</DialogDescription>
         </DialogHeader>
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
+        <RoutesCrewHelp online={online} />
         <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
           <ClipboardList className="h-4 w-4" /> Crew Registration
         </button>
@@ -166,8 +169,8 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-member-${m.user_id}-trip-${g.id}`} />}
               badge={<>
                 {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
-                {regBadge(m.email, `crew-member-${m.user_id}`)}
-                <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} testId={`crew-member-${m.user_id}`} />
+                {regBadge(m.email, `crew-member-${m.user_id}`, !m.agreement?.accepted_at)}
+                <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} quick={!!m.trip_quick?.[g.id]} testId={`crew-member-${m.user_id}`} />
                 <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
@@ -177,9 +180,9 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
           ))}
           {g.invites.map((i) => (
-            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} label="Cancel invite" testId={`crew-invite-${i.invite_id}`}
+            <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} rsvp={i.quick ? "in" : null} label={i.quick ? "Remove Quick Invite" : "Cancel invite"} testId={`crew-invite-${i.invite_id}`}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-invite-${i.invite_id}-trip`} />}
-              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} testId={`crew-invite-${i.invite_id}`} />
+              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
                 <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), "Invite cancelled")} />
