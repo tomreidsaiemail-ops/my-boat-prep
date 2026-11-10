@@ -84,3 +84,10 @@
 ## 2026-06 Delete this list button on every own list
 - BoatPrep default checklist branch: red "Delete this list" button (list-delete-list-btn, bin icon) at the bottom for non-crew, non-empty lists, except Ship's Log and EMERGENCY lists; opens the existing Delete list confirm dialog (two taps). Maint/Budget/Media lists keep their own buttons.
 - Fixed a stray "}" rendered at the bottom of every list page (extra brace after FishWhispererDialog).
+
+## 2026-06 — Mayday / Pan-Pan distress emails
+- Boat Details: new Shore contact email (same field as Ship's Log shore contact, boat.shore_email) and Coastguard email (boat.coastguard_email) under Email.
+- Mayday/Pan-Pan panels: red "Send to Coastguard Email" button at top (online + valid coastguard email only); background send; Sent (green tick) / Could not send (red cross, tap to retry).
+- Opening Mayday/Pan-Pan (header or list, online): inline Yes/No prompt for coastguard; shore contact emailed automatically once per session per kind. Re-fires when coming back online on the panel.
+- Subject "MAYDAY|PAN-PAN VESSEL NAME X, CALLSIGN: Y, POSITION Z"; body = all panel text. Position = live fix, else last known fix with time (localStorage mbp_last_fix), else UNKNOWN.
+- Backend: POST /api/distress-email (backend/distress_email.py), 30/day per user, logged in db.distress_emails. Tested: iteration_142 (100%).

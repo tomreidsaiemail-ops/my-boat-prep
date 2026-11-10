@@ -1,0 +1,27 @@
+{
+  "summary": "Tested the Mayday/Pan-Pan distress email feature (backend and frontend) as the Pro user on a mobile viewport (390x844). Backend: 7 of 7 pytest checks passed: 401 without auth, 400 for an invalid email, 422 for a bad kind, target or an over-long line, 200 with the correct MAYDAY and PAN-PAN subjects, and UNKNOWN fallbacks. Frontend: every requested flow passed. Boat Details shows the new fields after Email, and they persist after reload. The shore field is the same value as the Ship's Log shore-email-input. The coastguard prompt appears above mayday-banner, and No shows the red button without sending anything. Yes and the button both go sending -> sent with a green tick. A 500 error shows 'Could not send to Coastguard', and tapping again retries and gets sent. Items can be ticked while a send is in progress. The request payload and backend subject are correct. Pan-Pan works from the header and from the list selector. The shore email is sent automatically once per session for each kind: reopening Mayday does not send again, and opening Pan-Pan sends once. With no emails, or with an invalid coastguard email, no bar is shown. Offline (app toggle and context.set_offline) shows no bar or prompt and sends nothing. The last known position from mbp_last_fix is used with its time.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Reopen after No", "issue": "After tapping No, tapping the header Mayday/Pan-Pan button again (or switching lists and coming back) shows the coastguard prompt again. This is probably intended (each open asks), but the spec says 'No = no email' for that open only. Confirm with the user.", "affected_selectors": ["coastguard-email-prompt"]},
+      {"flow": "Opened offline then back online", "issue": "If Mayday/Pan-Pan is opened while offline and the user then goes back online while still on that panel, the coastguard button appears but the shore contact is not emailed automatically and there is no prompt. The automatic send only runs when the panel is opened. Edge case.", "affected_selectors": ["shore-distress-status"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_distress_email.py", "/app/test_reports/pytest/pytest_distress.xml"],
+  "action_items": [
+    "Optional: decide whether a 'No' to the coastguard prompt should be remembered for the session for that kind",
+    "Optional: when online becomes true while a Mayday/Pan-Pan panel is open, call distress.opened(active.id) so the shore email and prompt still fire"
+  ],
+  "critical_code_review_comments": [
+    "The 30-per-day rate limit counts all distress emails for a user, so shore and coastguard emails share one quota. That is fine, but if the limit is hit the UI only shows a generic 'Could not send' message.",
+    "The crew view (server.py line 326) clears shore_email but not coastguard_email, so crew members also get the coastguard prompt. This is probably desirable; flagging it for awareness."
+  ],
+  "updated_files": ["/app/backend/tests/test_distress_email.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. The pro user's boat shore_email and coastguard_email were set to delivered@resend.dev during testing and restored to empty at the end. About 7 real emails were sent to delivered@resend.dev. One item in the Mayday list ('Check GPS position') was ticked and then unticked.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && REACT_APP_BACKEND_URL=<url> python -m pytest tests/test_distress_email.py (it sends 2 real emails to delivered@resend.dev). In the UI, Radix list-selector options are picked with get_by_role('option', name=..., exact=True).click(force=True). To avoid real sends, mock POST /api/distress-email with page.route. Pro boat: vessel 'TEST_Kia Ora', callsign ZMA123."
+}

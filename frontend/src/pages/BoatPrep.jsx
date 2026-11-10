@@ -348,7 +348,7 @@ export default function BoatPrep({ boatId, boats }) {
     const lines = [intro.title, intro.text, ...(state.emergency_checked?.[kind] ? [intro.confirm] : []), ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
     return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
   } });
-  useEffect(() => { if (EMERGENCY[active.id]) distress.opened(active.id); }, [active.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (online && EMERGENCY[active.id]) distress.opened(active.id); }, [active.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
