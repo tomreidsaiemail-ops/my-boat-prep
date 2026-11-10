@@ -40,7 +40,8 @@ export const VoyageCard = ({ boat, online }) => {
     load();
     const onFocus = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", onFocus);
-    return () => document.removeEventListener("visibilitychange", onFocus);
+    window.addEventListener("mbp:voyage-refresh", load);
+    return () => { document.removeEventListener("visibilitychange", onFocus); window.removeEventListener("mbp:voyage-refresh", load); };
   }, [online, boat.owner_id, boat.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reply = async (trip, status) => {

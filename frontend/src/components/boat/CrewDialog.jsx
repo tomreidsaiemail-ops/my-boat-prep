@@ -158,7 +158,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
         <CrewTotals crew={info.crew} invites={info.invites} reg={reg} boat={weightBoat} />
         <div className="flex shrink-0 flex-col gap-3" data-testid="crew-list">
           {info.crew.length + info.invites.length === 0 && <p className="rounded-md border-[1.5px] border-[var(--line)] p-3 text-sm text-[var(--muted)]" data-testid="crew-empty">No crew yet.</p>}
-          {(() => { const seen = new Set(); const tid = (base, g) => (seen.has(base) ? `${base}-trip-${g.id}` : (seen.add(base), base)); return tripGroups(trips, info.crew, info.invites).map((g, n) => (
+          {(() => { const seen = new Set(); const tid = (base, g) => (seen.has(base) ? `${base}-in-${g.id}` : (seen.add(base), base)); return tripGroups(trips, info.crew, info.invites).map((g, n) => (
           <TripGroup key={g.id} group={g} n={n} onOpen={onClose}
             onClear={n === 0 && info.crew.some((m) => Object.values(m.trip_rsvp || {}).some(Boolean)) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null}>
           {g.crew.map((m) => (

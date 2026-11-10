@@ -117,3 +117,9 @@
 
 ## 2026-06 Sign-out RSVP ask
 - Crew signing out who have not replied to the voyage (VoyageCard shown: notes or rota, online, no rsvp) get "Can you make it? We'll inform the Skipper." (SignOutRsvpDialog): Yes = I'm in, No = Can't make it (same POST /crew/rsvp as the card), Back = stay. Then the T&C reminder, unsynced check, sign out. lib/pendingAgreement.js holds pendingRsvp. Self-tested Yes/No/Back.
+
+## 2026-06 Trips (Route Planning copies)
+- Each Route Planning list (routeHazards + copies flagged trip:true or named "Route Planning...") is a trip (lib/trips.js). Copies keep their own start/destination/weather timings in boat.trips[listId]; NavigatorAsk shows on every trip list.
+- Invites carry trip_id/trip_name; crew_trips[uid] (legacy = [routeHazards]); notes per trip (voyage_notes for original, trip_notes.{id}); replies per trip (rsvp for original, trip_rsvp.{id}.{uid}); crew rsvp validated against their trips.
+- Invite crew: trip select + "Fill from <trip>"; tapping a registered crew member with a pending invite on another trip warns (backend 409 too). Already-aboard crew can be invited to another trip (pending prompt "Join <trip> on <boat>?", agreement kept).
+- Crew dialog groups joined + invited by trip (TripGroups.jsx, sky/amber alternating), linked trip names on groups and every card (open the list), per-trip replies. Crew VoyageCard shows each trip with its own I'm in / Can't make it; sign-out asks per unanswered trip. Tested iteration_147.

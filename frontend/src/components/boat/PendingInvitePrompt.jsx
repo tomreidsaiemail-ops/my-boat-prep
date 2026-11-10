@@ -32,6 +32,7 @@ export const PendingInvitePrompt = ({ boats }) => {
         forgetShownAgreements();
         await boats.refresh();
         boats.select(data.key);
+        window.dispatchEvent(new Event("mbp:voyage-refresh"));
         toast.success(inv.aboard ? `You're on ${inv.trip_name || "the trip"} too` : `Welcome aboard ${inv.vessel}! It's now in your boat picker`);
       } else toast.message(`Invite to ${inv.vessel} declined`);
       next();

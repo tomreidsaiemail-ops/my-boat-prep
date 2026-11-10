@@ -755,3 +755,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Remove crew walkthrough badge (DONE)
 
 ## 2026-06 Crew T&C launch + auto-tick walkthrough + cupboard photos (DONE, see CHANGELOG.md)
+
+## 2026-06 Trips per Route Planning copy (DONE, see CHANGELOG.md)

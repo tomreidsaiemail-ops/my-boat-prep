@@ -1,0 +1,39 @@
+{
+  "summary": "Tested trips on Route Planning copies end to end: backend (new pytest file, 9 of 9 pass) and frontend (Playwright at 1920x800 and 390x844). Every requested flow works. (1) Route Planning - 2 has its own START, DESTINATION, Why going, Departure and Event in boat.trips.custom_trip2. These stay separate from the original, survive switching lists and a reload, and a new clone of Route Planning starts with blank details and joins the trip select (3 options). (2) Crew dialog: the groups are crew-trip-group-routeHazards (sky-50) and crew-trip-group-custom_trip2 (amber-50), each with a linked name, an 'X joined · Y invited' count and a per-trip rsvp summary. Each card has its trip link at the top. Group, member and invite links all close the dialog and open the right list. (3) Invite: the trip select shows. Switching trip refills the notes with that trip's saved notes. 'Fill from Route Planning - 2' fills Start, Destination, Why, Departure, Event and Meet up from the copy. An invite sent on trip 2 saves trip_id and trip_name and shows in the amber group. (4) Tapping Beta Crew with trip 2 selected shows the exact warning toast and leaves the name and email empty. With Route Planning selected it fills them. The backend returns 409 with the exact text, 400 'already crew on Route Planning - 2', and re-inviting on the same trip replaces the invite. (5) Beta pending prompt: 'Join Route Planning on TEST_Kia Ora?' with a 'Join Route Planning' button. Joining gives crew_trips [custom_trip2, routeHazards] and keeps the agreement (marker kept). The toast says 'You're on Route Planning too'. The voyage card has separate replies per trip, and the skipper's groups show each reply under the right trip. (6) Sign-out with a temporary session asks 'Can you make it?' for Route Planning - 2, then for Route Planning, then goes to /login. (7) Regression: Clear replies (one button, first group) clears both trips. Removing a crew member works. A single-trip boat shows no trip select.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/crew/rsvp", "issue": "trip_id isn't checked against the crew member's crew_trips. A reply on any trip id (e.g. 'TEST_not_a_trip') returns 200 and is written to trip_rsvp.<anything>.<uid>."},
+      {"endpoint": "DELETE /api/boats/{id}/crew/{member} and POST /api/crew/leave", "issue": "Only rsvp.<uid> is unset. trip_rsvp.<trip>.<uid> stays behind, so a crew member who is removed and rejoins shows old replies on Route Planning copies."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VoyageCard after accepting a 2nd-trip invite", "issue": "Joining from PendingInvitePrompt keeps the same boat key, so VoyageCard doesn't reload (its effect depends only on online, owner_id and boat_id). The newly joined 'Route Planning' trip and its I'm in / Can't make it buttons only appear after a reload or tab refocus. Reproduced: after Join the card still showed only Route Planning - 2. Fix: reload voyage on a boats-refresh event or key VoyageCard on the crew_trips version.", "selector": "[data-testid=voyage-card]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew voyage card", "issues": ["Trips are listed in join order (crew_trips), so Route Planning - 2 is above Route Planning. Registry order would be more natural."]},
+      {"screen": "List selector", "issues": ["Route Planning - 2 (created via API with no category) appears in the user-lists section, not under TRIP PLANNING, while a UI clone (Route Planning - TEST3) went under TRIP PLANNING."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_trips.py", "/app/test_reports/pytest/pytest_crew_trips.xml"],
+  "action_items": [
+    "Refresh VoyageCard data after accepting an aboard (2nd-trip) invite so the new trip appears without a reload",
+    "Validate trip_id in POST /api/crew/rsvp against trips_of(doc, uid), and also accept 'routeHazards'",
+    "Unset trip_rsvp.<trip>.<uid> for every trip in remove_crew and leave_crew",
+    "Optional: list voyage-card trips in registry order"
+  ],
+  "critical_code_review_comments": [
+    "CrewDialog: the second-group row testid `${base}-trip-${g.id}` clashed with the TripLink testid `crew-member-<uid>-trip-<id>` in the same row (2 elements). I fixed it by changing the row suffix to `-in-<tripId>`. Badges inside the duplicated rows (e.g. crew-member-<uid>-agreement, -reg, -briefing-btn) still repeat across groups.",
+    "InviteCrewDialog.waitingOn compares raw lowercased emails, not email_key (gmail dots and +tags). The backend 409 still covers this, but the friendly pre-warning is skipped for such addresses.",
+    "invite_crew delete_many by email also removes a declined invite for another trip. This is acceptable but silent.",
+    "crew_voyage projects the whole trip_rsvp map (all crew's replies) from the DB, though only the caller's are returned. Fine for now."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/CrewDialog.jsx (testid collision fix only)", "/app/backend/tests/test_crew_trips.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "95% (all requested flows pass; VoyageCard stale until reload after joining a 2nd trip)"},
+  "seed_data_creation": "Temp user test-user-tmpcrew-1794297653 + sessions created and deleted. Temp list 'Route Planning - TEST3' cloned and deleted. TEST invites created and cancelled. Beta agreement marker set and then removed (beta had no agreement before).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "End state: pro boat main has crew [test-user-free (legacy, routeHazards), test-user-beta]. Beta crew_trips is [custom_trip2, routeHazards] (the pending invite 538d182c was accepted via UI), so there are no crew_invites for test-user-pro. rsvp and trip_rsvp are unset (no replies). voyage_notes is 'Notes for Route Planning' and trip_notes.custom_trip2 is 'Notes for Route Planning - 2'. boat.trips.custom_trip2 = {route_start TEST_Mana, route_dest TEST_Picton, weather {depart_at 2026-12-20T08:30, event_name TEST_Event2, why TEST_why2}}. Route Planning (original) route fields are blank. Signing out deletes the session, so use a temporary db.user_sessions token for sign-out tests. To retest the duplicate warning, invite beta again on a trip they're not on (they're now on both, so make a new trip copy or use a TEST_ email). Pro invite_sends in the last 24h is about 12 of 20."
+}

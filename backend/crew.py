@@ -37,6 +37,10 @@ def trip_notes(doc: dict) -> dict:
     return {**(doc.get("trip_notes") or {}), DEFAULT_TRIP: doc.get("voyage_notes", "")}
 
 
+def trip_rsvp_unset(doc: dict, uid: str) -> dict:
+    return {f"trip_rsvp.{t}.{uid}": "" for t in (doc.get("trip_rsvp") or {})}
+
+
 def notes_key(trip: str) -> str:
     return "voyage_notes" if trip == DEFAULT_TRIP else f"trip_notes.{trip}"
 
@@ -421,14 +425,20 @@ async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,
                       user: dict = Depends(get_current_user)):
     doc = await crew_boat(user, owner_id, boat_id)
     uid = user["user_id"]
-    names = {lst.get("id"): lst.get("name") for lst in doc.get("registry") or []}
+    reg = doc.get("registry") or []
+    names = {lst.get("id"): lst.get("name") for lst in reg}
+    order = {lst.get("id"): n for n, lst in enumerate(reg)}
     rs, notes = trip_rsvps(doc, uid), trip_notes(doc)
-    trips = [{"trip_id": t, "name": names.get(t) or "Route Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t)} for t in trips_of(doc, uid)]
+    trips = [{"trip_id": t, "name": names.get(t) or "Route Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t)}
+             for t in sorted(trips_of(doc, uid), key=lambda t: order.get(t, len(order)))]
     return {"notes": doc.get("voyage_notes", ""), "rsvp": rs[DEFAULT_TRIP], "rota": doc.get("watch_rota"), "trips": trips}
 
 
 @router.post("/crew/rsvp")
 async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
+    doc = await crew_boat(user, payload.owner_id, payload.boat_id)
+    if payload.trip_id not in trips_of(doc, user["user_id"]):
+        raise HTTPException(status_code=400, detail="You're not on that trip")
     res = await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]},
                                          {"$set": {(f"rsvp.{user['user_id']}" if payload.trip_id == DEFAULT_TRIP else f"trip_rsvp.{payload.trip_id}.{user['user_id']}"):
                                                    {"status": payload.status, "at": datetime.now(timezone.utc).isoformat()}}})
@@ -439,8 +449,8 @@ async def crew_rsvp(payload: RsvpIn, user: dict = Depends(get_current_user)):
 
 @router.delete("/boats/{boat_id}/crew/{member_id}")
 async def remove_crew(boat_id: BoatPath, member_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,80}$")], user: dict = Depends(get_current_user)):
-    await owned_boat(user, boat_id)
-    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": "", f"agreements.{member_id}": "", f"crew_names.{member_id}": "", f"crew_joined.{member_id}": "", f"crew_trips.{member_id}": ""}})
+    doc = await owned_boat(user, boat_id)
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$pull": {"crew": member_id}, "$unset": {f"crew_roles.{member_id}": "", f"rsvp.{member_id}": "", f"agreements.{member_id}": "", f"crew_names.{member_id}": "", f"crew_joined.{member_id}": "", f"crew_trips.{member_id}": "", **trip_rsvp_unset(doc, member_id)}})
     await db.briefing_reads.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "user_id": member_id})
     return {"ok": True}
 
@@ -540,6 +550,7 @@ class LeaveIn(BaseModel):
 
 @router.post("/crew/leave")
 async def leave_crew(payload: LeaveIn, user: dict = Depends(get_current_user)):
-    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": "", f"agreements.{user['user_id']}": "", f"crew_names.{user['user_id']}": "", f"crew_joined.{user['user_id']}": "", f"crew_trips.{user['user_id']}": ""}})
+    doc = await db.user_boats.find_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"_id": 0, "trip_rsvp": 1}) or {}
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id}, {"$pull": {"crew": user["user_id"]}, "$unset": {f"crew_roles.{user['user_id']}": "", f"rsvp.{user['user_id']}": "", f"agreements.{user['user_id']}": "", f"crew_names.{user['user_id']}": "", f"crew_joined.{user['user_id']}": "", f"crew_trips.{user['user_id']}": "", **trip_rsvp_unset(doc, user["user_id"])}})
     await db.briefing_reads.delete_many({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "user_id": user["user_id"]})
     return {"ok": True}
