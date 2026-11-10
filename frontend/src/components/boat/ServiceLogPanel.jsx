@@ -44,7 +44,7 @@ const EngineTypeHead = ({ type }) => (
 
 const NOTES_MAX = 2000;
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint, boat, onBoatChange }) => {
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint, boat, onBoatChange, help }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
   const [value, setValue] = useState("");
@@ -67,6 +67,30 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
   };
 
   return (
+    <>
+    {(engine || (kind === "electrical_log" && boat)) && (
+      <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`${k.prefix}-mme-group`}>
+        {engine && <div className="col-span-2 grid grid-cols-[1.6fr_1fr] items-end gap-2" data-testid="engine-type-row">
+          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
+            <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>
+          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Cruising speed</span>
+            <span className="relative">
+              <input value={cruise ?? "6"} onChange={(e) => /^\d{0,2}([.,]\d?)?$/.test(e.target.value) && onCruise(e.target.value.replace(",", "."))} inputMode="decimal" placeholder="6"
+                className="field-input w-full min-w-0 px-1.5 pr-9 text-sm" data-testid="cruise-speed-input" />
+              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">kn</span>
+            </span>
+          </label>
+        </div>}
+        {engine && cruiseHint}
+        {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
+        {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
+        {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+          onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
+          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
+      </section>
+    )}
+    {help}
     <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={k.panelId}>
       <div className="flex items-center gap-2">
         <span className="flex flex-1 items-center gap-2 font-display text-base font-extrabold"><k.Icon className="h-5 w-5" /> {k.title}</span>
@@ -81,18 +105,6 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
       </div>
       <ServiceDue prefix={k.prefix} label={k.dueLabel} due={due} today={today} onSet={onSetDue} warn={dueWarn} />
       <form onSubmit={submit} className="grid grid-cols-2 gap-2">
-        {engine && <div className="col-span-2 grid grid-cols-[1.6fr_1fr] items-end gap-2" data-testid="engine-type-row">
-          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
-            <input value={engineType} onChange={(e) => setEngineType(e.target.value)} maxLength={80} placeholder="Yanmar 3JH" className="field-input min-w-0 px-1.5 text-sm" data-testid="engine-type-input" /></label>
-          <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Cruising speed</span>
-            <span className="relative">
-              <input value={cruise ?? "6"} onChange={(e) => /^\d{0,2}([.,]\d?)?$/.test(e.target.value) && onCruise(e.target.value.replace(",", "."))} inputMode="decimal" placeholder="6"
-                className="field-input w-full min-w-0 px-1.5 pr-9 text-sm" data-testid="cruise-speed-input" />
-              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]">kn</span>
-            </span>
-          </label>
-        </div>}
-        {engine && cruiseHint}
         <div className={`col-span-2 grid gap-2 ${engine ? "grid-cols-2 items-end" : "grid-cols-2"}`}>
         <label className="flex min-w-0 flex-col gap-1"><span className="field-label">{k.fieldLabel}</span>
           <input type={k.numeric ? "number" : "text"} inputMode={k.numeric ? "decimal" : "text"} min="0" step="0.1" maxLength={80} value={value}
@@ -101,12 +113,6 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
           <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className={`field-input min-w-0 ${engine ? "px-1.5 text-sm" : ""}`} data-testid={`${k.prefix}-date-input`} /></label>
         </div>
         <input value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={engine || kind === "electrical_log" ? NOTES_MAX : 300} placeholder={`Notes (optional) ${k.notesHint}`} className="field-input col-span-2" data-testid={`${k.prefix}-notes-input`} />
-        {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
-        {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
-          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
-        {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
-          onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
-          onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
         <p className="col-span-2 text-sm" data-testid={`${k.prefix}-ticked-summary`}>
           {ticked.length ? <><span className="field-label">Will log </span><b>{ticked.join(" · ")}</b></> : <span className="text-[var(--muted)]">No items ticked. Tick the jobs you did in the list below to add them to the history.</span>}
         </p>
@@ -125,5 +131,6 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         </ul>
       )}
     </section>
+    </>
   );
 };
