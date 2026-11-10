@@ -63,7 +63,7 @@ export const PromoCodeForm = ({ base, first, onSave, onCancel }) => {
         </label>
       </div>
       <PricePreview base={base} pct={pctNum} first={first} />
-      <p className="text-xs text-[var(--muted)]">Skippers type the code on the Stripe payment page. The discount applies to their first year only, and the code stops working at the end of the expiry date (NZ time).</p>
+      <p className="text-xs text-[var(--muted)]">Skippers type the code on the Stripe payment page. The discount applies to their first year only, and the code stops working at the end of the expiry date (NZ time). Pick 31/12/9999 for a code that never expires.</p>
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="promo-error">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost px-5" onClick={onCancel} disabled={busy} data-testid="promo-cancel-btn">Cancel</button>

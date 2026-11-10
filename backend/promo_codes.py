@@ -1,6 +1,6 @@
 import asyncio
 import re
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import stripe
@@ -81,12 +81,14 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
             "codes": [_out(d, usage) for d in docs]}
 
 
-def _create_in_stripe(code: str, percent_off: float, expires_ts: int):
+def _create_in_stripe(code: str, percent_off: float, expires_ts: int | None):
     product = _pro_price().product
+    until = {"redeem_by": expires_ts} if expires_ts else {}
     coupon = stripe.Coupon.create(percent_off=percent_off, duration="once", name=f"{code} ({percent_off:g}% off first year)"[:40],
-                                  applies_to={"products": [product.id]}, redeem_by=expires_ts, metadata=MANAGED)
+                                  applies_to={"products": [product.id]}, metadata=MANAGED, **until)
     try:
-        promo = stripe.PromotionCode.create(promotion={"type": "coupon", "coupon": coupon.id}, code=code, expires_at=expires_ts, metadata=MANAGED)
+        promo = stripe.PromotionCode.create(promotion={"type": "coupon", "coupon": coupon.id}, code=code, metadata=MANAGED,
+                                            **({"expires_at": expires_ts} if expires_ts else {}))
     except stripe.error.StripeError:
         stripe.Coupon.delete(coupon.id)
         raise
@@ -104,8 +106,10 @@ async def create_promo_code(payload: PromoIn, admin: dict = Depends(require_admi
         raise HTTPException(status_code=400, detail="Pick an expiry date from today onwards")
     percent = round(payload.percent_off, 2)
     expires = datetime.combine(payload.expires_on, time(23, 59, 59), NZ)
+    # Stripe only takes expiry dates up to five years ahead; anything later never expires there.
+    stripe_limit = datetime.now(timezone.utc) + timedelta(days=5 * 365 - 2)
     try:
-        coupon, promo = await asyncio.to_thread(_create_in_stripe, code, percent, int(expires.timestamp()))
+        coupon, promo = await asyncio.to_thread(_create_in_stripe, code, percent, int(expires.timestamp()) if expires <= stripe_limit else None)
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=e.user_message or "Stripe couldn't create that code")
     doc = {"code": code, "percent_off": percent, "expires_at": expires.astimezone(timezone.utc).isoformat(),

@@ -6,13 +6,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PromoCodeForm } from "@/components/admin/PromoCodeForm";
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Pacific/Auckland" });
+const expiryText = (iso) => (new Date(iso).getFullYear() >= 9999 ? "never expires" : `expires ${fmt(iso)}`);
 const used = (n) => (n === null ? "Uses unavailable" : `Used ${n} ${n === 1 ? "time" : "times"}`);
 
 const Row = ({ c }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`promo-row-${c.code}`}>
     <div className="min-w-0">
       <div className="truncate font-mono font-bold" data-testid={`promo-row-code-${c.code}`}>{c.code}</div>
-      <div className="text-xs text-[var(--muted)]">{c.percent_off}% off first year · expires {fmt(c.expires_at)}</div>
+      <div className="text-xs text-[var(--muted)]">{c.percent_off}% off first year · {expiryText(c.expires_at)}</div>
     </div>
     <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
       <span className={`rounded-full px-2 py-0.5 font-bold ${c.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"}`} data-testid={`promo-row-status-${c.code}`}>{c.active ? "Active" : "Expired"}</span>
