@@ -29,10 +29,15 @@ const PricePreview = ({ base, pct, first }) => {
   );
 };
 
-export const PromoCodeForm = ({ base, first, onSave, onCancel }) => {
-  const [code, setCode] = useState("");
-  const [pct, setPct] = useState("");
-  const [expires, setExpires] = useState("");
+const nzDay = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Pacific/Auckland" });
+
+export const PromoCodeForm = ({ base, first, initial, onSave, onCancel }) => {
+  const [code, setCode] = useState(initial?.code || "");
+  const [pct, setPct] = useState(initial ? String(initial.percent_off) : "");
+  const [expires, setExpires] = useState(initial ? nzDay(initial.expires_at) : "");
+  const [reward, setReward] = useState(String(initial?.skipper_reward ?? 10));
+  const joincrew = code === "JOINCREW";
+  const rewardNum = Number(reward);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const pctNum = Number(pct);
@@ -42,16 +47,17 @@ export const PromoCodeForm = ({ base, first, onSave, onCancel }) => {
     if (!/^[A-Z0-9_-]{3,30}$/.test(code)) { setError("Use 3 to 30 letters, numbers, - or _ for the code"); return; }
     if (!(pctNum > 0 && pctNum <= 100)) { setError("Enter a discount above 0 and up to 100%"); return; }
     if (!expires) { setError("Pick an expiry date"); return; }
+    if (joincrew && !(Number.isInteger(rewardNum) && rewardNum >= 0 && rewardNum <= 1000)) { setError("Enter a skipper reward from 0 to 1000 Magic generations"); return; }
     setBusy(true);
     setError("");
-    try { await onSave({ code, percent_off: pctNum, expires_on: expires }); } catch (err) { setError(errText(err)); setBusy(false); }
+    try { await onSave({ code, percent_off: pctNum, expires_on: expires, ...(joincrew ? { skipper_reward: rewardNum } : {}) }); } catch (err) { setError(errText(err)); setBusy(false); }
   };
 
   return (
-    <form onSubmit={save} noValidate className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-4" data-testid="promo-code-form">
+    <form onSubmit={save} noValidate className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-4" data-testid={initial ? `promo-edit-form-${initial.code}` : "promo-code-form"}>
       <label className="flex flex-col gap-1 text-sm font-bold">Coupon name / code
-        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))} maxLength={30} placeholder="e.g. SKIPPER20"
-          className="field-input font-mono uppercase" autoCapitalize="characters" data-testid="promo-code-input" />
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s/g, ""))} maxLength={30} placeholder="e.g. SKIPPER20" readOnly={!!initial}
+          className={`field-input font-mono uppercase ${initial ? "bg-slate-100" : ""}`} autoCapitalize="characters" data-testid="promo-code-input" />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm font-bold">Discount (%)
@@ -62,13 +68,20 @@ export const PromoCodeForm = ({ base, first, onSave, onCancel }) => {
           <input type="date" min={today()} value={expires} onChange={(e) => setExpires(e.target.value)} className="field-input" data-testid="promo-expiry-input" />
         </label>
       </div>
+      {joincrew && (
+        <label className="flex flex-col gap-1 text-sm font-bold">Skipper reward (Magic generations)
+          <input type="number" inputMode="numeric" min="0" max="1000" step="1" value={reward} onChange={(e) => setReward(e.target.value)} className="field-input" data-testid="promo-reward-input" />
+          <span className="text-xs font-normal text-[var(--muted)]">Added once to each skipper whose crew uses JOINCREW. Default 10.</span>
+        </label>
+      )}
       <PricePreview base={base} pct={pctNum} first={first} />
+      {initial && <p className="text-xs font-bold text-amber-800" data-testid="promo-edit-note">Changes apply to new checkouts only. Skippers who already used this code keep what they paid.</p>}
       <p className="text-xs text-[var(--muted)]">Skippers type the code on the Stripe payment page. The discount applies to their first year only, and the code stops working at the end of the expiry date (NZ time). Pick 31/12/9999 for a code that never expires.</p>
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="promo-error">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-ghost px-5" onClick={onCancel} disabled={busy} data-testid="promo-cancel-btn">Cancel</button>
         <button type="submit" className="btn-solid px-5" disabled={busy} data-testid="promo-publish-btn">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Generate &amp; Publish Code
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {initial ? "Save changes" : <>Generate &amp; Publish Code</>}
         </button>
       </div>
     </form>

@@ -7,6 +7,7 @@ import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
 import { localWhen, timeAgo } from "@/lib/timeAgo";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { AcceptButtons, AgreementWalkthrough, stopId } from "@/components/boat/agreement/AgreementParts";
+import { JoinCrewOffer, offerToast } from "@/components/boat/agreement/JoinCrewOffer";
 
 const Section = ({ title, children, testId }) => (
   <section className="flex flex-col gap-1.5" data-testid={testId}>
@@ -79,6 +80,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
       const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick });
       onSaved(res.agreement);
       if (accept) toast.success(`Thanks! The skipper of ${vessel} can see you've read and accepted the agreement`);
+      if (accept && data.joincrew_offer) offerToast();
       onClose();
     } catch (e) { toast.error(apiError(e, "Couldn't save the agreement, please try again")); }
     finally { setBusy(""); }
@@ -116,6 +118,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           )}
           <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />
         </Section>
+        {data.joincrew_offer && <JoinCrewOffer />}
         <AcceptButtons accepted={accepted} ready={ready} busy={busy} onTry={briefingsDone} onAccept={() => save(true)} onLater={() => save(false)} />
         {walking !== null && <CrewWalkthrough steps={steps} areas={areas} boat={boat} start={walking} ticked={ticked} onTick={tick} onSeen={seen} onClose={() => setWalking(null)} onOpenArea={() => {}} />}
       </DialogContent>

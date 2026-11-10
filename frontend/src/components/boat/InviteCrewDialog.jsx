@@ -13,10 +13,11 @@ import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
 import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 import { DEFAULT_TRIP } from "@/lib/trips";
+import { JOINCREW_OFFER } from "@/lib/joincrew";
 
 const APP_URL = "https://myboatprep.com";
 
-export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {}, shopping = [] }) => [
+export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {}, shopping = [], offer = false }) => [
   `*${name ? `Hi ${name}, you're` : "You're"} invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
@@ -24,6 +25,7 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
   shopping.length ? `\n*Food to bring on board*\n${shopping.map((i) => `- ${i}`).join("\n")}` : null,
   notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
   `\nJoin on My Boat Prep: ${APP_URL}`,
+  offer ? JOINCREW_OFFER : null,
   `Sign up or log in with ${email || "your email"} and the app will ask you to join ${vessel}.`,
 ].filter(Boolean).join("\n");
 
@@ -73,7 +75,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
   const editNotes = (v) => { setTouched(true); setNotes(v); };
 
   const shopping = shoppingFor(provisions, crewName);
-  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping });
+  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping, offer: !!info.joincrew_live });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
   const saveNotes = () => { if (online && notes.trim() !== savedFor(trip)) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes, trip_id: trip }).then(onInvited).catch(() => {}); };

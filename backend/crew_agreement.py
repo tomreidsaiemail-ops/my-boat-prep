@@ -5,7 +5,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 from db import db
-from auth import get_current_user
+from auth import get_current_user, to_user_out
+import joincrew
 from crew import BoatPath, brief_hash, owned_boat, role_briefings
 from crew_register import record_walkthrough
 from agreement_pdf import build_agreement_pdf
@@ -96,7 +97,8 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
     reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0})}
     seen = lambda r: (reads.get(r.lower()) or {}).get("at") if briefs.get(r.lower()) and (reads.get(r.lower()) or {}).get("hash") == brief_hash(briefs[r.lower()]) else None  # noqa: E731
     return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), ""), "read_at": seen(r)} for r in roles],
-            "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user)}
+            "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user),
+            "joincrew_offer": not user.get("joincrew") and not to_user_out(user).has_subscription and await joincrew.live()}
 
 
 async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:

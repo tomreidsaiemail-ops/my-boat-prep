@@ -1,23 +1,30 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, TicketPercent } from "lucide-react";
-import { api } from "@/lib/api";
+import { Loader2, Pencil, TicketPercent, Trash2 } from "lucide-react";
+import { api, apiError } from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PromoCodeForm } from "@/components/admin/PromoCodeForm";
+import { PromoCodeLog } from "@/components/admin/PromoCodeLog";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Pacific/Auckland" });
 const expiryText = (iso) => (new Date(iso).getFullYear() >= 9999 ? "never expires" : `expires ${fmt(iso)}`);
 const used = (n) => (n === null ? "Uses unavailable" : `Used ${n} ${n === 1 ? "time" : "times"}`);
 
-const Row = ({ c }) => (
+const Row = ({ c, onEdit, onDelete }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`promo-row-${c.code}`}>
-    <div className="min-w-0">
+    <div className="min-w-0 flex-1">
       <div className="truncate font-mono font-bold" data-testid={`promo-row-code-${c.code}`}>{c.code}</div>
       <div className="text-xs text-[var(--muted)]">{c.percent_off}% off first year · {expiryText(c.expires_at)}</div>
+      {c.skipper_reward !== undefined && <div className="text-xs font-bold text-sky-800" data-testid={`promo-row-reward-${c.code}`}>Skipper reward: +{c.skipper_reward} Magic generations</div>}
     </div>
     <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
       <span className={`rounded-full px-2 py-0.5 font-bold ${c.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"}`} data-testid={`promo-row-status-${c.code}`}>{c.active ? "Active" : "Expired"}</span>
       <span className="text-[var(--muted)]" data-testid={`promo-row-used-${c.code}`}>{used(c.times_redeemed)}</span>
+    </div>
+    <div className="flex shrink-0 flex-col gap-1">
+      <button type="button" className="icon-btn h-9 w-9" onClick={onEdit} aria-label={`Edit ${c.code}`} title="Edit" data-testid={`promo-row-edit-${c.code}`}><Pencil className="h-4 w-4" /></button>
+      <button type="button" className="icon-btn h-9 w-9 hover:text-[var(--red)]" onClick={onDelete} aria-label={`Delete ${c.code}`} title="Delete" data-testid={`promo-row-delete-${c.code}`}><Trash2 className="h-4 w-4" /></button>
     </div>
   </li>
 );
@@ -25,10 +32,13 @@ const Row = ({ c }) => (
 export const PromoCodesAdmin = () => {
   const [data, setData] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const load = () => api.get("/admin/promo-codes").then(({ data: d }) => setData(d));
 
   useEffect(() => {
-    api.get("/admin/promo-codes").then(({ data: d }) => setData(d)).catch(() => { toast.error("Couldn't load promo codes"); setData({ base_price: null, codes: [] }); });
-  }, []);
+    load().catch(() => { toast.error("Couldn't load promo codes"); setData({ base_price: null, codes: [], log: [] }); });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setPromo = async (key, running) => {
     const label = key === "first200" ? "FIRST200" : "FIRST5000";
@@ -47,9 +57,24 @@ export const PromoCodesAdmin = () => {
   };
   const save = async (body) => {
     const { data: c } = await api.post("/admin/promo-codes", body);
-    setData((d) => ({ ...d, codes: [c, ...d.codes] }));
     setAdding(false);
     toast.success(`${c.code} is live: skippers can use it on the Stripe payment page`);
+    load().catch(() => setData((d) => ({ ...d, codes: [c, ...d.codes] })));
+  };
+  const saveEdit = async ({ code, ...body }) => {
+    const { data: d } = await api.put(`/admin/promo-codes/${code}`, body);
+    setData(d);
+    setEditing(null);
+    toast.success(`${code} updated for new checkouts`);
+  };
+  const remove = async () => {
+    const code = deleting.code;
+    setDeleting(null);
+    try {
+      const { data: d } = await api.delete(`/admin/promo-codes/${code}`);
+      setData(d);
+      toast.success(`${code} deleted: it no longer works at checkout`);
+    } catch (err) { toast.error(apiError(err, `Couldn't delete ${code}`)); }
   };
 
   return (
@@ -80,9 +105,14 @@ export const PromoCodesAdmin = () => {
       {!data ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="promo-codes-list">
           {data.codes.length === 0 && <li className="p-4 text-center text-sm text-[var(--muted)]" data-testid="promo-codes-empty">No promo codes yet</li>}
-          {data.codes.map((c) => <Row key={c.code} c={c} />)}
+          {data.codes.map((c) => (editing === c.code
+            ? <li key={c.code} className="p-2"><PromoCodeForm initial={c} base={data?.base_price} first={data?.first5000 ? data.first5000_price : null} onSave={saveEdit} onCancel={() => setEditing(null)} /></li>
+            : <Row key={c.code} c={c} onEdit={() => setEditing(c.code)} onDelete={() => setDeleting(c)} />))}
         </ul>
       )}
+      {data && <PromoCodeLog log={data.log} />}
+      <ConfirmDelete item={deleting ? { name: deleting.code } : null} onClose={() => setDeleting(null)} onConfirm={remove} testId="promo-delete"
+        note="The code stops working straight away and is removed from this list. Skippers who already used it keep their discount. The delete is logged." />
     </section>
   );
 };

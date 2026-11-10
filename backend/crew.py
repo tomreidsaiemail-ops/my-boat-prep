@@ -12,6 +12,7 @@ from db import db
 from auth import get_current_user, require_premium
 from email_service import send_email
 from urls import public_base
+import joincrew
 
 router = APIRouter(prefix="/api")
 INVITE_DAYS = 7
@@ -134,7 +135,7 @@ def shopping_html(items: List[str]) -> str:
     return f'<p><b>Food to bring on board:</b></p><ul style="margin:0 0 12px;padding-left:20px">{rows}</ul>' if items else ""
 
 
-def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "", shopping: List[str] = None) -> str:
+def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "", shopping: List[str] = None, offer: bool = False) -> str:
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
     for r in roles:
         if (b := (briefings or {}).get(r.lower())):
@@ -149,6 +150,7 @@ def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str]
         'You\'ll see the boat\'s checklists on your own phone and can tick items as you go.</p>'
         f'{extra}'
         f'<p style="margin:24px 0"><a href="{escape(link)}" style="background:#0f172a;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Open My Boat Prep</a></p>'
+        f'{f"<p><b>{escape(joincrew.OFFER)}</b></p>" if offer else ""}'
         f'<p style="font-size:13px;color:#64748b">Sign up or log in with <b>{escape(email)}</b> and the app will ask you to join {escape(vessel)}. '
         f'The invite expires in {INVITE_DAYS} days.</p></div>'
     )
@@ -269,7 +271,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
         briefs.update({role_label(k).lower(): str(v).strip()[:2000] for k, v in payload.briefings.items() if role_label(k).lower() in wanted and str(v).strip()})
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
                          html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name,
-                                          [s.strip() for s in payload.shopping if s.strip()]))
+                                          [s.strip() for s in payload.shopping if s.strip()], await joincrew.live()))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     if payload.send_email and any(x.strip() for x in payload.shopping):
         await note_shopping(user["user_id"], boat_id, email, len([x for x in payload.shopping if x.strip()]))
@@ -306,7 +308,7 @@ async def crew_prep_progress(owner_id: str, boat_id: str) -> dict:
 
 def tick(jc: dict | None, skipper_id: str) -> dict | None:
     """The skipper's JOINCREW tick for a crew member who used the code, and whether this skipper got the reward."""
-    return {"at": jc.get("at"), "rewarded": skipper_id in (jc.get("skippers") or [])} if jc else None
+    return {"at": jc.get("at"), "rewarded": skipper_id in (jc.get("skippers") or []), "reward": jc.get("reward", joincrew.REWARD)} if jc else None
 
 
 @router.get("/boats/{boat_id}/crew")
@@ -346,7 +348,7 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
              **(joined.get(m["user_id"]) or {})} for m in members]
     return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""), "trip_notes": trip_notes(doc),
-            "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", "")}
+            "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", ""), "joincrew_live": await joincrew.live()}
 
 
 class RotaPerson(BaseModel):
