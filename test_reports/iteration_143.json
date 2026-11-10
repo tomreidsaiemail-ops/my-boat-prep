@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the Skipper's comment on zone map photos end to end. Backend: 22/22 pytest pass (new test_zone_map_comment.py + regression test_zone_pins.py). Comment is trimmed, limited to 500 chars (501 -> 422), left unchanged when omitted or null, cleared by empty or whitespace-only input, kept when the map is renamed via /meta, crew can see it in /api/me/boats, and crew get 404 if they try to set it. Frontend at 390x844 (plus a desktop check): the Edit labels editor has the comment textarea (maxlength 500) and the comment is prefilled when it is reopened. After saving, the comment shows under the photo (boat-zone-map-comment-<id>) and in the full-size dialog (zone-map-full-comment). Photos without a comment show nothing. The Crew walkthrough shows 'Cupboard: <full name>' above the photo and the comment below it on every stop of that photo, and no box on stops of a photo without a comment. The long name 'TEST_Saloon - Port Side Under Seat Locker Forward' wraps in full while the label on the photo is cut off. Clearing the comment removes it from the list, the full dialog and the walkthrough. Remove warning: a photo without a comment is removed straight away. A photo with a comment shows the dialog with the comment text, Copy comment (toast shown and clipboard checked), Keep and Esc (both keep the photo), and Remove photo (removes it). Crew (test-user-free on the shared boat c_test-user-pro_main) see the comment under the photo, in the full dialog, in the walkthrough and in the Crew Agreement stops (agreement-stop-<n>-cupboard-name / -skipper-comment). No functional bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ZonePinEditor comment textarea", "issues": ["At 390px the first line of typed text sits tight against or slightly under the top border of the textarea. field-input probably applies a fixed height/line-height that clashes with py-2/min-h-[64px]. Check the padding."]},
+      {"screen": "Remove-photo warning", "issues": ["Copy comment gives no feedback when navigator.clipboard is undefined (insecure context or some in-app webviews): navigator.clipboard?.writeText(...).then(...) short-circuits to undefined and no toast appears. Consider an else branch that shows the 'select the text instead' toast."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_map_comment.py", "/app/backend/tests/test_zone_pins.py", "/app/test_reports/pytest/pytest_zone_comment.xml"],
+  "action_items": [
+    "Optional: tidy the comment textarea's top padding on mobile",
+    "Optional: show the fallback toast in SkipperComment copy() when navigator.clipboard is missing"
+  ],
+  "critical_code_review_comments": [
+    "SkipperComment.jsx copy(): no feedback if the clipboard API is missing (see design_issues).",
+    "ZonePinEditor always sends comment: comment.trim(). Fine, but saving labels from an older cached client would leave the comment as it was, which matches the 'omitted = unchanged' contract.",
+    "Only one delete path exists (ZoneMap.removeMap), and it goes through the warning. Overviews have no comment, so the warning never triggers for them, which is correct.",
+    "In crew view, a plain Playwright click on a photo <img> in the Zone maps list sometimes timed out (it needed force=True). Probably a test artefact from pin labels or the sticky overlay. Not reproduced as a user-facing bug."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_map_comment.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Uploaded 2 temporary TEST zone map photos on pro boat 'main' (aefb9108..., 5f319d23...). Both were removed through the UI during the removal tests, and the pytest module's photo was removed by its fixture. Galley (f634a094...) was left as found: 0 pins, comment 'Above the Nav Desk is the switch board'. Galley 2 was left as found: 0 pins, no comment. No inventory areas were created. Side effect: test-user-free had not accepted the app Terms of Service (terms gate shown), so I accepted it in the UI to reach the boat. I did not accept the Crew Agreement ('Not now').",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Navigation: list-selector -> list-option-boatInventory -> zone-map-toggle. Crew: boat-selector -> boat-option-c_test-user-pro_main. The crew agreement dialog auto-opens once per session; close it with agreement-later-btn. Cupboard choices in the label editor are filtered by the map's zone colour, so on a fresh photo only 'New cupboard...' appears. That option creates an inventory area on save, so I seeded pins via the API (linked to Fridge amw1pvdq802hq, plus an unlinked long label) to avoid adding areas. Run pytest without -p no:xdist (pytest.ini uses -n)."
+}

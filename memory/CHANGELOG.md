@@ -92,3 +92,8 @@
 - Subject "MAYDAY|PAN-PAN VESSEL NAME X, CALLSIGN: Y, POSITION Z"; body = all panel text. Position = live fix, else last known fix with time (localStorage mbp_last_fix), else UNKNOWN.
 - Backend: POST /api/distress-email (backend/distress_email.py), 30/day per user, logged in db.distress_emails. Tested: iteration_142 (100%).
 - 2026-06 follow-up: Coastguard email REMOVED (legal). Field, prompt, button and boat.coastguard_email (unset in DB) gone. Only the shore contact auto-email (once per session per kind) remains; /api/distress-email no longer takes `target`.
+
+## 2026-06 Skipper's comment on zone map photos
+- Per-photo comment (zone_maps[].comment, <=500) typed in Edit labels (ZonePinEditor), saved via PUT /boats/{id}/zone-maps/{map}/pins {comment}. Shown under the photo everywhere (Zone maps list, full dialog, Zone dialog big view, Crew walkthrough every stop, Crew Agreement stops).
+- Walkthrough + agreement stops show "Cupboard: <full name>" above the photo.
+- Removing a photo with a comment warns first (RemoveMapConfirm) with Copy comment. Tested iteration_143 (100%).

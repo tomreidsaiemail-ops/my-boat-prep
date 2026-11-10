@@ -115,7 +115,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         <label className="flex flex-col gap-1" htmlFor="zone-map-comment">
           <span className="field-label">Skipper&apos;s comment</span>
           <textarea id="zone-map-comment" value={comment} maxLength={500} rows={2} onChange={(e) => setComment(e.target.value)} placeholder="e.g. Above the Nav Desk is the switch board"
-            className="field-input min-h-[64px] py-2" data-testid="zone-map-comment-input" />
+            className="field-input !h-auto min-h-[64px] !py-2" data-testid="zone-map-comment-input" />
           <span className="text-xs text-[var(--muted)]">Shown under this photo for every cupboard on it, including in the Crew walkthrough.</span>
         </label>
         <DialogFooter className="gap-2">

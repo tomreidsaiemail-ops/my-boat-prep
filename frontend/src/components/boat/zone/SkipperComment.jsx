@@ -16,7 +16,11 @@ export const CupboardName = ({ name, testId }) => (
   <p className="text-sm text-[var(--navy)]" data-testid={testId}><span className="field-label mr-1">Cupboard:</span><b className="break-words">{name}</b></p>
 );
 
-const copy = (text) => navigator.clipboard?.writeText(text).then(() => toast.success("Skipper's comment copied"), () => toast.error("Couldn't copy, select the text instead"));
+const copy = (text) => {
+  const fail = () => toast.error("Couldn't copy, select the text instead");
+  if (!navigator.clipboard) { fail(); return; }
+  navigator.clipboard.writeText(text).then(() => toast.success("Skipper's comment copied"), fail);
+};
 
 // Removing a photo that carries a Skipper's comment: show it and offer to copy it first.
 export const RemoveMapConfirm = ({ map, onConfirm, onClose }) => (
