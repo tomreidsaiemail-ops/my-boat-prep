@@ -1,7 +1,7 @@
 import asyncio
 import re
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 import stripe
@@ -12,7 +12,7 @@ from auth import require_admin
 from db import db
 from billing import FIRST5000_LOOKUP
 from payments import PRO_LOOKUP_KEY, _price, first5000_running
-from launch import first200_exceptions, first200_running
+from launch import first200_running
 import joincrew
 
 router = APIRouter(prefix="/api/admin/promo-codes")
@@ -84,21 +84,36 @@ class ExceptionsIn(BaseModel):
     emails: list[str] = Field(max_length=500)
 
 
-@router.put("/first200/exceptions")
-async def set_first200_exceptions(payload: ExceptionsIn, admin: dict = Depends(require_admin)):
+LISTS = {("first200", "exceptions"), ("first5000", "exceptions"), ("first5000", "inclusions")}
+
+
+async def _lists() -> dict:
+    docs = {d["key"]: d async for d in db.app_settings.find({"key": {"$in": ["first200", "first5000"]}}, {"_id": 0})}
+    return {f"{k}_{f}": sorted((docs.get(k) or {}).get(f) or []) for k, f in LISTS}
+
+
+@router.put("/{key}/{field}")
+async def set_launch_list(key: Literal["first200", "first5000"], field: Literal["exceptions", "inclusions"], payload: ExceptionsIn, admin: dict = Depends(require_admin)):
+    if (key, field) not in LISTS:
+        raise HTTPException(status_code=404, detail="Not found")
     emails = sorted({e.strip().lower() for e in payload.emails if e.strip()})
     bad = [e for e in emails if not EMAIL_RE.match(e)]
     if bad:
         raise HTTPException(status_code=400, detail=f"That doesn't look like an email address: {bad[0]}")
-    await first200_running(fresh=True)
-    old = set(first200_exceptions())
+    lists = await _lists()
+    if key == "first5000":
+        other = "inclusions" if field == "exceptions" else "exceptions"
+        clash = sorted(set(emails) & set(lists[f"first5000_{other}"]))
+        if clash:
+            raise HTTPException(status_code=400, detail=f"{clash[0]} is already on the FIRST5000 {other} list. An email can't be on both FIRST5000 lists.")
+    old = set(lists[f"{key}_{field}"])
     added, removed = [e for e in emails if e not in old], sorted(old - set(emails))
     if not added and not removed:
         raise HTTPException(status_code=400, detail="Nothing has changed")
-    await db.app_settings.update_one({"key": "first200"}, {"$set": {"key": "first200", "exceptions": emails}}, upsert=True)
-    await _log(admin, "edited", "FIRST200 exceptions", "; ".join(([f"added {', '.join(added)}"] if added else []) + ([f"removed {', '.join(removed)}"] if removed else [])))
+    await db.app_settings.update_one({"key": key}, {"$set": {"key": key, field: emails}}, upsert=True)
+    await _log(admin, "edited", f"{key.upper()} {field}", "; ".join(([f"added {', '.join(added)}"] if added else []) + ([f"removed {', '.join(removed)}"] if removed else [])))
     await first200_running(fresh=True)
-    return {"first200_exceptions": first200_exceptions()}
+    return await _lists()
 
 
 def _usage(docs: list) -> dict:
@@ -120,7 +135,7 @@ async def list_promo_codes(_: dict = Depends(require_admin)):
         usage, base = None, None
     first = await asyncio.to_thread(_price, FIRST5000_LOOKUP)
     log = await db.promo_code_log.find({}, {"_id": 0}).sort("at", -1).to_list(200)
-    return {"base_price": base, "first5000": await first5000_running(), "first200": await first200_running(fresh=True), "first5000_price": first.unit_amount / 100 if first else None, "first200_exceptions": first200_exceptions(),
+    return {"base_price": base, "first5000": await first5000_running(), "first200": await first200_running(fresh=True), "first5000_price": first.unit_amount / 100 if first else None, **await _lists(),
             "codes": [_out(d, usage) for d in docs], "log": log}
 
 

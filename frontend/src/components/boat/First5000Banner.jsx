@@ -12,11 +12,11 @@ const Close = ({ onClick }) => (
 );
 
 // Launch banner: FIRST200 (free for everyone) or FIRST5000 (50% off), only while the admin has one running.
-// In the app, FIRST200 is hidden for users on the exception list (launchFree false).
+// In the app the offer is per user, so the admin's exception and inclusion lists apply.
 export const First5000Banner = ({ variant = "app", onUpgrade, launchFree = true }) => {
   const [offer, setOffer] = useState(null);
   const [hiddenAt, setHiddenAt] = useState(0);
-  useEffect(() => { api.get("/payments/offer/public").then(({ data }) => setOffer(data)).catch(() => {}); }, []);
+  useEffect(() => { api.get(variant === "app" ? "/payments/offer" : "/payments/offer/public").then(({ data }) => setOffer(data)).catch(() => {}); }, [variant]);
   const promo = offer?.first200 ? (launchFree ? "first200" : null) : offer?.first5000 ? "first5000" : null;
   if (!promo) return null;
   if (variant === "app" && Math.max(hiddenAt, Number(localStorage.getItem(hideKey(promo)) || 0)) > Date.now()) return null;

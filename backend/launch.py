@@ -25,5 +25,12 @@ async def first200_for(email: str, fresh: bool = False) -> bool:
     return first200_cached(email)
 
 
-def first200_exceptions() -> list[str]:
-    return sorted(_cache["except"])
+async def first5000_for(email: str | None = None) -> bool:
+    """FIRST5000 for this email: off for its exception list, on for its inclusion list, else whatever the admin switch says."""
+    doc = await db.app_settings.find_one({"key": "first5000"}, {"_id": 0}) or {}
+    e = (email or "").strip().lower()
+    if e and e in (doc.get("exceptions") or []):
+        return False
+    if e and e in (doc.get("inclusions") or []):
+        return True
+    return bool(doc.get("running"))

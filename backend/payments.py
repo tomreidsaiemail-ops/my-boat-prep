@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from db import db
 from billing import FIRST5000_LOOKUP, apply_subscription, retrieve_subscription
-from launch import first200_for, first200_running
+from launch import first200_for, first200_running, first5000_for
 from auth import get_current_user, to_user_out, UserOut
 import quota
 import joincrew
@@ -23,8 +23,7 @@ router = APIRouter(prefix="/api")
 
 
 async def first5000_running() -> bool:
-    doc = await db.app_settings.find_one({"key": "first5000"}, {"_id": 0})
-    return bool(doc and doc.get("running"))
+    return await first5000_for()
 
 
 def _price(lookup: str):
@@ -34,7 +33,7 @@ def _price(lookup: str):
 
 async def _offer(email: str | None = None) -> dict:
     full, first = await asyncio.gather(asyncio.to_thread(_price, PRO_LOOKUP_KEY), asyncio.to_thread(_price, FIRST5000_LOOKUP))
-    return {"first5000": await first5000_running(), "first200": await (first200_for(email) if email else first200_running()), "price": (full.unit_amount / 100) if full else None,
+    return {"first5000": await first5000_for(email), "first200": await (first200_for(email) if email else first200_running()), "price": (full.unit_amount / 100) if full else None,
             "first5000_price": (first.unit_amount / 100) if first else None}
 
 
@@ -67,7 +66,7 @@ async def _local_promo(code: str):
 async def check_promo(payload: PromoCheckIn, user: dict = Depends(get_current_user)):
     code = payload.code.strip().upper()
     if code == "FIRST5000":
-        if await first5000_running():
+        if await first5000_for(user["email"]):
             return {"code": code, "automatic": True, "message": "FIRST5000 is already applied: 50% off your first year and first renewal."}
         raise HTTPException(status_code=400, detail="The FIRST5000 launch offer has ended")
     d = await _local_promo(code)
@@ -97,7 +96,7 @@ async def checkout(payload: CheckoutIn, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="You already have Pro")
     if await first200_for(user["email"], fresh=True):
         raise HTTPException(status_code=400, detail="My Boat Prep Pro is free for everyone during the FIRST200 launch, no payment needed")
-    launch = await first5000_running()
+    launch = await first5000_for(user["email"])
     lookup = FIRST5000_LOOKUP if launch else PRO_LOOKUP_KEY
     price, full = await asyncio.gather(asyncio.to_thread(_price, lookup), asyncio.to_thread(_price, PRO_LOOKUP_KEY))
     if not price or not full:

@@ -5,7 +5,21 @@ import { api, apiError } from "@/lib/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PromoCodeForm } from "@/components/admin/PromoCodeForm";
 import { PromoCodeLog } from "@/components/admin/PromoCodeLog";
-import { First200Exceptions } from "@/components/admin/First200Exceptions";
+import { LaunchList } from "@/components/admin/LaunchList";
+
+const LISTS_TEXT = {
+  "first200-exceptions": ["FIRST200 exception list", "These emails don't get FIRST200. When they sign in they're a normal free user: no FIRST200 banners, and they can upgrade and pay (for example with JOINCREW)."],
+  "first5000-exceptions": ["FIRST5000 exception list", "These emails don't get FIRST5000 while it's running: no FIRST5000 banner, and they pay the full price."],
+  "first5000-inclusions": ["FIRST5000 inclusion list", "These emails get FIRST5000 even when it isn't running: they see the FIRST5000 banner and pay the 50% launch price. An email can't be on both FIRST5000 lists."],
+};
+
+const LaunchLists = ({ data, promo, fields, onSaved }) => fields.map((field) => {
+  const [title, text] = LISTS_TEXT[`${promo}-${field}`];
+  const warn = promo === "first5000" && field === "inclusions" && data.first200
+    ? Object.fromEntries((data.first5000_inclusions || []).filter((e) => !(data.first200_exceptions || []).includes(e)).map((e) => [e, "FIRST200 is on and this email isn't on the FIRST200 exception list, so they get Pro free, not FIRST5000"]))
+    : {};
+  return <LaunchList key={field} promo={promo} field={field} title={title} text={text} emails={data[`${promo}_${field}`]} warn={warn} onSaved={onSaved} />;
+});
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Pacific/Auckland" });
@@ -62,6 +76,7 @@ export const PromoCodesAdmin = () => {
     toast.success(`${c.code} is live: skippers can use it on the Stripe payment page`);
     load().catch(() => setData((d) => ({ ...d, codes: [c, ...d.codes] })));
   };
+  const saveLists = (lists) => { setData((d) => ({ ...d, ...lists })); load().catch(() => {}); };
   const saveEdit = async ({ code, ...body }) => {
     const { data: d } = await api.put(`/admin/promo-codes/${code}`, body);
     setData(d);
@@ -92,7 +107,7 @@ export const PromoCodesAdmin = () => {
           </span>
         </label>
       )}
-      {data && <First200Exceptions emails={data.first200_exceptions} onSaved={(list) => { setData((d) => ({ ...d, first200_exceptions: list })); load().catch(() => {}); }} />}
+      {data && <LaunchLists data={data} promo="first200" fields={["exceptions"]} onSaved={saveLists} />}
       {data && (
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border-[1.5px] border-emerald-300 bg-emerald-50 p-3" data-testid="first5000-toggle">
           <Checkbox checked={!!data.first5000} onCheckedChange={(v) => setPromo("first5000", !!v)} className="mt-0.5 h-5 w-5" data-testid="first5000-checkbox" />
@@ -102,6 +117,7 @@ export const PromoCodesAdmin = () => {
           </span>
         </label>
       )}
+      {data && <LaunchLists data={data} promo="first5000" fields={["exceptions", "inclusions"]} onSaved={saveLists} />}
       {adding ? <PromoCodeForm base={data?.base_price} first={data?.first5000 ? data.first5000_price : null} onSave={save} onCancel={() => setAdding(false)} />
         : <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" onClick={() => setAdding(true)} disabled={!data} data-testid="promo-new-btn"><TicketPercent className="h-5 w-5" /> New promo code or coupon</button>}
       {!data ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (

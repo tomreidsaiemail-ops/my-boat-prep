@@ -776,3 +776,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ### 2026-06 FIRST200 exception list
 - app_settings.first200.exceptions (emails, lowercase), managed on /admin/promos (First200Exceptions.jsx, PUT /api/admin/promo-codes/first200/exceptions, logged in promo_code_log as "FIRST200 exceptions").
 - Listed emails see the app as if FIRST200 is off: premium/launch_free false (launch.first200_cached(email)), /payments/offer first200 false, checkout allowed (JOINCREW usable), no FIRST200 banner in the app (First5000Banner launchFree prop). Login page banner is pre-sign-in so it still shows.
+
+### 2026-06 FIRST5000 exception + inclusion lists
+- app_settings.first5000.exceptions / .inclusions; generic PUT /api/admin/promo-codes/{first200|first5000}/{exceptions|inclusions} (first200 has exceptions only); an email can't be on both FIRST5000 lists (400). launch.first5000_for(email): exception → off, inclusion → on, else switch. Used by /payments/offer, promo check and checkout (50% price). In-app banner now uses authenticated /payments/offer.
+- Admin UI: LaunchList.jsx (generic) ×3 on /admin/promos; warning on inclusion emails while FIRST200 is on and they aren't on the FIRST200 exception list.
