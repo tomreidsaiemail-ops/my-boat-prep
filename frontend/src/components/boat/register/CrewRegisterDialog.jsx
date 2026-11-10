@@ -30,6 +30,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
   const [editing, setEditing] = useState(null);
   const [bulk, setBulk] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [clearing, setClearing] = useState(null);
   const [busy, setBusy] = useState({});
   const load = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(data)).catch(() => {}), []);
   useEffect(() => { if (open && online) load(); }, [open, online, load]);
@@ -72,9 +73,14 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
     if (!guard()) return;
     try { await api.delete(`/crew-register/${e.entry_id}`); toast.success(`${e.name} removed`); load(); } catch (err) { toast.error(apiError(err)); }
   };
+  const clearWalk = async () => {
+    const { entry, walk } = clearing; setClearing(null);
+    if (!guard()) return;
+    try { await api.delete(`/crew-register/${entry.entry_id}/walkthroughs/${walk.boat_id}`); toast.success(`${entry.name} will take the ${walk.vessel} walkthrough again`); load(); } catch (err) { toast.error(apiError(err)); }
+  };
   const add = (kind) => { if (guard()) setEditing({ kind }); };
   const waiting = reg.crew.filter((c) => c.status !== "registered").length;
-  const row = (e) => <RegRow key={e.entry_id} entry={e} busy={busy[e.entry_id]} onEdit={() => guard() && setEditing(e)} onDelete={() => setDeleting(e)}
+  const row = (e) => <RegRow key={e.entry_id} entry={e} busy={busy[e.entry_id]} onEdit={() => guard() && setEditing(e)} onDelete={() => setDeleting(e)} onClearWalk={(w) => setClearing({ entry: e, walk: w })}
     onEmail={() => request([e.entry_id], true, e.entry_id)} onWhatsApp={() => whatsApp(e)} />;
 
   return (
@@ -108,6 +114,8 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
         </div>
         <RegEntryDialog entry={editing} onSaved={load} onClose={() => setEditing(null)} />
         <BulkQuickReg open={bulk} onDone={load} onClose={() => setBulk(false)} />
+        <ConfirmDelete item={clearing ? { name: `${clearing.walk.vessel} walkthrough` } : null} title={`Remove ${clearing?.entry.name || ""}'s ${clearing?.walk.vessel || ""} walkthrough?`}
+          note="They lose quick accept and must tick every stop of the walkthrough again. If they're on the boat now, their crew agreement reopens the next time they open the app." testId="reg-walk-clear" confirmLabel="Remove" onConfirm={clearWalk} onClose={() => setClearing(null)} />
         <ConfirmDelete item={deleting} title={`Remove ${deleting?.name || ""}?`} note="They're removed from your register. Crew already on a boat stay on it." testId="reg-delete" confirmLabel="Remove" onConfirm={remove} onClose={() => setDeleting(null)} />
       </DialogContent>
     </Dialog>

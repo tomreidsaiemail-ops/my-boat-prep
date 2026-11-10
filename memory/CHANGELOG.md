@@ -105,3 +105,6 @@
 ## 2026-06 Cupboard comments
 - Top-level cupboards have area.comment (<=300) entered in Edit cupboard below "Where is it in the <zone>?" (AreaEditDialog). Shown as "Cupboard comment" on that cupboard's walkthrough stops (CrewWalkthrough, Crew Agreement stops) - skipped stops are hidden so the comment is too.
 - Walkthrough stops panel (WalkStopsPicker): Comment bubble per stop toggles the comment; amber warning lists commented cupboards with no label on any photo, with "Label it on <photo>" opening ZonePinEditor (focusArea preselected once); panel stays open after save. Picker root data-no-dirty (no false discard prompt). Tested iteration_145.
+
+## 2026-06 Remove crew walkthrough badge
+- Crew Registration walkthrough badge has an x (RegRow onClearWalk) -> confirm -> DELETE /api/crew-register/{entry_id}/walkthroughs/{boat_id}: deletes walkthroughs (no quick accept) and unsets agreements.<uid> on that boat so crew on board redo the agreement + full walkthrough. Self-tested (UI + curl).

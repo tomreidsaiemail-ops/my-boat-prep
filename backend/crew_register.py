@@ -186,6 +186,20 @@ async def edit_entry(entry_id: EntryPath, payload: Details, user: dict = Depends
     return public({**e, **upd})
 
 
+@router.delete("/{entry_id}/walkthroughs/{boat_id}")
+async def clear_walkthrough(entry_id: EntryPath, boat_id: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")], user: dict = Depends(get_current_user)):
+    """The skipper wipes a crew member's walkthrough of a boat: no quick accept, and crew on board must accept and walk it again."""
+    e = await db.crew_register.find_one({"owner_id": user["user_id"], "entry_id": entry_id, "kind": "crew"}, {"_id": 0, "email_key": 1})
+    if not e:
+        raise HTTPException(status_code=404, detail="Crew member not found")
+    q = {"owner_id": user["user_id"], "boat_id": boat_id, "email_key": e["email_key"]}
+    uids = [w["user_id"] async for w in db.walkthroughs.find(q, {"_id": 0, "user_id": 1})]
+    await db.walkthroughs.delete_many(q)
+    if uids:
+        await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$unset": {f"agreements.{u}": "" for u in uids}})
+    return {"ok": True, "cleared": len(uids)}
+
+
 @router.delete("/{entry_id}")
 async def delete_entry(entry_id: EntryPath, user: dict = Depends(get_current_user)):
     await db.crew_register.delete_one({"owner_id": user["user_id"], "entry_id": entry_id})

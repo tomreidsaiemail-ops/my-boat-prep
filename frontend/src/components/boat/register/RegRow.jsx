@@ -1,8 +1,8 @@
-import { CheckCircle2, Loader2, Mail, MessageCircle, Pencil, Trash2, Zap } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, MessageCircle, Pencil, Trash2, X, Zap } from "lucide-react";
 import { RegStatus } from "@/components/boat/register/RegStatus";
 import { localWhen, timeAgo } from "@/lib/timeAgo";
 
-export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp }) => {
+export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onClearWalk }) => {
   const t = `reg-row-${entry.entry_id}`;
   const quick = entry.kind === "crew" && entry.quick_reg && entry.status === "registered";
   // Quick Reg crew can still be asked to add their own details.
@@ -31,6 +31,10 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp }) =
           {(entry.walkthroughs || []).map((w) => (
             <span key={w.boat_id} className="inline-flex flex-wrap items-center gap-1 rounded-md bg-green-100 px-2 py-0.5 text-[11px] font-extrabold text-green-800" data-testid={`${t}-walkthrough-${w.boat_id}`}>
               <CheckCircle2 className="h-3.5 w-3.5 text-[var(--green)]" /> {w.vessel} Walkthrough {w.quick ? `quick accept ${localWhen(w.at)} (full walk-through ${timeAgo(w.full_at)})` : localWhen(w.at)}
+              <button type="button" className="-mr-1 ml-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-green-900 [transition:background-color_.15s] hover:bg-red-100 hover:text-[var(--red)]" onClick={() => onClearWalk(w)}
+                aria-label={`Remove ${w.vessel} walkthrough so ${entry.name} takes it again`} title="Remove, so they take the walkthrough again" data-testid={`${t}-walkthrough-${w.boat_id}-remove-btn`}>
+                <X className="h-3.5 w-3.5" strokeWidth={3} />
+              </button>
             </span>
           ))}
         </div>
