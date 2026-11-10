@@ -70,6 +70,7 @@ import { INTROS, ListIntro } from "@/components/boat/ListIntro";
 import { DistressEmailBar } from "@/components/boat/distress/DistressEmailBar";
 import useDistressEmail from "@/components/boat/distress/useDistressEmail";
 import { Checklist } from "@/components/boat/Checklist";
+import { stampTicks } from "@/components/boat/TickBadge";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { CreateListDialog } from "@/components/boat/CreateListDialog";
@@ -391,11 +392,13 @@ export default function BoatPrep({ boatId, boats }) {
     } catch (e) { toast.error(apiError(e, "Couldn't sign off right now. Please try again.")); return false; }
   };
 
+  const tickedBy = crew ? (boats.current.my_name || user.name || "Crew").trim() : "";
+  const setTicks = (fn) => setItems((list) => stampTicks(list, fn(list), tickedBy));
   const toggle = (id) => {
     if (!guard()) return;
-    if (active.id !== "leavingDock") { setItems((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i))); return; }
+    if (active.id !== "leavingDock") { setTicks((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i))); return; }
     const next = tickDeparture(items, id);
-    setItems((list) => tickDeparture(list, id));
+    setTicks((list) => tickDeparture(list, id));
     if (!crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
   };
   // Select All: ticks (or clears) every row shown; single rows can still be unticked afterwards.
@@ -404,8 +407,8 @@ export default function BoatPrep({ boatId, boats }) {
     const ids = new Set(shown.map((i) => i.id));
     const next = items.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i));
     const before = new Map(items.filter((i) => ids.has(i.id)).map((i) => [i.id, !!i.checked]));
-    setItems((list) => list.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i)));
-    toast(on ? `Ticked all ${ids.size} items` : `Unticked all ${ids.size} items`, { duration: 6000, action: { label: "Undo", onClick: () => setItems((list) => list.map((i) => (before.has(i.id) ? { ...i, checked: before.get(i.id) } : i))) } });
+    setTicks((list) => list.map((i) => (ids.has(i.id) ? { ...i, checked: on } : i)));
+    toast(on ? `Ticked all ${ids.size} items` : `Unticked all ${ids.size} items`, { duration: 6000, action: { label: "Undo", onClick: () => setTicks((list) => list.map((i) => (before.has(i.id) ? { ...i, checked: before.get(i.id) } : i))) } });
     if (active.id === "leavingDock" && !crew && !departureTicked(items) && departureTicked(next)) setDialog({ type: "departLog" });
   };
   const remove = (id) => {

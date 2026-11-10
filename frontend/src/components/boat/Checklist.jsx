@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, CheckCircle2, ChevronDown, ChevronRight, FileText, Flag, MapPin, Pencil, ShoppingBasket, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeftToLine, ArrowRightToLine, ArrowUp, Check, ChevronDown, ChevronRight, FileText, Flag, MapPin, Pencil, ShoppingBasket, Trash2 } from "lucide-react";
 import { ClampText, ExpandButton } from "@/components/boat/shipslog/ClampText";
 import { OrderNumber } from "@/components/boat/OrderNumber";
 import { outlineInfo } from "@/lib/outline";
@@ -9,6 +9,7 @@ import { isMealHead } from "@/lib/mpa";
 import { ItemPhoto } from "@/components/boat/ItemPhoto";
 import { MmdLogAnswer } from "@/components/boat/doctor/MmdLogAnswer";
 import { LogPhotos } from "@/components/boat/navigator/LogPhotos";
+import { TickBadge } from "@/components/boat/TickBadge";
 
 export const PriorityTools = ({ item, info, onFlag, onMove, onIndent }) => (
   <div className="flex flex-wrap items-center gap-1 pb-2 pl-1" data-testid={`priority-tools-${item.id}`}>
@@ -49,7 +50,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
           <ClampText on={!!clamp} open={open} onLong={setLong} title={typeof text === "string" ? text : undefined}
             className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} testId={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></ClampText>
-          {item.checked && !pick && <span className="tick-badge" data-testid={`checklist-item-ticked-${item.id}`}><CheckCircle2 className="h-3.5 w-3.5" strokeWidth={3} /> Done</span>}
+          {item.checked && !pick && <TickBadge item={item} />}
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
           {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
           {String(item.briefing || "").trim() && <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-900" title={item.briefing} data-testid={`checklist-item-briefing-badge-${item.id}`}><FileText className="h-3 w-3" />Role briefing</span>}

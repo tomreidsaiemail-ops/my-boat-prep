@@ -62,8 +62,8 @@ def keep_pushed(merged: dict, inc: dict, pending: list) -> tuple:
     return merged, have
 
 
-def merge_crew_ticks(prev: dict, inc: dict) -> dict:
-    """Crew may only tick and untick existing items; everything else stays as the owner left it."""
+def merge_crew_ticks(prev: dict, inc: dict, by: str = "") -> dict:
+    """Crew may only tick and untick existing items; everything else stays as the owner left it. A crew tick keeps who ticked it."""
     out = deepcopy(prev)
     pl, il = prev.get("list_ts") or {}, inc.get("list_ts") or {}
     for lid, items in (out.get("data") or {}).items():
@@ -71,7 +71,9 @@ def merge_crew_ticks(prev: dict, inc: dict) -> dict:
         for n, it in enumerate(items):
             t = theirs.get(it.get("id"))
             if t and bool(t.get("checked")) != bool(it.get("checked")) and _ts(t, il.get(lid, "")) > _ts(it, pl.get(lid, "")):
-                items[n] = {**it, "checked": bool(t.get("checked")), "ts": t.get("ts") or il.get(lid, "")}
+                rest = {k: v for k, v in it.items() if k != "checked_by"}
+                on = bool(t.get("checked"))
+                items[n] = {**rest, "checked": on, "ts": t.get("ts") or il.get(lid, ""), **({"checked_by": by[:60]} if on and by else {})}
     out["updated_at"] = max(prev.get("updated_at", ""), inc.get("updated_at", ""))
     return out
 
@@ -123,9 +125,9 @@ def merge_crew_areas(prev_areas: list, inc_areas: list, prev_ts: str) -> list:
     return out
 
 
-def merge_crew(prev: dict, inc: dict, galley: bool = False) -> tuple:
+def merge_crew(prev: dict, inc: dict, galley: bool = False, by: str = "") -> tuple:
     """Crew changes: ticks, Food & Drink cupboards, and new Ship's Log entries. Returns the merged copy and the log entries they added."""
-    out = merge_crew_ticks(prev, inc)
+    out = merge_crew_ticks(prev, inc, by)
     if galley:
         merge_crew_galley(out, prev, inc)
     ps, is_ = prev.get("sec_ts") or {}, inc.get("sec_ts") or {}

@@ -363,7 +363,8 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
     if role == "crew":
         if not prev:
             raise HTTPException(status_code=404, detail="Boat not found")
-        merged, crew_log = merge_crew(prev, payload.model_dump(), galley_crew((prev.get("crew_roles") or {}).get(user["user_id"])))
+        by = (prev.get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user["email"].split("@")[0]
+        merged, crew_log = merge_crew(prev, payload.model_dump(), galley_crew((prev.get("crew_roles") or {}).get(user["user_id"])), str(by).strip())
         have = []
     else:
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
