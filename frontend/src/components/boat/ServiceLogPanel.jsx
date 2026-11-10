@@ -3,6 +3,8 @@ import { FileDown, Gauge, Loader2, Lock, Sailboat, Trash2, Zap } from "lucide-re
 import { ValidationBar } from "@/components/boat/ActionBar";
 import { ServiceDue } from "@/components/boat/ServiceDue";
 import { EngineerAsk } from "@/components/boat/EngineerAsk";
+import { MagicPanel } from "@/components/boat/MagicPanel";
+import { MagicEngineerIcon } from "@/components/boat/MagicEngineerIcon";
 import { ElectricalInputs, electricalContext } from "@/components/boat/service/ElectricalInputs";
 
 const fmtDate = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
@@ -69,7 +71,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
   return (
     <>
     {(engine || (kind === "electrical_log" && boat)) && (
-      <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`${k.prefix}-mme-group`}>
+      <MagicPanel id={`${k.prefix}-mme`} title="Magic Marine Engineer" icon={<MagicEngineerIcon className="h-5 w-5 text-[var(--navy)]" />} testId={`${k.prefix}-mme-group`}>
         {engine && <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--line)] bg-[var(--panel)] p-2.5" data-testid="engine-inputs">
         <div className="grid grid-cols-[1.4fr_1fr] items-end gap-2" data-testid="engine-type-row">
           <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
@@ -90,7 +92,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
-      </section>
+      </MagicPanel>
     )}
     {help}
     <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={k.panelId}>

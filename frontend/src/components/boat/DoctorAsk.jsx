@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2, PawPrint, Stethoscope, User, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
+import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { DoctorPhotoPicker } from "@/components/boat/doctor/DoctorPhotoPicker";
 import { DoctorHistory } from "@/components/boat/doctor/DoctorHistory";
 
@@ -68,7 +69,7 @@ export const DoctorAsk = ({ kitName, kit, adults, children, pets = [], units = "
 
   return (
     <div className="flex flex-col gap-2" data-testid="doctor-ask-panel">
-      <label htmlFor="doctor-question" className="field-label">ASK THE MAGIC MARINE DOCTOR</label>
+      <label htmlFor="doctor-question" className="field-label flex items-center gap-2"><MagicDoctorIcon className="h-5 w-5 text-[var(--navy)]" testId="doctor-ask-icon" /> ASK THE MAGIC MARINE DOCTOR</label>
       <p className="-mt-1 text-xs italic text-[var(--muted)]" data-testid="doctor-caveat">(The MMD does not hold an M.D. but can help in an emergency)</p>
       {pets.length > 0 && <WhoNeedsHelp pets={pets} value={pet ? who : ""} onChange={setWho} />}
       <div className="flex items-start gap-2">

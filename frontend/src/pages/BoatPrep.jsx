@@ -78,6 +78,8 @@ import { RenameListDialog } from "@/components/boat/RenameListDialog";
 import { TopUpButton, TopUpDialog } from "@/components/boat/TopUpDialog";
 import { MpaDialog } from "@/components/boat/MpaDialog";
 import { DoctorAsk } from "@/components/boat/DoctorAsk";
+import { MagicPanel } from "@/components/boat/MagicPanel";
+import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
@@ -963,8 +965,18 @@ export default function BoatPrep({ boatId, boats }) {
           help={<ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />} />
       ) : (
+        <>
+        {/^first aid kit/i.test(active.name || "") && (
+          <MagicPanel key={`mmd-${active.id}`} id={`${active.id}-mmd`} title="Magic Marine Doctor" icon={<MagicDoctorIcon className="h-5 w-5 text-[var(--navy)]" />} testId="mmd-group">
+            <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
+              children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} pets={(boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())} units={boat.units === "ft" ? "lb" : "kg"}
+              online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")}
+              logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} crew={crew} onLogged={logMmd} />
+          </MagicPanel>
+        )}
         <ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
+        </>
       )}
       {listDescription && (
         <p className="whitespace-pre-line rounded-md border-l-4 border-[var(--navy)] bg-white px-3 py-2 text-sm text-[var(--muted)]" data-testid="list-description">
@@ -1062,12 +1074,6 @@ export default function BoatPrep({ boatId, boats }) {
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>
-          )}
-          {/^first aid kit/i.test(active.name || "") && (
-            <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
-              children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} pets={(boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())} units={boat.units === "ft" ? "lb" : "kg"}
-              online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Doctor")}
-              logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} crew={crew} onLogged={logMmd} />
           )}
           {!crew && items.length > 0 && active.id !== "shipsLog" && !EMERGENCY[active.id] && (
             <button type="button" className="btn-ghost h-10 min-h-0 gap-1.5 self-end px-3 text-sm text-[var(--red)]" onClick={askDeleteList} data-testid="list-delete-list-btn">
