@@ -64,6 +64,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
+  const [prefer, setPrefer] = useState(focusArea?.id);
   useEffect(() => { setPins(pic?.map.pins || []); setComment(pic?.map.comment || ""); setEditing(null); }, [pic]);
   if (!pic) return null;
   // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
@@ -76,7 +77,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
     const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
     setEditing({ pin: { id: pinId(), x, y, label: "", area_id: null }, isNew: true });
   };
-  const keep = (p) => { setPins((ps) => (editing.isNew ? [...ps, p] : ps.map((x) => (x.id === p.id ? p : x)))); setEditing(null); };
+  const keep = (p) => { setPins((ps) => (editing.isNew ? [...ps, p] : ps.map((x) => (x.id === p.id ? p : x)))); setEditing(null); if (p.area_id === prefer) setPrefer(undefined); };
   const movePin = (id, x, y) => {
     const at = { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
     setPins((ps) => ps.map((p) => (p.id === id ? { ...p, ...at } : p)));
@@ -110,7 +111,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
           onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}
           highlight={editing?.pin.id} imgClass="max-h-[60vh] w-full rounded-md object-contain" testId="zone-pin-photo" />
-        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} prefer={focusArea?.id} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
+        {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} prefer={prefer} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
           onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
         {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}

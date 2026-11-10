@@ -79,7 +79,7 @@ export const WalkStopsPicker = ({ boat, areas = [], online, onSaved, onMaps, onA
   };
   const maps = [...new Map(steps.map((s) => [s.pic.key, s.pic])).values()];
   return (
-    <div className="rounded-md border-[1.5px] border-[var(--line)]" data-testid="walk-stops-picker">
+    <div className="rounded-md border-[1.5px] border-[var(--line)]" data-no-dirty data-testid="walk-stops-picker">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-bold" data-testid="walk-stops-toggle">
         <Footprints className="h-4 w-4 shrink-0" /> Walkthrough stops <span className="font-semibold text-[var(--muted)]" data-testid="walk-stops-count">({on} of {steps.length})</span>
         {unlabelled.length > 0 && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-label="A commented cupboard isn't labelled" data-testid="walk-stops-unlabelled-icon" />}

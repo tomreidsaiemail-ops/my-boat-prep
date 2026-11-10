@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend test of cupboard comments, run on desktop 1920x800 and mobile 390x844 with the skipper test_session_pro_1 and crew test_session_free_1 on boat 'main'. Everything requested works. (1) Edit cupboard: the 'Cupboard comment (optional)' textarea sits below 'Where is it in the zone?' and allows at most 300 characters (350 typed are cut to 300). Save keeps the comment on the server (user_boats.areas[].comment), reopening shows it filled in, Cancel keeps it, and clearing it then saving removes it. (2) Walkthrough stops panel: the comment-only Galley photo stop shows a Comment bubble with the photo comment. Click shows it, a second click hides it, and the checkbox never changes. (3) Commented cupboards with no label (Fridge, Pantry) show the amber walk-stops-unlabelled alert with a 'Label it on Galley' button, and the toggle has a warning icon. (4) Label it opens zone-pin-editor over the Crew dialog with the focus hint. Tapping the photo preselects the cupboard select (Fridge, then Pantry on mobile). Place label + Save labels closes the editor. The panel stays open, that cupboard's warning is gone (icon gone once both are labelled), a new ticked stop with its Comment bubble appears, and the count updates (1 of 1 then 2 of 2). (5) Unticking Pantry and saving gave 'Walkthrough now has 1 stop'. The skipper's crew walkthrough then showed only Fridge (1 of 1), with the Skipper's comment and then the Cupboard comment below the photo. The crew Agreement (stop 0 expanded, and Start the walkthrough) showed only Fridge with both comments. Pantry was skipped and its comment was not seen. (6) After clearing Pantry's comment, Pantry's bubble is gone. Re-ticking and saving gave 2 stops. One issue: a false 'Discard your changes?' prompt on the Crew dialog (details below).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CrewDialog + WalkStopsPicker (ui/dialog.jsx unsaved-changes guard)", "issue": "A false 'Discard your changes?' prompt appears when closing the Crew dialog (Escape, X or outside click) after just opening the Walkthrough stops panel and tapping a Comment bubble, with nothing changed. It also appears right after a successful 'Save walkthrough stops' and after labelling via 'Label it'. RCA: DialogContent takes its snapshot of inputs on the first pointerdown (the walk-stops-toggle tap), before the panel's checkboxes render. Afterwards the snapshot has more entries, so changed() is true. A saved untick also stays 'changed' against the original snapshot. Likely there before this change, but the new label flow, which adds checkboxes, makes it more common.", "selector": "[data-testid=discard-changes-dialog]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit cupboard dialog", "issues": ["The comment textarea has no character counter (e.g. 0/300), unlike the 'Where' field (0/80)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix the false discard prompt on the Crew dialog. Simplest: add data-no-dirty to the walk-stops-picker root div, since the picker has its own Save button and its checkboxes should not count as unsaved dialog fields. Or pass dirty={changed} from the picker up to CrewDialog's DialogContent.",
+    "Optional: add a 0/300 counter under inventory-comment-input to match the Where field."
+  ],
+  "critical_code_review_comments": [
+    "WalkStopsPicker: unlabelled only counts top-level cupboards with a trimmed comment that have no pin on any map. It picks the photo by zone colour, falling back to the first photo. The picker returns null only when there are no steps and nothing is unlabelled. Correct.",
+    "StopRow: the bubble is a separate button outside the <label>, so clicking it can't toggle the checkbox. Confirmed in the UI.",
+    "ZonePinEditor: prefer=focusArea stays set for every new label in that session, so a second label placed in the same visit also defaults to the focus cupboard. That could give duplicate labels. Consider clearing the preference after the first placed label.",
+    "walkSteps: once a photo with only a comment gets its first label, the comment-only stop (key <mapId>:comment) is replaced by the cupboard stop. The photo comment still shows on that stop. If the skipper had unticked the comment-only stop, its key is left behind in walk_skip. Harmless, but could be pruned on save.",
+    "AreaEditDialog hides the comment field for parent_id areas (folders/boxes). This was only checked in the code: there are no sub-areas on this boat to test it in the UI."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "95% (all requested flows pass; one false discard-prompt bug)"},
+  "seed_data_creation": "Left on pro boat 'main': Fridge (amw1pvdq802hq) comment 'TEST_ Fridge seacock is behind the bin, close it before leaving'. Pantry comment added then cleared. Galley photo (f634a094) now has 2 labels: pmwa5tk4gp1w2 Fridge and pmwa5u1w1b7dp Pantry, so the old comment-only Galley stop is replaced by these. walk_skip is [] (both ticked).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Boat data lives in db.user_boats {owner_id:'test-user-pro', boat_id:'main'} (areas, zone_maps, walk_skip). The crew agreement dialog opens on its own for test_session_free_1 on the shared boat. Zone pin photo is a 200x150 orange placeholder; click on its img via mouse coordinates. The skipper crew walkthrough is under zone-map-toggle -> crew-walkthrough-btn."
+}

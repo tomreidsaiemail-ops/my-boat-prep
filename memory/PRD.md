@@ -749,3 +749,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## 2026-06 Skipper's comment on zone map photos (DONE, see CHANGELOG.md)
 
 ## 2026-06 Crew "Ticked by" on Done badge (DONE, see CHANGELOG.md)
+
+## 2026-06 Cupboard comments (DONE, see CHANGELOG.md)

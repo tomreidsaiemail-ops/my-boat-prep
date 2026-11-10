@@ -101,3 +101,7 @@
 
 ## 2026-06 Crew "Ticked by" on Done badge
 - Crew ticks stamped server-side with checked_by (crew_names name) in sync_merge.merge_crew_ticks; untick clears. Skipper ticks clear names (stampTicks in TickBadge.jsx). Done badge (TickBadge) shows "· Ticked by X" on hover (desktop) or press-and-hold 450ms (phone) without toggling. Select All undo restores names. Tested iteration_144 (100%).
+
+## 2026-06 Cupboard comments
+- Top-level cupboards have area.comment (<=300) entered in Edit cupboard below "Where is it in the <zone>?" (AreaEditDialog). Shown as "Cupboard comment" on that cupboard's walkthrough stops (CrewWalkthrough, Crew Agreement stops) - skipped stops are hidden so the comment is too.
+- Walkthrough stops panel (WalkStopsPicker): Comment bubble per stop toggles the comment; amber warning lists commented cupboards with no label on any photo, with "Label it on <photo>" opening ZonePinEditor (focusArea preselected once); panel stays open after save. Picker root data-no-dirty (no false discard prompt). Tested iteration_145.

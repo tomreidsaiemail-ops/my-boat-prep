@@ -33,7 +33,7 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose }) => {
             <label className="flex flex-col gap-1"><span className="field-label">Cupboard comment (optional)</span>
               <textarea value={comment} maxLength={AREA_COMMENT_MAX} rows={2} onChange={(e) => setComment(e.target.value)} placeholder="e.g. The seacock is behind the bin, close it before leaving the boat"
                 className="field-input !h-auto min-h-[64px] !py-2" data-testid="inventory-comment-input" />
-              <span className="text-xs text-[var(--muted)]">Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span></label>
+              <span className="flex justify-between gap-2 text-xs text-[var(--muted)]"><span>Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span><span data-testid="inventory-comment-count">{comment.length}/{AREA_COMMENT_MAX}</span></span></label>
           )}
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="inventory-rename-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
