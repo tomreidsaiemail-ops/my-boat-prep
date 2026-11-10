@@ -69,7 +69,7 @@ export const listRows = (list, items, ctx) => {
 };
 
 const SKIP = new Set(["weather", "depart", "arrive", "pob_manual"]);
-const LABELS = { pob: "Persons on board (POB)", mmsi: "MMSI", loa: "LOA", lwl: "LWL", cruise_kn: "Cruising speed (kn)", log_email: "Skipper email", shore_email: "Shore contact email",
+const LABELS = { pob: "Persons on board (POB)", mmsi: "MMSI", loa: "LOA", lwl: "LWL", cruise_kn: "Cruising speed (kn)", log_email: "Skipper email", shore_email: "Shore contact email", coastguard_email: "Coastguard email",
   shore_enabled: "Shore contact on", units: "Measurement units", tank_units: "Tank units", year_built: "Year of manufacture", budget_currency: "Currency", trip_days: "Trip duration (days)",
   skipper_phone: "Skipper phone", gas_bottles: "LPG bottles", gas_kg: "LPG bottle size (kg)", gas_extra: "Extra LPG bottles" };
 export const boatRows = (boat) => Object.entries(boat).filter(([k, v]) => !SKIP.has(k) && v !== "" && v !== null && v !== undefined && !(Array.isArray(v) && !v.length))

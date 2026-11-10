@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookOpen, ChevronDown, ChevronUp, ClipboardList, Siren, Radio, Wrench, Zap } from "lucide-react";
 
-const INTROS = {
+export const INTROS = {
   shipsLog: {
     cls: "border-sky-200 bg-sky-50 text-sky-950", Icon: BookOpen, testId: "log-instructions",
     text: "A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board. However, you can add other note worthy logs as you decide. The offline mode lets you do that at sea. The idea here is that once you have reached your destination you can print off this log and add it to the Ship's Log binder on board.",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
-import useGps from "@/hooks/useGps";
+import useGps, { distressPosition } from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
 import { TipsList } from "@/components/boat/TipsList";
@@ -66,7 +66,9 @@ import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
 import { CREW_ROLES, crewRolesList, hasRole, INVITE_DRAFT, roleBriefings, roleGroups, setRoleBriefing } from "@/lib/crewRoles";
 import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
-import { ListIntro } from "@/components/boat/ListIntro";
+import { INTROS, ListIntro } from "@/components/boat/ListIntro";
+import { DistressEmailBar } from "@/components/boat/distress/DistressEmailBar";
+import useDistressEmail, { validEmail } from "@/components/boat/distress/useDistressEmail";
 import { Checklist } from "@/components/boat/Checklist";
 import { AddItemForm } from "@/components/boat/AddItemForm";
 import { TextDialog } from "@/components/boat/TextDialog";
@@ -173,6 +175,7 @@ export default function BoatPrep({ boatId, boats }) {
       mutate((s) => resetLists(s, [id], templates));
       toast.success(`${name} list added back to this boat`);
     }
+    if (activeId === id) distress.opened(id);
     setActiveId(id);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
@@ -338,6 +341,14 @@ export default function BoatPrep({ boatId, boats }) {
   useEffect(() => { const q = pendingQr(); if (q && qrBoatKey(q, user.user_id) === boats.current.key) setActiveId(INVENTORY_LIST.id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
+  const distress = useDistressEmail({ online, coastguard: boat.coastguard_email, shore: boat.shore_email, build: (kind) => {
+    const position = distressPosition(gps);
+    const intro = INTROS[kind];
+    const pctx = { ...ctx, position };
+    const lines = [intro.title, intro.text, ...(state.emergency_checked?.[kind] ? [intro.confirm] : []), ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
+    return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
+  } });
+  useEffect(() => { if (EMERGENCY[active.id]) distress.opened(active.id); }, [active.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -920,6 +931,8 @@ export default function BoatPrep({ boatId, boats }) {
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
+      {EMERGENCY[active.id] && <DistressEmailBar kind={active.id} online={online} hasCoastguard={validEmail(boat.coastguard_email)} status={distress.state[active.id]}
+        onSend={() => distress.sendCoastguard(active.id)} onNo={() => distress.dismiss(active.id)} onRetryShore={() => distress.retryShore(active.id)} />}
       <ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
         skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
       {listDescription && (
