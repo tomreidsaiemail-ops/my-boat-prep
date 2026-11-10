@@ -97,3 +97,4 @@
 - Per-photo comment (zone_maps[].comment, <=500) typed in Edit labels (ZonePinEditor), saved via PUT /boats/{id}/zone-maps/{map}/pins {comment}. Shown under the photo everywhere (Zone maps list, full dialog, Zone dialog big view, Crew walkthrough every stop, Crew Agreement stops).
 - Walkthrough + agreement stops show "Cupboard: <full name>" above the photo.
 - Removing a photo with a comment warns first (RemoveMapConfirm) with Copy comment. Tested iteration_143 (100%).
+- 2026-06 follow-up: a zone map photo with a Skipper's comment but no labels is now one walkthrough stop of its own (pin id "comment"; frontend walkSteps + backend crew_agreement.map_pins for stop_ids, walk-stops, agreement PDF). Comment-only stops hide Cupboard/contents. Empty text: "The skipper hasn't labelled a zone map or commented on one yet, so there are no stops to tick." Charter terms stops unchanged.

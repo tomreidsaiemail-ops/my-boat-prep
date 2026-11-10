@@ -7,7 +7,12 @@ import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 // Every pin, photo by photo, in the order they were placed, less any the skipper left out of the walkthrough.
-export const walkSteps = (pics, skip = []) => pics.flatMap((p) => (p.map?.pins || []).map((pin) => ({ pic: p, pin })))
+// A photo with no labels but a Skipper's comment is one stop of its own.
+const COMMENT = "comment";
+export const isCommentStop = (s) => s.pin.id === COMMENT;
+const mapPins = (m) => (m?.pins?.length ? m.pins
+  : m && m.kind !== "overview" && (m.comment || "").trim() ? [{ id: COMMENT, label: m.name || m.zone || "Zone map photo", area_id: null }] : []);
+export const walkSteps = (pics, skip = []) => pics.flatMap((p) => mapPins(p.map).map((pin) => ({ pic: p, pin })))
   .filter((s) => !skip.includes(`${s.pic.key}:${s.pin.id}`));
 
 export const WalkStopContents = StopContents;
@@ -27,19 +32,20 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
   const step = steps[n];
   const area = areas.find((a) => a.id === step.pin.area_id);
   const last = n === steps.length - 1;
+  const note = isCommentStop(step);
   const ask = () => setLeaving(true);
   return (
     <Dialog open onOpenChange={(o) => !o && ask()}>
       <DialogContent guard={false} className="max-h-[94vh] max-w-2xl overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-4" data-testid="walkthrough-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
-          <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · here's what's stowed in this spot.</DialogDescription>
+          <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · {note ? "read the skipper's comment on this photo." : "here's what's stowed in this spot."}</DialogDescription>
         </DialogHeader>
-        <CupboardName name={pinName(step.pin, areas)} testId="walkthrough-cupboard-name" />
+        {!note && <CupboardName name={pinName(step.pin, areas)} testId="walkthrough-cupboard-name" />}
         <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <SkipperComment text={step.pic.map?.comment} testId="walkthrough-skipper-comment" />
-        <WalkStopContents area={area} areas={areas} />
+        {!note && <WalkStopContents area={area} areas={areas} />}
         {onTick && (
           <label className={`flex min-h-11 items-center gap-3 rounded-md border-[1.5px] px-3 font-bold ${ticked.includes(stopKey(step)) ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="walkthrough-seen">
             <input type="checkbox" checked={ticked.includes(stopKey(step))} onChange={() => onTick(stopKey(step))} className="h-5 w-5 accent-emerald-700" data-testid="walkthrough-seen-checkbox" />

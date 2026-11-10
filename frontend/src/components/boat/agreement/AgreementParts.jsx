@@ -2,13 +2,14 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
-import { WalkStopContents } from "@/components/boat/CrewWalkthrough";
+import { WalkStopContents, isCommentStop } from "@/components/boat/CrewWalkthrough";
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
 // One Zone Map Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
 const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
   const [open, setOpen] = useState(false);
   const area = areas.find((a) => a.id === step.pin.area_id);
+  const note = isCommentStop(step);
   return (
     <li className={`flex flex-col gap-2 px-3 py-2 ${ticked ? "bg-emerald-50" : ""}`} data-testid={`agreement-stop-${n}`}>
       <div className="flex items-center gap-3">
@@ -19,11 +20,11 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
         </button>
       </div>
       {open && <>
-        <CupboardName name={pinName(step.pin, areas)} testId={`agreement-stop-${n}-cupboard-name`} />
+        {!note && <CupboardName name={pinName(step.pin, areas)} testId={`agreement-stop-${n}-cupboard-name`} />}
         <PinnedPhoto src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={pins} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
         <SkipperComment text={step.pic.map?.comment} testId={`agreement-stop-${n}-skipper-comment`} />
-        <WalkStopContents area={area} areas={areas} />
+        {!note && <WalkStopContents area={area} areas={areas} />}
       </>}
     </li>
   );
@@ -32,7 +33,7 @@ const Stop = ({ step, pins, areas, ticked, onTick, n }) => {
 export const stopId = (step) => step.id || `${step.pic.key}:${step.pin.id}`;
 
 export const AgreementWalkthrough = ({ steps, areas, ticked, onChange }) => {
-  if (!steps.length) return <p className="text-sm text-[var(--muted)]" data-testid="agreement-walkthrough-empty">The skipper hasn't labelled a zone map yet, so there are no stops to tick.</p>;
+  if (!steps.length) return <p className="text-sm text-[var(--muted)]" data-testid="agreement-walkthrough-empty">The skipper hasn't labelled a zone map or commented on one yet, so there are no stops to tick.</p>;
   const toggle = (id) => onChange(ticked.includes(id) ? ticked.filter((x) => x !== id) : [...ticked, id]);
   return (
     <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)]" data-testid="agreement-walkthrough">

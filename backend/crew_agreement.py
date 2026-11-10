@@ -43,9 +43,18 @@ class WalkSkipIn(BaseModel):
     skip: List[str] = Field(default_factory=list, max_length=600)
 
 
+def map_pins(m: dict) -> list:
+    """A photo's labels; a photo with only a Skipper's comment is one stop of its own."""
+    if m.get("pins"):
+        return m["pins"]
+    if m.get("kind") != "overview" and (m.get("comment") or "").strip():
+        return [{"id": "comment", "label": m.get("name") or m.get("zone") or "Zone map photo", "area_id": None}]
+    return []
+
+
 def stop_ids(doc: dict) -> List[str]:
     skip = set(doc.get("walk_skip") or [])
-    return [s for s in (f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in m.get("pins") or []) if s not in skip]
+    return [s for s in (f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)) if s not in skip]
 
 
 @router.put("/boats/{boat_id}/walk-stops")
@@ -53,7 +62,7 @@ async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = D
     """The skipper leaves less important cupboards out of the Zone Map Walk Through."""
     await owned_boat(user, boat_id)
     doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1})
-    known = {f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in m.get("pins") or []}
+    known = {f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)}
     skip = [s for s in dict.fromkeys(payload.skip) if s in known]
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"walk_skip": skip}})
     return {"walk_skip": skip}
@@ -157,7 +166,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     rec = (doc.get("agreements") or {}).get(member) or {}
     areas = {a.get("id"): a.get("name") for a in doc.get("areas") or [] if isinstance(a, dict)}
     pins = [(f"{m['id']}:{p['id']}", areas.get(p.get("area_id")) or p.get("label") or f"Stop {n + 1}")
-            for m in doc.get("zone_maps") or [] for n, p in enumerate(m.get("pins") or [])]
+            for m in doc.get("zone_maps") or [] for n, p in enumerate(map_pins(m))]
     crew_name = (doc.get("crew_names") or {}).get(member) or crew_user.get("name") or crew_user.get("email") or "Crew"
     pdf = build_agreement_pdf({
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
