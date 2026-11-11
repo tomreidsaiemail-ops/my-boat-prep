@@ -108,7 +108,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, 
           </button>
         )}
         {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} />}
-        {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} boat {areaCount === 1 ? "area" : "areas"} already in {zone.label}</p>}
+        {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} {areaCount === 1 ? "cupboard" : "cupboards"} already in {zone.label}</p>}
       </DialogContent>
     </Dialog>
   );
