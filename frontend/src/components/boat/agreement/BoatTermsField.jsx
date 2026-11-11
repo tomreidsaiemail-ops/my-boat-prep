@@ -22,7 +22,7 @@ export const BoatTermsField = ({ boat, value, online, onSaved }) => {
     <details className="rounded-md border-[1.5px] border-[var(--line)] p-3" data-testid="boat-terms-section">
       <summary className="cursor-pointer text-sm font-bold" data-testid="boat-terms-toggle">Boat Terms and Conditions{value ? "" : " (add your own)"}</summary>
       <p className="mt-2 text-xs text-[var(--muted)]">
-        Crew read and accept these when they join, after the standard terms, their role briefing and the Zone Map Walk Through. One term per line.
+        Crew read and accept these when they join, after the standard terms, their role briefing and the Boat Walk Through. One term per line.
       </p>
       <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, TERMS_MAX))} onBlur={() => save()} rows={4} maxLength={TERMS_MAX}
         placeholder={"e.g. Shoes off below deck\nSkipper's cabin is private"}

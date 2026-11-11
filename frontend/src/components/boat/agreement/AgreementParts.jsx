@@ -6,7 +6,7 @@ import { WalkStopContents, isCommentStop } from "@/components/boat/CrewWalkthrou
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 import { CupboardPhoto } from "@/components/boat/inventory/CupboardPhoto";
 
-// One Zone Map Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
+// One Boat Walk Through stop: tick it once seen; tap the name to see the photo and what's stowed there.
 const Stop = ({ step, pins, areas, ticked, onTick, n, boat }) => {
   const [open, setOpen] = useState(false);
   const area = areas.find((a) => a.id === step.pin.area_id);
@@ -55,7 +55,7 @@ export const AcceptButtons = ({ accepted, ready, busy, onAccept, onLater, onTry 
   return (
     <div className="flex flex-col gap-2">
       <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!!busy}
-        onClick={() => { if (!onTry()) return; if (ready) onAccept(); else toast.error("Tick every stop of the Zone Map Walk Through first"); }} data-testid="agreement-accept-btn">
+        onClick={() => { if (!onTry()) return; if (ready) onAccept(); else toast.error("Tick every stop of the Boat Walk Through first"); }} data-testid="agreement-accept-btn">
         {busy === "accept" && <Loader2 className="h-4 w-4 animate-spin" />} I have read and accept
       </button>
       <button type="button" className="btn-ghost h-11 justify-center gap-2" disabled={!!busy} onClick={onLater} data-testid="agreement-later-btn">

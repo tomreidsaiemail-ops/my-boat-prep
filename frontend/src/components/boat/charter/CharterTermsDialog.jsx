@@ -14,7 +14,7 @@ import { AgreementWalkthrough, stopId } from "@/components/boat/agreement/Agreem
 const seenKey = (boatId) => `mbp_charter_terms_seen_${boatId}`;
 
 // The charter skipper signs the Charter Boat Terms and Conditions, ticking off the owner's charter skipper responsibilities
-// and every stop of the Zone Map Walk Through (none are skipped for a charter skipper).
+// and every stop of the Boat Walk Through (none are skipped for a charter skipper).
 export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClosed }) => {
   const [terms, setTerms] = useState(null);
   const [walking, setWalking] = useState(false);
@@ -71,7 +71,7 @@ export const CharterTermsDialog = ({ boat, areas = [], online, forceOpen, onClos
         )}
         {steps.length > 0 && (
           <div className="flex flex-col gap-1.5" data-testid="charter-walk-section">
-            <p className="field-label" data-testid="charter-walk-count">Zone Map Walk Through ({seen} of {steps.length} ticked)</p>
+            <p className="field-label" data-testid="charter-walk-count">Boat Walk Through ({seen} of {steps.length} ticked)</p>
             <p className="text-xs text-[var(--muted)]">Find every labelled spot on board, including the bilge pumps and bungs, and tick each one once you&apos;ve seen it.</p>
             {!terms.accepted_at && (
               <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(true)} data-testid="charter-walk-start-btn">

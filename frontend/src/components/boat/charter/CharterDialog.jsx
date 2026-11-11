@@ -29,7 +29,7 @@ const CharterRow = ({ c, busy, vessel, online, onHandOver, onRemove, onEnded, on
         {c.terms_accepted_at && <span data-testid={`charter-row-terms-${c.charter_id}`}>Charter Boat Terms and Conditions accepted {localWhen(c.terms_accepted_at)}</span>}
         {c.walk_stops?.length > 0 && (
           <details data-testid={`charter-row-walk-${c.charter_id}`}>
-            <summary className="cursor-pointer font-bold text-emerald-800">Zone Map Walk Through signed off ({c.walk_stops.length} {c.walk_stops.length === 1 ? "stop" : "stops"})</summary>
+            <summary className="cursor-pointer font-bold text-emerald-800">Boat Walk Through signed off ({c.walk_stops.length} {c.walk_stops.length === 1 ? "stop" : "stops"})</summary>
             <ul className="mt-1 list-disc pl-5">{c.walk_stops.map((s, i) => <li key={i}>{s}</li>)}</ul>
           </details>
         )}

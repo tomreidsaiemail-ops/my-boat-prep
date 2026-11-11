@@ -44,14 +44,15 @@ def build_agreement_pdf(a: dict) -> bytes:
         story += [Paragraph(f"<b>{escape(r)}</b><br/>{_lines(b) if b else '<i>No briefing from the skipper yet.</i>'}", ITEM) for r, b in a["roles"]]
     else:
         story.append(Paragraph("No role given yet.", SMALL))
-    story.append(Paragraph("Zone Map Walk Through", H2))
+    # Only the stops this crew member walked through; stops left out of their walkthrough aren't mentioned.
+    story.append(Paragraph("Boat Walk Through", H2))
     if a["stops"]:
-        rows = [[Paragraph("[X]" if ticked else "[  ]", ITEM), Paragraph(escape(name), ITEM)] for name, ticked in a["stops"]]
+        rows = [[Paragraph("[X]", ITEM), Paragraph(escape(name), ITEM)] for name in a["stops"]]
         tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
         tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
                                  ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
-        story += [Paragraph(f"{sum(1 for _, t in a['stops'] if t)} of {len(a['stops'])} stops ticked", SMALL), Spacer(1, 4), tbl]
+        story += [Paragraph(f"{len(a['stops'])} {'stop' if len(a['stops']) == 1 else 'stops'} walked through", SMALL), Spacer(1, 4), tbl]
     else:
-        story.append(Paragraph("This boat has no walk-through stops yet.", SMALL))
+        story.append(Paragraph("No stops walked through yet.", SMALL))
     doc.build(story)
     return buf.getvalue()

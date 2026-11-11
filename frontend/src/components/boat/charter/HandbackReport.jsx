@@ -47,7 +47,7 @@ export const HandbackReport = ({ charterId, vessel, onClose }) => {
               <span className="text-xs text-[var(--muted)]">{localWhen(r.feedback.at)}</span>
             </> : <p className="text-sm text-[var(--muted)]" data-testid="handback-no-feedback">{r.name} hasn&apos;t rated the charter yet.</p>}
           </Part>
-          <Part title={`Zone Map Walk Through (${(r.walk_stops || []).length} ${(r.walk_stops || []).length === 1 ? "stop" : "stops"})`} testId="handback-walk">
+          <Part title={`Boat Walk Through (${(r.walk_stops || []).length} ${(r.walk_stops || []).length === 1 ? "stop" : "stops"})`} testId="handback-walk">
             <Items items={(r.walk_stops || []).map((label) => ({ label, checked: true }))} ticks empty="No walkthrough signed off." testId="handback-walk-list" />
           </Part>
           <Part title={`Ship's Log (${r.ship_log.length})`} testId="handback-log">

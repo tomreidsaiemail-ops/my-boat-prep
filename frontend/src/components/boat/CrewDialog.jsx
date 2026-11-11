@@ -198,7 +198,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
         )}
         <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
-        <InviteCrewDialog open={inviting} boat={boat} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
+        <InviteCrewDialog open={inviting} boat={boat} areas={areas} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {
             sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));

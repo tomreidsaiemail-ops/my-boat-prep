@@ -53,14 +53,20 @@ def map_pins(m: dict) -> list:
     return []
 
 
-def stop_ids(doc: dict) -> List[str]:
-    skip = set(doc.get("walk_skip") or [])
+def crew_skip(doc: dict, uid: str | None) -> List[str]:
+    """The stops left out for this crew member: their own choice from the invite, else the boat's default."""
+    own = doc.get("walk_skip_crew") or {}
+    return own[uid] if uid and uid in own else doc.get("walk_skip") or []
+
+
+def stop_ids(doc: dict, uid: str | None = None) -> List[str]:
+    skip = set(crew_skip(doc, uid))
     return [s for s in (f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)) if s not in skip]
 
 
 @router.put("/boats/{boat_id}/walk-stops")
 async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = Depends(get_current_user)):
-    """The skipper leaves less important cupboards out of the Zone Map Walk Through."""
+    """The skipper leaves less important cupboards out of the Boat Walk Through."""
     await owned_boat(user, boat_id)
     doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1})
     known = {f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)}
@@ -83,7 +89,7 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1})
+                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -110,13 +116,13 @@ async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:
 @router.post("/crew/agreement")
 async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_user)):
     doc = await crew_doc(user, payload.owner_id, payload.boat_id)
-    all_stops = stop_ids(doc)
+    all_stops = stop_ids(doc, user["user_id"])
     walk = await last_walk(payload.owner_id, payload.boat_id, user) if payload.quick and payload.accept else None
     if payload.quick and payload.accept and not walk:
         raise HTTPException(status_code=400, detail="Quick accept is for crew who have done the complete walkthrough before")
     ticked = all_stops if walk else [s for s in dict.fromkeys(payload.stops) if s in all_stops]
     if payload.accept and len(ticked) < len(all_stops):
-        raise HTTPException(status_code=400, detail="Tick every stop of the Zone Map Walk Through before you accept")
+        raise HTTPException(status_code=400, detail="Tick every stop of the Boat Walk Through before you accept")
     prev = (doc.get("agreements") or {}).get(user["user_id"]) or {}
     now = datetime.now(timezone.utc).isoformat()
     rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now,
@@ -174,7 +180,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
         "crew_name": crew_name, "crew_email": crew_user.get("email", ""),
         "roles": [(r, briefs.get(r.lower(), "")) for r in (doc.get("crew_roles") or {}).get(member) or []],
-        "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [(name, sid in (rec.get("stops") or [])) for sid, name in pins], "agreement": rec})
+        "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [name for sid, name in pins if sid in (rec.get("stops") or [])], "agreement": rec})
     safe = re.sub(r"[^\w .-]", "", crew_name)[:60] or "Crew"
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="Boat Agreement - {safe}.pdf"'})
 

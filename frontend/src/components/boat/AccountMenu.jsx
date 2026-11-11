@@ -64,7 +64,7 @@ export const AccountMenu = () => {
     </DropdownMenu>
     <SignOutRsvpDialog ask={rsvpSend} onDone={nextRsvp} onClose={() => setRsvpSend(null)} />
     <ConfirmDelete item={termsFor ? {} : null} testId="signout-terms" title="Boat Terms and Conditions not accepted yet"
-      note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Zone Map Walk Through.`}
+      note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Boat Walk Through.`}
       confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); leave(); }} onClose={() => setTermsFor("")} />
     <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
     </>

@@ -41,7 +41,7 @@ from zone_schematics import router as zone_schematics_router  # noqa: E402
 from templates import add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes, seed_trim_briefings  # noqa: E402
 from role_briefings import seed_role_safety_briefings  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
-from crew_agreement import router as crew_agreement_router, seed_terms_template  # noqa: E402
+from crew_agreement import router as crew_agreement_router, seed_terms_template, crew_skip  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
 from zone_colours import router as zone_colours_router, seed_colour_presets  # noqa: E402
 from template_backup import router as template_backup_router  # noqa: E402
@@ -427,7 +427,7 @@ async def set_last_boat(payload: LastBoatIn, user: dict = Depends(get_current_us
     return {"ok": True}
 
 
-def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
+def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None) -> dict:
     photo = d.get("photo") or {}
     owner = owners.get(d["owner_id"]) or {}
     return {
@@ -435,7 +435,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
         "owner_id": d["owner_id"] if crew_role else None, "owner_name": (owner.get("name") or owner.get("email", "")) if crew_role else "",
         "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
-        "zone_maps": boat_maps(d), "walk_skip": d.get("walk_skip") or [],
+        "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None),
         "charter_lock": d.get("charter_lock"), "charter": d.get("charter"),
     }
 
@@ -444,14 +444,14 @@ def boat_summary(d: dict, crew_role: bool, owners: dict) -> dict:
 async def list_boats(user: dict = Depends(get_current_user)):
     await claim_charters(user)
     await claim_quick(user)
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
     owners = {u["user_id"]: u for u in await db.users.find(
         {"user_id": {"$in": [d["owner_id"] for d in shared]}}, {"_id": 0, "password_hash": 0}).to_list(200)}
     return {"boats": [boat_summary(d, False, owners) for d in mine]
-            + [{**boat_summary(d, True, owners), "my_roles": (d.get("crew_roles") or {}).get(user["user_id"]) or [],
+            + [{**boat_summary(d, True, owners, user["user_id"]), "my_roles": (d.get("crew_roles") or {}).get(user["user_id"]) or [],
                 "my_name": (d.get("crew_names") or {}).get(user["user_id"]) or user.get("name") or ""} for d in shared], "last": user.get("last_boat")}
 
 

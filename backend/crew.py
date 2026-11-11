@@ -4,7 +4,7 @@ import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 from html import escape
-from typing import Annotated, Dict, List, Literal
+from typing import Annotated, Dict, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
@@ -117,6 +117,7 @@ class InviteIn(BaseModel):
     send_email: bool = True
     trip_id: TripId = DEFAULT_TRIP
     trip_name: str = Field(default="", max_length=80)
+    walk_skip: Optional[List[Annotated[str, Field(max_length=120)]]] = Field(default=None, max_length=600)
 
 
 class ShoppingIn(BaseModel):
@@ -263,7 +264,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
         raise HTTPException(status_code=400, detail="Please enter your crew member's name")
     invite = {"invite_id": str(uuid.uuid4()), "token_hash": _hash(token), "owner_id": user["user_id"], "boat_id": boat_id, "email": email, "email_key": key, "name": name,
               "roles": roles, "created_at": now.isoformat(), "expires_at": (now + timedelta(days=INVITE_DAYS)).isoformat(),
-              "trip_id": payload.trip_id, "trip_name": trip_name}
+              "trip_id": payload.trip_id, "trip_name": trip_name, **({"walk_skip": list(dict.fromkeys(payload.walk_skip))} if payload.walk_skip is not None else {})}
     if payload.send_email:
         # The skipper's phone sends its briefings too, so one typed just before inviting is included even if it hasn't synced yet.
         briefs = await role_briefings(user["user_id"], boat_id)
@@ -494,11 +495,13 @@ async def accept_invite(inv: dict, user: dict) -> dict:
         # Already aboard: this invite adds another trip and keeps their agreement.
         had = (doc.get("crew_roles") or {}).get(uid) or []
         await db.user_boats.update_one(key, {"$set": {f"crew_trips.{uid}": list(dict.fromkeys([*trips_of(doc, uid), trip])),
-                                                      f"crew_roles.{uid}": list(dict.fromkeys([*had, *(inv.get("roles") or [])]))}})
+                                                      f"crew_roles.{uid}": list(dict.fromkeys([*had, *(inv.get("roles") or [])])),
+                                                      **({f"walk_skip_crew.{uid}": inv["walk_skip"]} if inv.get("walk_skip") is not None else {})}})
     else:
-        await db.user_boats.update_one(key, {"$addToSet": {"crew": uid}, "$unset": {f"agreements.{uid}": ""},
+        own_walk = {f"walk_skip_crew.{uid}": inv["walk_skip"]} if inv.get("walk_skip") is not None else {}
+        await db.user_boats.update_one(key, {"$addToSet": {"crew": uid}, "$unset": {f"agreements.{uid}": "", **({} if own_walk else {f"walk_skip_crew.{uid}": ""})},
                                              "$set": {f"crew_roles.{uid}": inv.get("roles") or [], f"crew_trips.{uid}": [trip],
-                                                      f"crew_joined.{uid}": {"invited_at": inv.get("created_at"), "joined_at": datetime.now(timezone.utc).isoformat()}, **({f"crew_names.{uid}": inv["name"]} if inv.get("name") else {})}})
+                                                      f"crew_joined.{uid}": {"invited_at": inv.get("created_at"), "joined_at": datetime.now(timezone.utc).isoformat()}, **({f"crew_names.{uid}": inv["name"]} if inv.get("name") else {}), **own_walk}})
     await db.crew_invites.delete_one({"invite_id": inv["invite_id"]})
     key = f"c_{inv['owner_id']}_{inv['boat_id']}"
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"last_boat": key}})

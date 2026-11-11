@@ -94,7 +94,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           <DialogTitle className="font-display text-xl font-extrabold">Boat Terms and Conditions Agreement</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-agreement-intro">
             {accepted ? `You read and accepted this agreement for ${vessel} on ${new Date(data.agreement.accepted_at).toLocaleDateString()}.`
-              : `Welcome aboard ${vessel}. Please read the terms and your role briefing, tick each stop of the Zone Map Walk Through, then accept.`}
+              : `Welcome aboard ${vessel}. Please read the terms and your role briefing, tick each stop of the Boat Walk Through, then accept.`}
           </DialogDescription>
         </DialogHeader>
         {data.terms.length > 0 && <Section title="Standard terms" testId="agreement-standard-terms"><Lines lines={data.terms} testId="agreement-standard-lines" /></Section>}
@@ -104,7 +104,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           {briefWarn && unread.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-briefing-warning">
             Please read your role briefing{unread.length > 1 ? "s" : ""} and tick {unread.length > 1 ? "each one" : "it"} off ({unread.map((r) => r.role).join(", ")}) before you accept.</p>}
         </Section>
-        <Section title={`Zone Map Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
+        <Section title={`Boat Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
           {fullAt && (
             <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-semibold ${quick ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="agreement-quick">
               <input type="checkbox" checked={quick} onChange={(e) => pickQuick(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-quick-checkbox" />

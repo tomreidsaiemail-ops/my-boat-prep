@@ -8,8 +8,23 @@ import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { areaZones } from "@/lib/zoneColours";
 
-const keyOf = (s) => `${s.pic.key}:${s.pin.id}`;
+export const keyOf = (s) => `${s.pic.key}:${s.pin.id}`;
 const said = (t) => (t || "").trim();
+export const walkPics = (boat) => (boat.zone_maps || []).map((m) => ({ key: m.id, map: m, src: boatMapUrl(boat, m), name: [m.zone, m.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ") || "Zone map" }));
+const commentOf = (s, areas) => said(isCommentStop(s) ? s.pic.map.comment : areas.find((a) => a.id === s.pin.area_id)?.comment);
+
+// Every stop grouped by zone map photo, each ticked in or out.
+export const StopList = ({ steps, areas, skip, onFlip }) => {
+  const maps = [...new Map(steps.map((s) => [s.pic.key, s.pic])).values()];
+  return maps.map((m) => (
+    <div key={m.key} className="flex flex-col gap-1" data-testid={`walk-stops-map-${m.key}`}>
+      <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]">{m.name}</p>
+      {steps.filter((s) => s.pic.key === m.key).map((s) => (
+        <StopRow key={keyOf(s)} s={s} areas={areas} on={!skip.includes(keyOf(s))} onFlip={() => onFlip(keyOf(s))} comment={commentOf(s, areas)} />
+      ))}
+    </div>
+  ));
+};
 
 // One stop: tick it in or out; a bubble shows the cupboard's (or photo's) comment so the skipper can judge it.
 const StopRow = ({ s, areas, on, onFlip, comment }) => {
@@ -48,9 +63,9 @@ const Unlabelled = ({ list, onLabel }) => (
   </div>
 );
 
-// The skipper picks which labelled cupboards are stops on the crew's Zone Map Walk Through (all, to start).
+// The skipper picks which labelled cupboards are the default stops on the crew's Boat Walk Through (all, to start).
 export const WalkStopsPicker = ({ boat, areas = [], online, onSaved, onMaps, onAddAreas }) => {
-  const pics = (boat.zone_maps || []).map((m) => ({ key: m.id, map: m, src: boatMapUrl(boat, m), name: [m.zone, m.name].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ") || "Zone map" }));
+  const pics = walkPics(boat);
   const steps = walkSteps(pics);
   const [open, setOpen] = useState(false);
   const [skip, setSkip] = useState(boat.walk_skip || []);
@@ -66,7 +81,6 @@ export const WalkStopsPicker = ({ boat, areas = [], online, onSaved, onMaps, onA
   const changed = skip.length !== saved.length || skip.some((s) => !saved.includes(s));
   const on = steps.filter((s) => !skip.includes(keyOf(s))).length;
   const flip = (k) => setSkip((l) => (l.includes(k) ? l.filter((x) => x !== k) : [...l, k]));
-  const commentFor = (s) => said(isCommentStop(s) ? s.pic.map.comment : areas.find((a) => a.id === s.pin.area_id)?.comment);
   const save = async () => {
     if (!online) { toast.error("Go online to save the walkthrough stops"); return; }
     setBusy(true);
@@ -77,26 +91,18 @@ export const WalkStopsPicker = ({ boat, areas = [], online, onSaved, onMaps, onA
     } catch (e) { toast.error(apiError(e, "Couldn't save the walkthrough stops")); }
     finally { setBusy(false); }
   };
-  const maps = [...new Map(steps.map((s) => [s.pic.key, s.pic])).values()];
   return (
     <div className="rounded-md border-[1.5px] border-[var(--line)]" data-no-dirty data-testid="walk-stops-picker">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-bold" data-testid="walk-stops-toggle">
-        <Footprints className="h-4 w-4 shrink-0" /> Walkthrough stops <span className="font-semibold text-[var(--muted)]" data-testid="walk-stops-count">({on} of {steps.length})</span>
+        <Footprints className="h-4 w-4 shrink-0" /> Default walkthrough stops <span className="font-semibold text-[var(--muted)]" data-testid="walk-stops-count">({on} of {steps.length})</span>
         {unlabelled.length > 0 && <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-label="A commented cupboard isn't labelled" data-testid="walk-stops-unlabelled-icon" />}
         <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="flex flex-col gap-2 border-t border-[var(--line)] p-3">
-          <p className="text-xs text-[var(--muted)]">Untick cupboards of less importance. Crew only see the ticked stops in the Boat Terms and Conditions walkthrough. Tap Comment to read a cupboard&apos;s comment.</p>
+          <p className="text-xs text-[var(--muted)]">Untick cupboards of less importance. Crew only see the ticked stops in the Boat Terms and Conditions walkthrough, unless you pick their own stops when you invite them. Tap Comment to read a cupboard&apos;s comment.</p>
           {unlabelled.length > 0 && <Unlabelled list={unlabelled} onLabel={(area, pic) => setLabelling({ area, pic })} />}
-          {maps.map((m) => (
-            <div key={m.key} className="flex flex-col gap-1" data-testid={`walk-stops-map-${m.key}`}>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]">{m.name}</p>
-              {steps.filter((s) => s.pic.key === m.key).map((s) => (
-                <StopRow key={keyOf(s)} s={s} areas={areas} on={!skip.includes(keyOf(s))} onFlip={() => flip(keyOf(s))} comment={commentFor(s)} />
-              ))}
-            </div>
-          ))}
+          <StopList steps={steps} areas={areas} skip={skip} onFlip={flip} />
           {steps.length > 0 && (
             <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={!changed || busy || !on} onClick={save} data-testid="walk-stops-save-btn">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {on ? "Save walkthrough stops" : "Keep at least one stop"}

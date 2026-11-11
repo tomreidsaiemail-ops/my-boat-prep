@@ -249,7 +249,7 @@ async def accept_charter_terms(boat_id: BoatQ, payload: TermsIn, user: dict = De
         raise HTTPException(status_code=400, detail="Tick every charter skipper responsibility before you accept")
     stops = terms["stops"]
     if not {s["id"] for s in stops}.issubset(set(payload.ticked)):
-        raise HTTPException(status_code=400, detail="Tick every stop of the Zone Map Walk Through before you accept")
+        raise HTTPException(status_code=400, detail="Tick every stop of the Boat Walk Through before you accept")
     doc, c = await my_charter(user, boat_id)
     if (doc["charter"] or {}).get("returned_at"):
         raise HTTPException(status_code=423, detail="This charter has ended, so the charter copy is read only")

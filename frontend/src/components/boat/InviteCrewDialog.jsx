@@ -14,6 +14,7 @@ import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/com
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 import { DEFAULT_TRIP } from "@/lib/trips";
 import { JOINCREW_OFFER } from "@/lib/joincrew";
+import { CrewWalkStops } from "@/components/boat/crew/CrewWalkStops";
 
 const APP_URL = "https://myboatprep.com";
 
@@ -31,13 +32,15 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
   const [roles, setRoles] = useState([]);
   const [notes, setNotes] = useState("");
   const [trip, setTrip] = useState(DEFAULT_TRIP);
+  const [walkSkip, setWalkSkip] = useState(null);
+  const ownWalk = walkSkip ? { walk_skip: walkSkip } : {};
   const cur = trips.find((t) => t.id === trip) || { id: trip, name: "Route Planning", plan };
   const savedFor = (id) => (id === DEFAULT_TRIP ? info.voyage_notes : info.trip_notes?.[id]) || "";
   const planFor = (id) => (trips.find((t) => t.id === id) || { plan }).plan || "";
@@ -65,7 +68,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
   // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
   useEffect(() => {
     if (!open) return;
-    setQueue([]); setSent({}); setCheck(null);
+    setQueue([]); setSent({}); setCheck(null); setWalkSkip(null);
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
     const t = trips.some((x) => x.id === draft?.trip) ? draft.trip : trips[0]?.id || DEFAULT_TRIP;
     setTrip(t);
@@ -88,7 +91,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
     if (!picked || (picked.email || "").toLowerCase() !== email.trim().toLowerCase()) { setError("Pick a registered crew member at the top first, then tap Quick Invite"); return; }
     setQuickBusy(true); setError("");
     try {
-      const { data } = await api.post(`/boats/${boat.boat_id}/quick-invite`, { entry_id: picked.entry_id, trip_id: trip, trip_name: cur.name, roles }, { timeout: 30000 });
+      const { data } = await api.post(`/boats/${boat.boat_id}/quick-invite`, { entry_id: picked.entry_id, trip_id: trip, trip_name: cur.name, roles, ...ownWalk }, { timeout: 30000 });
       toast.success(`${picked.name} is in for ${cur.name} (Quick Invite)${data.joined ? "" : ". They join the moment they first sign in"}. Nothing was sent to them.`);
       sessionStorage.removeItem(INVITE_DRAFT);
       setCrewName(""); setEmail(""); setRoles([]); setPicked(null);
@@ -106,7 +109,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
     const copied = mode === "email" || mode === "qr" ? true : await copy(mode === "link" ? APP_URL : message);
     setBusy(mode); setError("");
     try {
-      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name }, { timeout: 30000 });
+      await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name, ...ownWalk }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
@@ -185,6 +188,7 @@ export const InviteCrewDialog = ({ open, boat, name, info, plan = "", trips = []
         )}
         <RoleBriefingPrompt role={asking} current={briefings[asking.toLowerCase()] || ""} isNew={!!asking && knownRole && !knownRole(asking)} onSkip={nextPrompt}
           onSave={(text) => { onSaveBriefing(asking, text); nextPrompt(); }} />
+        <CrewWalkStops boat={boat} areas={areas} skip={walkSkip} onChange={setWalkSkip} />
         <div className="flex flex-col gap-1.5">
           <div className="flex items-end justify-between gap-2">
             <label className="field-label" htmlFor="voyage-notes">Planned voyage or race notes</label>
