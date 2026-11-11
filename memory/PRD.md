@@ -800,3 +800,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - On join (accept_invite / apply_quick / claim_quick) → user_boats.walk_skip_crew.{uid}; new crew without own stops get the default. crew_agreement.crew_skip(doc, uid) used by stop_ids and /me/boats boat_summary (crew boats get their own walk_skip).
 - Agreement PDF lists only stops walked through ("N stops walked through"); "Zone Map Walk Through" renamed "Boat Walk Through" everywhere. Default picker label: "Default walkthrough stops".
 - 2026-06: Agreement PDF walk stops show a drawn green tick + (Seen); admin template editor scrolls into view when editing a list.
+- 2026-06: Crew card: RSVP badge beside the name; roles labelled 'Roles:' with orange role bubbles (green ring + tick once briefing read).

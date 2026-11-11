@@ -35,12 +35,15 @@ const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
     <div className="min-w-0 flex-1">
       {top}
-      <p className="truncate text-sm font-bold">{title}</p>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="truncate text-sm font-bold">{title}</p>
+        {rsvp !== undefined && <span className="shrink-0"><RsvpBadge status={rsvp} testId={`${testId}-rsvp`} /></span>}
+      </div>
       <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
       {badge}
-      {(bubbles?.length > 0 || rsvp !== undefined) && (
-        <div className="mt-1 flex flex-wrap gap-1" data-testid={`${testId}-roles`}>
-          {rsvp !== undefined && <RsvpBadge status={rsvp} testId={`${testId}-rsvp`} />}
+      {bubbles?.length > 0 && (
+        <div className="mt-1 flex flex-wrap items-center gap-1" data-testid={`${testId}-roles`}>
+          <span className="text-[11px] font-extrabold text-[var(--muted)]" data-testid={`${testId}-roles-label`}>Roles:</span>
           {bubbles}
         </div>
       )}

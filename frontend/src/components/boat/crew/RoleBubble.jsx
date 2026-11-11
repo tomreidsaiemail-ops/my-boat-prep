@@ -3,14 +3,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { localWhen } from "@/lib/timeAgo";
 
 const status = (b, who, joined) => {
-  if (!b.has_briefing) return { tone: "bg-sky-100 text-sky-900", Icon: null, text: `No Role Briefing for ${b.role} yet. Add one in your Crew Roles list.` };
-  if (!joined) return { tone: "bg-amber-100 text-amber-900 ring-1 ring-amber-300", Icon: Circle, text: `The ${b.role} briefing is in ${who}'s invite email. They confirm they've read it after they join.` };
-  if (b.read_at) return { tone: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-300", Icon: Check, text: `${who} has read the ${b.role} briefing (${localWhen(b.read_at)}).` };
-  if (b.read_old) return { tone: "bg-amber-100 text-amber-900 ring-1 ring-amber-300", Icon: Circle, text: `The ${b.role} briefing changed after ${who} read it, so they need to read it again.` };
-  return { tone: "bg-amber-100 text-amber-900 ring-1 ring-amber-300", Icon: Circle, text: `${who} hasn't confirmed reading the ${b.role} briefing yet.` };
+  if (!b.has_briefing) return { tone: "bg-orange-300 text-orange-950", Icon: null, text: `No Role Briefing for ${b.role} yet. Add one in your Crew Roles list.` };
+  if (!joined) return { tone: "bg-orange-300 text-orange-950", Icon: Circle, text: `The ${b.role} briefing is in ${who}'s invite email. They confirm they've read it after they join.` };
+  if (b.read_at) return { tone: "bg-orange-300 text-orange-950 ring-2 ring-emerald-600", Icon: Check, text: `${who} has read the ${b.role} briefing (${localWhen(b.read_at)}).` };
+  if (b.read_old) return { tone: "bg-orange-300 text-orange-950", Icon: Circle, text: `The ${b.role} briefing changed after ${who} read it, so they need to read it again.` };
+  return { tone: "bg-orange-300 text-orange-950", Icon: Circle, text: `${who} hasn't confirmed reading the ${b.role} briefing yet.` };
 };
 
-// A crew member's role: tap (or hover) to see whether they know about its Role Briefing.
+// A crew member's role (orange): tap (or hover) to see whether they know about its Role Briefing; a green ring and tick once read.
 export const RoleBubble = ({ b, who, joined, testId }) => {
   const s = status(b, who, joined);
   return (
