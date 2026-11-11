@@ -20,7 +20,13 @@ const metres = (a, b) => {
   return 2 * 6371000 * Math.asin(Math.sqrt(h));
 };
 
-const flush = async () => {
+// One send at a time; a call while sending waits for that send instead of posting the same points again.
+let sending = null;
+const flush = () => {
+  if (!sending) sending = sendQueue().finally(() => { sending = null; });
+  return sending;
+};
+const sendQueue = async () => {
   const q = read(QUEUE, []);
   if (!q.length) return null;
   const groups = q.reduce((m, p) => m.set(`${p.owner_id}|${p.boat_id}|${p.trip_id}`, [...(m.get(`${p.owner_id}|${p.boat_id}|${p.trip_id}`) || []), p]), new Map());

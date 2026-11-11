@@ -1,0 +1,38 @@
+{
+  "summary": "Shore Contact tracking feature tested end-to-end. Backend: 13 pytest cases (invites/validation, remove invite+contact, join 403/400/single-use, home set/clear, tracking switch new trip_id, /me/boats tracking brief, points owner/crew/outsider 404/dupes/unknown trip/422, shore boats+track online/offline/waiting, non-contact 404, cron 401/alert/idempotent X-Webhook-Id/no re-alert/new point clears alerted_at). 1 backend bug found and fixed (duplicate shore contact check never fired). Frontend: skipper Shore Contacts panel (390px) all controls work; tracking hook sends start point with mocked geolocation, queues 'move' point in mbp_track_queue while offline and flushes on reconnect; /shore/join lands on /shore, / redirects to /shore while home=shore, Open app clears home; Leaflet map path + markers render; non-contact and invalid-token states OK. 1 frontend bug fixed (map never fitted to the path in dev StrictMode).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/boats/{boat_id}/shore/invites", "issue": "FIXED: duplicate-contact 400 never triggered because crew.owned_boat() projection did not include 'shore', so already-joined contacts could be re-invited (200). Added \"shore\": 1 to the projection in crew.py; now 400."},
+      {"endpoint": "POST /api/track/points", "issue": "Points for any of the last 10 trip_ids are accepted even when tracking is off, and for the current trip_id they still update tracking.last_at after tracking is switched off. Probably intended for flushing an offline queue, but confirm."},
+      {"endpoint": "POST /api/shore/join", "issue": "Doesn't check the boat still exists: if the skipper deleted the boat, the update_one does nothing, yet the call still returns 200 and sets home='shore'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ShoreMap", "issue": "FIXED: under React.StrictMode the map is made twice but fitted.current stayed true, so fitBounds ran on the map that had been destroyed and the visible map stayed at zoom 9 (the 2 km path showed as one dot). Now fitted.current resets when the map is created; verified the tiles now load at zoom 14 with the path visible.", "selector": "[data-testid='shore-map']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "useShoreTracking flush", "issue": "Each new point is POSTed twice at the same time, because flush() is called from add(), tick() and the online effect with no in-flight guard. The backend's unique index drops the duplicate, so nothing breaks, but it doubles the requests. Add an in-flight lock to flush.", "affected_selectors": []}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_shore_contacts.py", "/app/test_reports/pytest/shore_results.xml"],
+  "action_items": [
+    "Add an in-flight guard to flush() in useShoreTracking.js so the same point isn't POSTed twice",
+    "Decide whether /track/points should update last_at once tracking is off",
+    "Optional: in /shore/join, return 404 when the invited boat no longer exists"
+  ],
+  "critical_code_review_comments": [
+    "crew.owned_boat projection was missing 'shore' (fixed). Any other code that reads doc['shore'] through owned_boat depends on this.",
+    "add_points: the variable 'newest' is only used in a debug log",
+    "The mbp_track_last localStorage key is not per boat. Switching boats resets it through the trip check, which is fine, but it's fragile."
+  ],
+  "updated_files": ["/app/backend/crew.py", "/app/frontend/src/components/boat/shore/ShoreMap.jsx", "/app/backend/tests/test_shore_contacts.py"],
+  "success_rate": {"backend": "100% (13/13 after fix)", "frontend": "100% of tested flows (1 map-fit bug fixed)"},
+  "seed_data_creation": "No seed data. I created TEST invites (removed by id) and track points on new pro/main trips (they expire after 30 days). Cron run ids were cleaned up. 1 admin TEST invite was made by mistake and then deleted.",
+  "final_state": "pro/main tracking OFF (last trip 22d515f2...). Beta is a joined shore contact of pro/main again (re-joined through a fresh invite, so joined_at is new). Beta users.home is unset. No pending shore_invites for pro or admin.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest /app/backend/tests/test_shore_contacts.py -n 0 (it runs in order: it removes and re-joins beta, toggles tracking, triggers the cron with WEBHOOK_CRON_SECRET and checks alerted_at in Mongo). Afterwards tracking is left ON and beta home=app, so reset them (tracking off, $unset users.home). For the geolocation hook, use context.grant_permissions + set_geolocation + set_offline."
+}

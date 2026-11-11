@@ -60,7 +60,7 @@ def _hash(token: str) -> str:
 
 async def owned_boat(user: dict, boat_id: str, allow_charter: bool = False) -> dict:
     doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "charter_lock": 1, "charter": 1, "boat": 1, "crew": 1, "crew_roles": 1, "crew_names": 1, "agreements": 1, "boat_terms": 1, "voyage_notes": 1, "rsvp": 1, "watch_rota": 1, "crew_joined": 1,
-                                                "crew_trips": 1, "trip_notes": 1, "trip_rsvp": 1, "joincrew_applied": 1})
+                                                "crew_trips": 1, "trip_notes": 1, "trip_rsvp": 1, "joincrew_applied": 1, "shore": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     if doc.get("charter_lock") and not allow_charter:

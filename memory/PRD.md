@@ -802,3 +802,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Agreement PDF walk stops show a drawn green tick + (Seen); admin template editor scrolls into view when editing a list.
 - 2026-06: Crew card: RSVP badge beside the name; roles labelled 'Roles:' with orange role bubbles (green ring + tick once briefing read).
 - 2026-06: Excel export 'Include photos' tick: zip with spreadsheet(s) + Photos/ folder (cupboard, zone map, list item/maintenance photos), rows link to Photos/<file>. Export now captures Location, Cupboard comment, zone map Skipper's comment, photo captions (lib/excelExport.js photoCollector).
+
+### 2026-06 Shore Contact tracking
+- backend/shore.py: shore_invites (token link /shore/join/{token}, 30 days), user_boats.shore {uid:{name,email,joined_at}} + shore_ids; users.home="shore" after joining (UserBoat redirects / → /shore; "Open My Boat Prep instead" sets home=app).
+- Tracking: PUT /api/boats/{id}/shore/tracking {on} → tracking {on, trip_id, trip_ids[10], started_at, last_at, last, alerted_at}. POST /api/track/points from owner or crew (unique trip_id+at, TTL 30 days via exp). /me/boats includes tracking {on,trip_id}.
+- Shore contact: GET /api/shore/boats, /api/shore/track (current trip path). Status online ≤65 min, offline after missed hourly ping, waiting, off.
+- Cron .emergent/crons.yml shore-check every 15 min → POST /api/cron/shore-check (Bearer WEBHOOK_CRON_SECRET) emails shore contacts once after 2 missed pings (2h05m); new point clears alerted_at.
+- Frontend: hooks/useShoreTracking.js (1 km / hourly ping, localStorage queue mbp_track_queue, single-flight flush, optional Wake Lock mbp_track_awake), components/boat/shore/* (ShoreContacts panel under crew cards, ShoreStatus, ShoreMap Leaflet+OSM/OpenSeaMap), pages/ShoreWatch.jsx, ShoreJoin.jsx. Tests: backend/tests/test_shore_contacts.py.
+- Limitation: browser PWA only sends while the app is open on screen.

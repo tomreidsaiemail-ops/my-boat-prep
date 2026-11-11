@@ -182,7 +182,6 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
     if payload.trip_id not in (t.get("trip_ids") or []):
         return {"saved": 0, "tracking": tracking_brief(doc)}
     now = _now()
-    newest = max(p.at for p in payload.points)
     rows = [{"owner_id": owner, "boat_id": payload.boat_id, "trip_id": payload.trip_id, "lat": round(p.lat, 6), "lon": round(p.lon, 6),
              "at": datetime.fromtimestamp(min(p.at, now.timestamp() * 1000) / 1000, timezone.utc).isoformat(), "acc": p.acc, "kind": p.kind,
              "by": user["user_id"], "exp": now + KEEP} for p in payload.points]
@@ -192,12 +191,11 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
         saved = len(res.inserted_ids)
     except Exception as e:  # noqa: BLE001  duplicates from a re-sent queue are fine
         saved = getattr(e, "details", {}).get("nInserted", 0)
-    if payload.trip_id == t.get("trip_id"):
+    if t.get("on") and payload.trip_id == t.get("trip_id"):
         last = max(rows, key=lambda r: r["at"])
         if not t.get("last_at") or last["at"] > t["last_at"]:
             await db.user_boats.update_one(q, {"$set": {"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}},
                                                "$unset": {"tracking.alerted_at": ""}})
-    log.debug("track points saved=%s newest=%s", saved, newest)
     return {"saved": saved, "tracking": tracking_brief(doc)}
 
 
@@ -219,8 +217,11 @@ async def join_shore(payload: JoinIn, user: dict = Depends(get_current_user)):
     if email_key(inv["email"]) != email_key(user["email"]):
         raise HTTPException(status_code=403, detail=f"This invite was sent to {inv['email']}. Sign in with that email to accept it.")
     contact = {"name": inv["name"] or user.get("name", ""), "email": user["email"], "joined_at": _now().isoformat()}
-    await db.user_boats.update_one({"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]},
+    res = await db.user_boats.update_one({"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]},
                                    {"$set": {f"shore.{user['user_id']}": contact}, "$addToSet": {"shore_ids": user["user_id"]}})
+    if not res.matched_count:
+        await db.shore_invites.delete_one({"invite_id": inv["invite_id"]})
+        raise HTTPException(status_code=404, detail="That boat isn't on My Boat Prep any more. Ask the skipper for a new invite.")
     await db.shore_invites.delete_one({"invite_id": inv["invite_id"]})
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"home": "shore"}})
     return {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}

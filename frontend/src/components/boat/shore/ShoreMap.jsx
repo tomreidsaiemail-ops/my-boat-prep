@@ -17,6 +17,7 @@ export const ShoreMap = ({ points }) => {
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenSeaMap" }).addTo(m);
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
+    fitted.current = false;
     return () => m.remove();
   }, []);
 
