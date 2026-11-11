@@ -92,6 +92,7 @@ class QrCard(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     parent: str = Field(default="", max_length=120)
     zone: str = Field(default="", max_length=80)
+    where: str = Field(default="", max_length=160)
     hex: str = Field(default="", pattern=r"^(#[0-9A-Fa-f]{6})?$")
 
 
@@ -103,8 +104,8 @@ class QrCardsIn(BaseModel):
 QR_W, QR_H, QR_COLS, QR_ROWS = 90 * mm, 54 * mm, 2, 5
 
 
-def _fit(c, text: str, font: str, size: float, width: float) -> list:
-    """Wraps text to the card's right-hand column, at most three lines."""
+def _fit(c, text: str, font: str, size: float, width: float, limit: int = 3) -> list:
+    """Wraps text to the card's right-hand column, at most `limit` lines, ending in … when cut short."""
     words, lines, cur = text.split(), [], ""
     for w in words:
         nxt = f"{cur} {w}".strip()
@@ -114,7 +115,12 @@ def _fit(c, text: str, font: str, size: float, width: float) -> list:
             lines.append(cur)
             cur = w
     lines.append(cur)
-    return lines[:3]
+    if len(lines) > limit:
+        lines = lines[:limit]
+        while lines[-1] and c.stringWidth(lines[-1] + "…", font, size) > width:
+            lines[-1] = lines[-1][:-1]
+        lines[-1] = lines[-1].rstrip() + "…"
+    return lines
 
 
 def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
@@ -138,14 +144,25 @@ def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
         c.drawString(tx, ty, line)
         ty -= 13
     ty -= 3
-    for line in _fit(c, card.name, "Helvetica-Bold", 14, tw):
-        c.setFont("Helvetica-Bold", 14)
+    where = card.where.strip()
+    big = 12 if where else 14
+    for line in _fit(c, card.name, "Helvetica-Bold", big, tw):
+        c.setFont("Helvetica-Bold", big)
         c.drawString(tx, ty, line)
-        ty -= 16
+        ty -= big + 2
     c.setFillColor(colors.HexColor("#475569"))
     if card.parent:
         c.setFont("Helvetica", 8.5)
         c.drawString(tx, ty, _fit(c, f"in {card.parent}", "Helvetica", 8.5, tw)[0])
+        ty -= 11
+    # Where the cupboard is, so crew can find it; kept clear of the footer line.
+    c.setFillColor(colors.HexColor("#0f2a4a"))
+    room = max(1, int((ty - (y + pad + 8)) // 9.5) + 1)
+    for line in _fit(c, f"Where: {where}", "Helvetica", 8, tw, min(3, room)) if where else []:
+        c.setFont("Helvetica", 8)
+        c.drawString(tx, ty, line)
+        ty -= 9.5
+    c.setFillColor(colors.HexColor("#475569"))
     c.setFont("Helvetica-Oblique", 7)
     c.drawString(tx, y + pad, _fit(c, f"Scan to Magic Scan · {vessel}", "Helvetica-Oblique", 7, tw)[0])
 

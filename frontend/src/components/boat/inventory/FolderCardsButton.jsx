@@ -30,7 +30,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
   }));
   const qrs = () => areas.filter((a) => !a.parent_id || parentOf(a)).slice(0, 300).map((a) => {
     const z = zones[a.id] || zones[a.parent_id];
-    return { url: qrUrl(boat, ownerId, a.id), name: a.name.slice(0, 120), parent: (parentOf(a)?.name || "").slice(0, 120), zone: (z?.map || "").slice(0, 80), hex: /^#[0-9a-f]{6}$/i.test(z?.hex || "") ? z.hex : "" };
+    return { url: qrUrl(boat, ownerId, a.id), name: a.name.slice(0, 120), parent: (parentOf(a)?.name || "").slice(0, 120), zone: (z?.map || "").slice(0, 80), where: (a.where || parentOf(a)?.where || "").trim().slice(0, 160), hex: /^#[0-9a-f]{6}$/i.test(z?.hex || "") ? z.hex : "" };
   });
   const print = async () => {
     if (!online) { toast.error("Making the cards needs a signal"); return; }

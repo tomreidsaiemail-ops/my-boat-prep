@@ -787,3 +787,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - "Store the cupboard magic scan picture" tick (default on) on single scan review and each batch entry; stores the scan photo as the cupboard photo (uploadAreaPhoto).
 - Zone headings in Boat Inventory show an image icon when the zone has Zone Map Photos (ZonePhotosButton); Zone Map Photos list in the Zone map section folded by default.
 - "Put inside another cupboard" (renamed); Put inside / Cancel repeated after the first zone group in MergeAreaDialog.
+- 2026-06: QR cards print the cupboard's location ("Where: …", from area.where or its parent's) under the name; long text ends in …
