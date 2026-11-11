@@ -52,6 +52,7 @@ from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
+from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
 import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
@@ -436,7 +437,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
         "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
         "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None),
-        "charter_lock": d.get("charter_lock"), "charter": d.get("charter"),
+        "charter_lock": d.get("charter_lock"), "charter": d.get("charter"), "tracking": tracking_brief(d),
     }
 
 
@@ -444,7 +445,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
 async def list_boats(user: dict = Depends(get_current_user)):
     await claim_charters(user)
     await claim_quick(user)
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "tracking": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
@@ -578,6 +579,7 @@ app.include_router(promo_codes_router)
 app.include_router(service_history_router)
 app.include_router(crew_router)
 app.include_router(crew_agreement_router)
+app.include_router(shore_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
 app.include_router(template_backup_router)
@@ -647,6 +649,7 @@ async def create_indexes():
     await db.user_boats.create_index([("owner_id", 1), ("boat_id", 1)], unique=True)
     await db.user_boats.create_index("crew")
     await db.users.create_index("joincrew.email_key", sparse=True)
+    await shore_indexes()
     asyncio.create_task(joincrew.lock_stripe_box())
     await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
     await db.user_boats.create_index("charter_expires_at", expireAfterSeconds=0)

@@ -1,0 +1,8 @@
+crons:
+  - name: shore-check
+    description: "Emails shore contacts when a tracked boat has missed 2 hourly position check-ins"
+    cron: "*/15 * * * *"
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    endpoint: "{{BASE_URL}}/api/cron/shore-check"
+    method: POST
+    enabled: true

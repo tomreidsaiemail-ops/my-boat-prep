@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
+import useShoreTracking from "@/hooks/useShoreTracking";
 import useGps, { distressPosition } from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
@@ -171,6 +172,7 @@ export default function BoatPrep({ boatId, boats }) {
   const onBoard = useOnBoardCrew(boats.current.boat_id, online, !crew);
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
+  useShoreTracking(boats.current, gps, online);
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);

@@ -14,6 +14,7 @@ import { useFeature } from "@/lib/features";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { AgreementBadge } from "@/components/boat/agreement/AgreementBadge";
 import { JoinCrewBadge } from "@/components/boat/crew/JoinCrewBadge";
+import { ShoreContacts } from "@/components/boat/shore/ShoreContacts";
 import { BoatTermsField } from "@/components/boat/agreement/BoatTermsField";
 import { CrewMemberTools } from "@/components/boat/agreement/CrewMemberTools";
 import { SendShoppingButton } from "@/components/boat/SendShoppingButton";
@@ -194,6 +195,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
           ))}
           </TripGroup>)); })()}
         </div>
+        <ShoreContacts boat={boat} online={online} onTrackingChange={(t) => window.dispatchEvent(new CustomEvent("mbp:tracking", { detail: { boat_id: boat.boat_id, tracking: t } }))} />
         {info.crew.length > 1 && (
           <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => sendBriefings(null)} disabled={!!sending || !online} data-testid="crew-briefings-all-btn">
             {sending === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} Resend role briefings to all crew
