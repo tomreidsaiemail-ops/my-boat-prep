@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, MapPinned, Send, Trash2, UserRound } from "lucide-react";
+import { Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 import { AWAKE_KEY } from "@/hooks/useShoreTracking";
@@ -12,34 +12,59 @@ const Switch = ({ checked, onChange, disabled, title, text, testId }) => (
   </label>
 );
 
-const InviteForm = ({ boatId, onSent }) => {
+const shoreMessage = ({ name, email, vessel, link }) =>
+  `Hi ${name}, I've added you as the shore contact for ${vessel || "our boat"} on My Boat Prep, so you can see where we are while we're out.\n\nOpen this link and sign in with ${email}:\n${link}`;
+
+const copyText = (text) => navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
+
+const InviteForm = ({ boatId, vessel, onSent }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const [link, setLink] = useState("");
-  const send = async (e) => {
-    e.preventDefault();
+  const [message, setMessage] = useState("");
+  const send = async (mode) => {
     if (!name.trim() || !email.trim()) { toast.error("Enter their name and email"); return; }
-    setBusy(true);
+    setBusy(mode);
     try {
-      const { data } = await api.post(`/boats/${boatId}/shore/invites`, { name: name.trim(), email: email.trim() });
+      const { data } = await api.post(`/boats/${boatId}/shore/invites`, { name: name.trim(), email: email.trim(), send_email: mode === "email" });
       setLink(data.link);
-      toast.success(data.emailed ? `Invite emailed to ${email.trim()}` : "Invite made. Copy the link and send it to them.");
+      if (mode === "whatsapp") {
+        const text = shoreMessage({ name: name.trim(), email: email.trim(), vessel, link: data.link });
+        setMessage(text);
+        toast.success(await copyText(text) ? "Invite saved and WhatsApp message copied. Paste it into WhatsApp, or tap Open WhatsApp." : "Invite saved. Tap Open WhatsApp, or copy the message below.");
+      } else {
+        setMessage("");
+        toast.success(data.emailed ? `Invite emailed to ${email.trim()}` : "Invite made. Copy the link and send it to them.");
+      }
       setName(""); setEmail("");
       onSent();
     } catch (err) { toast.error(apiError(err, "Couldn't make the invite")); }
-    setBusy(false);
+    setBusy("");
   };
   return (
-    <form onSubmit={send} className="flex flex-col gap-2" data-testid="shore-invite-form">
+    <form onSubmit={(e) => { e.preventDefault(); send("email"); }} className="flex flex-col gap-2" data-testid="shore-invite-form">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Their name" className="field-input" data-testid="shore-invite-name" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="Their email" className="field-input" data-testid="shore-invite-email" />
       </div>
-      <button type="submit" disabled={busy} className="btn-solid min-h-11 justify-center gap-2" data-testid="shore-invite-send-btn">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Invite shore contact
+      <button type="submit" disabled={!!busy} className="btn-solid min-h-11 justify-center gap-2" data-testid="shore-invite-send-btn">
+        {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send email invite
       </button>
-      {link && (
+      <button type="button" disabled={!!busy} onClick={() => send("whatsapp")} className="btn-ghost min-h-11 justify-center gap-2" data-testid="shore-invite-whatsapp-btn">
+        {busy === "whatsapp" ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} Copy WhatsApp message
+      </button>
+      {message && (
+        <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-3" data-testid="shore-invite-message">
+          <span className="field-label">WhatsApp message</span>
+          <pre className="whitespace-pre-wrap break-words font-sans text-sm" data-testid="shore-invite-message-text">{message}</pre>
+          <div className="flex gap-2">
+            <a href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer" className="btn-solid min-h-10 flex-1 justify-center gap-2 text-sm" data-testid="shore-invite-open-whatsapp"><MessageCircle className="h-4 w-4" /> Open WhatsApp</a>
+            <button type="button" className="btn-ghost min-h-10 flex-1 justify-center gap-2 text-sm" onClick={() => copyText(message).then((ok) => (ok ? toast.success("Message copied") : toast.error("Press and hold the message to copy it")))} data-testid="shore-invite-copy-message-btn"><Copy className="h-4 w-4" /> Copy message</button>
+          </div>
+        </div>
+      )}
+      {link && !message && (
         <button type="button" className="btn-ghost min-h-10 justify-center gap-2 text-sm" onClick={() => navigator.clipboard?.writeText(link).then(() => toast.success("Invite link copied"))} data-testid="shore-invite-copy-btn">
           <Copy className="h-4 w-4" /> Copy invite link
         </button>
@@ -49,7 +74,7 @@ const InviteForm = ({ boatId, onSent }) => {
 };
 
 // Skipper's Shore Contacts panel under the crew cards: invites, the tracking switch and who is watching.
-export const ShoreContacts = ({ boat, online, onTrackingChange }) => {
+export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
   const [info, setInfo] = useState(null);
   const [awake, setAwake] = useState(() => localStorage.getItem(AWAKE_KEY) === "true");
   const load = () => api.get(`/boats/${boat.boat_id}/shore`).then(({ data }) => setInfo(data)).catch(() => setInfo({ contacts: [], tracking: {} }));
@@ -73,7 +98,8 @@ export const ShoreContacts = ({ boat, online, onTrackingChange }) => {
   if (!info) return <Loader2 className="h-5 w-5 animate-spin" />;
   const t = info.tracking || {};
   return (
-    <section className="flex flex-col gap-3 rounded-xl border-2 border-[var(--navy)] bg-sky-50/60 p-3" data-testid="shore-contacts">
+    // Everything here saves straight away, so it never counts as unsaved changes when the Crew screen closes.
+    <section className="flex flex-col gap-3 rounded-xl border-2 border-[var(--navy)] bg-sky-50/60 p-3" data-no-dirty data-testid="shore-contacts">
       <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><MapPinned className="h-5 w-5" /> Shore Contacts</h3>
       <Switch checked={!!t.on} onChange={track} disabled={!online} testId="shore-tracking-switch" title="Share position with shore contacts"
         text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
@@ -91,7 +117,7 @@ export const ShoreContacts = ({ boat, online, onTrackingChange }) => {
           </li>
         ))}
       </ul>
-      <InviteForm boatId={boat.boat_id} onSent={load} />
+      <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} onSent={load} />
     </section>
   );
 };

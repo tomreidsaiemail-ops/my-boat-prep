@@ -810,3 +810,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Cron .emergent/crons.yml shore-check every 15 min → POST /api/cron/shore-check (Bearer WEBHOOK_CRON_SECRET) emails shore contacts once after 2 missed pings (2h05m); new point clears alerted_at.
 - Frontend: hooks/useShoreTracking.js (1 km / hourly ping, localStorage queue mbp_track_queue, single-flight flush, optional Wake Lock mbp_track_awake), components/boat/shore/* (ShoreContacts panel under crew cards, ShoreStatus, ShoreMap Leaflet+OSM/OpenSeaMap), pages/ShoreWatch.jsx, ShoreJoin.jsx. Tests: backend/tests/test_shore_contacts.py.
 - Limitation: browser PWA only sends while the app is open on screen.
+- 2026-06: Shore Contacts panel marked data-no-dirty (no 'Discard your changes?' on close); shore invite 'Copy WhatsApp message' (saves invite without email, copies message with join link, Open WhatsApp wa.me link + Copy message).
