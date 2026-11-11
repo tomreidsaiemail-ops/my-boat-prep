@@ -42,6 +42,8 @@ def _now() -> datetime:
 def status_of(t: dict | None) -> dict:
     """online, offline (missed the hourly ping), waiting (no position yet) or off."""
     t = t or {}
+    if not t.get("on") and t.get("arrived_at"):
+        return {"state": "arrived", "last_at": t.get("last_at"), "arrived_at": t["arrived_at"], "arrived_pos": t.get("arrived_pos")}
     if not t.get("on"):
         return {"state": "off", "last_at": t.get("last_at")}
     last = t.get("last_at")
@@ -151,6 +153,46 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
         t = {**t, "on": False, "ended_at": _now().isoformat()}
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"tracking": t}})
     return {**t, **status_of(t)}
+
+
+def _nz(iso: str) -> str:
+    return datetime.fromisoformat(iso).astimezone(timezone(timedelta(hours=12))).strftime("%d %b %H:%M")
+
+
+def _map_link(pos: dict | None) -> str:
+    return f"https://www.google.com/maps?q={pos['lat']:.5f},{pos['lon']:.5f}" if pos and pos.get("lat") is not None else ""
+
+
+def _arrived_html(vessel: str, skipper: str, at: str, pos: dict | None) -> str:
+    link = _map_link(pos)
+    where = f'<p>Last position: <a href="{link}">{pos["lat"]:.4f}, {pos["lon"]:.4f}</a></p>' if link else ""
+    return (f'<div style="font-family:Arial,sans-serif;color:#0f2a4a;max-width:560px">'
+            f'<h2 style="margin:0 0 12px;color:#047857">{escape(vessel)} has arrived safely</h2>'
+            f'<p>{escape(skipper)} marked the trip as finished at <b>{escape(_nz(at))} (NZ time)</b>. Position sharing has stopped.</p>{where}</div>')
+
+
+@router.post("/boats/{boat_id}/shore/arrived")
+async def arrived_safely(boat_id: BoatPath, user: dict = Depends(get_current_user)):
+    """Skipper's one tap: ends the trip and tells every shore contact the boat arrived safely."""
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "tracking": 1, "shore": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    t = doc.get("tracking") or {}
+    if not t.get("on"):
+        raise HTTPException(status_code=400, detail="Position sharing isn't on, so there's no trip to finish")
+    now = _now().isoformat()
+    t = {**t, "on": False, "ended_at": now, "arrived_at": now, "arrived_pos": t.get("last")}
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"tracking": t}})
+    vessel = (doc.get("boat") or {}).get("vessel") or "The boat"
+    to = [c["email"] for c in (doc.get("shore") or {}).values() if c.get("email")]
+    emailed = False
+    if to:
+        try:
+            await send_email(to=to, subject=f"{vessel} has arrived safely", html=_arrived_html(vessel, user.get("name") or user["email"], now, t.get("arrived_pos")))
+            emailed = True
+        except Exception as e:  # noqa: BLE001
+            log.warning("Arrived email failed for %s/%s: %s", user["user_id"], boat_id, e)
+    return {**t, **status_of(t), "emailed": emailed, "told": len(to)}
 
 
 # ---------- Phones aboard: positions ----------
@@ -278,11 +320,21 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     pts = []
     if t.get("trip_id"):
         pts = await db.track_points.find({"trip_id": t["trip_id"]}, {"_id": 0, "lat": 1, "lon": 1, "at": 1, "kind": 1}).sort("at", 1).to_list(5000)
-    return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None,
+    return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
             "ended_at": t.get("ended_at"), "points": pts}
 
 
 # ---------- Cron: email shore contacts after two missed hourly pings ----------
+
+def _skipper_alert_html(vessel: str, last: str | None, started: str | None, told: list) -> str:
+    when = _nz(last or started) if (last or started) else "unknown"
+    return (f'<div style="font-family:Arial,sans-serif;color:#0f2a4a;max-width:560px">'
+            f'<h2 style="margin:0 0 12px">{escape(vessel)} missed 2 hourly check-ins: your shore contacts were told</h2>'
+            f'<p>My Boat Prep hasn\'t had a position from <b>{escape(vessel)}</b> since <b>{escape(when)} (NZ time)</b>, so we emailed '
+            f'{escape(", ".join(told))}.</p>'
+            '<p>If all is well, open My Boat Prep on a phone aboard so positions start again, and let your shore contacts know. '
+            'Tap "Arrived safely" when the trip is over.</p></div>')
+
 
 def _alert_html(vessel: str, last: str | None, started: str | None) -> str:
     when = datetime.fromisoformat(last or started).astimezone(timezone(timedelta(hours=12))).strftime("%d %b %H:%M") if (last or started) else "unknown"
@@ -309,6 +361,14 @@ async def check_missed():
             await send_email(to=to, subject=f"{vessel} has missed 2 hourly check-ins", html=_alert_html(vessel, d["tracking"].get("last_at"), d["tracking"].get("started_at")))
         except Exception as e:  # noqa: BLE001
             log.warning("Shore alert email failed for %s/%s: %s", d["owner_id"], d["boat_id"], e)
+        skipper = await db.users.find_one({"user_id": d["owner_id"]}, {"_id": 0, "email": 1})
+        if skipper and skipper.get("email") and to:
+            told = [c.get("name") or c["email"] for c in (d.get("shore") or {}).values() if c.get("email")]
+            try:
+                await send_email(to=[skipper["email"]], subject=f"{vessel} missed 2 check-ins: shore contacts were told",
+                                 html=_skipper_alert_html(vessel, d["tracking"].get("last_at"), d["tracking"].get("started_at"), told))
+            except Exception as e:  # noqa: BLE001
+                log.warning("Skipper alert email failed for %s/%s: %s", d["owner_id"], d["boat_id"], e)
 
 
 @router.post("/cron/shore-check")

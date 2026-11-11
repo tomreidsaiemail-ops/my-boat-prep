@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
@@ -89,6 +89,17 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
       toast.success(on ? "Sharing your position with shore contacts" : "Stopped sharing your position");
     } catch (err) { toast.error(apiError(err, "Couldn't change tracking")); }
   };
+  const [arriving, setArriving] = useState(false);
+  const arrived = async () => {
+    setArriving(true);
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/shore/arrived`);
+      setInfo((i) => ({ ...i, tracking: data }));
+      onTrackingChange?.({ on: false, trip_id: data.trip_id });
+      toast.success(data.told ? `Trip finished. ${data.emailed ? "Emailed" : "Couldn't email, but told"} ${data.told} shore ${data.told === 1 ? "contact" : "contacts"} you arrived safely.` : "Trip finished. Add a shore contact to tell someone next time.");
+    } catch (err) { toast.error(apiError(err, "Couldn't finish the trip")); }
+    setArriving(false);
+  };
   const remove = async (c) => {
     try { await api.delete(`/boats/${boat.boat_id}/shore/contacts/${c.key}`); load(); toast.success(`${c.name || c.email} removed`); }
     catch (err) { toast.error(apiError(err, "Couldn't remove them")); }
@@ -107,7 +118,12 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
       </div>
       <Switch checked={!!t.on} onChange={track} disabled={!online} testId="shore-tracking-switch" title="Share position with shore contacts"
         text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
-      {t.on && <ShoreStatus status={t} testId="shore-tracking-status" />}
+      {(t.on || t.state === "arrived") && <ShoreStatus status={t} testId="shore-tracking-status" />}
+      {t.on && (
+        <button type="button" onClick={arrived} disabled={!online || arriving} className="btn-solid min-h-12 justify-center gap-2 !bg-emerald-700" data-testid="shore-arrived-btn">
+          {arriving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />} Arrived safely
+        </button>
+      )}
       <Switch checked={awake} onChange={keepAwake} testId="shore-awake-switch" title="Keep this screen awake while tracking"
         text="Phones pause the app when the screen locks. Leave a phone on charge with this on to keep sending positions." />
       <ul className="flex flex-col gap-1.5" data-testid="shore-contacts-list">
