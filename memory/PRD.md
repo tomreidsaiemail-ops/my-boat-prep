@@ -788,3 +788,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Zone headings in Boat Inventory show an image icon when the zone has Zone Map Photos (ZonePhotosButton); Zone Map Photos list in the Zone map section folded by default.
 - "Put inside another cupboard" (renamed); Put inside / Cancel repeated after the first zone group in MergeAreaDialog.
 - 2026-06: QR cards print the cupboard's location ("Where: …", from area.where or its parent's) under the name; long text ends in …
+- 2026-06: Print Cards → QR Codes shows a zone checklist (all ticked, Deselect/Select all) to print one zone's QR cards; 'boat areas' wording → 'cupboards' (batch toast, discard warning). ConfirmDelete has a 'body' slot above the buttons.

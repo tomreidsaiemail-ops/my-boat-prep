@@ -79,7 +79,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
         <ConfirmDelete item={doomed} testId="batch-area-delete" note="Its photo and scanned contents are removed from this batch." cancelLabel="Keep"
           onConfirm={() => { batch.remove(doomed.key); setDoomed(null); }} onClose={() => setDoomed(null)} />
         <ConfirmDelete item={discard ? {} : null} testId="batch-discard" title="Discard this batch?" confirmLabel="Discard" cancelLabel="Keep going"
-          note={`The ${entries.length} boat ${entries.length === 1 ? "area" : "areas"} and their scans will be thrown away. Nothing is added to your inventory.`}
+          note={`The ${entries.length} ${entries.length === 1 ? "cupboard" : "cupboards"} and their scans will be thrown away. Nothing is added to your inventory.`}
           onConfirm={close} onClose={() => setDiscard(false)} />
       </DialogContent>
     </Dialog>

@@ -347,7 +347,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const merged = old.filter((a) => !wasEmpty(a) && a.mode === "add").length;
     const replaced = old.length - merged - filled;
     const added = list.length - old.length;
-    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, filled && `${filled} filled`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
+    const parts = [added && `${added} ${added === 1 ? "cupboard" : "cupboards"} added`, filled && `${filled} filled`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
   const renameArea = (name, where, comment, photo) => {
