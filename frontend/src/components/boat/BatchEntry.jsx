@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertTriangle, Check, Loader2, PackageOpen, RotateCcw, Trash2 } from "lucide-react";
 import { ScanRows, checkRows } from "@/components/boat/ScanReviewDialog";
+import { StorePhotoTick } from "@/components/boat/inventory/CupboardPhoto";
 
 const STATUS = {
   queued: { text: "Waiting to scan", cls: "bg-slate-100 text-slate-700" },
@@ -10,11 +11,12 @@ const STATUS = {
 };
 
 export const BatchEntry = ({ entry, n, existing, onPatch, onDelete, onRetry }) => {
+  const filled = !!existing && (existing.items || []).length > 0;
   const [error, setError] = useState("");
   const st = entry.ticked ? { text: "Reviewed", cls: "bg-green-100 text-green-900" } : entry.empty ? { text: "Empty cupboard", cls: "bg-amber-100 text-amber-900" } : STATUS[entry.status];
   const tick = (v) => {
     if (!v) { onPatch({ ticked: false }); return; }
-    if (existing && !entry.mode) { setError(`Choose whether to add to ${existing.name} or replace what's there`); return; }
+    if (filled && !entry.mode) { setError(`Choose whether to add to ${existing.name} or replace what's there`); return; }
     const res = checkRows(entry.rows);
     if (typeof res === "string") { setError(res); return; }
     setError("");
@@ -37,7 +39,8 @@ export const BatchEntry = ({ entry, n, existing, onPatch, onDelete, onRetry }) =
         {entry.status === "error" && <button type="button" className="icon-btn" aria-label="Retry scan" onClick={onRetry} data-testid={`batch-entry-retry-${n}`}><RotateCcw className="h-[18px] w-[18px]" /></button>}
         <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label={`Remove ${entry.name} from batch`} onClick={onDelete} data-testid={`batch-entry-delete-${n}`}><Trash2 className="h-[18px] w-[18px]" /></button>
       </div>
-      {existing && !entry.ticked && (
+      {entry.blob && <StorePhotoTick checked={entry.keepPhoto !== false} onChange={(v) => onPatch({ keepPhoto: v })} testId={`batch-entry-store-photo-${n}`} />}
+      {filled && !entry.ticked && (
         <div className="flex flex-col gap-1 rounded-md bg-amber-50 p-2 text-xs font-semibold text-amber-900" role="radiogroup" aria-label={`What to do with ${existing.name}`} data-testid={`batch-entry-replace-${n}`}>
           <span className="flex items-start gap-1.5"><AlertTriangle className="h-4 w-4 shrink-0" /> {existing.name} is already on your boat with {(existing.items || []).length} listed {(existing.items || []).length === 1 ? "item" : "items"}.</span>
           {[["add", `Add to ${existing.name} (same names add up)`], ["replace", "Replace its contents"]].map(([m, label]) => (
@@ -47,7 +50,7 @@ export const BatchEntry = ({ entry, n, existing, onPatch, onDelete, onRetry }) =
           ))}
         </div>
       )}
-      {existing && entry.ticked && <p className="text-xs font-semibold text-green-900" data-testid={`batch-entry-mode-note-${n}`}>{entry.mode === "add" ? `Adds to ${existing.name}` : `Replaces the contents of ${existing.name}`}</p>}
+      {filled && entry.ticked && <p className="text-xs font-semibold text-green-900" data-testid={`batch-entry-mode-note-${n}`}>{entry.mode === "add" ? `Adds to ${existing.name}` : `Replaces the contents of ${existing.name}`}</p>}
       {entry.status === "error" && <p className="text-sm font-semibold text-[var(--red)]" data-testid={`batch-entry-error-${n}`}>{entry.error}. Tap retry to scan it again.</p>}
       {entry.status === "done" && !entry.ticked && (
         <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-2">

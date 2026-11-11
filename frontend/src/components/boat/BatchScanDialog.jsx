@@ -7,6 +7,7 @@ import { BatchEntry } from "@/components/boat/BatchEntry";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { checkRows } from "@/components/boat/ScanReviewDialog";
 import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
+import { areaZones } from "@/lib/zoneColours";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -28,7 +29,10 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
   const [form, setForm] = useState(true);
   const [doomed, setDoomed] = useState(null);
   const [discard, setDiscard] = useState(false);
-  const existingFor = (name) => areas.find((a) => !a.parent_id && same(a.name, name));
+  // Cupboard names only need to be unique within a zone, so a zone's batch only matches that zone's cupboards.
+  const zoneOf = areaZones(boat, areas);
+  const pool = areas.filter((a) => !a.parent_id && (!zone || zoneOf[a.id]?.colour === zone.colour));
+  const existingFor = (name) => pool.find((a) => same(a.name, name));
   const full = entries.length >= BATCH_MAX;
   const ready = entries.length > 0 && entries.every((e) => e.ticked);
 
@@ -36,7 +40,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
   const askClose = () => (entries.length ? setDiscard(true) : close());
   const add = (name, blob, more, extra) => { batch.add(name, blob, extra); if (!more || entries.length + 1 >= BATCH_MAX) setForm(false); };
   const finish = () => {
-    const out = entries.map((e) => ({ name: e.name, items: checkRows(e.rows), mode: e.mode, where: e.where || "" }));
+    const out = entries.map((e) => ({ name: e.name, items: checkRows(e.rows), mode: e.mode, where: e.where || "", photo: e.blob && e.keepPhoto !== false ? e.blob : null }));
     const bad = out.findIndex((o) => typeof o.items === "string");
     if (bad >= 0) { batch.patch(entries[bad].key, { ticked: false }); return; }
     batch.clear();
@@ -70,7 +74,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
             {entries.length === 1 ? "Done" : "Confirm Batch"}
           </button>
         </div>
-        <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={areas} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
+        <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={pool} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
           onAdd={add} onClose={() => setForm(false)} />
         <ConfirmDelete item={doomed} testId="batch-area-delete" note="Its photo and scanned contents are removed from this batch." cancelLabel="Keep"
           onConfirm={() => { batch.remove(doomed.key); setDoomed(null); }} onClose={() => setDoomed(null)} />

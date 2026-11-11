@@ -14,7 +14,8 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
-import { CupboardPhotoButton } from "@/components/boat/inventory/CupboardPhoto";
+import { CupboardPhotoButton, uploadAreaPhoto } from "@/components/boat/inventory/CupboardPhoto";
+import { ZonePhotosButton } from "@/components/boat/zone/ZonePhotosButton";
 import { zoneDefaultAreas } from "@/lib/zoneDefaults";
 import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
@@ -114,14 +115,21 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setScanning(a.id);
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
-      setScan({ area: a, items: data.items });
+      setScan({ area: a, items: data.items, blob: a.parent_id ? null : blob });
       if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left`);
     } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
   };
-  const saveScan = (list, mode) => {
-    const { area } = scan;
+  const storePhotos = async (pairs) => {
+    for (const [id, blob] of pairs) {
+      try { const photo = await uploadAreaPhoto(boat, blob); setArea(id, (x) => ({ ...x, photo })); }
+      catch (err) { toast.error(apiError(err, "Couldn't store the cupboard picture")); }
+    }
+  };
+  const saveScan = (list, mode, keepPhoto) => {
+    const { area, blob } = scan;
     setArea(area.id, (x) => ({ ...x, items: applyQr(x.items || [], list, mode === "add" ? "add" : "replace") }));
     setScan(null);
+    if (keepPhoto) storePhotos([[area.id, blob]]);
     toast.success(mode === "add" ? `${list.length} ${list.length === 1 ? "item" : "items"} added to ${area.name}` : `${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };
   const q = query.trim().toLowerCase();
@@ -129,6 +137,9 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const tops = areas.filter(isTop);
   const subsOf = (id) => areas.filter((a) => a.parent_id === id && a.id !== id);
   const zones = areaZones(boat, areas);
+  // Cupboard names are unique within a zone: two aft cabins can each have a Fire Extinguisher locker.
+  const zoneKey = (a) => zones[a.id]?.colour || "";
+  const zoneTops = (key, skip) => tops.filter((t) => t.id !== skip && zoneKey(t) === key);
   const hit = (a, all) => {
     const links = linked[a.id] || [];
     if (!q || all || matches(a.name, q)) return { area: a, visible: a.items || [], visibleLinked: links };
@@ -203,8 +214,9 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   };
   const takeOut = (sub) => {
     const parent = areas.find((a) => a.id === sub.parent_id);
-    if (tops.some((t) => same(t.name, sub.name))) { toast.error(`There's already a cupboard called ${sub.name}. Rename it first.`); return; }
-    setArea(sub.id, ({ parent_id: _p, ...a }) => a);
+    const pz = parent && zones[parent.id];
+    if (zoneTops(pz ? pz.colour : "").some((t) => same(t.name, sub.name))) { toast.error(`There's already a cupboard called ${sub.name}${pz ? ` in ${pz.map}` : ""}. Rename it first.`); return; }
+    setArea(sub.id, ({ parent_id: _p, ...a }) => (pz && !a.zone ? { ...a, zone: { label: pz.map, colour: pz.colour } } : a));
     toast.success(`${sub.name} taken out of ${parent?.name || "its cupboard"}`);
   };
   const startMove = (a) => {
@@ -221,7 +233,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
 
   const addArea = (name, extra = {}) => {
     if (!name) return "Please enter a cupboard or locker name";
-    if (tops.some((a) => same(a.name, name))) return `${name} is already on your list`;
+    if (zoneTops(extra.zone?.colour || "").some((a) => same(a.name, name))) return `${name} is already ${extra.zone ? `in ${extra.zone.label}` : "on your list"}`;
     const id = newId();
     setFresh(id);
     onChange((list) => [...list, { id, name, items: [], ...extra }]);
@@ -280,6 +292,20 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setZone(null); setBatchZone(z); setBatchOpen(true);
   };
   const closeBatch = () => { setBatchOpen(false); setBatchZone(null); };
+  const quickAdd = (z) => (name, where) => {
+    if (zoneTops(z.colour).some((a) => same(a.name, name))) return `${name} is already in ${z.label}`;
+    const id = newId();
+    onChange((list) => [...list, { id, name, items: [], zone: { label: z.label, colour: z.colour }, ...(where ? { where } : {}) }]);
+    return { id };
+  };
+  // Done on quick-add: fold every other zone and open the first new cupboard.
+  const quickDone = (z, firstId) => {
+    setZone(null);
+    if (!firstId) return;
+    setFoldList([...new Set([...groupKeys, ...pickZones.map((x) => x.colour), "none"])].filter((k) => k !== z.colour));
+    setFresh(firstId);
+    openArea(firstId);
+  };
   const { user } = useAuth();
   const [qrArea, setQrArea] = useState(null);
   useEffect(() => {
@@ -299,19 +325,22 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const applyBatch = (list) => {
     const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty }));
     const tag = batchZone ? { zone: { label: batchZone.label, colour: batchZone.colour } } : {};
+    const pool = batchZone ? zoneTops(batchZone.colour) : tops;
+    const ids = list.map(({ name }) => pool.find((a) => same(a.name, name))?.id || newId());
     onChange((cur) => {
       const next = [...cur];
-      list.forEach(({ name, items, mode, where }) => {
-        const at = next.findIndex((a) => !a.parent_id && same(a.name, name));
+      list.forEach(({ name, items, mode, where }, n) => {
+        const at = next.findIndex((a) => a.id === ids[n]);
         const place = where ? { where } : {};
         if (at >= 0) next[at] = { ...next[at], ...tag, ...place, items: mode === "add" ? applyQr(next[at].items || [], items, "add") : toItems(items) };
-        else next.push({ id: newId(), name, ...tag, ...place, items: toItems(items) });
+        else next.push({ id: ids[n], name, ...tag, ...place, items: toItems(items) });
       });
       return next;
     });
+    storePhotos(list.map((a, n) => [ids[n], a.photo]).filter(([, b]) => b));
     closeBatch();
     const count = list.reduce((n, a) => n + a.items.length, 0);
-    const old = list.filter((a) => tops.some((x) => same(x.name, a.name)));
+    const old = list.filter((a) => pool.some((x) => same(x.name, a.name)));
     const merged = old.filter((a) => a.mode === "add").length;
     const replaced = old.length - merged;
     const added = list.length - old.length;
@@ -321,8 +350,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const renameArea = (name, where, comment, photo) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
-    const scope = area.parent_id ? subsOf(area.parent_id) : tops;
-    if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already on your list`;
+    const scope = area.parent_id ? subsOf(area.parent_id) : zoneTops(zoneKey(area));
+    if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already ${!area.parent_id && zones[area.id] ? `in ${zones[area.id].map}` : "on your list"}`;
     setArea(area.id, ({ where: _w, comment: _c, photo: _p, ...a }) => ({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}), ...(photo ? { photo } : {}) }));
     setDialog(null);
     return true;
@@ -374,7 +403,10 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         photoButton={boat && !parent ? <CupboardPhotoButton boat={boat} area={a} placeholder={!ro} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
-        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => { setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`); }} />}>
+        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => {
+          if (zoneTops(z.colour, a.id).some((t) => same(t.name, a.name))) { toast.error(`${z.label} already has a ${a.name}. Rename one of them first.`); return; }
+          setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`);
+        }} />}>
         {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
         {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
           onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}
@@ -421,6 +453,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
                   <span className="h-3.5 w-3.5 shrink-0 rounded-[4px] border border-black/20" style={{ backgroundColor: g.zone ? g.zone.hex : "transparent" }} />
                   <span className="min-w-0" data-testid={`inventory-colour-group-${k.toLowerCase()}-label`}>{g.zone ? g.zone.map : "Not on a zone map"} - {g.rows.length}</span>
                 </button>
+                {g.zone && boat && <ZonePhotosButton boat={boat} zone={{ label: g.zone.map, colour: g.zone.colour }} testId={`inventory-colour-group-${k.toLowerCase()}-photos`} />}
                 {!q && groups.length > 1 && (focused === k
                   ? <button type="button" onClick={() => setFoldList([])} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" data-testid={`inventory-colour-group-${k.toLowerCase()}-all-btn`}><Layers className="h-3.5 w-3.5" /> Show all zones</button>
                   : <button type="button" onClick={() => setFoldList(groups.map((x) => x.key || "none").filter((x) => x !== k))} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" title="Fold every other zone"
@@ -440,7 +473,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <BatchZonePrompt open={zonePrompt} zones={boatZoneList} help={batchHelp} counts={zoneCounts} onClose={() => setZonePrompt(false)}
         onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
-      <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps} onScan={scanZone} onClose={() => setZone(null)} />
+      <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps} onScan={scanZone} onClose={() => setZone(null)}
+        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper

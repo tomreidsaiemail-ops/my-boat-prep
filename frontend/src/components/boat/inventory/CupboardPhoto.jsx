@@ -8,6 +8,19 @@ import { shrink } from "@/components/boat/PhotoPicker";
 export const areaPhotoUrl = (b, photo) => (b && photo?.id
   ? `${API}/boats/${b.boat_id}/area-photos/${photo.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(photo.v || "")}` : "");
 
+export const uploadAreaPhoto = async (boat, blob) => {
+  const form = new FormData();
+  form.append("file", blob, "cupboard.jpg");
+  return (await api.post(`/boats/${boat.boat_id}/area-photos`, form, { timeout: 60000 })).data.photo;
+};
+
+export const StorePhotoTick = ({ checked, onChange, testId }) => (
+  <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-semibold text-[var(--navy)]" data-testid={testId}>
+    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${testId}-input`} />
+    Store the cupboard magic scan picture
+  </label>
+);
+
 // Edit cupboard: take or pick one photo of the cupboard (e.g. the engine bay), uploaded straight away.
 export const CupboardPhotoField = ({ boat, online, photo, onChange }) => {
   const input = useRef(null);
@@ -19,10 +32,8 @@ export const CupboardPhotoField = ({ boat, online, photo, onChange }) => {
     if (!online) { toast.error("You need a signal to add a cupboard photo"); return; }
     let blob;
     try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a picture"); return; }
-    const form = new FormData();
-    form.append("file", blob, "cupboard.jpg");
     setBusy(true);
-    try { onChange((await api.post(`/boats/${boat.boat_id}/area-photos`, form, { timeout: 60000 })).data.photo); }
+    try { onChange(await uploadAreaPhoto(boat, blob)); }
     catch (err) { toast.error(apiError(err, "Couldn't save the photo")); } finally { setBusy(false); }
   };
   return (

@@ -10,7 +10,7 @@ export const SubAreaTools = ({ area, sub, parentName, canMerge, onAddSub, onMerg
     )}
     {!sub && canMerge && (
       <button type="button" className="btn-ghost h-10 px-3 text-sm" onClick={onMerge} data-testid={`inventory-merge-${area.id}`}>
-        <FolderInput className="h-4 w-4" /> Put inside another area
+        <FolderInput className="h-4 w-4" /> Put inside another cupboard
       </button>
     )}
     {sub && (

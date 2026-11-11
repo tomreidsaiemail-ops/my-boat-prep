@@ -96,6 +96,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
   const [foodOnlyState, setFoodOnly] = useState(false);
   const foodIds = new Set(areas.filter((a) => a.food).map((a) => a.id));
   const hasFoodPins = (boat?.zone_maps || []).some((m) => (m.pins || []).some((p) => foodIds.has(p.area_id)));
@@ -107,6 +108,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
     const m = focusPin && (boat?.zone_maps || []).find((z) => z.id === focusPin.mapId && !failed[z.id]);
     if (!m) return;
     setExpanded(true);
+    setPhotosOpen(true);
     setOpen({ key: m.id, src: boatMapUrl(boat, m), map: m, highlight: focusPin.pinId });
   }, [focusPin]); // eslint-disable-line react-hooks/exhaustive-deps
   const openColour = (s) => {
@@ -192,11 +194,16 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
             <OverviewMap key={m.id} boat={boat} map={m} src={boatMapUrl(boat, m)} canEdit={canEdit} online={online} presets={presets} onMaps={onBoatMaps} onZoneDefaults={onZoneDefaults}
               removing={removing === m.id} onRemove={() => removeMap(m)} onColour={openColour} onImage={() => setOpen({ key: m.id, src: boatMapUrl(boat, m), swatches: m.swatches || [] })} />
           ))}
-          {own.length > 0 && <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Zone Map Photos ({own.length})</p>}
           {!own.length && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-overview-photo-hint">Next, tap each colour on the overview (start with the Galley) to take photos of that zone, then scan its cupboards. Every photo and cupboard is filed under that colour.</p>}
         </div>
       )}
-      {pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
+      {own.length > 0 && (
+        <button type="button" onClick={() => setPhotosOpen((o) => !o)} aria-expanded={photosOpen} className="flex min-h-10 items-center gap-2 rounded-md border-[1.5px] border-[var(--line)] px-3 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-photos-toggle">
+          Zone Map Photos ({own.length})
+          <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${photosOpen ? "rotate-180" : ""}`} />
+        </button>
+      )}
+      {(photosOpen || !own.length) && pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1 rounded-md border-l-[6px] pl-2" style={{ borderLeftColor: p.map ? ZONE_COLOURS[p.map.colour] || "transparent" : "transparent" }} data-testid={`zone-map-item-${p.key}`}>
           {p.map && !canEdit && p.map.name && <p className="text-sm font-bold text-[var(--navy)]" data-testid={`boat-zone-map-title-${p.key}`}>{p.map.name}</p>}
           <PinnedPhoto src={p.src} alt={p.map?.name || `Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}

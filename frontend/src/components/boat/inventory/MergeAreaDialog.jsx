@@ -3,6 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { groupTargets } from "@/lib/areaTargets";
 
 // Puts a cupboard (e.g. a Red folder scanned on its own) inside a cupboard as a folder or box. Its own zone's cupboards come first.
+const Actions = ({ target, onMerge, onClose, testId = "" }) => (
+  <div className="flex gap-2">
+    <button type="button" className="btn-solid h-12 flex-1 justify-center" disabled={!target} onClick={() => onMerge(target)} data-testid={`inventory-merge-confirm-btn${testId}`}>Put inside</button>
+    <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} data-testid={`inventory-merge-cancel-btn${testId}`}>Cancel</button>
+  </div>
+);
+
 export const MergeAreaDialog = ({ area, parents, zones = {}, onMerge, onClose }) => {
   const [target, setTarget] = useState("");
   useEffect(() => setTarget(""), [area?.id]);
@@ -30,13 +37,11 @@ export const MergeAreaDialog = ({ area, parents, zones = {}, onMerge, onClose })
                   </label>
                 </li>
               ))}
+              {n === 0 && groups.length > 1 && <li className="pt-1" data-testid="inventory-merge-first-actions"><Actions target={target} onMerge={onMerge} onClose={onClose} testId="-top" /></li>}
             </Fragment>
           ))}
         </ul>
-        <div className="flex gap-2">
-          <button type="button" className="btn-solid h-12 flex-1 justify-center" disabled={!target} onClick={() => onMerge(target)} data-testid="inventory-merge-confirm-btn">Put inside</button>
-          <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} data-testid="inventory-merge-cancel-btn">Cancel</button>
-        </div>
+        <Actions target={target} onMerge={onMerge} onClose={onClose} />
       </DialogContent>
     </Dialog>
   );

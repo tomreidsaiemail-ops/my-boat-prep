@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StorePhotoTick } from "@/components/boat/inventory/CupboardPhoto";
 
 let seq = 0;
 const row = (name = "", qty = 1) => ({ key: `r${(seq += 1)}`, name, qty: String(qty), keep: true });
@@ -38,11 +39,12 @@ export const ScanRows = ({ rows, setRows, prefix = "scan" }) => {
 export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
-  useEffect(() => { if (scan) { setRows(toRows(scan.items)); setError(""); } }, [scan]);
+  const [keepPhoto, setKeepPhoto] = useState(true);
+  useEffect(() => { if (scan) { setRows(toRows(scan.items)); setError(""); setKeepPhoto(true); } }, [scan]);
   const save = (mode) => {
     const res = checkRows(rows);
     if (typeof res === "string") { setError(res); return; }
-    onSave(res, mode);
+    onSave(res, mode, keepPhoto && !!scan.blob);
   };
   const existing = scan?.area.items?.length || 0;
   return (
@@ -56,6 +58,7 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
           </DialogDescription>
         </DialogHeader>
         <ScanRows rows={rows} setRows={setRows} />
+        {scan?.blob && <StorePhotoTick checked={keepPhoto} onChange={setKeepPhoto} testId="scan-review-store-photo" />}
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="scan-review-error">{error}</p>}
         {existing > 0 ? (
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">

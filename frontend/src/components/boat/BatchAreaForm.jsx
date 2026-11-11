@@ -23,7 +23,8 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
   const reset = () => { setName(""); setBlob(null); setPreview(""); setError(""); setWhere(""); setNoPhoto(""); };
   useEffect(() => { if (open) reset(); }, [open]);
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
-  const clash = name.trim() && existing.find((a) => !a.parent_id && same(a.name, name));
+  const clash = name.trim() && existing.find((a) => same(a.name, name));
+  const waiting = zone ? existing.filter((a) => !batchNames.some((b) => same(b, a.name))) : [];
 
   const pick = async (e) => {
     const file = e.target.files?.[0];
@@ -57,11 +58,25 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
         {!zone && help}
-        {zone && <AreaNamePicker zone={zone} name={name} used={[...existing.filter((a) => !a.parent_id).map((a) => a.name), ...batchNames]} onPick={(n) => { setName(n); setError(""); }} />}
+        {waiting.length > 0 && (
+          <div className="flex flex-col gap-1.5" data-testid="batch-area-zone-cupboards">
+            <span className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Your {zone.label} cupboards</span>
+            <div className="flex flex-wrap gap-1.5">
+              {waiting.map((a) => (
+                <button key={a.id} type="button" onClick={() => { setName(a.name); setWhere(a.where || ""); setError(""); }} aria-pressed={same(name, a.name)} data-testid={`batch-area-zone-cupboard-${a.id}`}
+                  className={`rounded-full border-[1.5px] px-3 py-1.5 text-sm font-semibold [transition:background-color_.15s,color_.15s] ${same(name, a.name) ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white text-[var(--navy)] hover:border-[var(--navy)]"}`}>
+                  {a.name}{(a.items || []).length ? "" : " (empty)"}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {zone && <AreaNamePicker zone={zone} name={name} used={[...existing.map((a) => a.name), ...batchNames]} onPick={(n) => { setName(n); setError(""); }} />}
         <input autoFocus={!zone} value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={zone ? `e.g. ${zone.label} - port cupboard under the bench` : "e.g. Aft starboard lazarette"}
           aria-label="Cupboard name" className="field-input" data-testid="batch-area-name-input" />
         {clash && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="batch-area-replace-warning">
-          {clash.name} is already on your boat with {(clash.items || []).length} listed {(clash.items || []).length === 1 ? "item" : "items"}. When you review it you choose to add to them or replace them.</p>}
+          {(clash.items || []).length ? `${clash.name} is already ${zone ? `in ${zone.label}` : "on your boat"} with ${clash.items.length} listed ${clash.items.length === 1 ? "item" : "items"}. When you review it you choose to add to them or replace them.`
+            : `${clash.name} is already ${zone ? `in ${zone.label}` : "on your boat"}, empty. This scan fills it.`}</p>}
         <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder={`Where is it${zone ? ` in the ${zone.label}` : ""}? e.g. Under the port bench (optional)`}
           aria-label="Where the cupboard is" className="field-input" data-testid="batch-area-where-input" />
         <button type="button" onClick={() => input.current?.click()} className="flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)]" data-testid="batch-area-photo-btn">

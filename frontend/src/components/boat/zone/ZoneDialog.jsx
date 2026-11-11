@@ -8,6 +8,7 @@ import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { LIGHT, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { zoneChecklist } from "@/lib/zoneChecklist";
 import { SkipperComment } from "@/components/boat/zone/SkipperComment";
+import { QuickCupboards } from "@/components/boat/zone/QuickCupboards";
 
 export const slug = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -48,7 +49,7 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 };
 
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
-export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, onClose }) => {
+export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, onClose, onQuickAdd, onQuickDone }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -106,6 +107,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, 
             <ScanLine className="h-5 w-5" /> Scan {zone.label} cupboards
           </button>
         )}
+        {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} />}
         {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} boat {areaCount === 1 ? "area" : "areas"} already in {zone.label}</p>}
       </DialogContent>
     </Dialog>
