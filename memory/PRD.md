@@ -789,3 +789,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - "Put inside another cupboard" (renamed); Put inside / Cancel repeated after the first zone group in MergeAreaDialog.
 - 2026-06: QR cards print the cupboard's location ("Where: …", from area.where or its parent's) under the name; long text ends in …
 - 2026-06: Print Cards → QR Codes shows a zone checklist (all ticked, Deselect/Select all) to print one zone's QR cards; 'boat areas' wording → 'cupboards' (batch toast, discard warning). ConfirmDelete has a 'body' slot above the buttons.
+
+### 2026-06 User tiers: bump to Free + tier audit
+- Admin can move a paying Pro user to Free: Stripe subscription cancelled immediately (no refund). Optional "Let them use JOINCREW again" (unsets users.joincrew + boat joincrew_applied flags; skippers keep rewards).
+- db.tier_log {at,user_id,email,from,to,by,note}: admin changes (by admin email), Stripe changes (billing.apply_subscription, by "Stripe"), JOINCREW use events (to=null). GET /api/admin/tier-log?user_id&limit. Shown per user ("Tier history") and as "Tier change log" at the bottom of User tiers.
+- GET /api/admin/users now returns {users,total}; first 1000 newest, "Get all N users" (?all=true).

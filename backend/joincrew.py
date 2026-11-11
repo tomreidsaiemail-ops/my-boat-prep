@@ -9,6 +9,7 @@ from fastapi import HTTPException
 import crew
 from db import db
 from email_service import send_email
+from tier_log import log_tier
 
 CODE = "JOINCREW"
 REWARD = 10
@@ -59,7 +60,7 @@ async def _email_skippers(user: dict, boats: list, owners: list, reward: int):
 
 async def award(user_id: str, session_id: str):
     """Once per buyer: each skipper whose terms they accepted gets the reward, and their crew cards get the JOINCREW tick."""
-    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "user_id": 1, "email": 1, "name": 1})
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "user_id": 1, "email": 1, "name": 1, "role": 1})
     if not user:
         return
     boats = await crew_boats(user_id)
@@ -69,6 +70,7 @@ async def award(user_id: str, session_id: str):
     res = await db.users.update_one({"user_id": user_id, "joincrew": {"$exists": False}}, {"$set": {"joincrew": rec}})
     if not res.modified_count:
         return
+    await log_tier(user, None, "JOINCREW", f"Used JOINCREW: +{reward} Magic for {len(owners)} {'skipper' if len(owners) == 1 else 'skippers'}")
     for b in boats:
         await db.user_boats.update_one({"owner_id": b["owner_id"], "boat_id": b["boat_id"]}, {"$set": {f"joincrew_applied.{user_id}": True}})
     if reward <= 0:

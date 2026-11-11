@@ -5,6 +5,8 @@ import { ArrowLeft, Loader2, Search, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { TierBadge } from "@/components/boat/AccountMenu";
+import { TierLog, UserTierHistory } from "@/components/admin/TierLog";
+import { FreeTierDialog } from "@/components/admin/FreeTierDialog";
 import { MagicQuotaSettings } from "@/components/admin/MagicQuotaSettings";
 import { fmtCost, fmtTokens, plural } from "@/pages/AdminAnalytics";
 
@@ -29,7 +31,7 @@ const Compute = ({ c, cur }) => (
   </span>
 );
 
-const UserRow = ({ u, onRole, saving, compute, cur }) => (
+const UserRow = ({ u, onRole, saving, compute, cur, version }) => (
   <li className="flex flex-col gap-2 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`admin-user-${u.user_id}`}>
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -40,6 +42,7 @@ const UserRow = ({ u, onRole, saving, compute, cur }) => (
       {u.first5000 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-extrabold tracking-wide text-emerald-900" title="Joined during the FIRST5000 launch: 50% off the first year and first renewal" data-testid={`admin-user-first5000-${u.user_id}`}>FIRST5000</span>}
     </div>
     <Compute c={{ id: u.user_id, ...compute }} cur={cur} />
+    <UserTierHistory userId={u.user_id} version={version} />
     <div className="flex items-center justify-between gap-3">
       <Joined u={u} />
       <div className="flex items-center gap-2">
@@ -62,9 +65,18 @@ export default function Admin() {
   const [saving, setSaving] = useState(null);
   const [compute, setCompute] = useState({ users: {}, pricing: { currency: "USD" } });
   const [sort, setSort] = useState("newest");
+  const [total, setTotal] = useState(0);
+  const [all, setAll] = useState(false);
+  const [toFree, setToFree] = useState(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
-    api.get("/admin/users").then(({ data }) => setUsers(data)).catch(() => { toast.error("Couldn't load users. Check your signal."); setUsers([]); });
+    setUsers(null);
+    api.get("/admin/users", { params: all ? { all: true } : {} }).then(({ data }) => { setUsers(data.users); setTotal(data.total); })
+      .catch(() => { toast.error("Couldn't load users. Check your signal."); setUsers([]); });
+  }, [all]);
+
+  useEffect(() => {
     const loadCompute = () => api.get("/admin/users/compute").then(({ data }) => setCompute(data)).catch(() => {});
     loadCompute();
     const t = setInterval(loadCompute, 30000);
@@ -80,10 +92,15 @@ export default function Admin() {
   }, [users, q, sort, compute]);
   const counts = useMemo(() => (users || []).reduce((c, u) => ({ ...c, [u.role]: (c[u.role] || 0) + 1 }), {}), [users]);
 
-  const setRole = async (u, role) => {
+  const pickRole = (u, role) => {
+    if (role === "free" && (u.has_subscription || u.joincrew_used)) setToFree(u);
+    else setRole(u, role);
+  };
+  const setRole = async (u, role, resetJoincrew = false) => {
     setSaving(u.user_id);
     try {
-      const { data } = await api.patch(`/admin/users/${u.user_id}`, { role });
+      const { data } = await api.patch(`/admin/users/${u.user_id}`, { role, reset_joincrew: resetJoincrew });
+      setVersion((v) => v + 1);
       setUsers((list) => list.map((x) => (x.user_id === u.user_id ? data : x)));
       toast.success(`${u.email} is now ${role === "beta_tester" ? "a Beta tester" : role === "pro" ? "Pro" : "Free"}`);
       if (u.user_id === user.user_id) refresh();
@@ -100,8 +117,9 @@ export default function Admin() {
       <h1 className="font-display text-3xl font-extrabold tracking-tight">User tiers</h1>
       <MagicQuotaSettings />
       <p className="text-sm text-[var(--muted)]" data-testid="admin-counts">
-        {users ? `${users.length} users: ${counts.free || 0} Free, ${counts.beta_tester || 0} Beta, ${counts.pro || 0} Pro` : "Loading..."}
+        {users ? `${total} users${users.length < total ? ` (showing the newest ${users.length})` : ""}: ${counts.free || 0} Free, ${counts.beta_tester || 0} Beta, ${counts.pro || 0} Pro${users.length < total ? " shown" : ""}` : "Loading..."}
       </p>
+      {users && users.length < total && <button type="button" className="btn-ghost h-10 self-start px-4 text-sm" onClick={() => setAll(true)} data-testid="admin-all-users-btn">Get all {total} users</button>}
       <label className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className="field-input w-full !pl-9" data-testid="admin-search-input" />
@@ -116,9 +134,11 @@ export default function Admin() {
       {!users ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="admin-user-list">
           {shown.length === 0 && <li className="p-4 text-center text-sm text-[var(--muted)]">No users found</li>}
-          {shown.map((u) => <UserRow key={u.user_id} u={u} onRole={setRole} saving={saving === u.user_id} compute={compute.users[u.user_id]} cur={compute.pricing.currency} />)}
+          {shown.map((u) => <UserRow key={u.user_id} u={u} onRole={pickRole} saving={saving === u.user_id} compute={compute.users[u.user_id]} cur={compute.pricing.currency} version={version} />)}
         </ul>
       )}
+      <TierLog version={version} />
+      <FreeTierDialog user={toFree} onClose={() => setToFree(null)} onConfirm={(reset) => { const u = toFree; setToFree(null); setRole(u, "free", reset); }} />
     </main>
   );
 }

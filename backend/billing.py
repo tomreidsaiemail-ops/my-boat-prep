@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import logging
 import stripe
 from db import db
+from tier_log import log_tier
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,9 @@ async def apply_subscription(user_id: str, sub) -> None:
     elif user.get("role") == "pro" and user.get("stripe_subscription_id") in (None, sub["id"]):
         fields["role"] = "free"
     await db.users.update_one({"user_id": user_id}, {"$set": fields})
+    if fields.get("role", user.get("role", "free")) != user.get("role", "free"):
+        note = "Paid for Pro" if fields["role"] == "pro" else f"Stripe plan {sub.get('status') or 'ended'}"
+        await log_tier(user, fields["role"], "Stripe", note)
 
 
 async def refresh_if_lapsed(user: dict) -> dict:

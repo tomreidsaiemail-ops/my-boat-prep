@@ -5,13 +5,16 @@ import secrets
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
+import asyncio
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from contextvars import ContextVar
 from pydantic import BaseModel, Field
 from db import db
 from billing import refresh_if_lapsed
 from launch import first200_cached, first200_running
+from tier_log import log_tier, tier_log
 
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].strip().lower()
 # Extra admins honoured only on requests to the preview site (see server.py middleware), never on the live app.
@@ -195,21 +198,64 @@ async def logout(request: Request, response: Response):
 
 class RoleIn(BaseModel):
     role: Role
+    reset_joincrew: bool = False
 
 
-@router.get("/admin/users", response_model=list[UserOut])
-async def list_users(_: dict = Depends(require_admin)):
-    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    return [to_user_out(u) for u in users]
+class AdminUserOut(UserOut):
+    joincrew_used: bool = False
 
 
-@router.patch("/admin/users/{user_id}", response_model=UserOut)
-async def set_role(user_id: str, payload: RoleIn, _: dict = Depends(require_admin)):
+class UsersOut(BaseModel):
+    users: list[AdminUserOut]
+    total: int
+
+
+def _admin_out(u: dict) -> AdminUserOut:
+    return AdminUserOut(**to_user_out(u).model_dump(), joincrew_used=bool(u.get("joincrew")))
+
+
+@router.get("/admin/users", response_model=UsersOut)
+async def list_users(all: bool = False, _: dict = Depends(require_admin)):
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(None if all else 1000)
+    return {"users": [_admin_out(u) for u in users], "total": await db.users.count_documents({})}
+
+
+@router.get("/admin/tier-log")
+async def get_tier_log(user_id: str | None = None, limit: int = Query(default=100, ge=1, le=5000), _: dict = Depends(require_admin)):
+    return {"log": await tier_log(user_id, limit)}
+
+
+def _cancel_now(sub_id: str):
+    try:
+        stripe.Subscription.cancel(sub_id)
+    except stripe.error.InvalidRequestError as e:
+        if getattr(e, "code", None) != "resource_missing":
+            raise
+
+
+@router.patch("/admin/users/{user_id}", response_model=AdminUserOut)
+async def set_role(user_id: str, payload: RoleIn, admin: dict = Depends(require_admin)):
     target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
+    now = datetime.now(timezone.utc).isoformat()
+    sets, unsets, notes = {"role": payload.role}, {}, []
+    if payload.role == "pro" and target.get("role") != "pro":
+        sets["pro_since"] = now
     if payload.role == "free" and to_user_out(target).has_subscription:
-        raise HTTPException(status_code=409, detail="This user pays for Pro. Their plan drops to Free when their subscription ends.")
-    since = {"pro_since": datetime.now(timezone.utc).isoformat()} if payload.role == "pro" and target.get("role") != "pro" else {}
-    await db.users.update_one({"user_id": user_id}, {"$set": {"role": payload.role, **since}})
-    return to_user_out(await db.users.find_one({"user_id": user_id}, {"_id": 0}))
+        # Bumped back to Free by an admin: stop their Stripe plan now so they aren't charged again (no refund).
+        try:
+            await asyncio.to_thread(_cancel_now, target["stripe_subscription_id"])
+        except stripe.error.StripeError as e:
+            raise HTTPException(status_code=400, detail=e.user_message or "Stripe couldn't cancel their plan, so the tier wasn't changed")
+        sets.update(subscription_status="canceled", cancel_at_period_end=False, pro_until=now)
+        notes.append("Stripe plan cancelled")
+    if payload.role == "free" and payload.reset_joincrew and target.get("joincrew"):
+        unsets["joincrew"] = ""
+        await db.user_boats.update_many({f"joincrew_applied.{user_id}": {"$exists": True}}, {"$unset": {f"joincrew_applied.{user_id}": ""}})
+        notes.append("JOINCREW can be used again")
+    if payload.role == target.get("role", "free") and not notes:
+        return _admin_out(target)
+    await db.users.update_one({"user_id": user_id}, {"$set": sets, **({"$unset": unsets} if unsets else {})})
+    await log_tier(target, payload.role, admin["email"], "; ".join(notes))
+    return _admin_out(await db.users.find_one({"user_id": user_id}, {"_id": 0}))
