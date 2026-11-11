@@ -19,12 +19,50 @@ const pretty = (k) => k.replace(/__/g, " ").replace(/_/g, " ").replace(/^./, (c)
 const headOf = (items, n) => { if (!items[n].indent) return ""; let h = n; while (h > 0 && items[h].indent) h -= 1; return items[h].label || ""; };
 const isHeading = (items, n) => !items[n].indent && !!items[n + 1]?.indent;
 
-const checklistRows = (raw, labelFor, areaName) => {
+// Photos for the export. Off: rows just say "Photo attached". On: rows name Photos/<file> (linked), and the files go in the zip.
+export const photoCollector = (on) => {
+  const files = new Map();
+  const used = new Set();
+  const add = (url, hint) => {
+    if (!url) return "";
+    if (!on) return "Photo attached";
+    if (files.has(url)) return files.get(url).path;
+    const base = fileSafe(hint).slice(0, 60);
+    let n = base;
+    for (let k = 2; used.has(n.toLowerCase()); k += 1) n = `${base} (${k})`;
+    used.add(n.toLowerCase());
+    files.set(url, { path: `Photos/${n}` });
+    return files.get(url).path;
+  };
+  const EXT = { "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/heic": "heic" };
+  // Downloads every photo (a few at a time), then gives each row its file name with the right extension.
+  const fetchAll = async (get) => {
+    const list = [...files.entries()];
+    const out = [];
+    for (let k = 0; k < list.length; k += 4) {
+      await Promise.all(list.slice(k, k + 4).map(async ([url, f]) => {
+        try { const blob = await get(url); f.final = `${f.path}.${EXT[blob.type] || "jpg"}`; out.push({ path: f.final, blob }); }
+        catch { f.final = "Photo couldn't be downloaded"; }
+      }));
+    }
+    return out;
+  };
+  const fix = (sheets) => {
+    const final = new Map([...files.values()].map((f) => [f.path, f.final || f.path]));
+    sheets.forEach((sh) => sh.rows.forEach((r) => Object.keys(r).forEach((key) => { if (final.has(r[key])) r[key] = final.get(r[key]); })));
+  };
+  return { add, fetchAll, fix, count: () => files.size };
+};
+const noPhoto = () => "";
+
+const checklistRows = (raw, labelFor, areaName, photo = noPhoto, photoUrl) => {
   const folders = raw.some((i) => i.folder);
   const rows = folders ? arrangeLog(raw).rows : raw.map((item) => ({ item, depth: 0 }));
   const items = rows.map((r) => r.item);
   const byId = new Map(raw.map((i) => [i.id, i]));
   const path = (i) => { const out = []; let p = byId.get(i.in); while (p?.folder && out.length < 5) { out.unshift(p.label); p = byId.get(p.in); } return out.join(" > "); };
+  const pics = photoUrl && items.some((i) => i.photo_id || i.after_id);
+  const shot = (i, id, label) => (i[id] ? photo(photoUrl(i[id]), `${labelFor(i)} ${label}`) : "");
   return items.map((i, n) => ({
     ...(folders ? { Folder: path(i), "Folder row": yes(!!i.folder) } : {}),
     Group: isHeading(items, n) ? "" : headOf(items, n),
@@ -33,6 +71,7 @@ const checklistRows = (raw, labelFor, areaName) => {
     Ticked: i.folder ? "" : yes(i.checked),
     Flagged: yes(i.flagged),
     "Cupboard": areaName?.(i) || "",
+    ...(pics ? { "Before photo": shot(i, "photo_id", "before"), "Before caption": i.photo_note || "", "After photo": shot(i, "after_id", "after"), "After caption": i.after_note || "" } : {}),
   }));
 };
 
@@ -41,7 +80,7 @@ const budgetRows = (items, currency) => [...items].sort((a, b) => ledgerYear(a) 
   "Last change": i.history?.length ? `${i.history.at(-1).field}: ${i.history.at(-1).to}`.slice(0, 200) : "",
 }));
 
-const maintRows = (items, defs, custom, yearBuilt) => {
+const maintRows = (items, defs, custom, yearBuilt, photo = noPhoto, photoUrl) => {
   const fields = custom ? defs : defs.filter((d) => d.key !== LAST_KEY && d.key !== DUE_KEY);
   return items.map((i, n) => {
     const a = i.indent ? withAge(i.attrs || {}, yearBuilt, fields) : i.attrs || {};
@@ -50,7 +89,7 @@ const maintRows = (items, defs, custom, yearBuilt) => {
       ...(custom ? {} : { "Last service": asDate(a[LAST_KEY]), "Service due": asDate(due.date), "Due date from": due.date ? (due.inherited ? "Category" : "Own") : "" }) };
     fields.forEach((d) => {
       const v = a[d.key];
-      if (d.type === "image") row[d.name] = v ? "Photo attached" : "";
+      if (d.type === "image") row[d.name] = v ? (photoUrl ? photo(photoUrl(v), `${i.label} ${d.name}`) : "Photo attached") : "";
       else if (d.type === "pdf") row[d.name] = v ? a[`${d.key}__name`] || "PDF attached" : "";
       else if (d.type === "date") row[d.name] = asDate(v);
       else if (d.type.startsWith("integer") || d.type.startsWith("decimal")) {
@@ -64,8 +103,8 @@ const maintRows = (items, defs, custom, yearBuilt) => {
 
 export const listRows = (list, items, ctx) => {
   if (list.kind === "budget") return budgetRows(items, ctx.currency);
-  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list), list.maint === "custom", ctx.yearBuilt);
-  return checklistRows(items, ctx.labelFor, ctx.areaName);
+  if (list.kind === MAINT_KIND) return maintRows(items, ctx.maintDefs(list), list.maint === "custom", ctx.yearBuilt, ctx.photo, ctx.itemPhotoUrl);
+  return checklistRows(items, ctx.labelFor, ctx.areaName, ctx.photo, ctx.itemPhotoUrl);
 };
 
 const SKIP = new Set(["weather", "depart", "arrive", "pob_manual"]);
@@ -77,11 +116,12 @@ export const boatRows = (boat) => Object.entries(boat).filter(([k, v]) => !SKIP.
     Value: k === "pets" ? v.map((p) => [p.name, p.type].filter(Boolean).join(" - ")).join("; ")
       : Array.isArray(v) || typeof v === "object" ? JSON.stringify(v) : typeof v === "boolean" ? yes(v) || "No" : v }));
 
-export const inventoryRows = (areas, boat) => {
+export const inventoryRows = (areas, boat, photo = noPhoto, areaPhotoUrl) => {
   const zones = areaZones(boat, areas);
   const parent = (a) => areas.find((p) => p.id === a.parent_id)?.name || "";
   return areas.flatMap((a) => {
-    const base = { "Zone map": zones[a.id]?.map || "", Area: a.name, "Inside": parent(a), "Food area": yes(a.food), "Drinks area": yes(a.drinks) };
+    const base = { "Zone map": zones[a.id]?.map || "", Area: a.name, "Inside": parent(a), Location: a.where || "", "Cupboard comment": a.comment || "",
+      "Cupboard photo": a.photo?.id && areaPhotoUrl ? photo(areaPhotoUrl(a.photo), `Cupboard - ${a.name}`) : "", "Food area": yes(a.food), "Drinks area": yes(a.drinks) };
     const its = a.items || [];
     return its.length ? its.map((i) => ({ ...base, Item: i.name, Qty: i.qty, "Removed for now": yes(i.removed) })) : [{ ...base, Item: "", Qty: "", "Removed for now": "" }];
   });
@@ -92,8 +132,9 @@ export const serviceRows = (entries, kind) => [...entries].sort((a, b) => String
   : kind === "rigging_log" ? { Date: asDate(e.date), Rigger: e.rigger || "", "Checked items": (e.items || []).join(", "), Notes: e.notes || "" }
   : { Date: asDate(e.date), Electrician: e.electrician || "", Notes: e.notes || "" }));
 
-export const zoneRows = (boat, areas) => (boat?.zone_maps || []).map((m, n) => ({
+export const zoneRows = (boat, areas, photo = noPhoto, mapUrl) => (boat?.zone_maps || []).map((m, n) => ({
   "Zone map": mapLabel(m, n), Colour: m.colour || "", "Cupboards pinned": (m.pins || []).map((p) => areas.find((a) => a.id === p.area_id)?.name).filter(Boolean).join(", "),
+  "Skipper's comment": m.comment || "", Photo: mapUrl ? photo(mapUrl(boat, m), `Zone map - ${mapLabel(m, n)}`) : "",
 }));
 
 export const crewRows = (info) => [
@@ -104,6 +145,10 @@ export const crewRows = (info) => [
 const sheetOf = (rows) => {
   const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Note: "Nothing here yet" }], { cellDates: true, dateNF: DATE_FMT });
   const heads = Object.keys(rows[0] || { Note: 1 });
+  // Photo file names open the photo from the Photos folder next to the spreadsheet.
+  rows.forEach((r, y) => heads.forEach((h, x) => {
+    if (/^Photos\/.+\.(jpe?g|png|webp|gif|heic)$/i.test(String(r[h] ?? ""))) ws[XLSX.utils.encode_cell({ r: y + 1, c: x })].l = { Target: r[h], Tooltip: "Open the photo" };
+  }));
   ws["!cols"] = heads.map((h) => ({ wch: Math.min(60, Math.max(h.length + 2, ...rows.slice(0, 200).map((r) => String(r[h] instanceof Date ? DATE_FMT : r[h] ?? "").length + 1))) }));
   return ws;
 };
@@ -133,18 +178,30 @@ const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.s
 const bytes = (wb) => XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true });
 
 export const fileName = (name, date = stamp()) => `${fileSafe(name)} ${date}.xlsx`;
-export const exportOne = (sheet, date = stamp()) => {
+// With photos, the spreadsheet and a Photos folder go together in one zip.
+const withPhotos = async (xlsxName, wb, pics, date) => {
+  const zip = new JSZip();
+  zip.file(xlsxName, bytes(wb));
+  pics.forEach((p) => zip.file(p.path, p.blob));
+  const name = `${xlsxName.replace(/\.xlsx$/, "")} with photos.zip`;
+  save(await zip.generateAsync({ type: "blob" }), name);
+  return name;
+};
+export const exportOne = async (sheet, date = stamp(), pics = []) => {
   const name = fileName(sheet.name, date);
+  if (pics.length) return withPhotos(name, book([sheet]), pics, date);
   save(new Blob([bytes(book([sheet]))], { type: XLSX_TYPE }), name);
   return name;
 };
-export const exportMaster = (sheets, title, date = stamp()) => {
+export const exportMaster = async (sheets, title, date = stamp(), pics = []) => {
   const name = `Boat_Lists_Export_${date}.xlsx`;
+  if (pics.length) return withPhotos(name, book(sheets), pics, date);
   save(new Blob([bytes(book(sheets))], { type: XLSX_TYPE }), name);
   return name;
 };
-export const exportZip = async (sheets, title, date = stamp()) => {
+export const exportZip = async (sheets, title, date = stamp(), pics = []) => {
   const zip = new JSZip();
+  pics.forEach((p) => zip.file(p.path, p.blob));
   const used = new Set();
   sheets.forEach((s) => {
     let n = fileName(s.name, date);

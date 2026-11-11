@@ -108,6 +108,8 @@ import { ResetListsDialog } from "@/components/boat/ResetListsDialog";
 import { BudgetList } from "@/components/boat/budget/BudgetList";
 import { MaintList } from "@/components/boat/maint/MaintList";
 import { ExcelExportDialog } from "@/components/boat/ExcelExportDialog";
+import { areaPhotoUrl } from "@/components/boat/inventory/CupboardPhoto";
+import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { ShopScanDialog } from "@/components/boat/stores/ShopScanDialog";
 import { CreateListOptions } from "@/components/boat/CreateListOptions";
 import { CommonMealsDialog } from "@/components/boat/meals/CommonMealsDialog";
@@ -598,15 +600,18 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     toast.success(`${rows.reduce((n, r) => n + r.qty, 0)} items taken out of your stores and written in the Ship's Log`);
   };
-  const buildSheets = async (all) => {
-    const sctx = { currency: budgetCurrency(boat), yearBuilt: boat.year_built, labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l) };
-    const sheet = (l) => ({ name: l.name, rows: l.isInventory ? inventoryRows(areas, boats.current) : listRows(l, data[l.id] || [], sctx) });
+  const buildSheets = async (all, photo) => {
+    const cur = boats.current;
+    const itemPhotoUrl = (pid) => `/boats/${cur.boat_id}/item-photo/${pid}${cur.owner_id ? `?owner=${encodeURIComponent(cur.owner_id)}` : ""}`;
+    const sctx = { currency: budgetCurrency(boat), yearBuilt: boat.year_built, labelFor, areaName, maintDefs: (l) => attrsForList(maintDefs, l), photo, itemPhotoUrl };
+    const inv = () => inventoryRows(areas, cur, photo, (p) => areaPhotoUrl(cur, p));
+    const sheet = (l) => ({ name: l.name, rows: l.isInventory ? inv() : listRows(l, data[l.id] || [], sctx) });
     if (!all) return [sheet(active)];
-    const out = [{ name: "Boat details", rows: boatRows(boat) }, ...registry.map(sheet), { name: "Boat inventory", rows: inventoryRows(areas, boats.current) },
+    const out = [{ name: "Boat details", rows: boatRows(boat) }, ...registry.map(sheet), { name: "Boat inventory", rows: inv() },
       { name: "Engine service history", rows: serviceRows(state.engine_log || [], "engine_log") },
       { name: "Electrical service history", rows: serviceRows(state.electrical_log || [], "electrical_log") },
       { name: "Rigging service history", rows: serviceRows(state.rigging_log || [], "rigging_log") },
-      { name: "Zone maps", rows: zoneRows(boats.current, areas) }];
+      { name: "Zone maps", rows: zoneRows(cur, areas, photo, boatMapUrl) }];
     if (crew) return out;
     const info = online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
     return [...out, { name: "Crew", rows: info ? crewRows(info) : [{ Note: "The crew list needs a signal. Export again when you're online to include it." }] }];
@@ -1104,7 +1109,7 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "shopScan" && <ShopScanDialog boatId={boats.current.boat_id} owner={crew ? boats.current.owner_id : undefined} areas={areas} units={boat.units} onDone={doneShopping} onClose={() => setDialog(null)}
         onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
       {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} onDone={doneUsed} onClose={() => setDialog(null)} />}
-      {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} onClose={() => setDialog(null)} />}
+      {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} online={online} onClose={() => setDialog(null)} />}
       {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}
       {dialog?.type === "moveItem" && <MoveItemDialog item={dialog.item} lists={registry.filter((l) => l.id !== active.id && !hiddenLists.includes(l.id))} onMove={(to) => moveImported(dialog.item, to)} onClose={() => setDialog(null)} />}
       {dialog?.type === "builder" && <CustomListBuilder master={maintDefs.filter((d, n, a) => a.findIndex((x) => x.key === d.key) === n)} names={registry.map((l) => l.name)}
