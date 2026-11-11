@@ -780,3 +780,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ### 2026-06 FIRST5000 exception + inclusion lists
 - app_settings.first5000.exceptions / .inclusions; generic PUT /api/admin/promo-codes/{first200|first5000}/{exceptions|inclusions} (first200 has exceptions only); an email can't be on both FIRST5000 lists (400). launch.first5000_for(email): exception → off, inclusion → on, else switch. Used by /payments/offer, promo check and checkout (50% price). In-app banner now uses authenticated /payments/offer.
 - Admin UI: LaunchList.jsx (generic) ×3 on /admin/promos; warning on inclusion emails while FIRST200 is on and they aren't on the FIRST200 exception list.
+
+### 2026-06 Inventory: quick-add cupboards, per-zone names, scan photo tick
+- Zone screen (ZoneDialog): Quick add cupboards form (QuickCupboards.jsx) under "Scan <Zone> cupboards": name + optional where, several, Done folds other zones and opens the first new cupboard. Zone batch form shows "Your <Zone> cupboards" chips to scan them later; empty existing cupboards need no add/replace choice.
+- Cupboard names are unique per zone (InventoryList zoneTops by zone colour): add, rename, take out, zone change, batch matching.
+- "Store the cupboard magic scan picture" tick (default on) on single scan review and each batch entry; stores the scan photo as the cupboard photo (uploadAreaPhoto).
+- Zone headings in Boat Inventory show an image icon when the zone has Zone Map Photos (ZonePhotosButton); Zone Map Photos list in the Zone map section folded by default.
+- "Put inside another cupboard" (renamed); Put inside / Cancel repeated after the first zone group in MergeAreaDialog.

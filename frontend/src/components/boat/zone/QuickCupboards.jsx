@@ -9,14 +9,20 @@ export const QuickCupboards = ({ zone, onAdd, onDone, t }) => {
   const [added, setAdded] = useState([]);
   const [error, setError] = useState("");
   useEffect(() => { setName(""); setWhere(""); setAdded([]); setError(""); }, [zone.label]);
-  const add = (e) => {
-    e.preventDefault();
+  const save = () => {
     const n = name.trim();
-    if (!n) { setError("Please enter the cupboard name"); return; }
+    if (!n) { setError("Please enter the cupboard name"); return null; }
     const res = onAdd(n.slice(0, 120), where.trim().slice(0, WHERE_MAX));
-    if (typeof res === "string") { setError(res); return; }
+    if (typeof res === "string") { setError(res); return null; }
     setAdded((a) => [...a, { id: res.id, name: n }]);
     setName(""); setWhere(""); setError("");
+    return res.id;
+  };
+  const add = (e) => { e.preventDefault(); save(); };
+  // Done also adds a name that's typed but not added yet.
+  const done = () => {
+    if (name.trim() && !save()) return;
+    onDone(added[0].id);
   };
   return (
     <form onSubmit={add} className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-[var(--panel)] p-3" data-testid={`${t}-quick`}>
@@ -32,7 +38,7 @@ export const QuickCupboards = ({ zone, onAdd, onDone, t }) => {
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid={`${t}-quick-error`}>{error}</p>}
       <div className="flex gap-2">
         <button type="submit" className="btn-ghost h-11 flex-1 justify-center gap-1.5 text-sm" data-testid={`${t}-quick-add-btn`}><Plus className="h-4 w-4" /> {added.length ? "Add another" : "Add cupboard"}</button>
-        {added.length > 0 && <button type="button" className="btn-solid h-11 flex-1 justify-center text-sm" onClick={() => onDone(added[0].id)} data-testid={`${t}-quick-done-btn`}>Done</button>}
+        {added.length > 0 && <button type="button" className="btn-solid h-11 flex-1 justify-center text-sm" onClick={done} data-testid={`${t}-quick-done-btn`}>Done</button>}
       </div>
     </form>
   );

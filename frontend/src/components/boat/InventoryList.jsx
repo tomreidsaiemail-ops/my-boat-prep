@@ -293,7 +293,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   };
   const closeBatch = () => { setBatchOpen(false); setBatchZone(null); };
   const quickAdd = (z) => (name, where) => {
-    if (zoneTops(z.colour).some((a) => same(a.name, name))) return `${name} is already in ${z.label}`;
+    const dup = zoneTops(z.colour).find((a) => same(a.name, name));
+    if (dup) return `${dup.name} is already in ${z.label}`;
     const id = newId();
     onChange((list) => [...list, { id, name, items: [], zone: { label: z.label, colour: z.colour }, ...(where ? { where } : {}) }]);
     return { id };
@@ -341,10 +342,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     closeBatch();
     const count = list.reduce((n, a) => n + a.items.length, 0);
     const old = list.filter((a) => pool.some((x) => same(x.name, a.name)));
-    const merged = old.filter((a) => a.mode === "add").length;
-    const replaced = old.length - merged;
+    const wasEmpty = (a) => !(pool.find((x) => same(x.name, a.name)).items || []).length;
+    const filled = old.filter(wasEmpty).length;
+    const merged = old.filter((a) => !wasEmpty(a) && a.mode === "add").length;
+    const replaced = old.length - merged - filled;
     const added = list.length - old.length;
-    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
+    const parts = [added && `${added} boat ${added === 1 ? "area" : "areas"} added`, filled && `${filled} filled`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
   const renameArea = (name, where, comment, photo) => {
