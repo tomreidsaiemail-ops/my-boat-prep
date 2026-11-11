@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowDownUp, Check, ListPlus, Loader2, Pencil, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -79,6 +79,9 @@ export const TemplateListsAdmin = () => {
   const found = (t) => !query || matches(t.name, query) || matches(t.description || "", query) || hitsOf(t).length > 0;
   const visible = (lists || []).filter((t) => FILTERS.find(([k]) => k === filter)[2](t) && found(t)).sort(SORTS[sort][1]);
   const reload = () => api.get("/admin/template-lists").then(({ data }) => setLists(data)).catch(() => toast.error("Couldn't load template lists"));
+  // The editor opens at the top of the page, so bring it into view when a list further down is edited.
+  const editorRef = useRef(null);
+  useEffect(() => { if (editing) editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [editing]);
 
   useEffect(() => {
     api.get("/admin/template-lists").then(({ data }) => setLists(data)).catch(() => { toast.error("Couldn't load template lists"); setLists([]); });
@@ -112,7 +115,7 @@ export const TemplateListsAdmin = () => {
         Create a new list, like "Prep your trip", and it appears on every skipper's boats, Free plan included. Skippers who already have it keep their copy when you edit it, and see an Updated note with "Get latest items".
         Tick "Private to admin user" for system lists that stay here only: Admin - Food Synonyms and Admin - Food Noise Words drive the Provisioning Assistant's matching.
       </p>
-      {editing ? <TemplateListEditor key={editing.id || "new"} initial={editing === "new" ? null : editing} onSave={save} onCancel={() => setEditing(null)} />
+      {editing ? <div ref={editorRef} className="scroll-mt-12"><TemplateListEditor key={editing.id || "new"} initial={editing === "new" ? null : editing} onSave={save} onCancel={() => setEditing(null)} /></div>
         : <button type="button" className="btn-solid flex h-12 items-center justify-center gap-2" onClick={() => setEditing("new")} data-testid="template-list-new-btn"><ListPlus className="h-5 w-5" /> New template list</button>}
       {!editing && <TemplateBackup onRestored={reload} />}
       {!lists ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (

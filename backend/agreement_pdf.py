@@ -4,11 +4,34 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+GREEN = colors.HexColor("#15803d")
+
+
+class Seen(Flowable):
+    """A drawn green tick followed by (Seen): the crew member ticked that they saw this stop."""
+    width, height = 20 * mm, 9
+
+    def draw(self):
+        c = self.canv
+        c.setStrokeColor(GREEN)
+        c.setLineWidth(1.8)
+        c.setLineCap(1)
+        c.setLineJoin(1)
+        p = c.beginPath()
+        p.moveTo(0.5, 1)
+        p.lineTo(3.5, -2.5)
+        p.lineTo(9.5, 5.5)
+        c.drawPath(p, stroke=1, fill=0)
+        c.setFillColor(GREEN)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(13, -2.5, "(Seen)")
 from ship_log import ITEM, META, TITLE
 
 H2 = ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=13, leading=17, spaceBefore=10, spaceAfter=4)
 SMALL = ParagraphStyle("s", parent=ITEM, fontSize=10, leading=13)
+STOP = ParagraphStyle("stop", parent=ITEM, spaceBefore=0, spaceAfter=0)
 GOOD = ParagraphStyle("g", parent=ITEM, fontName="Helvetica-Bold", textColor=colors.HexColor("#047857"))
 WARN = ParagraphStyle("w", parent=ITEM, fontName="Helvetica-Bold", textColor=colors.HexColor("#b45309"))
 
@@ -47,9 +70,9 @@ def build_agreement_pdf(a: dict) -> bytes:
     # Only the stops this crew member walked through; stops left out of their walkthrough aren't mentioned.
     story.append(Paragraph("Boat Walk Through", H2))
     if a["stops"]:
-        rows = [[Paragraph("[X]", ITEM), Paragraph(escape(name), ITEM)] for name in a["stops"]]
-        tbl = Table(rows, colWidths=[12 * mm, 162 * mm])
-        tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+        rows = [[Seen(), Paragraph(escape(name), STOP)] for name in a["stops"]]
+        tbl = Table(rows, colWidths=[22 * mm, 152 * mm])
+        tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
                                  ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))
         story += [Paragraph(f"{len(a['stops'])} {'stop' if len(a['stops']) == 1 else 'stops'} walked through", SMALL), Spacer(1, 4), tbl]
     else:
