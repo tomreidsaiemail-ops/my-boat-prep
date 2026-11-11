@@ -483,6 +483,8 @@ class JoinIn(BaseModel):
 
 
 async def accept_invite(inv: dict, user: dict) -> dict:
+    if user.get("shore_only"):
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"shore_only": False, "home": "app"}})
     if user["user_id"] == inv["owner_id"]:
         raise HTTPException(status_code=400, detail="That's your own boat")
     key = {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}

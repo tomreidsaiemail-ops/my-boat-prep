@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     created_at: Optional[str] = None
     tos_version: Optional[str] = None
     home: str = ""
+    shore_only: bool = False
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -62,7 +63,7 @@ def to_user_out(u: dict) -> UserOut:
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
-        created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "",
+        created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "", shore_only=bool(u.get("shore_only")),
     )
 
 
@@ -184,6 +185,9 @@ async def accept_terms(payload: TermsIn, user: dict = Depends(get_current_user))
 
 @router.get("/auth/me", response_model=UserOut)
 async def me(user: dict = Depends(get_current_user)):
+    from shore import claim_pending
+    if await claim_pending(user):
+        user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     return to_user_out(user)
 
 

@@ -61,6 +61,7 @@ async def ensure_indexes():
     await db.track_points.create_index("exp", expireAfterSeconds=0)
     await db.user_boats.create_index("shore_ids")
     await db.shore_invites.create_index("token_hash")
+    await db.shore_invites.create_index("email_key")
 
 
 # ---------- Skipper: shore contacts and the tracking switch ----------
@@ -216,35 +217,61 @@ async def join_shore(payload: JoinIn, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="This shore contact invite has expired or was cancelled. Ask the skipper for a new one.")
     if email_key(inv["email"]) != email_key(user["email"]):
         raise HTTPException(status_code=403, detail=f"This invite was sent to {inv['email']}. Sign in with that email to accept it.")
+    if not await _accept(inv, user):
+        raise HTTPException(status_code=404, detail="That boat isn't on My Boat Prep any more. Ask the skipper for a new invite.")
+    return {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}
+
+
+async def _accept(inv: dict, user: dict) -> bool:
+    """Links the user to the invited boat as its shore contact (one user can watch several boats)."""
     contact = {"name": inv["name"] or user.get("name", ""), "email": user["email"], "joined_at": _now().isoformat()}
     res = await db.user_boats.update_one({"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]},
-                                   {"$set": {f"shore.{user['user_id']}": contact}, "$addToSet": {"shore_ids": user["user_id"]}})
-    if not res.matched_count:
-        await db.shore_invites.delete_one({"invite_id": inv["invite_id"]})
-        raise HTTPException(status_code=404, detail="That boat isn't on My Boat Prep any more. Ask the skipper for a new invite.")
+                                         {"$set": {f"shore.{user['user_id']}": contact}, "$addToSet": {"shore_ids": user["user_id"]}})
     await db.shore_invites.delete_one({"invite_id": inv["invite_id"]})
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"home": "shore"}})
-    return {"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}
+    if not res.matched_count:
+        return False
+    # Someone who isn't a skipper (no named boat) or crew anywhere is shore-only: they just get the monitoring page.
+    uid = user["user_id"]
+    skipper = await db.user_boats.find_one({"owner_id": uid, "boat.vessel": {"$nin": ["", None]}}, {"_id": 1})
+    crew = await db.user_boats.find_one({"crew": uid}, {"_id": 1})
+    await db.users.update_one({"user_id": uid}, {"$set": {"home": "shore", "shore_contact": True, "shore_only": not skipper and not crew}})
+    return True
+
+
+async def claim_pending(user: dict) -> bool:
+    """Accepts shore invites sent to this email, so a shore contact who just logs in (without the link) is set up too."""
+    invs = await db.shore_invites.find({"email_key": email_key(user.get("email", "")), "expires_at": {"$gt": _now().isoformat()}}, {"_id": 0}).to_list(20)
+    got = [await _accept(inv, user) for inv in invs]
+    return any(got)
 
 
 @router.put("/shore/home")
 async def set_home(payload: HomeIn, user: dict = Depends(get_current_user)):
+    if payload.home == "app" and user.get("shore_only"):
+        raise HTTPException(status_code=403, detail="Shore contacts only have the monitoring page")
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"home": payload.home}})
     return {"home": payload.home}
 
 
 @router.get("/shore/boats")
 async def watched_boats(user: dict = Depends(get_current_user)):
-    docs = await db.user_boats.find({"shore_ids": user["user_id"]}, {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "tracking": 1}).to_list(50)
+    uid = user["user_id"]
+    # Boats this user watches, plus a skipper's own named boats (not for shore-only users).
+    q = {"shore_ids": uid} if user.get("shore_only") else {"$or": [{"shore_ids": uid}, {"owner_id": uid, "boat.vessel": {"$nin": ["", None]}}]}
+    docs = await db.user_boats.find(q, {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "tracking": 1}).to_list(50)
     owners = {u["user_id"]: u for u in await db.users.find({"user_id": {"$in": [d["owner_id"] for d in docs]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(50)}
-    return {"boats": [{"owner_id": d["owner_id"], "boat_id": d["boat_id"], "vessel": (d.get("boat") or {}).get("vessel") or "Boat",
+    docs.sort(key=lambda d: (d["owner_id"] != uid, ((d.get("boat") or {}).get("vessel") or "").lower()))
+    return {"boats": [{"owner_id": d["owner_id"], "boat_id": d["boat_id"], "vessel": (d.get("boat") or {}).get("vessel") or "Boat", "mine": d["owner_id"] == uid,
                        "skipper": (owners.get(d["owner_id"]) or {}).get("name") or (owners.get(d["owner_id"]) or {}).get("email", ""),
                        "status": status_of(d.get("tracking"))} for d in docs]}
 
 
 @router.get("/shore/track")
 async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(get_current_user)):
-    doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "shore_ids": user["user_id"]}, {"_id": 0, "boat.vessel": 1, "tracking": 1})
+    q = {"owner_id": owner_id, "boat_id": boat_id}
+    if owner_id != user["user_id"] or user.get("shore_only"):
+        q["shore_ids"] = user["user_id"]
+    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "tracking": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer a shore contact for this boat")
     t = doc.get("tracking") or {}

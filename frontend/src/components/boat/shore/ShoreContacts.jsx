@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { AWAKE_KEY } from "@/hooks/useShoreTracking";
 import { ShoreStatus } from "@/components/boat/shore/ShoreStatus";
@@ -100,7 +101,10 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
   return (
     // Everything here saves straight away, so it never counts as unsaved changes when the Crew screen closes.
     <section className="flex flex-col gap-3 rounded-xl border-2 border-[var(--navy)] bg-sky-50/60 p-3" data-no-dirty data-testid="shore-contacts">
-      <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><MapPinned className="h-5 w-5" /> Shore Contacts</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><MapPinned className="h-5 w-5" /> Shore Contacts</h3>
+        <Link to="/shore" className="btn-ghost min-h-9 shrink-0 gap-1.5 px-3 text-xs" data-testid="shore-monitor-link"><MapPinned className="h-4 w-4" /> Monitor my boats</Link>
+      </div>
       <Switch checked={!!t.on} onChange={track} disabled={!online} testId="shore-tracking-switch" title="Share position with shore contacts"
         text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
       {t.on && <ShoreStatus status={t} testId="shore-tracking-status" />}
