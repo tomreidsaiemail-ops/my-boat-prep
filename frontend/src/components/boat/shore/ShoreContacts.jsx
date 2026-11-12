@@ -16,11 +16,25 @@ const Switch = ({ checked, onChange, disabled, title, text, testId }) => (
 const shoreMessage = ({ name, email, vessel, link }) =>
   `Hi ${name}, I've added you as the shore contact for ${vessel || "our boat"} on My Boat Prep, so you can see where we are while we're out.\n\nOpen this link and sign in with ${email}:\n${link}`;
 
+const same = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+
+// Clearing the Boat details shore contact email offers to remove that shore contact too.
+export const offerShoreRemoval = async (boatId, email) => {
+  const { data } = await api.get(`/boats/${boatId}/shore`).catch(() => ({ data: { contacts: [] } }));
+  const c = data.contacts.find((x) => same(x.email, email));
+  if (!c) return;
+  toast(`Also remove ${c.name || c.email} from Shore Contacts?`, {
+    duration: 10000,
+    action: { label: "Remove", onClick: () => api.delete(`/boats/${boatId}/shore/contacts/${c.key}`).then(() => toast.success(`${c.name || c.email} removed from Shore Contacts`)).catch((e) => toast.error(apiError(e, "Couldn't remove them"))) },
+  });
+};
+
 const copyText = (text) => navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
 
-const InviteForm = ({ boatId, vessel, onSent }) => {
+const InviteForm = ({ boatId, vessel, prefill, onSent }) => {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefill || "");
+  useEffect(() => { if (prefill) setEmail((e) => e || prefill); }, [prefill]);
   const [busy, setBusy] = useState("");
   const [link, setLink] = useState("");
   const [message, setMessage] = useState("");
@@ -49,6 +63,7 @@ const InviteForm = ({ boatId, vessel, onSent }) => {
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Their name" className="field-input" data-testid="shore-invite-name" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="Their email" className="field-input" data-testid="shore-invite-email" />
       </div>
+      {prefill && same(email, prefill) && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-invite-prefill-note">Email filled in from Boat details. Add their name, then send the invite.</p>}
       <button type="submit" disabled={!!busy} className="btn-solid min-h-11 justify-center gap-2" data-testid="shore-invite-send-btn">
         {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send email invite
       </button>
@@ -75,10 +90,14 @@ const InviteForm = ({ boatId, vessel, onSent }) => {
 };
 
 // Skipper's Shore Contacts panel under the crew cards: invites, the tracking switch and who is watching.
-export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
+export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", onShoreEmail, onTrackingChange }) => {
   const [info, setInfo] = useState(null);
   const [awake, setAwake] = useState(() => localStorage.getItem(AWAKE_KEY) === "true");
-  const load = () => api.get(`/boats/${boat.boat_id}/shore`).then(({ data }) => setInfo(data)).catch(() => setInfo({ contacts: [], tracking: {} }));
+  // Boat details shows the first shore contact's email when it's empty.
+  const load = () => api.get(`/boats/${boat.boat_id}/shore`).then(({ data }) => {
+    setInfo(data);
+    if (!shoreEmail.trim() && data.contacts.length) onShoreEmail?.(data.contacts[0].email);
+  }).catch(() => setInfo({ contacts: [], tracking: {} }));
   useEffect(() => { if (online) load(); }, [boat.boat_id, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const track = async (on) => {
@@ -101,7 +120,12 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
     setArriving(false);
   };
   const remove = async (c) => {
-    try { await api.delete(`/boats/${boat.boat_id}/shore/contacts/${c.key}`); load(); toast.success(`${c.name || c.email} removed`); }
+    try {
+      await api.delete(`/boats/${boat.boat_id}/shore/contacts/${c.key}`);
+      if (same(shoreEmail, c.email)) onShoreEmail?.(info.contacts.find((x) => x.key !== c.key)?.email || "");
+      load();
+      toast.success(`${c.name || c.email} removed`);
+    }
     catch (err) { toast.error(apiError(err, "Couldn't remove them")); }
   };
   const keepAwake = (v) => { setAwake(v); localStorage.setItem(AWAKE_KEY, String(v)); window.dispatchEvent(new Event("mbp:track-awake")); };
@@ -142,7 +166,7 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
         ))}
       </ul>
       {t.on && info.contacts.length > 0 && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-remove-locked-note">To remove a shore contact, untick Share position with shore contacts first.</p>}
-      <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} onSent={load} />
+      <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} prefill={shoreEmail.trim() && !info.contacts.some((c) => same(c.email, shoreEmail)) ? shoreEmail.trim() : ""} onSent={load} />
     </section>
   );
 };

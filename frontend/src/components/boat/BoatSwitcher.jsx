@@ -30,7 +30,7 @@ const BoatOption = ({ b }) => (
   </span>
 );
 
-export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole, onAddAreas }) => {
+export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole, onAddAreas, onShoreEmail }) => {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [typed, setTyped] = useState("");
@@ -121,7 +121,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         <DeletedBoats open={adding} online={online} onRestore={restoreFromList} />
       </TextDialog>
       {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+        <CrewDialog open={crewOpen} boat={cur} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} shoreEmail={state?.boat?.shore_email || ""} onShoreEmail={onShoreEmail} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
       )}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>

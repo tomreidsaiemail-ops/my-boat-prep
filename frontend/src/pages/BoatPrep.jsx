@@ -5,6 +5,7 @@ import useTripArchives from "@/hooks/useTripArchives";
 import useShoreAlert from "@/hooks/useShoreAlert";
 import { ShoreAlertBar } from "@/components/boat/shore/ShoreAlertBar";
 import { AshorePrompt } from "@/components/boat/shore/AshorePrompt";
+import { offerShoreRemoval } from "@/components/boat/shore/ShoreContacts";
 import { setPendingPhone } from "@/lib/pendingAgreement";
 import { ArchivedTrips } from "@/components/boat/trips/ArchivedTrips";
 import { TripFinishPrompt } from "@/components/boat/trips/TripFinishPrompt";
@@ -905,6 +906,10 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  const changeBoatField = (key, value) => {
+    if (key === "shore_email" && !value.trim() && boat.shore_email?.trim() && !crew && online) offerShoreRemoval(boats.current.boat_id, boat.shore_email);
+    updateBoat(key, value);
+  };
   const patchWeather = (patch) => mutate((s) => ({ ...s, boat: { ...s.boat, weather: { ...(s.boat.weather || {}), ...patch } } }), { count: false });
   // A Route Planning copy keeps its own start, destination and timings in boat.trips.
   const patchTrip = (id, fn) => mutate((s) => { const all = s.boat.trips || {}; return { ...s, boat: { ...s.boat, trips: { ...all, [id]: fn(all[id] || {}) } } }; }, { count: false });
@@ -978,12 +983,12 @@ export default function BoatPrep({ boatId, boats }) {
       <ShoreAlertBar sa={shoreAlert} />
       <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} stopAt={shoreTrack.stopAt} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
-        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} />
+        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} onShoreEmail={crew ? undefined : (v) => updateBoat("shore_email", v)} />
       <CharterBanner entry={boats.current} online={online} onTerms={() => setCharterTerms((n) => n + 1)} onEnded={() => boats.refresh()} />
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} onChange={updateBoat} onBatchScan={startBatchScan} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList("boatInventory")} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} onChange={changeBoatField} onBatchScan={startBatchScan} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList("boatInventory")} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
