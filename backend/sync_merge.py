@@ -26,10 +26,38 @@ def _merge_list(a_items: list, a_s: str, b_items: list, b_s: str) -> list:
     return out
 
 
+NESTED = ("weather", "trips")
+
+
+def _merge_boat(prev: dict, inc: dict) -> tuple:
+    """Boat details merge field by field (and inside weather and trips), so a stale phone changing one detail can't wipe another."""
+    pb, ib = prev.get("boat") or {}, inc.get("boat") or {}
+    pt, it = prev.get("boat_ts") or {}, inc.get("boat_ts") or {}
+    psec, isec = (prev.get("sec_ts") or {}).get("boat", ""), (inc.get("sec_ts") or {}).get("boat", "")
+    p_at = lambda k: pt.get(k, "" if pt else psec)  # noqa: E731  copies stamped field by field know exactly when each changed
+    i_at = lambda k: it.get(k, "" if it else isec)  # noqa: E731
+    out = {}
+    for k in set(pb) | set(ib):
+        if k in NESTED and isinstance(pb.get(k, {}), dict) and isinstance(ib.get(k, {}), dict):
+            pv, iv = pb.get(k) or {}, ib.get(k) or {}
+            sub = {}
+            for s in set(pv) | set(iv):
+                src = iv if i_at(f"{k}.{s}") >= p_at(f"{k}.{s}") else pv
+                if s in src:
+                    sub[s] = deepcopy(src[s])
+            out[k] = sub
+            continue
+        src = ib if i_at(k) >= p_at(k) else pb
+        if k in src:
+            out[k] = deepcopy(src[k])
+    return out, {k: max(pt.get(k, ""), it.get(k, "")) for k in set(pt) | set(it)}
+
+
 def merge_state(prev: dict, inc: dict) -> dict:
-    """Merge two copies of a boat: sections by last change, list items one by one."""
+    """Merge two copies of a boat: boat details field by field, other sections by last change, list items one by one."""
     ps, is_ = prev.get("sec_ts") or {}, inc.get("sec_ts") or {}
     out = {k: deepcopy(inc.get(k) if is_.get(k, "") >= ps.get(k, "") else prev.get(k)) for k in SECTIONS}
+    out["boat"], out["boat_ts"] = _merge_boat(prev, inc)
     pl, il = prev.get("list_ts") or {}, inc.get("list_ts") or {}
     pdata, idata = prev.get("data") or {}, inc.get("data") or {}
     data = {}

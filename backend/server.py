@@ -281,6 +281,7 @@ class BoatStateIn(BaseModel):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    boat_ts: Dict[str, str] = {}
     areas: List[Dict[str, Any]] = []
 
 
@@ -301,6 +302,7 @@ class BoatState(BaseDocument):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    boat_ts: Dict[str, str] = {}
     areas: List[Dict[str, Any]] = []
     synced_at: str
 
@@ -322,6 +324,7 @@ class BoatStateOut(BaseModel):
     template_versions: Dict[str, str] = {}
     sec_ts: Dict[str, str] = {}
     list_ts: Dict[str, str] = {}
+    boat_ts: Dict[str, str] = {}
     areas: List[Dict[str, Any]] = []
     synced_at: str
     role: str = "owner"
@@ -331,7 +334,7 @@ ID_PATTERN = r"^[A-Za-z0-9_-]{1,40}$"
 BoatId = Annotated[str, Query(pattern=ID_PATTERN)]
 OwnerId = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
 KEEP_IF_OMITTED = ("emergency_checked", "template_versions", "areas", "electrical_log", "rigging_log", "list_hidden")
-STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts", "areas", "list_hidden")
+STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_log", "electrical_log", "rigging_log", "deleted_lists", "emergency_checked", "template_versions", "sec_ts", "list_ts", "boat_ts", "areas", "list_hidden")
 
 
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
@@ -385,6 +388,10 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
             raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
         inc = payload.model_dump()
+        # A phone whose clock runs fast mustn't win every merge until real time catches up.
+        cap = (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        for f in ("sec_ts", "list_ts", "boat_ts"):
+            inc[f] = {k: min(v, cap) for k, v in (inc.get(f) or {}).items()}
         for f in KEEP_IF_OMITTED:
             if f not in payload.model_fields_set:
                 inc[f] = (prev or {}).get(f, inc[f])

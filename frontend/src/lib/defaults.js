@@ -272,6 +272,17 @@ const SECTIONS = ["boat", "registry", "engine_log", "electrical_log", "rigging_l
 export const stamp = (prev, next, now) => {
   const sec_ts = { ...(prev.sec_ts || {}) };
   SECTIONS.forEach((k) => { if (prev[k] !== next[k]) sec_ts[k] = now; });
+  // Boat details are stamped field by field (and inside weather and trips) so the cloud merges them one by one.
+  const boat_ts = { ...(prev.boat_ts || {}) };
+  if (prev.boat !== next.boat) {
+    const a = prev.boat || {}, b = next.boat || {};
+    new Set([...Object.keys(a), ...Object.keys(b)]).forEach((k) => {
+      if (a[k] === b[k]) return;
+      if (k !== "weather" && k !== "trips") { boat_ts[k] = now; return; }
+      const x = a[k] || {}, y = b[k] || {};
+      new Set([...Object.keys(x), ...Object.keys(y)]).forEach((s) => { if (x[s] !== y[s]) boat_ts[`${k}.${s}`] = now; });
+    });
+  }
   const list_ts = { ...(prev.list_ts || {}) };
   const data = { ...next.data };
   if (prev.data !== next.data) {
@@ -284,5 +295,5 @@ export const stamp = (prev, next, now) => {
       if (a.length !== b.length || a.some((x, k) => x.id !== b[k].id)) list_ts[id] = now;
     });
   }
-  return { ...next, data, sec_ts, list_ts };
+  return { ...next, data, sec_ts, list_ts, boat_ts };
 };
