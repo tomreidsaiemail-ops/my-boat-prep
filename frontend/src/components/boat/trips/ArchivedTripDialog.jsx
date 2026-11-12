@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Archive, Check, Loader2, RotateCcw, Square, Trash2 } from "lucide-react";
+import { Anchor, Archive, Check, Loader2, RotateCcw, Square, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { ShoreMap } from "@/components/boat/shore/ShoreMap";
@@ -20,6 +20,8 @@ const routeLines = (a) => {
     .filter(([, v]) => String(v || "").trim());
 };
 
+const stops = (a) => a.path.filter((p) => p.kind === "stop");
+
 const Body = ({ a }) => (
   <div className="flex flex-col gap-4">
     <Section title="Route" testId="archived-trip-route">
@@ -30,6 +32,11 @@ const Body = ({ a }) => (
     <Section title="GPS path" testId="archived-trip-path">
       {a.path.length ? <ShoreMap points={a.path} endLabel="End" className="h-[40vh] min-h-[240px]" /> : <p className="text-sm text-[var(--muted)]">No positions were shared on this trip.</p>}
     </Section>
+    {stops(a).length > 0 && (
+      <Section title={`Stops (${stops(a).length})`} testId="archived-trip-stops">
+        {stops(a).map((p, n) => <p key={n} className="flex items-center gap-1.5 text-sm" data-testid={`archived-trip-stop-${n}`}><Anchor className="h-4 w-4 shrink-0 text-[var(--navy)]" /> Stopped {when(p.at)}</p>)}
+      </Section>
+    )}
     <Section title={`Crew (${a.crew.length})`} testId="archived-trip-crew">
       {a.crew.length + a.invites.length === 0 && <p className="text-sm text-[var(--muted)]">No crew on this trip.</p>}
       {a.crew.map((c, n) => <p key={n} className="text-sm"><b>{c.name}</b>{c.roles?.length ? ` · ${c.roles.join(", ")}` : ""}{c.rsvp ? ` · replied ${c.rsvp}` : ""}</p>)}

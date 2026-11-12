@@ -27,7 +27,13 @@ def _render(path: list) -> bytes:
         m.add_line(Line(pts, "#0f2a4a", 4))
     m.add_marker(CircleMarker(pts[0], "white", 12))
     m.add_marker(CircleMarker(pts[0], "#0f2a4a", 6))
-    m.add_marker(CircleMarker(pts[-1], "#f97316", 12))
+    if path[-1].get("kind") != "stop":
+        m.add_marker(CircleMarker(pts[-1], "#f97316", 12))
+    for p in path:  # dock markers: navy ring with a white centre where the boat stopped
+        if p.get("kind") == "stop":
+            m.add_marker(CircleMarker((p["lon"], p["lat"]), "white", 20))
+            m.add_marker(CircleMarker((p["lon"], p["lat"]), "#0f2a4a", 16))
+            m.add_marker(CircleMarker((p["lon"], p["lat"]), "white", 6))
     buf = BytesIO()
     m.render().convert("RGB").save(buf, format="JPEG", quality=82, optimize=True)
     return buf.getvalue()
@@ -54,10 +60,12 @@ def _html(a: dict, skipper: str, map_url: str) -> str:
     rows = [("Route", route), ("Departure", _day(a.get("depart_at", ""))), ("Estimated finish", _day(a.get("finish_at", ""))),
             ("Distance tracked", f'{s.get("distance_nm", 0)} nm' if s.get("points") else "No GPS path shared"),
             ("Tracked", f'{_nz(s["tracked_from"])} to {_nz(s["tracked_to"])} (NZ time)' if s.get("tracked_from") else ""),
+            ("Stops", "; ".join(_nz(p["at"]) for p in a.get("path") or [] if p.get("kind") == "stop")),
             ("Checklist", f'{s.get("ticked", 0)} of {s.get("total", 0)} ticked'),
             ("Crew", ", ".join(c.get("name", "") for c in a.get("crew") or []) or "None")]
     table = "".join(f'<tr><td style="padding:4px 12px 4px 0;color:#475569">{k}</td><td style="padding:4px 0"><b>{escape(v)}</b></td></tr>' for k, v in rows if v)
-    img = f'<p><img src="{escape(map_url)}" width="560" alt="Map of the route" style="max-width:100%;border:2px solid #0f2a4a;border-radius:8px"/></p>' if map_url else ""
+    img = (f'<p style="margin:0"><img src="{escape(map_url)}" width="560" alt="Map of the route" style="max-width:100%;border:2px solid #0f2a4a;border-radius:8px"/></p>'
+           '<p style="font-size:12px;color:#475569;margin:4px 0 12px">Small white dot: start · Navy ring: where the boat stopped · Orange dot: last position</p>') if map_url else ""
     return (f'<div style="font-family:Arial,sans-serif;color:#0f2a4a;max-width:600px">'
             f'<h2 style="margin:0 0 8px">{escape(a["name"])}: trip wrap-up</h2>'
             f'<p style="margin:0 0 12px">{escape(skipper)} has finished and archived this trip on My Boat Prep.</p>{img}'
