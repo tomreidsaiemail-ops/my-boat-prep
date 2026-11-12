@@ -22,7 +22,7 @@ export default function ShoreWatch() {
   const [boats, setBoats] = useState(null);
   const [pick, setPick] = useState(0);
   const [track, setTrack] = useState(null);
-  const shoreHome = !!(user?.shore_only || user?.home === "shore");
+  const shoreHome = !!(user?.shore_only || user?.home === "shore" || user?.shore_contact);
   const [choosing, setChoosing] = useState(() => shoreHome && !readPick(user?.user_id));
   const boat = choosing ? null : boats?.[pick];
   const alertOn = (track?.alert || boat?.alert)?.state === "active";

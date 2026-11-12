@@ -744,7 +744,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (crew) { loadCooks(); return; }
     const me = (user.name || "").trim() || "Skipper";
     const reg = online ? await api.get("/crew-register", { timeout: 20000 }).then((r) => r.data.crew).catch(() => []) : [];
-    setCooks([...new Set([me, ...reg.map((r) => (r.name || "").trim())].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+    setCooks([...new Set([me, ...reg.filter((r) => r.shopper !== false).map((r) => (r.name || "").trim())].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
   const addMealToPlan = (target, meal) => {

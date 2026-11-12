@@ -21,7 +21,7 @@ const Group = ({ title, children, testId }) => (
   </section>
 );
 
-// Shown once per sign-in to a shore contact: their own boats, boats they crew on, and boats they watch from shore.
+// Shown once per sign-in to a shore contact: boats they watch from shore, their own boats, then boats they crew on.
 export const ShoreChooser = ({ shoreBoats, onApp, onShore }) => {
   const [mine, setMine] = useState(null);
   const [busy, setBusy] = useState("");
@@ -34,6 +34,14 @@ export const ShoreChooser = ({ shoreBoats, onApp, onShore }) => {
   return (
     <div className="flex flex-col gap-5" data-testid="shore-chooser">
       <p className="text-sm text-slate-700">Choose a boat to open.</p>
+      {watched.length > 0 && (
+        <Group title="Boats I'm shore contact for" testId="shore-chooser-shore">
+          {watched.map((b) => (
+            <Option key={`${b.owner_id}-${b.boat_id}`} icon={MapPinned} title={b.vessel} sub={`Skipper ${b.skipper}`} badge={b.alert ? (b.alert.kind === "mayDay" ? "MAYDAY" : "PAN-PAN") : ""}
+              onClick={() => onShore(b.i)} testId={`shore-chooser-shore-${b.owner_id}-${b.boat_id}`} />
+          ))}
+        </Group>
+      )}
       <Group title="My boats" testId="shore-chooser-own">
         {(own.length ? own : [{ boat_id: "main", vessel: "" }]).map((b) => (
           <Option key={b.boat_id} icon={Ship} title={b.vessel || "Unnamed boat"} sub={own.length ? "Your boat" : "Set up your own boat"} busy={busy === boatKey(b)} onClick={() => go(boatKey(b))} testId={`shore-chooser-own-${b.boat_id}`} />
@@ -42,14 +50,6 @@ export const ShoreChooser = ({ shoreBoats, onApp, onShore }) => {
       {crew.length > 0 && (
         <Group title="Boats I crew on" testId="shore-chooser-crew">
           {crew.map((b) => <Option key={boatKey(b)} icon={Users} title={b.vessel || "Unnamed boat"} sub={b.owner_name && `Skipper ${b.owner_name}`} busy={busy === boatKey(b)} onClick={() => go(boatKey(b))} testId={`shore-chooser-crew-${b.owner_id}-${b.boat_id}`} />)}
-        </Group>
-      )}
-      {watched.length > 0 && (
-        <Group title="Boats I'm shore contact for" testId="shore-chooser-shore">
-          {watched.map((b) => (
-            <Option key={`${b.owner_id}-${b.boat_id}`} icon={MapPinned} title={b.vessel} sub={`Skipper ${b.skipper}`} badge={b.alert ? (b.alert.kind === "mayDay" ? "MAYDAY" : "PAN-PAN") : ""}
-              onClick={() => onShore(b.i)} testId={`shore-chooser-shore-${b.owner_id}-${b.boat_id}`} />
-          ))}
         </Group>
       )}
     </div>

@@ -79,8 +79,13 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
     try { await api.delete(`/crew-register/${entry.entry_id}/walkthroughs/${walk.boat_id}`); toast.success(`${entry.name} will take the ${walk.vessel} walkthrough again`); load(); } catch (err) { toast.error(apiError(err)); }
   };
   const add = (kind) => { if (guard()) setEditing({ kind }); };
+  const setShopper = async (e, shopper) => {
+    if (!guard()) return;
+    setReg((r) => ({ ...r, crew: r.crew.map((c) => (c.entry_id === e.entry_id ? { ...c, shopper } : c)) }));
+    try { await api.put(`/crew-register/${e.entry_id}/shopper`, { shopper }); } catch (err) { toast.error(apiError(err)); load(); }
+  };
   const waiting = reg.crew.filter((c) => c.status !== "registered").length;
-  const row = (e) => <RegRow key={e.entry_id} entry={e} busy={busy[e.entry_id]} onEdit={() => guard() && setEditing(e)} onDelete={() => setDeleting(e)} onClearWalk={(w) => setClearing({ entry: e, walk: w })}
+  const row = (e) => <RegRow key={e.entry_id} entry={e} busy={busy[e.entry_id]} onEdit={() => guard() && setEditing(e)} onDelete={() => setDeleting(e)} onClearWalk={(w) => setClearing({ entry: e, walk: w })} onShopper={(v) => setShopper(e, v)}
     onEmail={() => request([e.entry_id], true, e.entry_id)} onWhatsApp={() => whatsApp(e)} />;
 
   return (
@@ -93,7 +98,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
         <button type="button" className="btn-ghost h-10 gap-1.5 self-end px-3 text-sm" onClick={refresh} disabled={refreshing} data-testid="reg-refresh-btn">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
         </button>
-        <Section title="Crew" hint="Send a registration request, then they fill in their own details when they log in." empty="No crew yet. Add Tom, Dick and Harry here." rows={reg.crew} testId="reg-crew">
+        <Section title="Crew" hint="Send a registration request, then they fill in their own details when they log in. Ticked Shoppers can be given Provisions to buy." empty="No crew yet. Add Tom, Dick and Harry here." rows={reg.crew} testId="reg-crew">
           {reg.crew.map(row)}
         </Section>
         <div className="flex flex-col gap-2">

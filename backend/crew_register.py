@@ -111,6 +111,7 @@ async def list_register(user: dict = Depends(get_current_user)):
     jcs = {u["joincrew"]["email_key"]: u["joincrew"] async for u in db.users.find({"joincrew.email_key": {"$in": keys}}, {"_id": 0, "joincrew": 1})}
     for r in rows:
         r["joincrew"] = tick(jcs.get(r.get("email_key")), user["user_id"]) if r["kind"] == "crew" else None
+        r["shopper"] = r.get("shopper", True) if r["kind"] == "crew" else False
         r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"], "full_at": w.get("full_at") or w["at"], "quick": bool(w.get("quick"))}
                              for w in walks if w["email_key"] == r.get("email_key") and w["boat_id"] in boats] if r["kind"] == "crew" else []
         r.pop("email_key", None)
@@ -188,6 +189,20 @@ async def quick_bulk(payload: QuickBulkIn, user: dict = Depends(get_current_user
                                            "status": "registered", "quick_reg": True, "registered_at": now, "created_at": now, "updated_at": now})
         added.append(data["name"])
     return {"added": added, "skipped": skipped}
+
+
+class ShopperIn(BaseModel):
+    shopper: bool
+
+
+@router.put("/{entry_id}/shopper")
+async def set_shopper(entry_id: EntryPath, payload: ShopperIn, user: dict = Depends(get_current_user)):
+    """Crew are shoppers by default; unticked crew aren't offered as Provisions shoppers."""
+    e = await mine(user, entry_id)
+    if e["kind"] != "crew":
+        raise HTTPException(status_code=400, detail="Only crew can be shoppers")
+    await db.crew_register.update_one({"owner_id": user["user_id"], "entry_id": entry_id}, {"$set": {"shopper": payload.shopper}})
+    return {"entry_id": entry_id, "shopper": payload.shopper}
 
 
 @router.put("/{entry_id}")

@@ -32,7 +32,7 @@ function UserBoat() {
   if (shoreToken) return <Navigate to={`/shore/join/${shoreToken}`} replace />;
   // Shore contacts choose a boat once per sign-in on /shore; shore-only users never see the boat app. A crew invite still goes through.
   const visiting = !user.shore_only && readPick(user.user_id) === "app";
-  if ((user.shore_only || user.home === "shore") && !visiting && !localStorage.getItem(JOIN_KEY)) return <Navigate to="/shore" replace />;
+  if ((user.shore_only || user.home === "shore" || user.shore_contact) && !visiting && !localStorage.getItem(JOIN_KEY)) return <Navigate to="/shore" replace />;
   return <TermsGate key={user.user_id}><BoatShell /></TermsGate>;
 }
 

@@ -38,7 +38,7 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcas
       <div className="ml-auto flex min-w-0 flex-col items-end gap-1">
         <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${broadcast && broadcast !== "b300" ? "text-[#1d4ed8]" : gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position" data-relayed={!!broadcast && broadcast !== "b300"}>
           <MapPin className="mt-px h-3 w-3 shrink-0" />
-          <span>{gps.text}</span>
+          <span className="flex flex-col items-end" data-testid="gps-position-text">{gps.text.split(" / ").map((line) => <span key={line} className="whitespace-nowrap">{line}</span>)}</span>
         </div>
         {onMayday && (
           <div className="flex gap-1" data-testid="distress-buttons">
