@@ -43,7 +43,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)] bg-white" data-testid="my-settings-dialog">
+      <DialogContent guard={false} className="max-h-[90vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)] bg-white" data-testid="my-settings-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-black text-[var(--navy)]"><Settings className="h-5 w-5" /> My settings</DialogTitle>
           <DialogDescription className="text-sm text-slate-700">Settings for you, on every boat.</DialogDescription>
