@@ -1,0 +1,36 @@
+{
+  "summary": "Tested 5 changes on mobile (390x844) plus the backend. Four work: (2) the share-position switch is disabled when there are no contacts, and the backend returns 400; (3) contacts can't be removed while sharing is on, and the backend returns 409; (4) the shore chooser; (5) the B300 bubble note. Bug (1) is only partly fixed. The discard warning is gone from the whole agreement window (checked with Escape and with the X). But when the agreement is NOT yet accepted, the 'I understand how the shore contact is alerted' tick is lost on close: unticked when reopened and after a reload. The cause is in the backend.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/crew/agreement (crew_agreement.py save_agreement)", "issue": "When accept=false the backend ignores payload.shore_ok. The rec it builds only includes shore_ok_at when accept=true, and it replaces the whole agreements.{uid} record, so any earlier shore_ok_at is deleted too. Result: the crew member ticks the shore checkbox on an un-accepted agreement and closes the window. The frontend posts shore_ok:true, the response has no shore_ok_at, onSaved stores that, and on reopen the box is unticked. It stays unticked after a reload. The user's request 'closing it always keeps ticks' fails here.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "tests/test_shore_contacts.py", "issue": "Lines ~100/114 set the beta user's home to 'app' and never set it back to 'shore', so running this regression test changes the test data. I restored it to 'shore' with PUT /api/shore/home."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Crew agreement (not yet accepted): tick the shore checkbox, close, reopen", "issue": "No discard dialog (correct), but the tick is not kept because of the backend bug above.", "affected_selectors": ["agreement-shore-understood-checkbox", "crew-agreement-dialog"]}
+    ],
+    "design_issues": [
+      {"screen": "ShoreChooser", "issues": ["The beta user's own boat with no name shows as 'Unnamed boat' in the chooser but as 'New boat (add a name)' in the app's boat selector. Minor naming mismatch."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_shore_rules_iter158.py", "/app/backend/tests/test_shore_contacts.py", "/app/backend/tests/test_ignore300_phone_iter157.py", "/app/test_reports/pytest/iter158.xml"],
+  "action_items": [
+    "crew_agreement.py save_agreement: when accept is false, keep or set shore_ok_at, e.g. **({'shore_ok_at': now} if payload.accept and doc.get('shore_ids') else {'shore_ok_at': prev.get('shore_ok_at') or now} if payload.shore_ok and doc.get('shore_ids') else {}). Also decide whether unticking on an un-accepted agreement should clear it. Then retest: un-accepted agreement, tick shore, Escape, reopen and reload: the box should stay ticked.",
+    "Optional: make test_shore_contacts.py set the beta user's home back to 'shore' in teardown."
+  ],
+  "critical_code_review_comments": [
+    "save_agreement rebuilds the agreement record from scratch on every 'later' save, so any field not rebuilt (shore_ok_at) is silently lost. Merge with prev instead.",
+    "CrewAgreementDialog: shoreOk is set from data.agreement.shore_ok_at, so the UI depends on the backend echoing that field back. This is where the bug shows up.",
+    "POST /api/auth/logout deletes the session in the database. Testers must mock it (as I did) to keep the seeded tokens working."
+  ],
+  "updated_files": ["/app/backend/tests/test_shore_rules_iter158.py"],
+  "success_rate": {"backend": "95% (30/30 pytest pass; 1 logic bug found in an untested path)", "frontend": "90% (all checks pass except tick persistence on an un-accepted agreement)"},
+  "seed_data_creation": "None kept. I made a temporary TEST_ invite on the free user's boat main and deleted it. I temporarily unset agreements.test-user-free.accepted_at and shore_ok_at on test-user-pro/main to reproduce the bug, then restored the original values (accepted_at 2026-11-10T22:13:02.884096+00:00, shore_ok_at 2026-11-12T01:07:36.739637+00:00). The stops are unchanged, but updated_at changed when the frontend saved the agreement during the test. The pro user's tracking stays ON with the contacts test-user-beta and test-shore-only. I posted one water point (-36.6, 175.0), so the mode is now b300x, not the earlier b300 (ashore). ignore_300 was set true for the land check and then back to false. The beta user's home is back to 'shore'. The free user's last-boat is back to the crew boat. The beta user's last-boat is now 'main' (it was unset). Logout was mocked, so all sessions still work.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified: no discard dialog anywhere in the agreement window (Escape and X). Ticking the shore box on an accepted agreement saves straight away (confirmShore). The free user's own boat main has the switch disabled and shows shore-tracking-need-contact; backend 400. An invite-only contact allows sharing on, and removing it while on gives 409. The pro user's remove buttons are disabled with the title text, shore-remove-locked-note shows, backend 409. Beta chooser shows all 3 groups; the shore pick shows the map; the crew pick opens the app on c_test-user-pro_main; the own pick opens main; a reload doesn't show the chooser again; shore-watch-choose-boat reopens it; sign-out clears mbp_shore_pick. The shore-only chooser shows 'Unnamed boat - Set up your own boat' and the shore boat. B300 note shows separator + Open My Settings + label, and Open My Settings closes the note and opens my-settings-dialog. b300x and land don't show them. To get b300, POST a land point (-36.8485,174.7633) to /api/track/points. Mock /api/auth/logout when testing sign-out."
+}

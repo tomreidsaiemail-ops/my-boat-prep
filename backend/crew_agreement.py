@@ -132,7 +132,8 @@ async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_
     rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now,
            **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {}),
            **({"quick": True, "full_at": walk["full_at"]} if walk and payload.accept else {}),
-           **({"shore_ok_at": now} if payload.accept and doc.get("shore_ids") else {})}
+           **({"shore_ok_at": now if payload.accept else prev.get("shore_ok_at") or now} if payload.shore_ok and doc.get("shore_ids")
+              else {"shore_ok_at": prev["shore_ok_at"]} if prev.get("accepted_at") and prev.get("shore_ok_at") else {})}
     await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}": rec}})
     if payload.accept and all_stops:
         await record_walkthrough(payload.owner_id, payload.boat_id, user, quick=bool(walk))

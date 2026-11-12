@@ -116,6 +116,7 @@ class TestShoreFlow:
         me = me.get("user", me)
         assert me.get("home") != "shore"
         assert BETA.put(f"{API}/shore/home", json={"home": "bad"}).status_code == 422
+        BETA.put(f"{API}/shore/home", json={"home": "shore"})  # keep the seeded beta user's shore home
 
     # Tracking switch and points
     def test_09_tracking_new_trip(self):
