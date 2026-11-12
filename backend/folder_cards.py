@@ -92,6 +92,7 @@ class QrCard(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     parent: str = Field(default="", max_length=120)
     zone: str = Field(default="", max_length=80)
+    where: str = Field(default="", max_length=160)
     hex: str = Field(default="", pattern=r"^(#[0-9A-Fa-f]{6})?$")
 
 
@@ -131,28 +132,41 @@ def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
     d.add(widget)
     renderPDF.draw(d, c, x + pad, y + pad)
     tx, tw = x + pad + side + 4 * mm, QR_W - side - 3 * pad - 4 * mm + pad
-    top = y + QR_H - pad - 9 * mm
+    ty = y + QR_H - pad - 4 * mm
+    # Top line: colour swatch and zone, shrinking the font until the zone fits.
+    zx = tx
     if card.hex:
         c.setFillColor(colors.HexColor(card.hex))
         c.setStrokeColor(colors.HexColor("#334155"))
-        c.roundRect(tx, top, 8 * mm, 8 * mm, 1.5 * mm, stroke=1, fill=1)
-    ty = top - 5 * mm
+        c.roundRect(tx, ty - 1, 5 * mm, 5 * mm, 1 * mm, stroke=1, fill=1)
+        zx = tx + 6.5 * mm
+    zw = tx + tw - zx
+    zone = card.zone or "No zone yet"
+    size = 11.0
+    while size > 6 and c.stringWidth(zone, "Helvetica-Bold", size) > zw:
+        size -= 0.5
     c.setFillColor(colors.HexColor("#0f2a4a"))
-    for line in _fit(c, card.zone or "No zone yet", "Helvetica-Bold", 11, tw):
-        c.setFont("Helvetica-Bold", 11)
+    c.setFont("Helvetica-Bold", size)
+    c.drawString(zx, ty + 1.5, _fit(c, zone, "Helvetica-Bold", size, zw, 1)[0])
+    ty -= 7 * mm
+    for line in _fit(c, card.name, "Helvetica-Bold", 12, tw, 3):
+        c.setFont("Helvetica-Bold", 12)
         c.drawString(tx, ty, line)
-        ty -= 13
-    ty -= 3
-    big = 14
-    for line in _fit(c, card.name, "Helvetica-Bold", big, tw):
-        c.setFont("Helvetica-Bold", big)
-        c.drawString(tx, ty, line)
-        ty -= big + 2
+        ty -= 14
     c.setFillColor(colors.HexColor("#475569"))
     if card.parent:
         c.setFont("Helvetica", 8.5)
-        c.drawString(tx, ty, _fit(c, f"in {card.parent}", "Helvetica", 8.5, tw)[0])
+        c.drawString(tx, ty, _fit(c, f"in {card.parent}", "Helvetica", 8.5, tw, 1)[0])
         ty -= 11
+    # The cupboard's location (a fixed detail); the changeable cupboard comment never goes on the card.
+    where = card.where.strip()
+    room = int((ty - (y + pad + 9)) // 9.5) + 1
+    if where and room > 0:
+        c.setFillColor(colors.HexColor("#0f2a4a"))
+        for line in _fit(c, where, "Helvetica", 8, tw, room):
+            c.setFont("Helvetica", 8)
+            c.drawString(tx, ty, line)
+            ty -= 9.5
     c.setFillColor(colors.HexColor("#475569"))
     c.setFont("Helvetica-Oblique", 7)
     c.drawString(tx, y + pad, _fit(c, f"Scan to Magic Scan · {vessel}", "Helvetica-Oblique", 7, tw)[0])

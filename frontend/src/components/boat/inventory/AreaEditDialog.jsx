@@ -3,8 +3,8 @@ import { Move } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CupboardPhotoField } from "@/components/boat/inventory/CupboardPhoto";
 
-export const WHERE_MAX = 1000;
-export const AREA_COMMENT_MAX = 300;
+export const WHERE_MAX = 80;
+export const AREA_COMMENT_MAX = 1000;
 
 // Rename a cupboard and say where it is in its zone, e.g. "Under the port saloon seat, aft end".
 export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, onMove }) => {
@@ -31,11 +31,11 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
           <label className="flex flex-col gap-1"><span className="field-label">Name</span>
             <input autoFocus value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} className="field-input" data-testid="inventory-rename-input" /></label>
           <label className="flex flex-col gap-1"><span className="field-label">Where is it{zoneName ? ` in the ${zoneName}` : " in the zone"}? (optional)</span>
-            <textarea value={where} maxLength={WHERE_MAX} rows={3} onChange={(e) => setWhere(e.target.value)} placeholder="e.g. Under the port saloon seat, aft end" className="field-input !h-auto min-h-[84px] !py-2" data-testid="inventory-where-input" />
+            <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder="e.g. Under the port saloon seat, aft end" className="field-input" data-testid="inventory-where-input" />
             <span className="text-right text-xs text-[var(--muted)]" data-testid="inventory-where-count">{where.length}/{WHERE_MAX}</span></label>
           {!area?.parent_id && (
             <label className="flex flex-col gap-1"><span className="field-label">Cupboard comment (optional)</span>
-              <textarea value={comment} maxLength={AREA_COMMENT_MAX} rows={2} onChange={(e) => setComment(e.target.value)} placeholder="e.g. The seacock is behind the bin, close it before leaving the boat"
+              <textarea value={comment} maxLength={AREA_COMMENT_MAX} rows={4} onChange={(e) => setComment(e.target.value)} placeholder="e.g. The seacock is behind the bin, close it before leaving the boat"
                 className="field-input !h-auto min-h-[64px] !py-2" data-testid="inventory-comment-input" />
               <span className="flex justify-between gap-2 text-xs text-[var(--muted)]"><span>Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span><span data-testid="inventory-comment-count">{comment.length}/{AREA_COMMENT_MAX}</span></span></label>
           )}
