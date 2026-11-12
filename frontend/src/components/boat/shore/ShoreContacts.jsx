@@ -117,7 +117,7 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
         <Link to="/shore" className="btn-ghost min-h-9 shrink-0 gap-1.5 px-3 text-xs" data-testid="shore-monitor-link"><MapPinned className="h-4 w-4" /> Monitor my boats</Link>
       </div>
       <Switch checked={!!t.on} onChange={track} disabled={!online || (!t.on && !info.contacts.length)} testId="shore-tracking-switch" title="Share position with shore contacts"
-        text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
+        text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, once more when the boat stops, and an hourly check-in when anchored. Turn it off at the end of the trip." />
       {!t.on && !info.contacts.length && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-tracking-need-contact">Invite a shore contact below before you share your position.</p>}
       {(t.on || t.state === "arrived") && <ShoreStatus status={t} testId="shore-tracking-status" />}
       {t.on && (

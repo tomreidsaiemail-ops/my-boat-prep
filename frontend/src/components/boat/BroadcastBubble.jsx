@@ -6,9 +6,9 @@ import { metres } from "@/hooks/useShoreTracking";
 const NEAR_M = 100;
 
 const NOTES = {
-  b300: { label: "B300", title: "B300: shore contact tracking is on", text: "This phone is on land or within about 300 m of it, so its positions are kept private and not sent to your shore contact." },
-  b300x: { label: "B300!", title: "B300!: broadcasting to your shore contact", text: "Positions on the water are being sent to your shore contact. Positions on land or within about 300 m of it stay private." },
-  land: { label: "B/LAND!", title: "B/LAND!: broadcasting everywhere", text: "My settings > Ignore 300 metre is on, so every position from this phone is sent to your shore contact, including on land." },
+  b300: { label: "B300", title: "B300: shore contact tracking is on", text: "Shore contact tracking is on, but this position is more than about 300 m inland (or none has been sent yet), so it is kept private. Positions on the water, or on land within about 300 m of it (docks, marinas, wharves), go to your shore contact." },
+  b300x: { label: "B300!", title: "B300!: broadcasting to your shore contact", text: "Positions on the water, or on land within about 300 m of it, are being sent to your shore contact. Positions further inland stay private." },
+  land: { label: "B/LAND!", title: "B/LAND!: broadcasting everywhere", text: "My settings > Ignore 300 metre is on, so every position from this phone is sent to your shore contact, including further inland." },
 };
 
 const distText = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);

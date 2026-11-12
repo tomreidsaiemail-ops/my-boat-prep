@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
-// Shore Contact tracking from a phone aboard: a position every 1 km moved, or an hourly ping when stationary.
+// Shore Contact tracking from a phone aboard: a position every 1 km moved, a final one once the boat stops, or an hourly ping when stationary.
 // Positions queue on the phone while offline and are sent when the signal comes back.
 const QUEUE = "mbp_track_queue";
 const LAST = "mbp_track_last";
 const MOVE_M = 1000;
 const PING_MS = 60 * 60 * 1000;
+const STILL_M = 50;
+const STOP_M = 100;
+const STOP_MS = 5 * 60 * 1000;
 export const AWAKE_KEY = "mbp_track_awake";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -68,7 +71,13 @@ export default function useShoreTracking(boat, gps, online) {
     if (t && ["on", "trip_id", "ashore_since", "relayed", "last_at"].some((k) => t[k] !== tracking?.[k])) setOverride({ key, tracking: t });
   });
   const fix = useRef(null);
-  if (gps.status === "ok") fix.current = { lat: gps.lat, lon: gps.lon, acc: gps.acc };
+  const still = useRef(null);
+  if (gps.status === "ok") {
+    fix.current = { lat: gps.lat, lon: gps.lon, acc: gps.acc };
+    if (!still.current || metres(still.current, fix.current) > STILL_M) still.current = { ...fix.current, since: Date.now() };
+  }
+  // Stopped for 5 minutes more than 100 m from the last position sent (e.g. tied up at the dock): send where the boat is now.
+  const stopped = (last) => !!(fix.current && still.current && metres(last, fix.current) >= STOP_M && Date.now() - still.current.since >= STOP_MS);
 
   const add = (kind) => {
     if (!fix.current) return;
@@ -92,6 +101,7 @@ export default function useShoreTracking(boat, gps, online) {
     const tick = () => {
       const last = read(LAST, null);
       if (last?.trip === trip && Date.now() - last.at >= PING_MS) add("ping");
+      else if (last?.trip === trip && stopped(last)) add("stop");
       if (navigator.onLine) send();
     };
     tick();

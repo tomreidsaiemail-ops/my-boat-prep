@@ -214,7 +214,7 @@ class PointIn(BaseModel):
     lon: float = Field(ge=-180, le=180)
     at: int = Field(gt=1_600_000_000_000, lt=4_000_000_000_000)
     acc: float | None = Field(default=None, ge=0, le=100000)
-    kind: Literal["start", "move", "ping"] = "move"
+    kind: Literal["start", "move", "ping", "stop"] = "move"
 
 
 class PointsIn(BaseModel):
