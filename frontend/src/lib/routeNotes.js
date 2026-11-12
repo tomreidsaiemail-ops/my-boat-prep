@@ -2,6 +2,9 @@ export const MEETUP_DEFAULT = "Pier X, Berth YYY, be onboard no later than ONE H
 export const ROUTE_NOTE = "These planning details and more are on the Route Planning list when you log into My Boat Prep.";
 
 export const when = (v) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v || "")) {
+    try { return new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(`${v}T12:00`)); } catch { return v; }
+  }
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v || "")) return "";
   try { return new Intl.DateTimeFormat("en-NZ", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(v)); } catch { return v; }
 };

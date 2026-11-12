@@ -23,13 +23,21 @@ export const NavigatorReminders = () => (
 
 import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
-const When = ({ id, label, value, onChange, warn }) => (
-  <label htmlFor={id} className="flex min-w-0 flex-col gap-1.5">
-    <span className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</span>
-    <input id={id} type="datetime-local" value={value || ""} onChange={(e) => onChange(e.target.value)} aria-invalid={!!warn}
-      className={`field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`} data-testid={`${id}-input`} />
-  </label>
-);
+// Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
+const When = ({ id, label, value, onChange, warn }) => {
+  const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
+  const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
+  const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
+      <label htmlFor={id} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</label>
+      <div className="grid grid-cols-[3fr_2fr] gap-2">
+        <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
+        <input type="time" value={time} disabled={!date} onChange={(e) => join(date, e.target.value)} aria-label={`${label}: time`} className={`${box} disabled:opacity-50`} data-testid={`${id}-time-input`} />
+      </div>
+    </div>
+  );
+};
 
 // Departure and Start are normally the same day (racers leave the dock an hour or so before the start), so flag anything else.
 const day = (v) => (v || "").slice(0, 10);

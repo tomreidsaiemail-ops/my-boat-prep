@@ -256,7 +256,7 @@ BOAT_FACTS = (("Boat type", "boat_type"), ("Make", "make"), ("Model", "model"), 
 
 def when_text(v: str) -> str:
     try:
-        return datetime.fromisoformat(v).strftime("%-d %b %Y %H:%M")
+        return datetime.fromisoformat(v).strftime("%-d %b %Y" if len(v) == 10 else "%-d %b %Y %H:%M")
     except (TypeError, ValueError):
         return ""
 

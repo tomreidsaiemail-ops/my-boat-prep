@@ -43,7 +43,7 @@ async def trip_map(key: MapKey):
 
 def _day(v: str) -> str:
     try:
-        return datetime.fromisoformat(v).strftime("%a %d %b %Y %H:%M")
+        return datetime.fromisoformat(v).strftime("%a %d %b %Y" if len(v) == 10 else "%a %d %b %Y %H:%M")
     except (TypeError, ValueError):
         return ""
 

@@ -3,6 +3,7 @@ import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
 export const statLine = (s = {}) => [`${s.ticked || 0}/${s.total || 0} ticked`, `${s.crew || 0} crew`, s.points ? `${s.distance_nm} nm tracked` : "no GPS path"].join(" · ");
 const SNOOZE_KEY = "mbp_trip_done_snooze";
 const today = () => new Date().toLocaleDateString("en-CA");
+const day = (v, t) => (v && v.length === 10 ? `${v}T${t}` : v);
 const iso = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString() : null; };
 
 export const tripDetails = (boat, id) => (id === DEFAULT_TRIP
@@ -19,7 +20,7 @@ export const archivePayload = (s, id) => {
   const list = s.registry.find((l) => l.id === id) || { name: "Route Planning" };
   const w = tripBoat(s.boat, id).weather || {};
   return { trip_id: id, name: list.name, description: list.description || "", items: s.data[id] || [], details: tripDetails(s.boat, id),
-    depart_at: w.depart_at || "", finish_at: w.finish_at || "", window: { start: iso(w.depart_at), end: iso(w.finish_at) } };
+    depart_at: w.depart_at || "", finish_at: w.finish_at || "", window: { start: iso(day(w.depart_at, "00:00")), end: iso(day(w.finish_at, "23:59")) } };
 };
 
 // Clean slate: every tick, date, route and weather note on the trip is cleared (crew are taken off on the server).
@@ -55,5 +56,5 @@ export const snoozeTrip = (boatKey, id) => localStorage.setItem(SNOOZE_KEY, JSON
 export const finishedTrip = (s, boatKey) => {
   const off = snoozes();
   return tripLists(s.registry).map((t) => ({ ...t, finish: tripBoat(s.boat, t.id).weather?.finish_at || "" }))
-    .find((t) => iso(t.finish) && new Date(t.finish) < new Date() && off[`${boatKey}:${t.id}`] !== today()) || null;
+    .find((t) => iso(t.finish) && new Date(t.finish.length === 10 ? `${t.finish}T23:59` : t.finish) < new Date() && off[`${boatKey}:${t.id}`] !== today()) || null;
 };
