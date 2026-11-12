@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { HelpPanel } from "@/components/boat/HelpPanel";
+import { HelpDialog } from "@/components/boat/HelpMenu";
 import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -19,6 +20,8 @@ import { RemoveMapConfirm, SkipperComment } from "@/components/boat/zone/Skipper
 
 const HELP_PREFIX = "Admin - Help Panel - ";
 const HELP_NAME = "admin - help panel - how to make a zone map";
+const WALK_HELP_NAME = "admin - help panel - creating crew walkthroughs";
+const WALK_HELP_DEFAULT = "Have a look at the detailed help in \"How To Make A Zone Map\". Label a zone map photo (e.g. tap the fridge on your Galley photo and label it Fridge), then crew can walk through it.";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the cupboards onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
@@ -92,7 +95,10 @@ const AdminTools = ({ has, online, onChanged }) => {
 };
 
 export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, onZoneDefaults, focusPin, onSignOff, onZone }) => {
-  const help = useAdminLists(HELP_PREFIX, online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
+  const helpLists = useAdminLists(HELP_PREFIX, online);
+  const help = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
+  const walkHelpItems = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === WALK_HELP_NAME)?.items;
+  const [walkHelp, setWalkHelp] = useState(null);
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -177,6 +183,12 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
         </button>
       )}
+      {!steps.length && canEdit && (
+        <button type="button" className="btn-ghost h-10 justify-center gap-2 text-sm" onClick={() => setWalkHelp({ title: "Creating Crew Walkthroughs", items: walkHelpItems?.length ? walkHelpItems : [{ label: WALK_HELP_DEFAULT }] })} data-testid="crew-walkthrough-help-btn">
+          <Footprints className="h-4 w-4" /> I would like to create a Crew walkthrough
+        </button>
+      )}
+      <HelpDialog help={walkHelp} onClose={() => setWalkHelp(null)} />
       {hasFoodPins && (
         <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
           onClick={() => setFoodOnly((f) => !f)} aria-pressed={foodOnly} data-testid="zone-map-food-filter">

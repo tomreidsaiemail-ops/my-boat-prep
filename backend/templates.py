@@ -491,12 +491,22 @@ ZONE_MAP_HOW_TO = [
 ]
 
 
+CREW_WALK_HELP = [
+    ("Admin - Help Panel - Creating Crew Walkthroughs", "Shown in the Help menu and from 'I would like to create a Crew walkthrough' in ZONE MAPS. Top-level lines are paragraphs, indented lines are bullets.", [
+        "Have a look at the detailed help in \"How To Make A Zone Map\".",
+        "Clicking \"Create Zone Map Overview (Schematic)\" in ZONE MAPS gets you started and clicking Place Colours in ZONE MAPS gets your zones like Galley and Saloon created by the System.",
+        "Just take a photo of your Galley, and then click \"Label this map\" in ZONE MAPS, you need to tap on the Galley photo, say on the fridge, and label it Fridge, and then save labels.",
+        "You can do a Crew walkthrough that includes that galley photo showing you where the fridge is.",
+        "Note you may have a technical locker in the cockpit, you can take a photo of that and describe it in detail for an engineer say.",
+        "It is then possible when inviting crew to have the engineer walk through your technical locker and your chef walkthrough your galley.",
+    ]),
+]
 
 
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP), ("ignore_300_help", IGNORE_300_HELP)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP), ("ignore_300_help", IGNORE_300_HELP), ("crew_walkthrough_help", CREW_WALK_HELP)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:
