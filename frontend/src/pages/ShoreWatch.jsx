@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Anchor, ListChecks, Loader2, LogOut, RefreshCw, Ship } from "lucide-react";
+import { Anchor, ListChecks, Loader2, LogOut, MapPin, RefreshCw, Ship } from "lucide-react";
+import { formatPosition } from "@/hooks/useGps";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
@@ -78,10 +79,17 @@ export default function ShoreWatch() {
           }} />
           <ShoreStatus status={track?.status || boat.status} testId="shore-watch-status" />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span data-testid="shore-watch-summary">
-              {track?.started_at ? `Trip started ${when(track.started_at)}` : track?.arrived_at ? `Arrived safely ${when(track.arrived_at)}` : track?.ended_at ? `Last trip ended ${when(track.ended_at)}` : "No trip being tracked"}
-              {last ? ` · now at ${last.lat.toFixed(4)}, ${last.lon.toFixed(4)}` : ""}
-            </span>
+            <div className="flex flex-col gap-1">
+              <span data-testid="shore-watch-summary">
+                {track?.started_at ? `Trip started ${when(track.started_at)}` : track?.arrived_at ? `Arrived safely ${when(track.arrived_at)}` : track?.ended_at ? `Last trip ended ${when(track.ended_at)}` : "No trip being tracked"}
+              </span>
+              {last && (
+                <div className="flex items-start gap-1 font-mono text-xs font-semibold leading-tight text-[var(--navy)]" data-testid="shore-watch-position">
+                  <MapPin className="mt-px h-3.5 w-3.5 shrink-0" />
+                  <span className="flex flex-col">{formatPosition(last.lat, last.lon).split(" / ").map((line) => <span key={line} className="whitespace-nowrap">{line}</span>)}</span>
+                </div>
+              )}
+            </div>
             <button type="button" className="btn-ghost min-h-10 gap-2 px-3 text-sm" onClick={load} data-testid="shore-watch-refresh"><RefreshCw className="h-4 w-4" /> Refresh</button>
           </div>
           {track && (track.points.length > 0 || alertOn) ? <ShoreMap points={track.points} alert={track.alert} /> : (
