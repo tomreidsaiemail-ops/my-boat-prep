@@ -1,3 +1,4 @@
+import { PHONE_HINT, phoneFieldErrors } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2 } from "lucide-react";
@@ -51,6 +52,8 @@ export const CrewRegistrationPrompt = () => {
   const submit = async () => {
     const miss = missing(values);
     if (miss.length) { setErrors(miss); toast.error("Every field is needed. Type None if something doesn't apply."); return; }
+    const badPhone = phoneFieldErrors(values);
+    if (badPhone.length) { setErrors(badPhone); toast.error(PHONE_HINT); return; }
     setBusy(true);
     try {
       await api.put(`/crew-register/mine/${req.entry_id}`, toPayload(values));

@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/crew-register")
 DAILY_SEND_LIMIT = 60
 EntryPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 DATE = r"^\d{4}-\d{2}-\d{2}$"
+PHONE = r"^\+[1-9]\d{0,3}[ -]?\(?\d[\d ()-]{4,}$"  # must start with + and a country code
 TEXT = ("name", "phone", "email", "dob", "allergies", "food", "nok_name", "nok_email", "nok_phone", "comments")
 
 
@@ -63,6 +64,9 @@ def clean(d: Details, need: tuple) -> dict:
     missing = [k for k in need if out.get(k) in ("", None)]
     if missing:
         raise HTTPException(status_code=400, detail="Please fill in every field" if len(need) > 3 else "Please enter a name, phone number and email" if len(need) == 3 else "Please enter a name and email")
+    for k, label in (("phone", "phone number"), ("nok_phone", "next of kin phone number")):
+        if out[k] and not re.match(PHONE, out[k]):
+            raise HTTPException(status_code=400, detail=f"Start the {label} with + and the country code, e.g. +64 21 555 1234")
     if out["dob"] and not re.match(DATE, out["dob"]):
         raise HTTPException(status_code=400, detail="Please enter a valid date of birth")
     if out["dob"] and not ("1900-01-01" <= out["dob"] <= date.today().isoformat()):

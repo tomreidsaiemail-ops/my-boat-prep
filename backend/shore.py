@@ -60,7 +60,8 @@ def status_of(t: dict | None) -> dict:
 
 def tracking_brief(d: dict) -> dict:
     t = d.get("tracking") or {}
-    return {"on": bool(t.get("on")), "trip_id": t.get("trip_id"), "ashore_since": t.get("ashore_since") if t.get("on") else None}
+    on = bool(t.get("on"))
+    return {"on": on, "trip_id": t.get("trip_id"), "ashore_since": t.get("ashore_since") if on else None, "relayed": on and bool(t.get("last_at"))}
 
 
 async def ensure_indexes():
@@ -231,7 +232,7 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
         return {"saved": 0, "tracking": tracking_brief(doc)}
     now = _now()
     # Land filter: only positions on the water are logged, unless the sender is on the admin exclusion list.
-    points = payload.points if await excluded(user.get("email")) else [p for p in payload.points if await on_water(p.lat, p.lon)]
+    points = payload.points if excluded(user) else [p for p in payload.points if await on_water(p.lat, p.lon)]
     latest = max(payload.points, key=lambda p: p.at)
     ashore = latest not in points
     rows = [{"owner_id": owner, "boat_id": payload.boat_id, "trip_id": payload.trip_id, "lat": round(p.lat, 6), "lon": round(p.lon, 6),
@@ -249,6 +250,7 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
         last = max(rows, key=lambda r: r["at"]) if rows else None
         if last and (not t.get("last_at") or last["at"] > t["last_at"]):
             upd["$set"].update({"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}})
+            t["last_at"] = last["at"]
         if ashore:
             upd["$set"]["tracking.ashore_at"] = now.isoformat()  # still heard from, just not logged
             if not t.get("ashore_since"):

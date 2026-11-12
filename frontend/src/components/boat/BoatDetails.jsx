@@ -1,3 +1,4 @@
+import { phoneError } from "@/lib/phone";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, ChevronUp, Fish, Home, Martini, Ship, Sparkles } from "lucide-react";
@@ -138,7 +139,10 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onHome, o
         <Field id="skipper" label="Skipper" value={boat.skipper} placeholder="Name..." onChange={(v) => onChange("skipper", v)} />
         <Field id="email" type="email" label="Email" value={boat.log_email || ""} placeholder="you@email.com" onChange={(v) => onChange("log_email", v)} />
         <Field id="shore-contact-email" type="email" label="Shore contact email" value={boat.shore_email || ""} placeholder="shore@email.com" onChange={(v) => onChange("shore_email", v.slice(0, 254))} />
-        <Field id="skipper-phone" type="tel" label="Skipper's phone" value={boat.skipper_phone || ""} placeholder="+64 21 555 1234" onChange={(v) => onChange("skipper_phone", v.slice(0, 30))} />
+        <div className="flex min-w-0 flex-col gap-1">
+          <Field id="skipper-phone" type="tel" label="Skipper's phone" value={boat.skipper_phone || ""} placeholder="+64 21 555 1234" onChange={(v) => onChange("skipper_phone", v.slice(0, 30))} />
+          {phoneError(boat.skipper_phone) && <p className="text-xs font-bold text-[var(--red)]" data-testid="skipper-phone-error">{phoneError(boat.skipper_phone)}</p>}
+        </div>
         <MoreButton boat={boat} btnRef={moreRef} onClick={() => setMore(true)} />
       </div>
       {batchBtn}

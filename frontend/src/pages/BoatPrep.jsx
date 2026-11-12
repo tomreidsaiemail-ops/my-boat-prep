@@ -180,6 +180,8 @@ export default function BoatPrep({ boatId, boats }) {
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
   const shoreTrack = useShoreTracking(boats.current, gps, online);
+  const tr = shoreTrack.tracking;
+  const broadcast = !tr?.on ? null : user.ignore_300 ? "land" : tr.ashore_since || !tr.relayed ? "b300" : "b300x";
   const shoreAlert = useShoreAlert(boats.current, crew, online, gps);
   // A skipper's own boat starts with their account name and sign-in email, so they don't have to type them again.
   useEffect(() => {
@@ -967,7 +969,7 @@ export default function BoatPrep({ boatId, boats }) {
     <CrewDietContext.Provider value={diet}>
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header helpPanels={helpPanels} gps={gps} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
+      <Header helpPanels={helpPanels} gps={gps} broadcast={broadcast} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}

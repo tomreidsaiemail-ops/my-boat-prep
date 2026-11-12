@@ -16,14 +16,32 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels }) => (
+// Shown while positions go to a shore contact. Dark blue means positions are being relayed right now.
+const BroadcastBubble = ({ mode }) => {
+  if (!mode) return null;
+  const dark = mode !== "b300";
+  const label = mode === "land" ? "B/LAND" : "B300";
+  const openShore = () => {
+    window.dispatchEvent(new CustomEvent("mbp:open-crew", { detail: { section: "shore" } }));
+  };
+  const cls = `inline-flex h-7 shrink-0 items-center gap-0.5 rounded-full px-2.5 font-mono text-[11px] font-extrabold ${dark ? "bg-[#0b2a5b] text-white" : "bg-sky-200 text-sky-900"}`;
+  const title = mode === "land" ? "Broadcasting every position to your shore contact, including on land" : mode === "b300" ? "Shore contact tracking on: positions on land or within about 300 m of it are kept private" : "Broadcasting to your shore contact: this position has been relayed";
+  return dark
+    ? <button type="button" onClick={openShore} className={`${cls} [transition:transform_.1s] active:scale-95`} title={title} aria-label={`${title}. Open the Shore Contact panel`} data-testid="broadcast-bubble" data-mode={mode}>{label}<span aria-hidden>!</span></button>
+    : <span className={cls} title={title} data-testid="broadcast-bubble" data-mode={mode}>{label}</span>;
+};
+
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels }) => (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
         <BrandMark />
         <h1 className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
       </div>
-      <NetworkToggle online={online} pending={pending} onGoOffline={onGoOffline} onGoOnline={onGoOnline} />
+      <div className="flex items-center gap-1.5">
+        <BroadcastBubble mode={broadcast} />
+        <NetworkToggle online={online} pending={pending} onGoOffline={onGoOffline} onGoOnline={onGoOnline} />
+      </div>
     </div>
     <div className="flex items-center justify-between gap-2">
       <label className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-2" htmlFor="trip-date">
@@ -32,7 +50,7 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, tripDate
           className="h-11 rounded-md bg-[var(--navy)] px-1.5 font-mono text-xs font-bold sm:px-2.5 sm:text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
       </label>
       <div className="ml-auto flex min-w-0 flex-col items-end gap-1">
-        <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position">
+        <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${broadcast && broadcast !== "b300" ? "text-[#1d4ed8]" : gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position" data-relayed={!!broadcast && broadcast !== "b300"}>
           <MapPin className="mt-px h-3 w-3 shrink-0" />
           <span>{gps.text}</span>
         </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2, Phone } from "lucide-react";
+import { phoneError } from "@/lib/phone";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -8,7 +9,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 export const PhoneReminderDialog = ({ save, unsynced, onLeave, onClose }) => {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
-  const ok = phone.replace(/[^\d]/g, "").length >= 6;
+  const ok = phone.replace(/[^\d]/g, "").length >= 6 && !phoneError(phone);
   const saveAndLeave = async () => {
     setBusy(true);
     save(phone.trim());
@@ -25,6 +26,7 @@ export const PhoneReminderDialog = ({ save, unsynced, onLeave, onClose }) => {
           <DialogDescription className="text-sm text-slate-700">Your Skipper&apos;s Phone is blank. Add it so your shore contact and crew can call you in an emergency.</DialogDescription>
         </DialogHeader>
         <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.slice(0, 30))} placeholder="+64 21 555 1234" autoFocus className="field-input" data-testid="phone-reminder-input" />
+        {phoneError(phone) && <p className="text-sm font-bold text-[var(--red)]" data-testid="phone-reminder-error">{phoneError(phone)}</p>}
         <div className="flex flex-col gap-2 sm:flex-row-reverse">
           <button type="button" className="btn-solid min-h-11 flex-1 justify-center gap-2" disabled={!ok || busy} onClick={saveAndLeave} data-testid="phone-reminder-save-btn">
             {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save and sign out

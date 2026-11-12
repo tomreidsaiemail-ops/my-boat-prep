@@ -119,7 +119,7 @@ class TestShoreFlow:
         boats = PRO.get(f"{API}/me/boats").json()
         boats = boats.get("boats", boats) if isinstance(boats, dict) else boats
         main = [b for b in boats if b.get("boat_id") == "main"][0]
-        assert main["tracking"] == {"on": True, "trip_id": d["trip_id"]}
+        assert main["tracking"]["on"] is True and main["tracking"]["trip_id"] == d["trip_id"]
         st = BETA.get(f"{API}/shore/track", params={"owner_id": "test-user-pro", "boat_id": "main"}).json()
         assert st["status"]["state"] == "waiting" and st["points"] == []
 
@@ -158,7 +158,7 @@ class TestShoreFlow:
         PRO.put(f"{API}/boats/main/shore/tracking", json={"on": False})
         trip = PRO.put(f"{API}/boats/main/shore/tracking", json={"on": True}).json()["trip_id"]
         old = now_ms(-3 * 3600 * 1000)
-        r = PRO.post(f"{API}/track/points", json={"owner_id": "", "boat_id": "main", "trip_id": trip, "points": [{"lat": -36.8, "lon": 174.7, "at": old, "kind": "start"}]})
+        r = PRO.post(f"{API}/track/points", json={"owner_id": "", "boat_id": "main", "trip_id": trip, "points": [{"lat": -36.6, "lon": 175.0, "at": old, "kind": "start"}]})
         assert r.json()["saved"] == 1
         st = BETA.get(f"{API}/shore/track", params={"owner_id": "test-user-pro", "boat_id": "main"}).json()
         assert st["status"]["state"] == "offline"

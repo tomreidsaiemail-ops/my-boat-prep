@@ -52,6 +52,7 @@ class UserOut(BaseModel):
     home: str = ""
     shore_only: bool = False
     shore_contact: bool = False
+    ignore_300: bool = False
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -65,7 +66,7 @@ def to_user_out(u: dict) -> UserOut:
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
         created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "", shore_only=bool(u.get("shore_only")),
-        shore_contact=bool(u.get("shore_contact")),
+        shore_contact=bool(u.get("shore_contact")), ignore_300=bool((u.get("privacy") or {}).get("ignore_300")),
     )
 
 

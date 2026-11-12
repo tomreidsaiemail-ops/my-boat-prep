@@ -1,3 +1,4 @@
+import { PHONE_HINT, phoneFieldErrors } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Zap } from "lucide-react";
@@ -20,6 +21,8 @@ export const RegEntryDialog = ({ entry, onSaved, onClose }) => {
   const save = async (quick = false) => {
     const miss = missing(values, fields.filter((f) => need.includes(f.k)));
     if (miss.length) { setErrors(miss); toast.error(party ? "Enter their name, phone number and email" : "Enter at least their name and email"); return; }
+    const badPhone = phoneFieldErrors(values);
+    if (badPhone.length) { setErrors(badPhone); toast.error(PHONE_HINT); return; }
     setBusy(true);
     try {
       const body = toPayload(values, fields);

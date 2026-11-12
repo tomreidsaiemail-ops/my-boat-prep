@@ -592,6 +592,8 @@ app.include_router(crew_agreement_router)
 app.include_router(shore_router)
 app.include_router(trip_archive_router)
 app.include_router(trip_summary_router)
+from gps_exclusions import router as privacy_router  # noqa: E402
+app.include_router(privacy_router)
 app.include_router(shore_alert_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)

@@ -64,7 +64,9 @@ export default function useShoreTracking(boat, gps, online) {
   const on = !!tracking?.on && !!tracking?.trip_id && !boat?.charter_lock;
   const owner = boat?.crew ? boat.owner_id : "";
   const trip = tracking?.trip_id;
-  const send = () => flush().then((t) => { if (t && (t.on !== tracking?.on || t.trip_id !== tracking?.trip_id)) setOverride({ key, tracking: t }); });
+  const send = () => flush().then((t) => {
+    if (t && ["on", "trip_id", "ashore_since", "relayed"].some((k) => t[k] !== tracking?.[k])) setOverride({ key, tracking: t });
+  });
   const fix = useRef(null);
   if (gps.status === "ok") fix.current = { lat: gps.lat, lon: gps.lon, acc: gps.acc };
 

@@ -376,6 +376,17 @@ MASTER_LISTS = (
 )
 
 
+IGNORE_300_HELP = [
+    ("Admin - Help Panel - Ignore 300 metre warning", "The warning under My Settings > Privacy Settings > Ignore 300 metre, also in the Help menu. Top-level lines are paragraphs, indented lines are bullets.", [
+        "This setting can have unintended consequences - broadcasting your location to the shore contact means you may unintentionally give your personal location to a third party (the shore contact) while on land, or close to land.",
+        "By checking this box you are also agreeing that you are aware that this may happen and take full responsibility for managing your location broadcasts from myboatprep.",
+        "You are aware of the meaning of the B300 and B icons next to the STATUS: ONLINE at the top of the home page.",
+        "Notes",
+        "\t1) when completing any arrival click the Arrived button.",
+        "\t2) it is also recommended that you only use this setting when leaving the dock.  You can add it to your \"Leaving dock\" and \"Returning to Dock checklists\" to remind you.",
+    ]),
+]
+
 LOG_HELP = [
     ("Admin - Help Panel - Ships Log", "The Ship's Log help panel. Top-level lines are paragraphs, indented lines are bullets, and a line starting 'Skipper's Tip:' is the tip.", [
         "A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board. However, you can add other note worthy logs as you decide. "
@@ -485,14 +496,14 @@ ZONE_MAP_HOW_TO = [
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP), ("ignore_300_help", IGNORE_300_HELP)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:
             if await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{name}\s*$", "$options": "i"}}, {"_id": 1}):
                 continue
             await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "private": True, "description": description,
-                                                "items": [{"id": n + 1, "label": t, **({"indent": True} if name.endswith("Folders") and n else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
+                                                "items": [{"id": n + 1, "label": t.lstrip("\t"), **({"indent": True} if (name.endswith("Folders") and n) or t.startswith("\t") else {})} for n, t in enumerate(lines)], "created_at": now, "updated_at": now, "updated_by": "system"})
         await db.migrations.insert_one({"_id": mig, "at": now})
 
 
