@@ -165,7 +165,9 @@ async def restore_archive(boat_id: BoatPath, archive_id: ArchivePath, payload: R
 
 @router.delete("/boats/{boat_id}/trip-archives/{archive_id}")
 async def delete_archive(boat_id: BoatPath, archive_id: ArchivePath, user: dict = Depends(get_current_user)):
-    await db.trip_archives.delete_one({"owner_id": user["user_id"], "boat_id": boat_id, "archive_id": archive_id})
+    res = await db.trip_archives.delete_one({"owner_id": user["user_id"], "boat_id": boat_id, "archive_id": archive_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="That archived trip isn't here any more")
     return {"ok": True}
 
 

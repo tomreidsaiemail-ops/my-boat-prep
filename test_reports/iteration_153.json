@@ -1,0 +1,40 @@
+{
+  "summary": "Tested trip archiving & reset end-to-end (backend pytest + Playwright at 390px and 1920px). Backend 5/5 pass: archive/list/detail/restore/delete, crew pruning (crew_trips pruned; sole-trip member fully removed then re-added with name/roles/agreements on restore), rsvps/notes/invites archived and restored (invite re-pointed to to_trip_id), owner scoping (free user gets empty list/404), validation (422/401/404). Frontend: found and FIXED a critical wiring bug: <TripFinishPrompt> was only rendered inside the printMode early-return branch of BoatPrep.jsx, so neither the manual 'Archive ... and reset' confirm nor the finished-trip prompt ever showed. After the fix all flows pass: manual archive -> confirm/cancel -> reset (ticks/start/dest/finish cleared) -> Undo toast restores ticks, route, finish date and the crew on the server; View dialog shows route, stats ('2/5 ticked · 2 crew · 50.3 nm tracked'), Leaflet GPS path, crew, checklist; row Restore with new data in the current list creates 'Route Planning (restored)' and switches to it; dialog Restore into a blank list restores in place; Delete -> confirm removes it. Finished-trip prompt: past finish date -> reload -> 'Route Planning has finished' dialog; Not now writes mbp_trip_done_snooze and it doesn't reappear on reload; clearing the key brings it back; Archive and reset + Undo work. Crew user (test-user-free on TEST_Kia Ora) sees neither the section nor the prompt. No horizontal overflow at 390px. test-user-pro/main has been put back to its original state (both crew on custom_trip2+routeHazards in their original order, rsvp/notes intact, no archives, no leftover '(restored)' list, route/ticks/finish cleared).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/boats/{boat_id}/trip-archives/{id}", "issue": "Returns 200 {ok:true} even when the archive doesn't exist or belongs to someone else (no 404). Harmless because it's owner-scoped, but not consistent with GET/restore."},
+      {"endpoint": "POST /api/boats/{boat_id}/trip-archives/{id}/restore", "issue": "crew_trips order changes after archive+restore (e.g. ['custom_trip2','routeHazards'] -> ['routeHazards','custom_trip2']). Cosmetic only."},
+      {"endpoint": "POST /api/boats/{boat_id}/trip-archives", "issue": "Not atomic: the archive is inserted and then user_boats/crew_invites are updated in separate writes. If one write fails partway, the archive and the boat end up out of step. Acceptable for an MVP."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatPrep.jsx TripFinishPrompt", "issue": "FIXED: it was rendered only in the printMode branch, so the archive confirm and the finished-trip prompt never appeared in the normal view. Added it before {emailPrompt} in the main return.", "selector": "[data-testid=trip-finish-dialog]", "priority": "CRITICAL (fixed)"}
+    ],
+    "integration_issues": [
+      {"flow": "Undo toast after Restore/Delete", "issue": "The 10s archive toast with 'Undo' stays on screen after the same archive is restored from the row or dialog, or deleted. Tapping that stale Undo calls restore on an archive that's gone (404 'That archived trip isn't here any more'), and after a row Restore it could also clash. Fix: keep the toast id and call toast.dismiss(id) in restore()/remove().", "affected_selectors": ["[data-sonner-toast]"]},
+      {"flow": "Not now snooze", "issue": "snoozeTrip/today() uses new Date().toISOString().slice(0,10), which is the UTC date. For NZ users the 'next day' starts at about 1pm NZDT, not at local midnight. Use the local date (e.g. toLocaleDateString('en-CA')).", "affected_selectors": []}
+    ],
+    "design_issues": [
+      {"screen": "Route Planning list", "issues": ["Date/time fields (Departure, Start, Estimated Finish) use the browser's native datetime-local picker rather than a styled picker (existed before this feature)", "On mobile the sonner toast covers the bottom of the archived-trip dialog (the Delete/Restore buttons) for 10s after archiving"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_trip_archives.py", "/app/test_reports/pytest/trip_archives.xml"],
+  "action_items": [
+    "Dismiss the archive 'Undo' toast when that archive is restored or deleted (toast.dismiss)",
+    "Use the local date, not the UTC ISO date, for the mbp_trip_done_snooze 'today' check",
+    "Optional: DELETE archive should return 404 when nothing was deleted"
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx: TripFinishPrompt was inserted next to the first {emailPrompt} (the printMode branch) instead of the main render. Fixed; please check the other pieces wired the same way",
+    "useTripArchives: the Undo closure captures `data` and calls restore(data) even after the archive is gone; guard it by checking that the archive is still in the archives state",
+    "trip_archive.restore: if a crew member was 'removed' but has since been re-added to the boat, the saved fields (roles/names) are ignored, which is fine. Note that invites whose email_key is already taken are dropped silently, and the returned count shows this"
+  ],
+  "updated_files": ["/app/frontend/src/pages/BoatPrep.jsx", "/app/backend/tests/test_trip_archives.py"],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "100% after the TripFinishPrompt fix (it was 0% for the archive/prompt flows before the fix)"},
+  "seed_data_creation": "Temporary user_boats doc TEST_arch_boat and invite TEST_inv_arch_1 created and removed by pytest fixtures. test-user-pro/main changes made by the UI tests were rolled back to a pre-test mongoexport backup (/tmp/pro_main_full_backup.json) for these fields: boat, data, registry, crew_trips, list_ts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the backend tests with -n 0: pytest tests/test_trip_archives.py -n 0 (the main-boat class changes test-user-pro/main crew, so keep it serial). Route list item toggles: checklist-item-toggle-{id}. Route inputs: input[data-testid^=route-start] / route-dest. Finish date: input[data-testid=navigator-finish-at-input]. Confirm dialogs are ConfirmDelete with testId-dialog/-confirm-btn/-cancel-btn. Free user's crew view opens directly on TEST_Kia Ora with the Crew Registration dialog open (press Escape)."
+}

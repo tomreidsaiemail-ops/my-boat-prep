@@ -2,7 +2,7 @@ import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
 
 export const statLine = (s = {}) => [`${s.ticked || 0}/${s.total || 0} ticked`, `${s.crew || 0} crew`, s.points ? `${s.distance_nm} nm tracked` : "no GPS path"].join(" · ");
 const SNOOZE_KEY = "mbp_trip_done_snooze";
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date().toLocaleDateString("en-CA");
 const iso = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString() : null; };
 
 export const tripDetails = (boat, id) => (id === DEFAULT_TRIP

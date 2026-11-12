@@ -32,6 +32,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
       const { data } = await api.post(`${base}/${a.archive_id}/restore`, { to_trip_id: to.id });
       mutate((s) => restoreTrip(s, data, to));
       setArchives((l) => (l || []).filter((x) => x.archive_id !== a.archive_id));
+      toast.dismiss(a.archive_id);
       toast.success(to.add && to.id !== a.trip_id ? `Restored as ${to.name}, so your current trip isn't touched` : `${to.name} is back as an active trip`);
       openList(to.id);
       return true;
@@ -48,7 +49,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
       const { data } = await api.post(base, archivePayload(stateRef.current, id));
       mutate((s) => resetTrip(s, id));
       setArchives((l) => [data, ...(l || [])]);
-      toast.success(`${data.name} archived. Ready for a new voyage`, { duration: 10000, action: { label: "Undo", onClick: () => restore(data) } });
+      toast.success(`${data.name} archived. Ready for a new voyage`, { id: data.archive_id, duration: 10000, action: { label: "Undo", onClick: () => restore(data) } });
     } catch (e) {
       toast.error(apiError(e, "Couldn't archive the trip, please try again"));
     } finally {
@@ -60,6 +61,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     try {
       await api.delete(`${base}/${a.archive_id}`);
       setArchives((l) => (l || []).filter((x) => x.archive_id !== a.archive_id));
+      toast.dismiss(a.archive_id);
       toast.success(`${a.name} archive deleted`);
     } catch (e) {
       toast.error(apiError(e, "Couldn't delete that archive"));

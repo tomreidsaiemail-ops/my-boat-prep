@@ -931,7 +931,6 @@ export default function BoatPrep({ boatId, boats }) {
         <PrintView lists={lists} data={withInheritedDue(data, registry)} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
           onEmail={ownerOnly(() => needPro("Email PDF") && mail.requestSend(ids, title))} online={online} sending={mail.sending}
           emailed={mail.sentKey === ids.join(",")} locked={!premium} />
-        <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} />
       {emailPrompt}
       </>
     );
@@ -1164,6 +1163,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
       <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor} onHeadOnly={(id) => { remove(id); setDialog(null); }}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
+      <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} />
       {emailPrompt}
     </main>
     </CrewDietContext.Provider>
