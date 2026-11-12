@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, MapPinned, Navigation } from "lucide-react";
+import { CheckCircle2, MapPinned, Navigation, Settings } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { metres } from "@/hooks/useShoreTracking";
 
@@ -34,6 +34,7 @@ export const BroadcastBubble = ({ mode, sent, gps }) => {
     setOpen(false);
     window.dispatchEvent(new CustomEvent("mbp:open-crew", { detail: { section: "shore" } }));
   };
+  const openSettings = () => { setOpen(false); window.dispatchEvent(new Event("mbp:open-settings")); };
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -47,6 +48,15 @@ export const BroadcastBubble = ({ mode, sent, gps }) => {
         <button type="button" onClick={openShore} className="btn-ghost mt-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs" data-testid="broadcast-note-open-shore-btn">
           <MapPinned className="h-4 w-4" /> Open Shore Contact panel
         </button>
+        {mode === "b300" && (
+          <>
+            <hr className="my-1 border-[var(--line)]" data-testid="broadcast-note-separator" />
+            <button type="button" onClick={openSettings} className="btn-ghost inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs" data-testid="broadcast-note-open-settings-btn">
+              <Settings className="h-4 w-4" /> Open My Settings
+            </button>
+            <p className="text-xs text-[var(--muted)]" data-testid="broadcast-note-settings-label">To remove the 300 privacy setting, and get more information about it...</p>
+          </>
+        )}
       </PopoverContent>
     </Popover>
   );

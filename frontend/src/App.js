@@ -15,7 +15,8 @@ import PaymentResult from "@/pages/PaymentResult";
 import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 import Terms from "@/pages/Terms";
 import JoinCrew, { JOIN_KEY } from "@/pages/JoinCrew";
-import ShoreWatch, { APP_VISIT } from "@/pages/ShoreWatch";
+import ShoreWatch from "@/pages/ShoreWatch";
+import { readPick } from "@/lib/shorePick";
 import ShoreJoin, { SHORE_JOIN_KEY } from "@/pages/ShoreJoin";
 import { TermsGate } from "@/components/auth/TermsGate";
 import { MagicLimitDialog } from "@/components/boat/MagicLimitDialog";
@@ -29,9 +30,8 @@ function UserBoat() {
   const { user } = useAuth();
   const shoreToken = localStorage.getItem(SHORE_JOIN_KEY);
   if (shoreToken) return <Navigate to={`/shore/join/${shoreToken}`} replace />;
-  // Shore-only users never see the boat app; a crew invite they're accepting still goes through.
-  // Shore contacts with their own boat open the map first each sign-in, then can visit their boats.
-  const visiting = !user.shore_only && sessionStorage.getItem(APP_VISIT);
+  // Shore contacts choose a boat once per sign-in on /shore; shore-only users never see the boat app. A crew invite still goes through.
+  const visiting = !user.shore_only && readPick(user.user_id) === "app";
   if ((user.shore_only || user.home === "shore") && !visiting && !localStorage.getItem(JOIN_KEY)) return <Navigate to="/shore" replace />;
   return <TermsGate key={user.user_id}><BoatShell /></TermsGate>;
 }

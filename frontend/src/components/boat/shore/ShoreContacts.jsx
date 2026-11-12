@@ -116,8 +116,9 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
         <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><MapPinned className="h-5 w-5" /> Shore Contacts</h3>
         <Link to="/shore" className="btn-ghost min-h-9 shrink-0 gap-1.5 px-3 text-xs" data-testid="shore-monitor-link"><MapPinned className="h-4 w-4" /> Monitor my boats</Link>
       </div>
-      <Switch checked={!!t.on} onChange={track} disabled={!online} testId="shore-tracking-switch" title="Share position with shore contacts"
+      <Switch checked={!!t.on} onChange={track} disabled={!online || (!t.on && !info.contacts.length)} testId="shore-tracking-switch" title="Share position with shore contacts"
         text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
+      {!t.on && !info.contacts.length && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-tracking-need-contact">Invite a shore contact below before you share your position.</p>}
       {(t.on || t.state === "arrived") && <ShoreStatus status={t} testId="shore-tracking-status" />}
       {t.on && (
         <div className="flex items-center gap-3" data-testid="shore-arrived-row">
@@ -136,10 +137,11 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
             <UserRound className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{c.name || c.email}</span><span className="block truncate text-xs text-[var(--muted)]">{c.email}</span></span>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.status === "joined" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`} data-testid={`shore-contact-${c.key}-status`}>{c.status === "joined" ? "Watching" : "Invited"}</span>
-            <button type="button" className="icon-btn h-9 w-9 hover:text-[var(--red)]" onClick={() => remove(c)} aria-label={`Remove ${c.name || c.email}`} data-testid={`shore-contact-${c.key}-remove`}><Trash2 className="h-4 w-4" /></button>
+            <button type="button" disabled={!!t.on} className="icon-btn h-9 w-9 hover:text-[var(--red)] disabled:opacity-40 disabled:hover:text-inherit" onClick={() => remove(c)} aria-label={`Remove ${c.name || c.email}`} title={t.on ? "Untick Share position with shore contacts first" : undefined} data-testid={`shore-contact-${c.key}-remove`}><Trash2 className="h-4 w-4" /></button>
           </li>
         ))}
       </ul>
+      {t.on && info.contacts.length > 0 && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-remove-locked-note">To remove a shore contact, untick Share position with shore contacts first.</p>}
       <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} onSent={load} />
     </section>
   );

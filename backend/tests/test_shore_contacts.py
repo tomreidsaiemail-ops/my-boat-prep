@@ -67,7 +67,12 @@ class TestShoreFlow:
         # wrong user joins -> 403
         tok = d["link"].rsplit("/", 1)[1]
         assert FREE.post(f"{API}/shore/join", json={"token": tok}).status_code == 403
+        was_on = PRO.get(f"{API}/boats/main/shore").json()["tracking"].get("on")
+        PRO.put(f"{API}/boats/main/shore/tracking", json={"on": True})
+        assert PRO.delete(f"{API}/boats/main/shore/contacts/{inv[0]['key']}").status_code == 409  # sharing on: untick first
+        PRO.put(f"{API}/boats/main/shore/tracking", json={"on": False})
         assert PRO.delete(f"{API}/boats/main/shore/contacts/{inv[0]['key']}").status_code == 200
+        PRO.put(f"{API}/boats/main/shore/tracking", json={"on": bool(was_on)})
         lst = PRO.get(f"{API}/boats/main/shore").json()["contacts"]
         assert not any(c["email"] == "test_shore_x@example.com" for c in lst)
         # cancelled invite -> 400
@@ -79,7 +84,11 @@ class TestShoreFlow:
 
     # Remove beta, re-invite, join
     def test_07_remove_beta_and_rejoin(self):
+        was_on = PRO.get(f"{API}/boats/main/shore").json()["tracking"].get("on")
+        PRO.put(f"{API}/boats/main/shore/tracking", json={"on": False})
         assert PRO.delete(f"{API}/boats/main/shore/contacts/test-user-beta").status_code == 200
+        if was_on:
+            PRO.put(f"{API}/boats/main/shore/tracking", json={"on": True})
         lst = PRO.get(f"{API}/boats/main/shore").json()["contacts"]
         assert not any(c["key"] == "test-user-beta" for c in lst)
         r = BETA.get(f"{API}/shore/track", params={"owner_id": "test-user-pro", "boat_id": "main"})

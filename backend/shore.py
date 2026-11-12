@@ -140,6 +140,9 @@ async def invite_shore(boat_id: BoatPath, payload: ShoreInviteIn, request: Reque
 
 @router.delete("/boats/{boat_id}/shore/contacts/{key}")
 async def remove_shore(boat_id: BoatPath, key: KeyPath, user: dict = Depends(get_current_user)):
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "tracking.on": 1})
+    if ((doc or {}).get("tracking") or {}).get("on"):
+        raise HTTPException(status_code=409, detail="Untick Share position with shore contacts before removing a shore contact")
     res = await db.shore_invites.delete_one({"owner_id": user["user_id"], "boat_id": boat_id, "invite_id": key})
     if not res.deleted_count:
         await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$unset": {f"shore.{key}": ""}, "$pull": {"shore_ids": key}})
@@ -148,11 +151,13 @@ async def remove_shore(boat_id: BoatPath, key: KeyPath, user: dict = Depends(get
 
 @router.put("/boats/{boat_id}/shore/tracking")
 async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depends(get_current_user)):
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat_id": 1, "tracking": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat_id": 1, "tracking": 1, "shore": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     t = doc.get("tracking") or {}
     if payload.on and not t.get("on"):
+        if not doc.get("shore") and not await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id}):
+            raise HTTPException(status_code=400, detail="Invite a shore contact before you share your position")
         trip = str(uuid.uuid4())
         t = {"on": True, "trip_id": trip, "started_at": _now().isoformat(), "started_by": user["user_id"],
              "trip_ids": ([trip] + (t.get("trip_ids") or []))[:10]}

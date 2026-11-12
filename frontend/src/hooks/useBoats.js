@@ -4,7 +4,7 @@ import { boatParams, claimDevice, outboxKey, stateKey } from "@/hooks/useBoatSto
 import { copyBoatState } from "@/lib/defaults";
 
 const LIST_KEY = "mbp_boats";
-const ACTIVE_KEY = "mbp_boats_active";
+export const ACTIVE_KEY = "mbp_boats_active";
 const MAIN = [{ key: "main", boat_id: "main", vessel: "" }];
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const unsynced = (key) => Number(localStorage.getItem(outboxKey(key)) || 0) > 0;

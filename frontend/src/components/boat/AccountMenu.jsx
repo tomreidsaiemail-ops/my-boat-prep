@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart3, Crown, ListChecks, LogOut, MapPinned, Settings, ShieldCheck, TicketPercent, UserRound } from "lucide-react";
 import { MySettingsDialog } from "@/components/boat/MySettingsDialog";
@@ -35,6 +35,11 @@ export const AccountMenu = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [askPhone, setAskPhone] = useState(null);
   const [settings, setSettings] = useState(false);
+  useEffect(() => {
+    const open = () => setSettings(true);
+    window.addEventListener("mbp:open-settings", open);
+    return () => window.removeEventListener("mbp:open-settings", open);
+  }, []);
   if (!user) return null;
   const leave = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
   const afterTerms = () => { const save = pendingPhone(); if (save) setAskPhone(() => save); else leave(); };

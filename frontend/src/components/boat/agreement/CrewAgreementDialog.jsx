@@ -91,7 +91,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   };
   const save = async (accept) => {
     if (accept && !briefingsDone()) return;
-    const same = !accept && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
+    const same = !accept && shoreOk === !!data.agreement?.shore_ok_at && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
     if (accepted || (same && data.agreement)) { onClose(); return; }
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
     setBusy(accept ? "accept" : "later");
@@ -107,7 +107,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
 
   return (
     <Dialog open onOpenChange={(o) => !o && save(false)}>
-      <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-agreement-dialog"
+      <DialogContent guard={false} className="flex max-h-[92vh] max-w-lg flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-agreement-dialog"
         onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat Terms and Conditions Agreement</DialogTitle>
