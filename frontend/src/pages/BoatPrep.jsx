@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
 import useShoreTracking from "@/hooks/useShoreTracking";
 import useTripArchives from "@/hooks/useTripArchives";
+import useShoreAlert from "@/hooks/useShoreAlert";
+import { ShoreAlertBar } from "@/components/boat/shore/ShoreAlertBar";
 import { ArchivedTrips } from "@/components/boat/trips/ArchivedTrips";
 import { TripFinishPrompt } from "@/components/boat/trips/TripFinishPrompt";
 import useGps, { distressPosition } from "@/hooks/useGps";
@@ -176,12 +178,14 @@ export default function BoatPrep({ boatId, boats }) {
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
   useShoreTracking(boats.current, gps, online);
+  const shoreAlert = useShoreAlert(boats.current, crew, online, gps);
   const trips = useTripArchives({ boat: boats.current, state, mutate, online, enabled: loaded && !crew && !boats.current.charter_lock && !boats.current.charter?.returned_at });
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);
   const openDistress = (id) => {
     const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
+    shoreAlert.raise(id);
     if (!allLists.some((l) => l.id === id)) {
       if (crew) { toast.error(`The ${name} list isn't on this boat`); return; }
       mutate((s) => resetLists(s, [id], templates));
@@ -949,6 +953,7 @@ export default function BoatPrep({ boatId, boats }) {
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
+      <ShoreAlertBar sa={shoreAlert} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} />
       <CharterBanner entry={boats.current} online={online} onTerms={() => setCharterTerms((n) => n + 1)} onEnded={() => boats.refresh()} />

@@ -53,6 +53,7 @@ from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
 from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
+from shore_alert import router as shore_alert_router  # noqa: E402
 from trip_archive import router as trip_archive_router, ensure_indexes as trip_archive_indexes  # noqa: E402
 import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
@@ -582,6 +583,7 @@ app.include_router(crew_router)
 app.include_router(crew_agreement_router)
 app.include_router(shore_router)
 app.include_router(trip_archive_router)
+app.include_router(shore_alert_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
 app.include_router(template_backup_router)

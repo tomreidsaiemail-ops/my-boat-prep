@@ -302,12 +302,12 @@ async def watched_boats(user: dict = Depends(get_current_user)):
     uid = user["user_id"]
     # Boats this user watches, plus a skipper's own named boats (not for shore-only users).
     q = {"shore_ids": uid} if user.get("shore_only") else {"$or": [{"shore_ids": uid}, {"owner_id": uid, "boat.vessel": {"$nin": ["", None]}}]}
-    docs = await db.user_boats.find(q, {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "tracking": 1}).to_list(50)
+    docs = await db.user_boats.find(q, {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "tracking": 1, "distress.state": 1, "distress.kind": 1}).to_list(50)
     owners = {u["user_id"]: u for u in await db.users.find({"user_id": {"$in": [d["owner_id"] for d in docs]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(50)}
     docs.sort(key=lambda d: (d["owner_id"] != uid, ((d.get("boat") or {}).get("vessel") or "").lower()))
     return {"boats": [{"owner_id": d["owner_id"], "boat_id": d["boat_id"], "vessel": (d.get("boat") or {}).get("vessel") or "Boat", "mine": d["owner_id"] == uid,
                        "skipper": (owners.get(d["owner_id"]) or {}).get("name") or (owners.get(d["owner_id"]) or {}).get("email", ""),
-                       "status": status_of(d.get("tracking"))} for d in docs]}
+                       "status": status_of(d.get("tracking")), "alert": d.get("distress") if (d.get("distress") or {}).get("state") == "active" else None} for d in docs]}
 
 
 @router.get("/shore/track")
@@ -315,7 +315,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     q = {"owner_id": owner_id, "boat_id": boat_id}
     if owner_id != user["user_id"] or user.get("shore_only"):
         q["shore_ids"] = user["user_id"]
-    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "tracking": 1})
+    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "tracking": 1, "distress": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer a shore contact for this boat")
     t = doc.get("tracking") or {}
@@ -323,7 +323,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     if t.get("trip_id"):
         pts = await db.track_points.find({"trip_id": t["trip_id"]}, {"_id": 0, "lat": 1, "lon": 1, "at": 1, "kind": 1}).sort("at", 1).to_list(5000)
     return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
-            "ended_at": t.get("ended_at"), "points": pts}
+            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress")}
 
 
 # ---------- Cron: email shore contacts after two missed hourly pings ----------

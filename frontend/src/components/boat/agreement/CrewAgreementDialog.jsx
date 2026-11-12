@@ -64,11 +64,21 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
 
   const unread = (data.roles || []).filter((r) => r.briefing && !r.read_at);
   const [briefWarn, setBriefWarn] = useState(false);
+  const shoreBrief = data.shore_brief || [];
+  const [shoreOk, setShoreOk] = useState(!!data.agreement?.shore_ok_at);
+  const [shoreWarn, setShoreWarn] = useState(false);
   const briefingsDone = () => {
-    if (!unread.length) return true;
-    setBriefWarn(true);
-    document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
-    return false;
+    if (unread.length) {
+      setBriefWarn(true);
+      document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    if (shoreBrief.length && !shoreOk) {
+      setShoreWarn(true);
+      document.querySelector('[data-testid="agreement-shore-alerts"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    return true;
   };
   const save = async (accept) => {
     if (accept && !briefingsDone()) return;
@@ -77,7 +87,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
     setBusy(accept ? "accept" : "later");
     try {
-      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick });
+      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick, shore_ok: shoreOk });
       onSaved(res.agreement);
       if (accept) toast.success(`Thanks! The skipper of ${vessel} can see you've read and accepted the agreement`);
       if (accept && data.joincrew_offer) offerToast();
@@ -104,6 +114,16 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           {briefWarn && unread.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-briefing-warning">
             Please read your role briefing{unread.length > 1 ? "s" : ""} and tick {unread.length > 1 ? "each one" : "it"} off ({unread.map((r) => r.role).join(", ")}) before you accept.</p>}
         </Section>
+        {shoreBrief.length > 0 && (
+          <Section title="Shore contact alerts" testId="agreement-shore-alerts">
+            <Lines lines={shoreBrief.map((label) => ({ label }))} testId="agreement-shore-lines" />
+            <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-bold ${shoreOk ? "border-emerald-600 bg-emerald-50" : "border-[var(--navy)]"}`} data-testid="agreement-shore-understood">
+              <input type="checkbox" checked={shoreOk} disabled={accepted} onChange={(e) => { setShoreOk(e.target.checked); setShoreWarn(false); }} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-shore-understood-checkbox" />
+              I understand how the shore contact is alerted and how to stand them down
+            </label>
+            {shoreWarn && !shoreOk && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-shore-warning">Please tick that you understand the shore contact alert instructions before you accept.</p>}
+          </Section>
+        )}
         <Section title={`Boat Walk Through${steps.length ? ` (${steps.filter((s) => ticked.includes(stopId(s))).length} of ${steps.length} ticked)` : ""}`} testId="agreement-walkthrough-section">
           {fullAt && (
             <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-semibold ${quick ? "border-emerald-600 bg-emerald-50" : "border-[var(--line)]"}`} data-testid="agreement-quick">

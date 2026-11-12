@@ -31,7 +31,7 @@ export default function useGps() {
     const id = navigator.geolocation.watchPosition(
       (p) => {
         const text = formatPosition(p.coords.latitude, p.coords.longitude);
-        const last = { text, at: Date.now() };
+        const last = { text, at: Date.now(), lat: p.coords.latitude, lon: p.coords.longitude };
         localStorage.setItem(LAST_KEY, JSON.stringify(last));
         setGps({ status: "ok", text, lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, last });
       },

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user, to_user_out
 import joincrew
-from crew import BoatPath, brief_hash, owned_boat, role_briefings
+from crew import SHORE_BRIEF, BoatPath, brief_hash, owned_boat, role_briefings
 from crew_register import record_walkthrough
 from agreement_pdf import build_agreement_pdf
 
@@ -38,6 +38,7 @@ class AgreementIn(BaseModel):
     stops: List[str] = Field(default_factory=list, max_length=600)
     accept: bool = False
     quick: bool = False
+    shore_ok: bool = False
 
 
 class WalkSkipIn(BaseModel):
@@ -89,7 +90,7 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1})
+                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -104,6 +105,7 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
     seen = lambda r: (reads.get(r.lower()) or {}).get("at") if briefs.get(r.lower()) and (reads.get(r.lower()) or {}).get("hash") == brief_hash(briefs[r.lower()]) else None  # noqa: E731
     return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), ""), "read_at": seen(r)} for r in roles],
             "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user),
+            "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [],
             "joincrew_offer": not user.get("joincrew") and not to_user_out(user).has_subscription and await joincrew.live()}
 
 
@@ -123,11 +125,14 @@ async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_
     ticked = all_stops if walk else [s for s in dict.fromkeys(payload.stops) if s in all_stops]
     if payload.accept and len(ticked) < len(all_stops):
         raise HTTPException(status_code=400, detail="Tick every stop of the Boat Walk Through before you accept")
+    if payload.accept and doc.get("shore_ids") and not payload.shore_ok:
+        raise HTTPException(status_code=400, detail="Tick that you understand the shore contact alert instructions before you accept")
     prev = (doc.get("agreements") or {}).get(user["user_id"]) or {}
     now = datetime.now(timezone.utc).isoformat()
     rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now,
            **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {}),
-           **({"quick": True, "full_at": walk["full_at"]} if walk and payload.accept else {})}
+           **({"quick": True, "full_at": walk["full_at"]} if walk and payload.accept else {}),
+           **({"shore_ok_at": now} if payload.accept and doc.get("shore_ids") else {})}
     await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}": rec}})
     if payload.accept and all_stops:
         await record_walkthrough(payload.owner_id, payload.boat_id, user, quick=bool(walk))

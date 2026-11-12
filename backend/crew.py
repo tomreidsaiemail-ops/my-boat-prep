@@ -136,12 +136,25 @@ def shopping_html(items: List[str]) -> str:
     return f'<p><b>Food to bring on board:</b></p><ul style="margin:0 0 12px;padding-left:20px">{rows}</ul>' if items else ""
 
 
-def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "", shopping: List[str] = None, offer: bool = False) -> str:
+SHORE_BRIEF = [
+    "This boat has a shore contact watching it on a map in My Boat Prep.",
+    "If anyone taps Mayday or Pan-Pan in the app, the shore contact is alerted straight away with the boat's GPS position. With no signal, the alert is held on the phone and sent as soon as there is one.",
+    "The app alert never replaces the VHF radio call. Always make the radio call first.",
+    "If it was pressed by mistake, or the emergency is over, tick \"Stand down Shore Contact. No Mayday or Pan-Pan.\" and wait for \"Cleared\". The shore contact's map clears and they are emailed to stand down.",
+]
+
+
+def shore_brief_html(on: bool) -> str:
+    return ('<p><b>Shore contact alerts:</b></p><ul style="margin:0 0 12px;padding-left:20px">' + "".join(f"<li>{escape(t)}</li>" for t in SHORE_BRIEF)
+            + "</ul><p>You'll be asked to confirm you understand this before you accept the Boat Terms.</p>") if on else ""
+
+
+def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str], notes: str, briefings: dict = None, name: str = "", shopping: List[str] = None, offer: bool = False, shore: bool = False) -> str:
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
     for r in roles:
         if (b := (briefings or {}).get(r.lower())):
             extra += f'<p><b>Role briefing - {escape(r)}:</b><br/>{escape(b).replace(chr(10), "<br/>")}</p>'
-    extra += shopping_html(shopping or [])
+    extra += shopping_html(shopping or []) + shore_brief_html(shore)
     if notes.strip():
         extra += f'<p><b>Planned voyage or race:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
     return (
@@ -272,7 +285,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
         briefs.update({role_label(k).lower(): str(v).strip()[:2000] for k, v in payload.briefings.items() if role_label(k).lower() in wanted and str(v).strip()})
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
                          html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name,
-                                          [s.strip() for s in payload.shopping if s.strip()], await joincrew.live()))
+                                          [s.strip() for s in payload.shopping if s.strip()], await joincrew.live(), bool(doc.get("shore"))))
     await db.invite_sends.insert_one({"owner_id": user["user_id"], "at": now})
     if payload.send_email and any(x.strip() for x in payload.shopping):
         await note_shopping(user["user_id"], boat_id, email, len([x for x in payload.shopping if x.strip()]))

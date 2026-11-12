@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { ShoreMap } from "@/components/boat/shore/ShoreMap";
 import { ShoreStatus } from "@/components/boat/shore/ShoreStatus";
+import { ShoreAlertNotice } from "@/components/boat/shore/ShoreAlertNotice";
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString("en-NZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
@@ -16,6 +17,7 @@ export default function ShoreWatch() {
   const [pick, setPick] = useState(0);
   const [track, setTrack] = useState(null);
   const boat = boats?.[pick];
+  const alertOn = (track?.alert || boat?.alert)?.state === "active";
 
   useEffect(() => { api.get("/shore/boats").then(({ data }) => setBoats(data.boats)).catch(() => setBoats([])); }, []);
   const load = () => boat && api.get("/shore/track", { params: { owner_id: boat.owner_id, boat_id: boat.boat_id } }).then(({ data }) => setTrack(data)).catch(() => {});
@@ -23,9 +25,9 @@ export default function ShoreWatch() {
     setTrack(null);
     if (!boat) return undefined;
     load();
-    const id = setInterval(load, 60 * 1000);
+    const id = setInterval(load, (alertOn ? 15 : 60) * 1000);
     return () => clearInterval(id);
-  }, [boat?.owner_id, boat?.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [boat?.owner_id, boat?.boat_id, alertOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toApp = async () => { await api.put("/shore/home", { home: "app" }).catch(() => {}); window.location.assign("/"); };
   const last = track?.points?.[track.points.length - 1];
@@ -44,12 +46,13 @@ export default function ShoreWatch() {
       {boats?.length > 1 && (
         <label className="flex flex-col gap-1 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Vessel
           <select value={pick} onChange={(e) => setPick(Number(e.target.value))} className="field-input text-base normal-case tracking-normal text-[var(--ink)]" data-testid="shore-watch-boat-select">
-            {boats.map((b, n) => <option key={`${b.owner_id}-${b.boat_id}`} value={n}>{b.vessel} {b.mine ? "(yours)" : `(skipper ${b.skipper})`}</option>)}
+            {boats.map((b, n) => <option key={`${b.owner_id}-${b.boat_id}`} value={n}>{b.alert ? `${b.alert.kind === "mayDay" ? "MAYDAY" : "PAN-PAN"}: ` : ""}{b.vessel} {b.mine ? "(yours)" : `(skipper ${b.skipper})`}</option>)}
           </select>
         </label>
       )}
       {boat && (
         <>
+          <ShoreAlertNotice alert={track?.alert || boat.alert} />
           <ShoreStatus status={track?.status || boat.status} testId="shore-watch-status" />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span data-testid="shore-watch-summary">
@@ -58,7 +61,7 @@ export default function ShoreWatch() {
             </span>
             <button type="button" className="btn-ghost min-h-10 gap-2 px-3 text-sm" onClick={load} data-testid="shore-watch-refresh"><RefreshCw className="h-4 w-4" /> Refresh</button>
           </div>
-          {track && track.points.length > 0 ? <ShoreMap points={track.points} /> : (
+          {track && (track.points.length > 0 || alertOn) ? <ShoreMap points={track.points} alert={track.alert} /> : (
             <p className="rounded-lg bg-slate-100 p-4 text-sm" data-testid="shore-watch-no-points">No positions yet for this trip. They appear when the skipper turns on sharing and the app is open on a phone aboard.</p>
           )}
           <p className="text-xs text-[var(--muted)]">Updates every minute. Positions are sent every 1 km, or hourly when anchored, while My Boat Prep is open aboard. Offline means the hourly check-in was missed; you'll also get an email after two missed check-ins.</p>
