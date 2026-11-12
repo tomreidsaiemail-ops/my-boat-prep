@@ -6,6 +6,8 @@ import useShoreAlert from "@/hooks/useShoreAlert";
 import { ShoreAlertBar } from "@/components/boat/shore/ShoreAlertBar";
 import { AshorePrompt } from "@/components/boat/shore/AshorePrompt";
 import { offerShoreRemoval } from "@/components/boat/shore/ShoreContacts";
+import { ShoppingAheadBar } from "@/components/boat/ShoppingAheadBar";
+import { sameShopper, shoppingFor } from "@/lib/shoppers";
 import { setPendingPhone } from "@/lib/pendingAgreement";
 import { ArchivedTrips } from "@/components/boat/trips/ArchivedTrips";
 import { TripFinishPrompt } from "@/components/boat/trips/TripFinishPrompt";
@@ -358,6 +360,21 @@ export default function BoatPrep({ boatId, boats }) {
     setDialog(null);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
+  // Crew: accepting the agreement opens Provisions when they have shopping to bring, otherwise Boat Inventory.
+  const myShopName = crew ? (boats.current.my_name || user.name || "").replace(/[()]/g, "").trim() : "";
+  const [shopBar, setShopBar] = useState(false);
+  useEffect(() => {
+    const f = (e) => {
+      if (!crew || e.detail.owner_id !== boats.current.owner_id || e.detail.boat_id !== boats.current.boat_id) return;
+      if (shoppingFor(data.provisions, myShopName).length && registry.some((l) => l.id === "provisions")) {
+        pickList("provisions");
+        setShopBar(true);
+        setTimeout(() => setShopBar(false), 2000);
+      } else pickList(INVENTORY_LIST.id);
+    };
+    window.addEventListener("mbp:agreement-accepted", f);
+    return () => window.removeEventListener("mbp:agreement-accepted", f);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   // Trip names on crew cards open their Route Planning list.
   useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const listDescription = active.description || templates?.[active.id]?.description || "";
@@ -994,6 +1011,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
+      {shopBar && <ShoppingAheadBar />}
       <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} stopAt={shoreTrack.stopAt} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} onShoreEmail={crew ? undefined : (v) => updateBoat("shore_email", v)} />
@@ -1113,6 +1131,7 @@ export default function BoatPrep({ boatId, boats }) {
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
             onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (isMealHead(items, item.id) || active.id === "provisions") loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
+            mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : undefined}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
           {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
           {backToInvite && CREW_ROLES.test(active.name.trim()) && (

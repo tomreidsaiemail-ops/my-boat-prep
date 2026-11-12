@@ -6,8 +6,9 @@ import { api, apiError } from "@/lib/api";
 import { holdPrompt } from "@/lib/promptQueue";
 import { forgetShownAgreements } from "@/components/boat/agreement/CrewAgreement";
 
-const LATER_KEY = "mbp_invites_later";
-const later = () => { try { return JSON.parse(sessionStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
+// "Not now" invites wait until the next sign-in (logout clears this).
+export const LATER_KEY = "mbp_invites_later";
+const later = () => { try { return JSON.parse(localStorage.getItem(LATER_KEY)) || []; } catch { return []; } };
 
 export const PendingInvitePrompt = ({ boats }) => {
   const [invites, setInvites] = useState(null);
@@ -24,7 +25,7 @@ export const PendingInvitePrompt = ({ boats }) => {
   if (!inv) return null;
   const next = () => setInvites((l) => l.slice(1));
   const act = async (kind) => {
-    if (kind === "later") { sessionStorage.setItem(LATER_KEY, JSON.stringify([...later(), inv.invite_id])); next(); return; }
+    if (kind === "later") { localStorage.setItem(LATER_KEY, JSON.stringify([...later(), inv.invite_id])); next(); return; }
     setBusy(kind);
     try {
       const { data } = await api.post(`/crew/invites/${inv.invite_id}/${kind}`);

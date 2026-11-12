@@ -2,6 +2,8 @@
 const low = (s) => String(s || "").trim().toLowerCase();
 export const itemText = (i) => String(i.label || "").replace(/^\s*\d+[.)]\s*/, "").trim();
 
+export const sameShopper = (a, b) => !!low(b) && low(a) === low(b);
+
 export const shoppingFor = (items, name) => (low(name) ? (items || []).filter((i) => !i.checked && low(i.shopper) === low(name)).map(itemText) : []);
 
 export const shopperGroups = (items) => {

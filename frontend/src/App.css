@@ -51,6 +51,9 @@ body.admin-mode { background: #fecaca; }
 
 .checklist-row { display: flex; align-items: flex-start; border-bottom: 1px solid #e2e8f0; transition: background-color .15s; }
 .checklist-row:last-child { border-bottom: none; }
+.checklist-row.is-mine:not(.is-checked) { background: #fef3c7; box-shadow: inset 5px 0 0 #d97706; }
+.checklist-row.is-mine:not(.is-checked):hover { background: #fde68a; }
+@keyframes shop-bar-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .checklist-row:hover { background: #f8fafc; }
 .tick-box {
   width: 30px; height: 30px; flex-shrink: 0; border-radius: 6px; border: 2.5px solid var(--navy);

@@ -42,6 +42,8 @@ export function AuthProvider({ children }) {
     try { await api.post("/auth/logout"); } catch { /* offline: still sign out locally */ }
     localStorage.removeItem("mbp_add_area_tip");
     localStorage.removeItem(PICK_KEY);
+    localStorage.removeItem("mbp_invites_later");
+    sessionStorage.removeItem("mbp_invites_later");
     setUser(null);
   }, [setUser]);
 

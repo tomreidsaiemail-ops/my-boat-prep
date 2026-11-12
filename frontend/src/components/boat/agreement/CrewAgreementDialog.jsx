@@ -99,6 +99,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
       const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick, shore_ok: shoreOk });
       onSaved(res.agreement);
       if (accept) toast.success(`Thanks! The skipper of ${vessel} can see you've read and accepted the agreement`);
+      if (accept) window.dispatchEvent(new CustomEvent("mbp:agreement-accepted", { detail: { owner_id: boat.owner_id, boat_id: boat.boat_id } }));
       if (accept && data.joincrew_offer) offerToast();
       onClose();
     } catch (e) { toast.error(apiError(e, "Couldn't save the agreement, please try again")); }
