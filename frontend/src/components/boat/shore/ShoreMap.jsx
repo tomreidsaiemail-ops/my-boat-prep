@@ -15,11 +15,11 @@ const drawAlert = (g, a) => {
     spots.push([a.last.lat, a.last.lon]);
     L.polyline(spots, { color: "#dc2626", weight: 2, dashArray: "6 6" }).addTo(g);
     L.circleMarker([a.last.lat, a.last.lon], { radius: 8, color: "#0f2a4a", weight: 3, fillColor: "#fbbf24", fillOpacity: 1 })
-      .bindTooltip(`Last reported · ${when(a.last.at)}`, { permanent: true, direction: "bottom" }).addTo(g);
+      .bindTooltip(`Last reported · ${when(a.last.at)}`, { permanent: true, direction: "auto" }).addTo(g);
   }
   L.circleMarker([at.lat, at.lon], { radius: 26, color: "#dc2626", weight: 2, fillColor: "#dc2626", fillOpacity: 0.2, className: "shore-alert-pulse" }).addTo(g);
   L.circleMarker([at.lat, at.lon], { radius: 12, color: "#fff", weight: 3, fillColor: "#dc2626", fillOpacity: 1 })
-    .bindTooltip(`${NAMES[a.kind]} pressed ${a.pos ? "here" : "(last reported position)"} · ${when(a.at)}`, { permanent: true, direction: "top", className: "shore-alert-tip" }).addTo(g);
+    .bindTooltip(`${NAMES[a.kind]} pressed ${a.pos ? "here" : "(last reported position)"} · ${when(a.at)}`, { permanent: true, direction: "auto", className: "shore-alert-tip" }).addTo(g);
   return spots;
 };
 
@@ -40,6 +40,7 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     alertLayer.current = L.layerGroup().addTo(m);
     map.current = m;
     fitted.current = false;
+    fittedAlert.current = "";
     return () => m.remove();
   }, []);
 
@@ -69,7 +70,7 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     if (!spots.length || fittedAlert.current === alert.alert_id) return;
     fittedAlert.current = alert.alert_id;
     fitted.current = true;
-    if (spots.length > 1) map.current.fitBounds(spots, { padding: [60, 60], maxZoom: 15 });
+    if (spots.length > 1) map.current.fitBounds(spots, { padding: [90, 90], maxZoom: 15 });
     else map.current.setView(spots[0], 14);
   }, [alert]);
 

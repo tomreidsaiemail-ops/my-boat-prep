@@ -52,7 +52,7 @@ export default function ShoreWatch() {
       )}
       {boat && (
         <>
-          <ShoreAlertNotice alert={track?.alert || boat.alert} />
+          <ShoreAlertNotice alert={track?.alert} />
           <ShoreStatus status={track?.status || boat.status} testId="shore-watch-status" />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span data-testid="shore-watch-summary">

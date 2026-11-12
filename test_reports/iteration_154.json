@@ -1,0 +1,48 @@
+{
+  "summary": "Tested the Mayday/Pan-Pan shore contact alert from end to end. Backend: 13/13 pytest tests pass, plus a manual check that accepting with shore_ok:true works (the agreement record was restored afterwards). Covered: raise with and without GPS, idempotency, upgrade, near (<=100 m) and far, stale stand-down -> 409, crew stand-down, a repeated stand-down is idempotent, shore track/boats include the alert, 404 for outsiders and the shore-only user, null alert when the boat has no shore contacts, 422 validation, crew agreement shore_brief and the 400 without shore_ok. Frontend: the skipper's Mayday shows active -> clearing -> cleared -> dismiss. Crew and skipper sync both ways: an alert or stand-down on one phone shows on the other in about 25-30 s. The /shore page works: red notice, pulsing marker, a permanent tooltip, and for far alerts a yellow Last reported marker and a dashed line. The page turns green after stand-down in about 32 s. Near via Playwright geolocation shows 'within 100 m' and only the red marker. Offline (context.set_offline): the alert is queued and sends when the phone comes back online. Agreement dialog: the shore section, the warning when you accept without the tick, and the tick that clears it all work. At 390 px there is no horizontal overflow. Found and FIXED 2 bugs: (1) CRITICAL: cancelling a held offline alert did not remove it from the localStorage queue, so it was still sent to the shore contacts and emailed once signal returned (confirmed in distress_log, alert 33468c27). (2) The ShoreMap alert fitBounds was skipped under React StrictMode's double effect run, so the red marker was off-screen for far alerts. Both fixes were verified in the UI.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/shore/alert, /api/shore/alert/stand-down", "issue": "The email is sent inline with no retry. During testing the email service returned 429 rate_limited, so emailed=false and that Mayday email was lost for good. The map alert still works. Recommend a retry or background outbox for alert and stand-down emails."},
+      {"endpoint": "POST /api/shore/alert", "issue": "Any different kind replaces the active alert, so a Pan-Pan pressed while a Mayday is active downgrades it to Pan-Pan (upgraded_from=mayDay). Consider never downgrading an active Mayday."},
+      {"endpoint": "POST /api/shore/alert", "issue": "Read-then-write is not atomic. Two phones raising at the same moment can both write and both email. A conditional update would fix this."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "useShoreAlert.standDown (cancel held alert)", "issue": "FIXED by testing agent: held.includes(j) compared object references from two separate JSON.parse calls, so nothing was removed. A cancelled alert was still sent when the phone came back online. Now it filters by job id.", "selector": "[data-testid=shore-alert-stand-down-checkbox]", "priority": "CRITICAL"},
+      {"component": "ShoreMap", "issue": "FIXED by testing agent: fittedAlert ref was not reset when the map was re-created (StrictMode in dev), so the alert spots were never fitted. The red MAYDAY marker was off-screen when the alert was far from the boat.", "selector": "[data-testid=shore-map]", "priority": "MEDIUM"},
+      {"component": "ShoreAlertBar dismiss of 'cancelled'", "issue": "hide('cancelled') overwrites mbp_shore_alert_hidden. A cleared alert from the last hour that was already dismissed then reappears as 'Cleared shore contact MAYDAY'.", "selector": "[data-testid=shore-alert-dismiss-btn]", "priority": "LOW"},
+      {"component": "ShoreAlertNotice (shore page first render)", "issue": "Before /shore/track loads it renders boat.alert from /shore/boats, which holds only {state, kind}. The notice briefly reads 'MAYDAY pressed / by . No GPS fix when pressed and no earlier position.'", "selector": "[data-testid=shore-alert-notice]", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "App's own offline toggle (network-status)", "issue": "In manual offline mode navigator.onLine is still true, so raise() sends at once (phase sending -> active) and the bar never shows 'queued'. That is arguably safer, but it differs from the spec. Real loss of signal (context.set_offline) queues correctly.", "affected_selectors": ["[data-testid=network-status]", "[data-testid=shore-alert-bar]"]},
+      {"flow": "Crew agreement", "issue": "Crew who accepted before this feature have no shore_ok_at, and the checkbox is disabled once accepted, so they are never asked to confirm the shore alert instructions.", "affected_selectors": ["[data-testid=agreement-shore-understood-checkbox]"]}
+    ],
+    "design_issues": [
+      {"screen": "/shore at 390px", "issues": ["The permanent tooltips ('PAN-PAN pressed here · date' and 'Last reported · date') are cut off at the map edges on mobile. Use more fitBounds padding or direction 'auto'."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_shore_alert.py", "/app/backend/tests/manual_shore_ok_accept.py", "/app/test_reports/pytest/shore_alert.xml"],
+  "action_items": [
+    "Review the 2 testing-agent fixes (useShoreAlert.js cancel filter by id; ShoreMap.jsx fittedAlert reset)",
+    "Add a retry or outbox for shore alert and stand-down emails (429 rate limit loses the Mayday email)",
+    "Decide whether Pan-Pan should be allowed to replace an active Mayday",
+    "Make hide() keep the alert_id that was already hidden when dismissing 'cancelled'",
+    "Don't render the shore notice detail from the /shore/boats summary until track data has loaded",
+    "Decide whether manual offline mode should hold the alert, and ask crew who accepted earlier to confirm the shore instructions",
+    "Fix tooltip clipping on the mobile shore map"
+  ],
+  "critical_code_review_comments": [
+    "useShoreAlert.standDown: object-identity filter on freshly parsed localStorage (fixed)",
+    "shore_alert.raise_alert: alert email is fire-once and inline (up to a 30 s httpx timeout blocks the boat phone's response)",
+    "shore_alert.raise_alert: non-atomic check-then-set; downgrade Mayday->Pan-Pan allowed",
+    "ShoreAlertNotice uses boat.alert, which lacks by_name/pos/last"
+  ],
+  "updated_files": ["/app/frontend/src/hooks/useShoreAlert.js", "/app/frontend/src/components/boat/shore/ShoreMap.jsx", "/app/backend/tests/test_shore_alert.py", "/app/backend/tests/manual_shore_ok_accept.py"],
+  "success_rate": {"backend": "100% (13/13 + manual accept)", "frontend": "~90% (all flows work after the 2 fixes; minor issues remain)"},
+  "seed_data_creation": "None. Alerts were raised and stood down on test-user-pro/main (about 12 entries in distress_log), and the final state is cleared. The free user's agreement was unset temporarily and restored byte-for-byte. The walkthroughs doc was restored after the manual accept test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The free user's OWN boat 'main' is also named TEST_Kia Ora (callsign ZMA123), so the crew phone may open on its own boat (requests use owner_id=''). Switch via boat-selector -> boat-option-c_test-user-pro_main and press Escape on Crew Registration, which can reopen. For API calls from inside browser scripts, urllib needs a User-Agent header or it gets 403. The email service rate-limits (429) if you raise quickly. Run pytest with -n 0. The crew briefing email (crew_briefings.py) and the invite email shore_brief_html were not checked."
+}

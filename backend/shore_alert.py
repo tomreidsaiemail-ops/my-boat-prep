@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 from datetime import datetime, timezone
@@ -87,14 +88,23 @@ def _stand_html(vessel: str, a: dict) -> str:
             'There is no Mayday or Pan-Pan. No action is needed.</p></div>')
 
 
-async def _mail(to: list, subject: str, html: str) -> bool:
+async def _mail_retry(to: list, subject: str, html: str):
+    for wait in (0, 5, 20, 60, 180):
+        await asyncio.sleep(wait)
+        try:
+            if await send_email(to=to, subject=subject, html=html):
+                return
+        except Exception as e:  # noqa: BLE001
+            log.warning("Shore alert email failed (retrying): %s", e)
+    log.error("Shore alert email gave up: %s", subject)
+
+
+def _mail(to: list, subject: str, html: str) -> bool:
+    """Sent in the background with retries, so a busy email service never loses a Mayday or holds up the boat's phone."""
     if not to:
         return False
-    try:
-        return bool(await send_email(to=to, subject=subject, html=html))
-    except Exception as e:  # noqa: BLE001
-        log.warning("Shore alert email failed: %s", e)
-        return False
+    asyncio.create_task(_mail_retry(to, subject, html))
+    return True
 
 
 def _out(doc: dict, a: dict | None) -> dict:
@@ -113,7 +123,7 @@ async def raise_alert(p: AlertIn, request: Request, user: dict = Depends(get_cur
     cur = doc.get("distress") or {}
     if not doc.get("shore_ids"):
         return _out(doc, None)
-    if cur.get("alert_id") == p.alert_id or (cur.get("state") == "active" and cur.get("kind") == p.kind):
+    if cur.get("alert_id") == p.alert_id or (cur.get("state") == "active" and (cur.get("kind") == p.kind or cur.get("kind") == "mayDay")):
         return _out(doc, cur)
     t = doc.get("tracking") or {}
     pos = {"lat": round(p.lat, 6), "lon": round(p.lon, 6), "acc": p.acc, "at": _iso(p.fix_at or p.at)} if p.lat is not None and p.lon is not None else None
@@ -122,9 +132,12 @@ async def raise_alert(p: AlertIn, request: Request, user: dict = Depends(get_cur
     a = {"alert_id": p.alert_id, "kind": p.kind, "state": "active", "at": _iso(p.at), "received_at": datetime.now(timezone.utc).isoformat(),
          "by": user["user_id"], "by_name": _who(doc, user), "pos": pos, "last": last, "dist_m": dist, "near": dist is not None and dist <= NEAR_M,
          **({"upgraded_from": cur["kind"]} if cur.get("state") == "active" else {})}
-    await db.user_boats.update_one({"owner_id": doc["owner_id"], "boat_id": p.boat_id}, {"$set": {"distress": a}, "$push": {"distress_log": {"$each": [a], "$slice": -50}}})
+    same = {"distress.alert_id": cur["alert_id"]} if cur.get("alert_id") else {"distress": {"$exists": False}}
+    res = await db.user_boats.update_one({"owner_id": doc["owner_id"], "boat_id": p.boat_id, **same}, {"$set": {"distress": a}, "$push": {"distress_log": {"$each": [a], "$slice": -50}}})
+    if not res.modified_count:  # another phone aboard raised one at the same moment
+        return _out(doc, (await db.user_boats.find_one({"owner_id": doc["owner_id"], "boat_id": p.boat_id}, {"_id": 0, "distress": 1}) or {}).get("distress"))
     vessel = (doc.get("boat") or {}).get("vessel") or "the boat"
-    a["emailed"] = await _mail(_emails(doc), f"{NAMES[p.kind]} pressed on {vessel}: shore contact alert", _alert_html(vessel, a, f"{public_base(request)}/shore"))
+    a["emailed"] = _mail(_emails(doc), f"{NAMES[p.kind]} pressed on {vessel}: shore contact alert", _alert_html(vessel, a, f"{public_base(request)}/shore"))
     return _out(doc, a)
 
 
@@ -145,5 +158,5 @@ async def stand_down(p: Where, user: dict = Depends(get_current_user)):
     vessel = (doc.get("boat") or {}).get("vessel") or "the boat"
     extra = ((doc.get("boat") or {}).get("shore_email") or "").strip().lower()
     to = list(dict.fromkeys(_emails(doc) + ([extra] if "@" in extra else [])))
-    a["emailed"] = await _mail(to, f"STAND DOWN: no {NAMES[a['kind']]} on {vessel}", _stand_html(vessel, a))
+    a["emailed"] = _mail(to, f"STAND DOWN: no {NAMES[a['kind']]} on {vessel}", _stand_html(vessel, a))
     return _out(doc, a)

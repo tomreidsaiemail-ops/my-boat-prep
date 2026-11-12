@@ -50,7 +50,7 @@ export const ShoreAlertBar = ({ sa }) => {
     </Box>
   );
   const recent = Date.now() - new Date(a.cleared_at).getTime() < RECENT_MS;
-  if (a.state !== "cleared" || sa.hidden === a.alert_id || (phase !== "cleared" && !recent)) return null;
+  if (a.state !== "cleared" || sa.hidden.includes(a.alert_id) || (phase !== "cleared" && !recent)) return null;
   return (
     <Box tone="bg-emerald-700 text-white" icon={<CheckCircle2 className="h-5 w-5" />} title={`Cleared shore contact ${name}`} testId="shore-alert-bar" state="cleared">
       <div className="flex items-start justify-between gap-2">

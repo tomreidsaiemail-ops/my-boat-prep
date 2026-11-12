@@ -67,6 +67,15 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const shoreBrief = data.shore_brief || [];
   const [shoreOk, setShoreOk] = useState(!!data.agreement?.shore_ok_at);
   const [shoreWarn, setShoreWarn] = useState(false);
+  const confirmShore = async () => {
+    if (!online) { toast.error("Go online to confirm the shore contact instructions"); return; }
+    try {
+      const { data: res } = await api.post("/crew/shore-brief-ok", { owner_id: boat.owner_id, boat_id: boat.boat_id });
+      setShoreOk(true);
+      onSaved({ ...data.agreement, shore_ok_at: res.shore_ok_at });
+      toast.success("Thanks! The skipper can see you understand the shore contact alerts");
+    } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
+  };
   const briefingsDone = () => {
     if (unread.length) {
       setBriefWarn(true);
@@ -118,7 +127,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
           <Section title="Shore contact alerts" testId="agreement-shore-alerts">
             <Lines lines={shoreBrief.map((label) => ({ label }))} testId="agreement-shore-lines" />
             <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-bold ${shoreOk ? "border-emerald-600 bg-emerald-50" : "border-[var(--navy)]"}`} data-testid="agreement-shore-understood">
-              <input type="checkbox" checked={shoreOk} disabled={accepted} onChange={(e) => { setShoreOk(e.target.checked); setShoreWarn(false); }} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-shore-understood-checkbox" />
+              <input type="checkbox" checked={shoreOk} disabled={accepted && shoreOk} onChange={(e) => { if (accepted) { confirmShore(); return; } setShoreOk(e.target.checked); setShoreWarn(false); }} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-shore-understood-checkbox" />
               I understand how the shore contact is alerted and how to stand them down
             </label>
             {shoreWarn && !shoreOk && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-shore-warning">Please tick that you understand the shore contact alert instructions before you accept.</p>}

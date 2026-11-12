@@ -18,7 +18,7 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
   const seenKey = `${boat.owner_id}_${boat.boat_id}`;
   const load = useCallback(() => api.get("/crew/agreement", { params: { owner_id: boat.owner_id, boat_id: boat.boat_id }, timeout: 10000 }).then(({ data: d }) => {
     setData(d);
-    if (d.agreement?.accepted_at) shown.delete(seenKey);
+    if (d.agreement?.accepted_at && (d.agreement.shore_ok_at || !d.shore_brief?.length)) shown.delete(seenKey);
     else if (!shown.has(seenKey)) { shown.add(seenKey); setOpen(true); }
   }).catch(() => {}), [boat.owner_id, boat.boat_id, seenKey]);
   useEffect(() => { setData(null); setOpen(false); if (online) load(); }, [online, load]);
@@ -29,6 +29,7 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
   if (!data) return null;
   const accepted = !!data.agreement?.accepted_at;
   const unread = (data.roles || []).filter((r) => r.briefing && !r.read_at).length;
+  const shoreTodo = accepted && data.shore_brief?.length > 0 && !data.agreement?.shore_ok_at;
   const Icon = accepted ? FileCheck2 : FileWarning;
   return (
     <>
@@ -37,7 +38,8 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
           className={`flex min-h-[48px] min-w-0 flex-1 items-center gap-3 rounded-lg border-[1.5px] px-3 text-left text-sm font-bold [transition:border-color_.15s] ${accepted ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-800 bg-[var(--red)] text-white"}`}>
           <Icon className="h-5 w-5 shrink-0" />
           <span className="min-w-0 flex-1" data-testid="crew-agreement-status">{accepted ? "Boat Terms and Conditions accepted. View agreement" : "Boat Terms and Conditions not accepted yet. Read and accept"}
-            {unread > 0 && <span className={`block text-xs ${accepted ? "text-amber-800" : "text-red-50"}`} data-testid="crew-agreement-unread">{unread} role {unread === 1 ? "briefing" : "briefings"} to read and confirm</span>}</span>
+            {unread > 0 && <span className={`block text-xs ${accepted ? "text-amber-800" : "text-red-50"}`} data-testid="crew-agreement-unread">{unread} role {unread === 1 ? "briefing" : "briefings"} to read and confirm</span>}
+            {shoreTodo && <span className="block text-xs text-amber-800" data-testid="crew-agreement-shore-todo">Shore contact alert instructions to read and confirm</span>}</span>
           <ChevronRight className="h-5 w-5 shrink-0" />
         </button>
         <button type="button" className="btn-ghost w-14 shrink-0 flex-col justify-center gap-0.5 px-1 text-[11px]" disabled={pdfBusy || !online} aria-label="Download my agreement as a PDF"

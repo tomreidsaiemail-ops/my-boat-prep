@@ -15,7 +15,7 @@ export default function useShoreAlert(entry, crew, online, gps) {
   const [alert, setAlert] = useState(null);
   const [contacts, setContacts] = useState(null);
   const [phase, setPhase] = useState(() => (readQ().some((j) => j.boat_id === boatId && j.owner_id === owner && j.type === "up") ? "queued" : ""));
-  const [hidden, setHidden] = useState(() => localStorage.getItem(HIDE_KEY) || "");
+  const [hidden, setHidden] = useState(() => { try { return JSON.parse(localStorage.getItem(HIDE_KEY) || "[]"); } catch { return []; } });
   const gpsRef = useRef(gps);
   gpsRef.current = gps;
   const flushing = useRef(false);
@@ -47,10 +47,12 @@ export default function useShoreAlert(entry, crew, online, gps) {
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
   }, [online, owner, boatId, flush]);
+  // A held alert goes the moment the phone gets signal back, even if the app is still in offline mode.
+  useEffect(() => { window.addEventListener("online", flush); return () => window.removeEventListener("online", flush); }, [flush]);
 
   const raise = (kind) => {
     if (contacts === 0) return;
-    if (alert?.state === "active" && alert.kind === kind) return;
+    if (alert?.state === "active" && (alert.kind === kind || alert.kind === "mayDay")) return;
     if (readQ().some((j) => mine(j) && j.type === "up" && j.body.kind === kind)) return;
     const g = gpsRef.current;
     const fix = g.status === "ok" ? { lat: g.lat, lon: g.lon, acc: g.acc, fix_at: Date.now() } : g.last?.lat != null ? { lat: g.last.lat, lon: g.last.lon, fix_at: g.last.at } : {};
@@ -63,7 +65,8 @@ export default function useShoreAlert(entry, crew, online, gps) {
   const standDown = () => {
     const held = readQ().filter((j) => mine(j) && j.type === "up");
     if (held.length && alert?.state !== "active") {
-      writeQ(readQ().filter((j) => !held.includes(j)));
+      const ids = new Set(held.map((j) => j.id));
+      writeQ(readQ().filter((j) => !ids.has(j.id)));
       setPhase("cancelled");
       return;
     }
@@ -73,6 +76,6 @@ export default function useShoreAlert(entry, crew, online, gps) {
     flush();
   };
 
-  const hide = (id) => { localStorage.setItem(HIDE_KEY, id); setHidden(id); setPhase(""); };
+  const hide = (id) => { const next = [...hidden.filter((h) => h !== id), id].slice(-20); localStorage.setItem(HIDE_KEY, JSON.stringify(next)); setHidden(next); setPhase(""); };
   return { alert, contacts, phase, raise, standDown, hide, hidden, online };
 }

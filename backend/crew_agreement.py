@@ -161,6 +161,22 @@ async def briefing_read(payload: BriefingReadIn, user: dict = Depends(get_curren
     return {"role": payload.role, "read_at": now}
 
 
+class WhereIn(BaseModel):
+    owner_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
+    boat_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+
+
+@router.post("/crew/shore-brief-ok")
+async def shore_brief_ok(payload: WhereIn, user: dict = Depends(get_current_user)):
+    """Crew who accepted before the shore contact instructions existed confirm them on their own."""
+    doc = await crew_doc(user, payload.owner_id, payload.boat_id)
+    if not doc.get("shore_ids"):
+        raise HTTPException(status_code=400, detail="This boat has no shore contact")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.user_boats.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "crew": user["user_id"]}, {"$set": {f"agreements.{user['user_id']}.shore_ok_at": now}})
+    return {"shore_ok_at": now}
+
+
 @router.get("/crew/agreement/pdf")
 async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None,
                         member_id: Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")] = None, user: dict = Depends(get_current_user)):
