@@ -74,5 +74,5 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     else map.current.setView(spots[0], 14);
   }, [alert]);
 
-  return <div ref={box} className={`${className} w-full overflow-hidden rounded-xl border-2 border-[var(--navy)]`} data-testid="shore-map" />;
+  return <div ref={box} className={`${className} isolate w-full overflow-hidden rounded-xl border-2 border-[var(--navy)]`} data-testid="shore-map" />;
 };

@@ -297,6 +297,13 @@ async def set_home(payload: HomeIn, user: dict = Depends(get_current_user)):
     return {"home": payload.home}
 
 
+@router.post("/shore/own-boat")
+async def own_boat(user: dict = Depends(get_current_user)):
+    """A shore-only contact can start their own boat; the map still opens first when they sign in."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"shore_only": False, "home": "shore"}})
+    return {"shore_only": False, "home": "shore"}
+
+
 @router.get("/shore/boats")
 async def watched_boats(user: dict = Depends(get_current_user)):
     uid = user["user_id"]
