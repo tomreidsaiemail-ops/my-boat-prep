@@ -61,7 +61,8 @@ def status_of(t: dict | None) -> dict:
 def tracking_brief(d: dict) -> dict:
     t = d.get("tracking") or {}
     on = bool(t.get("on"))
-    return {"on": on, "trip_id": t.get("trip_id"), "ashore_since": t.get("ashore_since") if on else None, "relayed": on and bool(t.get("last_at"))}
+    return {"on": on, "trip_id": t.get("trip_id"), "ashore_since": t.get("ashore_since") if on else None, "relayed": on and bool(t.get("last_at")),
+            "last_at": t.get("last_at") if on else None, "last": t.get("last") if on else None}
 
 
 async def ensure_indexes():
@@ -251,6 +252,7 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
         if last and (not t.get("last_at") or last["at"] > t["last_at"]):
             upd["$set"].update({"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}})
             t["last_at"] = last["at"]
+            t["last"] = {"lat": last["lat"], "lon": last["lon"]}
         if ashore:
             upd["$set"]["tracking.ashore_at"] = now.isoformat()  # still heard from, just not logged
             if not t.get("ashore_since"):

@@ -12,7 +12,7 @@ export const AWAKE_KEY = "mbp_track_awake";
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-const metres = (a, b) => {
+export const metres = (a, b) => {
   const r = (x) => (x * Math.PI) / 180;
   const dLat = r(b.lat - a.lat);
   const dLon = r(b.lon - a.lon);
@@ -65,7 +65,7 @@ export default function useShoreTracking(boat, gps, online) {
   const owner = boat?.crew ? boat.owner_id : "";
   const trip = tracking?.trip_id;
   const send = () => flush().then((t) => {
-    if (t && ["on", "trip_id", "ashore_since", "relayed"].some((k) => t[k] !== tracking?.[k])) setOverride({ key, tracking: t });
+    if (t && ["on", "trip_id", "ashore_since", "relayed", "last_at"].some((k) => t[k] !== tracking?.[k])) setOverride({ key, tracking: t });
   });
   const fix = useRef(null);
   if (gps.status === "ok") fix.current = { lat: gps.lat, lon: gps.lon, acc: gps.acc };
