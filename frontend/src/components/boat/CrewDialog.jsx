@@ -176,7 +176,7 @@ export const CrewDialog = ({ open, boat, name, plan, trips = [], roleGroups = []
                 {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
                 {regBadge(m.email, `crew-member-${m.user_id}`, !m.agreement?.accepted_at)}
                 <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} quick={!!m.trip_quick?.[g.id]} testId={`crew-member-${m.user_id}`} />
-                <AgreementBadge agreement={m.agreement} testId={`crew-member-${m.user_id}-agreement`} />
+                <AgreementBadge agreement={m.agreement} shore={info?.shore_contacts > 0} testId={`crew-member-${m.user_id}-agreement`} />
                 <JoinCrewBadge jc={m.joincrew} testId={tid(`crew-member-${m.user_id}-joincrew`, g)} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />

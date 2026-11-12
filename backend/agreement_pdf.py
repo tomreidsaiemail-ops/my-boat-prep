@@ -70,7 +70,7 @@ def build_agreement_pdf(a: dict) -> bytes:
     # Only the stops this crew member walked through; stops left out of their walkthrough aren't mentioned.
     story.append(Paragraph("Boat Walk Through", H2))
     if a["stops"]:
-        rows = [[Seen(), Paragraph(escape(name), STOP)] for name in a["stops"]]
+        rows = [[Seen(), Paragraph(escape(name) + (f'<br/><font size="8" color="#475569">Cupboard comment: {_lines(note)}</font>' if note else ""), STOP)] for name, note in a["stops"]]
         tbl = Table(rows, colWidths=[22 * mm, 152 * mm])
         tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LINEBELOW", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
                                  ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4)]))

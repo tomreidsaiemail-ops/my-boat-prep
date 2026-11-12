@@ -193,15 +193,16 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     crew_user, owner = people.get(member) or {}, people.get(owner_id) or {}
     briefs = await role_briefings(owner_id, boat_id)
     rec = (doc.get("agreements") or {}).get(member) or {}
-    areas = {a.get("id"): a.get("name") for a in doc.get("areas") or [] if isinstance(a, dict)}
-    pins = [(f"{m['id']}:{p['id']}", areas.get(p.get("area_id")) or p.get("label") or f"Stop {n + 1}")
+    areas = {a.get("id"): a for a in doc.get("areas") or [] if isinstance(a, dict)}
+    pins = [(f"{m['id']}:{p['id']}", (areas.get(p.get("area_id")) or {}).get("name") or p.get("label") or f"Stop {n + 1}",
+             str((areas.get(p.get("area_id")) or {}).get("comment") or (m.get("comment") if p["id"] == "comment" else "") or "").strip()[:1000])
             for m in doc.get("zone_maps") or [] for n, p in enumerate(map_pins(m))]
     crew_name = (doc.get("crew_names") or {}).get(member) or crew_user.get("name") or crew_user.get("email") or "Crew"
     pdf = build_agreement_pdf({
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
         "crew_name": crew_name, "crew_email": crew_user.get("email", ""),
         "roles": [(r, briefs.get(r.lower(), "")) for r in (doc.get("crew_roles") or {}).get(member) or []],
-        "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [name for sid, name in pins if sid in (rec.get("stops") or [])], "agreement": rec})
+        "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [(name, note) for sid, name, note in pins if sid in (rec.get("stops") or [])], "agreement": rec})
     safe = re.sub(r"[^\w .-]", "", crew_name)[:60] or "Crew"
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="Boat Agreement - {safe}.pdf"'})
 

@@ -362,7 +362,8 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
              **(joined.get(m["user_id"]) or {})} for m in members]
     return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""), "trip_notes": trip_notes(doc),
-            "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", ""), "joincrew_live": await joincrew.live()}
+            "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", ""), "joincrew_live": await joincrew.live(),
+            "shore_contacts": len(doc.get("shore") or {})}
 
 
 class RotaPerson(BaseModel):

@@ -4,12 +4,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, Field
 
 from auth import get_current_user
 from crew import DEFAULT_TRIP, notes_key, owned_boat, trips_of
 from db import db
+from trip_summary import schedule
+from urls import public_base
 
 router = APIRouter(prefix="/api")
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
@@ -33,6 +35,8 @@ class ArchiveIn(BaseModel):
     depart_at: str = Field(default="", max_length=40)
     finish_at: str = Field(default="", max_length=40)
     window: Window = Field(default_factory=Window)
+    email_shore: bool = True
+    email_crew: bool = True
 
 
 class RestoreIn(BaseModel):
@@ -77,7 +81,7 @@ def _summary(a: dict) -> dict:
 
 
 @router.post("/boats/{boat_id}/trip-archives")
-async def archive_trip(boat_id: BoatPath, payload: ArchiveIn, user: dict = Depends(get_current_user)):
+async def archive_trip(boat_id: BoatPath, payload: ArchiveIn, request: Request, user: dict = Depends(get_current_user)):
     if len(json.dumps(payload.model_dump(mode="json"), default=str)) > 1_500_000:
         raise HTTPException(status_code=413, detail="This trip is too big to archive")
     uid, trip = user["user_id"], payload.trip_id
@@ -105,12 +109,14 @@ async def archive_trip(boat_id: BoatPath, payload: ArchiveIn, user: dict = Depen
     archive = {"archive_id": str(uuid.uuid4()), "owner_id": uid, "boat_id": boat_id, "trip_id": trip, "name": payload.name.strip(), "description": payload.description,
                "archived_at": _now().isoformat(), "depart_at": payload.depart_at, "finish_at": payload.finish_at, "items": payload.items, "details": payload.details,
                "notes": (doc.get("voyage_notes") if trip == DEFAULT_TRIP else (doc.get("trip_notes") or {}).get(trip)) or "",
-               "crew": crew, "invites": invites, "path": path, "stats": _stats(payload.items, crew, invites, path)}
+               "crew": crew, "invites": invites, "path": path, "stats": _stats(payload.items, crew, invites, path),
+               "summary": {"due_at": _now().isoformat(), "shore": payload.email_shore, "crew": payload.email_crew, "base": public_base(request)}}
     await db.trip_archives.insert_one(dict(archive))
     update = {"$unset": unsets, **({"$set": sets} if sets else {}), **({"$pull": {"crew": {"$in": pulls}}} if pulls else {})}
     await db.user_boats.update_one(key, update)
     if invites:
         await db.crew_invites.delete_many({"invite_id": {"$in": [i["invite_id"] for i in invites]}})
+    schedule(archive["archive_id"])
     return _summary(archive)
 
 

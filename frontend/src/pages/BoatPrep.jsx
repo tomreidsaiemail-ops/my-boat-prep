@@ -1168,7 +1168,7 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
       <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor} onHeadOnly={(id) => { remove(id); setDialog(null); }}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
-      <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} />
+      <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} onMail={trips.setMail} />
       {emailPrompt}
     </main>
     </CrewDietContext.Provider>

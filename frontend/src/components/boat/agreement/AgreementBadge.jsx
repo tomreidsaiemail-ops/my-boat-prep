@@ -4,7 +4,13 @@ import { timeAgo } from "@/lib/timeAgo";
 const day = (iso) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
 // The skipper's view of whether a crew member read and accepted the Boat Terms and Conditions Agreement.
-export const AgreementBadge = ({ agreement: a, testId }) => {
+const ShoreLine = ({ a, testId }) => (a?.shore_ok_at
+  ? <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-emerald-800" data-testid={`${testId}-shore`} data-state="ok"><FileCheck2 className="h-3.5 w-3.5 shrink-0" /> Shore contact alert instructions understood {day(a.shore_ok_at)}</p>
+  : <p className="mt-0.5 flex items-center gap-1 text-xs font-bold text-amber-800" data-testid={`${testId}-shore`} data-state="todo"><FileWarning className="h-3.5 w-3.5 shrink-0" /> Shore contact alert instructions not confirmed yet</p>);
+
+export const AgreementBadge = ({ agreement: a, testId, shore }) => <>{agreementLine(a, testId)}{shore && <ShoreLine a={a} testId={testId} />}</>;
+
+const agreementLine = (a, testId) => {
   const stops = a?.quick && a.full_at ? ` · Returning crew member opted for quick accept having done a full walk-through ${timeAgo(a.full_at)}`
     : a?.stops_total ? ` · ${a.stops.length}/${a.stops_total} walk-through stops ticked` : "";
   if (a?.accepted_at) {

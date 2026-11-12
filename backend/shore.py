@@ -398,4 +398,6 @@ async def cron_shore_check(request: Request):
         return {"ok": True}
     await db.cron_runs.insert_one({"run_id": run_id, "at": _now().isoformat()})
     asyncio.create_task(check_missed())
+    from trip_summary import send_due  # noqa: PLC0415
+    asyncio.create_task(send_due())
     return {"ok": True}

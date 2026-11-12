@@ -141,6 +141,20 @@ async def raise_alert(p: AlertIn, request: Request, user: dict = Depends(get_cur
     return _out(doc, a)
 
 
+@router.post("/shore/alert/seen")
+async def alert_seen(p: Where, user: dict = Depends(get_current_user)):
+    """A shore contact taps I've seen it; the boat's red bar shows they're on it."""
+    doc = await db.user_boats.find_one({"owner_id": p.owner_id, "boat_id": p.boat_id, "shore_ids": user["user_id"]}, FIELDS)
+    if not doc:
+        raise HTTPException(status_code=404, detail="You're no longer a shore contact for this boat")
+    name = ((doc.get("shore") or {}).get(user["user_id"]) or {}).get("name") or user.get("name") or user.get("email") or "Shore contact"
+    seen = {"by": user["user_id"], "name": name.strip()[:80], "at": datetime.now(timezone.utc).isoformat()}
+    await db.user_boats.update_one({"owner_id": p.owner_id, "boat_id": p.boat_id, "distress.alert_id": p.alert_id, "distress.state": "active", "distress.seen.by": {"$ne": user["user_id"]}},
+                                   {"$push": {"distress.seen": seen}})
+    d = (await db.user_boats.find_one({"owner_id": p.owner_id, "boat_id": p.boat_id}, {"_id": 0, "distress": 1}) or {}).get("distress")
+    return {"alert": d}
+
+
 @router.post("/shore/alert/stand-down")
 async def stand_down(p: Where, user: dict = Depends(get_current_user)):
     doc = await _aboard(user, p.owner_id, p.boat_id)

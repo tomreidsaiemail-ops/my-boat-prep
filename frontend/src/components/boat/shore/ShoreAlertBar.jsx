@@ -1,4 +1,4 @@
-import { CheckCircle2, Loader2, Siren, WifiOff, X } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, Siren, WifiOff, X } from "lucide-react";
 
 const NAMES = { mayDay: "MAYDAY", panPan: "PAN-PAN" };
 const RECENT_MS = 60 * 60 * 1000;
@@ -46,6 +46,7 @@ export const ShoreAlertBar = ({ sa }) => {
   if (a.state === "active") return (
     <Box tone="bg-[var(--red)] text-white" icon={<Siren className="h-5 w-5" />} title={`Shore Contact Alerted · ${name}`} testId="shore-alert-bar" state="active">
       <p className="text-sm" data-testid="shore-alert-detail">Pressed {alertWhen(a.at)} by {a.by_name}. {alertWhere(a)}</p>
+      {(a.seen || []).map((s) => <p key={s.by} className="flex items-center gap-1.5 rounded-md bg-white/20 px-2 py-1 text-sm font-extrabold" data-testid="shore-alert-seen"><Eye className="h-4 w-4" /> {s.name} has seen it ({alertWhen(s.at)})</p>)}
       <StandDown onTick={sa.standDown} />
     </Box>
   );

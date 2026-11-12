@@ -66,7 +66,10 @@ export default function ShoreWatch() {
       )}
       {boat && (
         <>
-          <ShoreAlertNotice alert={track?.alert} />
+          <ShoreAlertNotice alert={track?.alert} me={user?.user_id} onSeen={boat.mine ? undefined : async (a) => {
+            try { const { data } = await api.post("/shore/alert/seen", { owner_id: boat.owner_id, boat_id: boat.boat_id, alert_id: a.alert_id }); setTrack((t) => ({ ...t, alert: data.alert })); toast.success("The boat can see you've seen the alert"); }
+            catch (e) { toast.error(apiError(e, "Couldn't tell the boat, please try again")); }
+          }} />
           <ShoreStatus status={track?.status || boat.status} testId="shore-watch-status" />
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span data-testid="shore-watch-summary">
