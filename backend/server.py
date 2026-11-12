@@ -657,6 +657,8 @@ async def create_indexes():
     await db.users.create_index("joincrew.email_key", sparse=True)
     await shore_indexes()
     await trip_archive_indexes()
+    from gps_exclusions import seed_exclusions  # noqa: PLC0415
+    await seed_exclusions()
     asyncio.create_task(joincrew.lock_stripe_box())
     await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
     await db.user_boats.create_index("charter_expires_at", expireAfterSeconds=0)

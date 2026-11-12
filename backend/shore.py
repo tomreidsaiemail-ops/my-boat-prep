@@ -16,6 +16,8 @@ from auth import get_current_user
 from crew import email_key, owned_boat
 from db import db
 from email_service import send_email
+from gps_exclusions import excluded
+from land import on_water
 from urls import public_base
 
 log = logging.getLogger(__name__)
@@ -47,6 +49,9 @@ def status_of(t: dict | None) -> dict:
     if not t.get("on"):
         return {"state": "off", "last_at": t.get("last_at")}
     last = t.get("last_at")
+    ashore = t.get("ashore_at")
+    if ashore and (not last or ashore > last) and _now() - datetime.fromisoformat(ashore) <= ONLINE_GRACE:
+        return {"state": "ashore", "last_at": last, "ashore_at": ashore}
     if not last:
         return {"state": "waiting", "last_at": None}
     gap = _now() - datetime.fromisoformat(last)
@@ -225,21 +230,31 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
     if payload.trip_id not in (t.get("trip_ids") or []):
         return {"saved": 0, "tracking": tracking_brief(doc)}
     now = _now()
+    # Land filter: only positions on the water are logged, unless the sender is on the admin exclusion list.
+    points = payload.points if await excluded(user.get("email")) else [p for p in payload.points if await on_water(p.lat, p.lon)]
+    latest = max(payload.points, key=lambda p: p.at)
+    ashore = latest not in points
     rows = [{"owner_id": owner, "boat_id": payload.boat_id, "trip_id": payload.trip_id, "lat": round(p.lat, 6), "lon": round(p.lon, 6),
              "at": datetime.fromtimestamp(min(p.at, now.timestamp() * 1000) / 1000, timezone.utc).isoformat(), "acc": p.acc, "kind": p.kind,
-             "by": user["user_id"], "exp": now + KEEP} for p in payload.points]
+             "by": user["user_id"], "exp": now + KEEP} for p in points]
     saved = 0
-    try:
-        res = await db.track_points.insert_many(rows, ordered=False)
-        saved = len(res.inserted_ids)
-    except Exception as e:  # noqa: BLE001  duplicates from a re-sent queue are fine
-        saved = getattr(e, "details", {}).get("nInserted", 0)
+    if rows:
+        try:
+            res = await db.track_points.insert_many(rows, ordered=False)
+            saved = len(res.inserted_ids)
+        except Exception as e:  # noqa: BLE001  duplicates from a re-sent queue are fine
+            saved = getattr(e, "details", {}).get("nInserted", 0)
     if t.get("on") and payload.trip_id == t.get("trip_id"):
-        last = max(rows, key=lambda r: r["at"])
-        if not t.get("last_at") or last["at"] > t["last_at"]:
-            await db.user_boats.update_one(q, {"$set": {"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}},
-                                               "$unset": {"tracking.alerted_at": ""}})
-    return {"saved": saved, "tracking": tracking_brief(doc)}
+        upd = {"$set": {}, "$unset": {"tracking.alerted_at": ""}}
+        last = max(rows, key=lambda r: r["at"]) if rows else None
+        if last and (not t.get("last_at") or last["at"] > t["last_at"]):
+            upd["$set"].update({"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}})
+        if ashore:
+            upd["$set"]["tracking.ashore_at"] = now.isoformat()  # still heard from, just not logged
+        else:
+            upd["$unset"]["tracking.ashore_at"] = ""
+        await db.user_boats.update_one(q, {k: v for k, v in upd.items() if v})
+    return {"saved": saved, "ashore": ashore, "tracking": tracking_brief(doc)}
 
 
 # ---------- Shore contact ----------
@@ -357,7 +372,8 @@ def _alert_html(vessel: str, last: str | None, started: str | None) -> str:
 async def check_missed():
     cut = (_now() - ALERT_AFTER).isoformat()
     docs = await db.user_boats.find({"tracking.on": True, "tracking.alerted_at": {"$exists": False}, "shore_ids.0": {"$exists": True},
-                                     "$or": [{"tracking.last_at": {"$lt": cut}}, {"tracking.last_at": {"$exists": False}, "tracking.started_at": {"$lt": cut}}]},
+                                     "$and": [{"$or": [{"tracking.last_at": {"$lt": cut}}, {"tracking.last_at": {"$exists": False}, "tracking.started_at": {"$lt": cut}}]},
+                                              {"$or": [{"tracking.ashore_at": {"$exists": False}}, {"tracking.ashore_at": {"$lt": cut}}]}]},
                                     {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "tracking": 1, "shore": 1}).to_list(500)
     for d in docs:
         res = await db.user_boats.update_one({"owner_id": d["owner_id"], "boat_id": d["boat_id"], "tracking.alerted_at": {"$exists": False}},

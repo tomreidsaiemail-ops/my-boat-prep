@@ -10,6 +10,7 @@ export const ShoreStatus = ({ status, testId }) => {
   const look = {
     online: ["bg-emerald-600 text-white", <CircleDot key="i" className="h-4 w-4" />, `Online · last position ${ago(status.minutes || 0)}`],
     offline: ["bg-[var(--red)] text-white", <WifiOff key="i" className="h-4 w-4" />, `Offline · missed the hourly check-in · last heard ${ago(status.minutes || 0)}`],
+    ashore: ["bg-sky-700 text-white", <CircleDot key="i" className="h-4 w-4" />, `Ashore, tracking paused${status.last_at ? ` · last on the water ${when(status.last_at)}` : ""}`],
     waiting: ["bg-amber-500 text-white", <CircleDot key="i" className="h-4 w-4" />, "Tracking on · waiting for the first position from a phone aboard"],
     arrived: ["bg-emerald-700 text-white", <CheckCircle2 key="i" className="h-4 w-4" />, `Arrived safely · ${status.arrived_at ? when(status.arrived_at) : ""}`],
     off: ["bg-slate-300 text-slate-800", <CircleDot key="i" className="h-4 w-4" />, "Not sharing position right now"],
