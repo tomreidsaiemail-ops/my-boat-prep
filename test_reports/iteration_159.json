@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only test (mobile 390x844, free user test_session_free_1, own boat 'main' via boat-option-main) of Boat details <-> Shore Contacts email sync. All 6 requested flows PASS: (1) typing sync.test@example.com in shore-contact-email-input prefills shore-invite-email and shows shore-invite-prefill-note; (2) WhatsApp invite 'Sync Tester' appears in list as Invited, invite form resets and note disappears; email persisted after reload; (3) after clearing Boat details email, reopening Photo and crew auto-filled Boat details with first contact's email (sync.test), and inviting Sync Two kept Boat details = first contact; (4) removing matching contact Sync Tester replaced Boat details with sync.two; removing Sync Two cleared it; (5) clearing Boat details (Ctrl+A+Delete) shows toast 'Also remove Sync Tester from Shore Contacts?' with Remove; clicking Remove -> toast 'Sync Tester removed from Shore Contacts', GET /api/boats/main/shore contacts=[] and reopened list shows 'No shore contacts yet.'; (6) Photo and crew closes via Escape with no Discard prompt every time. Shore Contacts not premium-locked for free user (FIRST200 promo).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatPrep.changeBoatField (offerShoreRemoval)", "issue": "Toast only appears when the field is cleared in one go (select all + delete). If the user backspaces character by character, at the final keystroke boat.shore_email is the last single character (e.g. 's'), so offerShoreRemoval finds no matching contact and no 'Also remove ...?' toast appears. Found by code review (logic at BoatPrep.jsx line 910), not exercised in browser.", "selector": "[data-testid='shore-contact-email-input']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make the clear->offer-removal work for backspace clearing too: e.g. remember the last value that matched a shore contact (ref updated on each change or on blur), or check against the email that was there when the field got focus, and offer removal when the field becomes empty."
+  ],
+  "critical_code_review_comments": [
+    "offerShoreRemoval toast Remove action still deletes the contact even if the user typed the email back in before clicking Remove (minor edge case).",
+    "ShoreContacts.load() reads shoreEmail from the render closure; works for the tested flows but is fragile if load is called from a stale closure."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% of requested flows (6/6)"},
+  "seed_data_creation": "Created invites Sync Tester (sync.test@example.com) and Sync Two (sync.two@example.com) on test-user-free boat main; all removed. Boat details shore_email on free user's main is empty again (checked after reload). Pro user's contacts not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Free user's own boat is also named TEST_Kia Ora. Select it with data-testid boat-option-main (the crew boat is boat-option-c_test-user-pro_main). Dismiss crew registration with crew-reg-later-btn. Boat details fields only show after boat-details-expand-btn and collapse when Photo and crew opens. Remove contact buttons have aria-label 'Remove <name>'."
+}

@@ -906,8 +906,21 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  // Remembers the shore email as it was before the skipper started deleting, so clearing it (in one go or by backspacing) can offer to remove that shore contact.
+  const shoreFull = useRef({ boat: null, email: "" });
+  const shoreNow = useRef("");
   const changeBoatField = (key, value) => {
-    if (key === "shore_email" && !value.trim() && boat.shore_email?.trim() && !crew && online) offerShoreRemoval(boats.current.boat_id, boat.shore_email);
+    if (key === "shore_email") {
+      const id = boats.current.boat_id;
+      if (shoreFull.current.boat !== id) shoreFull.current = { boat: id, email: boat.shore_email || "" };
+      const prev = boat.shore_email || "";
+      shoreNow.current = value;
+      if (value.trim() && !(prev.startsWith(value) && value.length < prev.length)) shoreFull.current.email = value;
+      else if (!value.trim() && shoreFull.current.email.trim() && !crew && online) {
+        offerShoreRemoval(id, shoreFull.current.email, () => !shoreNow.current.trim());
+        shoreFull.current.email = "";
+      }
+    }
     updateBoat(key, value);
   };
   const patchWeather = (patch) => mutate((s) => ({ ...s, boat: { ...s.boat, weather: { ...(s.boat.weather || {}), ...patch } } }), { count: false });

@@ -19,13 +19,13 @@ const shoreMessage = ({ name, email, vessel, link }) =>
 const same = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 
 // Clearing the Boat details shore contact email offers to remove that shore contact too.
-export const offerShoreRemoval = async (boatId, email) => {
+export const offerShoreRemoval = async (boatId, email, stillCleared = () => true) => {
   const { data } = await api.get(`/boats/${boatId}/shore`).catch(() => ({ data: { contacts: [] } }));
   const c = data.contacts.find((x) => same(x.email, email));
   if (!c) return;
   toast(`Also remove ${c.name || c.email} from Shore Contacts?`, {
     duration: 10000,
-    action: { label: "Remove", onClick: () => api.delete(`/boats/${boatId}/shore/contacts/${c.key}`).then(() => toast.success(`${c.name || c.email} removed from Shore Contacts`)).catch((e) => toast.error(apiError(e, "Couldn't remove them"))) },
+    action: { label: "Remove", onClick: () => stillCleared() && api.delete(`/boats/${boatId}/shore/contacts/${c.key}`).then(() => toast.success(`${c.name || c.email} removed from Shore Contacts`)).catch((e) => toast.error(apiError(e, "Couldn't remove them"))) },
   });
 };
 
