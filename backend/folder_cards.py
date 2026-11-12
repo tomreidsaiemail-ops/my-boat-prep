@@ -92,7 +92,6 @@ class QrCard(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     parent: str = Field(default="", max_length=120)
     zone: str = Field(default="", max_length=80)
-    where: str = Field(default="", max_length=160)
     hex: str = Field(default="", pattern=r"^(#[0-9A-Fa-f]{6})?$")
 
 
@@ -144,8 +143,7 @@ def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
         c.drawString(tx, ty, line)
         ty -= 13
     ty -= 3
-    where = card.where.strip()
-    big = 12 if where else 14
+    big = 14
     for line in _fit(c, card.name, "Helvetica-Bold", big, tw):
         c.setFont("Helvetica-Bold", big)
         c.drawString(tx, ty, line)
@@ -155,13 +153,6 @@ def _qr_card(c, card: QrCard, x: float, y: float, vessel: str):
         c.setFont("Helvetica", 8.5)
         c.drawString(tx, ty, _fit(c, f"in {card.parent}", "Helvetica", 8.5, tw)[0])
         ty -= 11
-    # Where the cupboard is, so crew can find it; kept clear of the footer line.
-    c.setFillColor(colors.HexColor("#0f2a4a"))
-    room = max(1, int((ty - (y + pad + 8)) // 9.5) + 1)
-    for line in _fit(c, f"Where: {where}", "Helvetica", 8, tw, min(3, room)) if where else []:
-        c.setFont("Helvetica", 8)
-        c.drawString(tx, ty, line)
-        ty -= 9.5
     c.setFillColor(colors.HexColor("#475569"))
     c.setFont("Helvetica-Oblique", 7)
     c.drawString(tx, y + pad, _fit(c, f"Scan to Magic Scan · {vessel}", "Helvetica-Oblique", 7, tw)[0])
