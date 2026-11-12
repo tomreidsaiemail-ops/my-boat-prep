@@ -179,6 +179,13 @@ export default function BoatPrep({ boatId, boats }) {
   const gps = useGps();
   useShoreTracking(boats.current, gps, online);
   const shoreAlert = useShoreAlert(boats.current, crew, online, gps);
+  // A skipper's own boat starts with their account name and sign-in email, so they don't have to type them again.
+  useEffect(() => {
+    if (!loaded || !online || pending || crew || boats.current.charter_lock) return;  // only against the cloud's latest copy
+    const b = state.boat || {};
+    const fill = { ...(!(b.skipper || "").trim() && user.name ? { skipper: user.name } : {}), ...(!(b.log_email || "").trim() && user.email ? { log_email: user.email } : {}) };
+    if (Object.keys(fill).length) mutate((st) => ({ ...st, boat: { ...st.boat, ...fill } }), { count: false });
+  }, [loaded, online, !pending, crew, boats.current.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const trips = useTripArchives({ boat: boats.current, state, mutate, online, enabled: loaded && !crew && !boats.current.charter_lock && !boats.current.charter?.returned_at });
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
