@@ -10,7 +10,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
-from auth import UserOut, create_session, to_user_out
+from auth import UserOut, create_session, signed_in_user
 from email_service import send_email, EMAIL_FROM_NAME
 from urls import public_base
 
@@ -78,7 +78,7 @@ async def register(payload: RegisterIn, response: Response):
     except DuplicateKeyError:
         raise HTTPException(status_code=400, detail="An account with this email already exists. Sign in instead.")
     await create_session(response, user["user_id"])
-    return to_user_out(user)
+    return await signed_in_user(user["user_id"])
 
 
 @router.post("/login", response_model=UserOut)
@@ -98,7 +98,7 @@ async def login(payload: LoginIn, request: Request, response: Response):
         raise HTTPException(status_code=401, detail=LOGIN_ERROR)
     await db.login_attempts.delete_one({"identifier": ident})
     await create_session(response, user["user_id"])
-    return to_user_out(user)
+    return await signed_in_user(user["user_id"])
 
 
 @router.post("/forgot-password")

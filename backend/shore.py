@@ -273,10 +273,12 @@ async def _accept(inv: dict, user: dict) -> bool:
     if not res.matched_count:
         return False
     # Someone who isn't a skipper (no named boat) or crew anywhere is shore-only: they just get the monitoring page.
+    # Existing skippers and crew keep their full app and open the map from the account menu.
     uid = user["user_id"]
     skipper = await db.user_boats.find_one({"owner_id": uid, "boat.vessel": {"$nin": ["", None]}}, {"_id": 1})
     crew = await db.user_boats.find_one({"crew": uid}, {"_id": 1})
-    await db.users.update_one({"user_id": uid}, {"$set": {"home": "shore", "shore_contact": True, "shore_only": not skipper and not crew}})
+    only = not skipper and not crew
+    await db.users.update_one({"user_id": uid}, {"$set": {"shore_contact": True, "shore_only": only, **({"home": "shore"} if only else {})}})
     return True
 
 

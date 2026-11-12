@@ -51,6 +51,7 @@ class UserOut(BaseModel):
     tos_version: Optional[str] = None
     home: str = ""
     shore_only: bool = False
+    shore_contact: bool = False
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -64,6 +65,7 @@ def to_user_out(u: dict) -> UserOut:
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
         created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "", shore_only=bool(u.get("shore_only")),
+        shore_contact=bool(u.get("shore_contact")),
     )
 
 
@@ -142,7 +144,16 @@ async def start_session(response: Response, email: str, name: str, picture: str)
                 "role": "free", "email_verified": True, "created_at": datetime.now(timezone.utc).isoformat()}
         await db.users.insert_one(dict(user))
     await create_session(response, user["user_id"])
-    return to_user_out(await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0}))
+    return await signed_in_user(user["user_id"])
+
+
+async def signed_in_user(user_id: str) -> UserOut:
+    """Accepts shore invites waiting for this email at sign-in, so the first screen already knows where to go."""
+    from shore import claim_pending
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if await claim_pending(user):
+        user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    return to_user_out(user)
 
 
 def _json(r: httpx.Response) -> dict:
@@ -185,10 +196,7 @@ async def accept_terms(payload: TermsIn, user: dict = Depends(get_current_user))
 
 @router.get("/auth/me", response_model=UserOut)
 async def me(user: dict = Depends(get_current_user)):
-    from shore import claim_pending
-    if await claim_pending(user):
-        user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    return to_user_out(user)
+    return await signed_in_user(user["user_id"])
 
 
 @router.post("/auth/logout")

@@ -94,7 +94,8 @@ class TestShoreFlow:
         assert r.json() == {"owner_id": "test-user-pro", "boat_id": "main"}
         me = BETA.get(f"{API}/auth/me").json()
         me = me.get("user", me)
-        assert me.get("home") == "shore", me
+        # An existing skipper keeps their full app; the map is added via the account menu.
+        assert me.get("home") == "app" and me.get("shore_contact") and not me.get("shore_only"), me
         lst = PRO.get(f"{API}/boats/main/shore").json()["contacts"]
         assert any(c["key"] == "test-user-beta" and c["status"] == "joined" for c in lst)
         # token single-use
