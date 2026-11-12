@@ -12,6 +12,7 @@ export const PhoneReminderDialog = ({ save, unsynced, onLeave, onClose }) => {
   const saveAndLeave = async () => {
     setBusy(true);
     save(phone.trim());
+    await wait(900);  // the save is queued and sent after a short pause
     for (let i = 0; i < 30 && unsynced() > 0; i += 1) await wait(300);  // let the number reach the cloud first
     setBusy(false);
     onLeave();

@@ -5,8 +5,9 @@ import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const SNOOZE = "mbp_ashore_snooze";
 const HOUR = 60 * 60 * 1000;
-const snoozed = (trip) => { try { return (JSON.parse(localStorage.getItem(SNOOZE) || "{}")[trip] || 0) > Date.now(); } catch { return false; } };
-const snooze = (trip) => localStorage.setItem(SNOOZE, JSON.stringify({ [trip]: Date.now() + HOUR }));
+const all = () => { try { return JSON.parse(localStorage.getItem(SNOOZE) || "{}"); } catch { return {}; } };
+const snoozed = (trip) => (all()[trip] || 0) > Date.now();
+const snooze = (trip) => localStorage.setItem(SNOOZE, JSON.stringify(Object.fromEntries([...Object.entries(all()).filter(([, t]) => t > Date.now()), [trip, Date.now() + HOUR]])));
 
 // After an hour ashore the skipper is asked if they've arrived, so shore contacts aren't left wondering.
 export const AshorePrompt = ({ boat, tracking, online }) => {

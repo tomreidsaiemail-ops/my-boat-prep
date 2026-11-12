@@ -1,0 +1,32 @@
+{
+  "summary": "Tested 6 features. Backend: ashore_since set on a land ping, kept on later land pings, cleared on water, new on the next land ping; my-phone; shore/track skipper + skipper_phone; arrived 404 guard. 6/6 pytest pass. UI: Phone From Profile fill PASS. Ashore 'Arrived?' prompt PASS (Not yet snoozes and holds over a reload; after clearing the snooze, Arrived ends tracking, toast 'Trip finished. Told 2 shore contacts...'). Ship's Log line on archive PASS, and Undo removes it again. Shore call button PASS (tel:+64215551234, text has the skipper name; the no-phone text shows when blank). Sign-out reminder: the dialog shows when the phone is blank, and no dialog shows when it's filled. 'Sign out anyway' PASS. 'Save and sign out' FAILS: it signs out, but the phone is never saved (reproduced 2x, no PUT /api/me/boat is sent).",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "GET /api/crew-register/my-phone", "issue": "Looks up crew_register across ALL owners by email_key, so a phone another skipper typed for this email can fill this user's Skipper's Phone. This matches the spec ('latest crew registration with the skipper's email'), but the phone is unverified."}
+  ]},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "PhoneReminderDialog.saveAndLeave", "issue": "'Save and sign out' signs out without saving the phone. save(phone) calls mutate(), which only queues setPending. mbp_outbox_v3 is written in a useEffect after the re-render, and the PUT is debounced 700 ms. The loop `for (i<30 && unsynced()>0)` checks unsynced() synchronously before any await, reads 0, exits at once, and calls onLeave -> logout(). POST /auth/logout ends the session, so the PUT never happens. Verified: the only request after the click was POST /auth/logout 200, and Mongo user_boats.boat.skipper_phone stayed ''.", "selector": "[data-testid=phone-reminder-save-btn]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/shore active alert", "issues": ["The header says 'Skipper: Pro Tester' (account name), but the call button says 'Call the skipper (TEST_Skipper)' (Boat Details skipper). The two names don't match."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ashore_phone_iter156.py", "/app/backend/tests/ui156_setup.py", "/app/test_reports/pytest/iter156.xml"],
+  "action_items": [
+    "Fix PhoneReminderDialog Save and sign out. Either await the cloud save directly (e.g. api.put('/me/boat') with the updated state, or a save fn from useBoatStore that returns a promise), or wait for pending>0 then pending==0 (e.g. await wait(800) before polling, or poll until the outbox goes up and then back to 0). Retest: GET /api/me/boat shows boat.skipper_phone after sign-out.",
+    "Optional: use the same skipper name on the /shore header and the call button."
+  ],
+  "critical_code_review_comments": [
+    "PhoneReminderDialog: the outbox-polling race described above.",
+    "AshorePrompt: snooze() overwrites the whole mbp_ashore_snooze object with a single trip key. Fine for one boat, but snoozing boat B un-snoozes boat A for a skipper with several boats.",
+    "AshorePrompt: depends on shoreTrack.tracking refreshing. ashore_since only reaches the client via the track/points response and /boats/{id}/shore, so a skipper whose phone stops pinging ashore may not see the prompt until the next fetch.",
+    "Arrived keeps ashore_since in the stored tracking doc (tracking_brief hides it when off). PUT tracking on starts a fresh dict, so there's no stale carry-over. OK."
+  ],
+  "updated_files": ["/app/backend/tests/test_ashore_phone_iter156.py", "/app/backend/tests/ui156_setup.py"],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "~92% (11/12 checks; Save and sign out fails)"},
+  "seed_data_creation": "Created 3 TEST_ password accounts (test_ui156_*), plus one crew_register entry for account A; all deleted afterwards. On test-user-pro/main: set tracking.ashore_since in Mongo, tapped Arrived, then restarted tracking (new trip_id 4318697e...). Archived Route Planning and undid it (archives list empty; routeHazards, weather and shipsLog match the earlier copy except the item ts). Set skipper_phone temporarily and restored it to ''. Raised panPan alert 14d6f860... and stood it down. Final state: tracking on, distress cleared, skipper_phone blank.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use fresh /api/auth/register accounts for sign-out tests: logout ends the session. For the pro boat, tracking state comes from GET /api/boats/main/shore (not /me/boat). Land coord -39.60,175.60 counts as land; -36.60,175.00 counts as water. The trip-finish-mail-* controls are checkboxes, default ticked; clicking unticks them. The Undo button is in [data-sonner-toast]. To check the phone saved after Save and sign out, query Mongo user_boats directly (the session is gone)."
+}

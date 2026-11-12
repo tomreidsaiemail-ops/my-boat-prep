@@ -51,7 +51,7 @@ export default function ShoreWatch() {
         <div className="min-w-0">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">{boat?.mine ? "Boat monitoring" : "Shore Contact"}</p>
           <h1 className="truncate font-display text-3xl font-extrabold tracking-tight" data-testid="shore-watch-vessel">{boat ? boat.vessel : "My Boat Prep"}</h1>
-          {boat && !boat.mine && <p className="text-sm text-[var(--muted)]" data-testid="shore-watch-skipper">Skipper: {boat.skipper}</p>}
+          {boat && !boat.mine && <p className="text-sm text-[var(--muted)]" data-testid="shore-watch-skipper">Skipper: {track?.skipper || boat.skipper}</p>}
         </div>
         <button type="button" className="icon-btn h-11 w-11 shrink-0" onClick={() => setLeaving(true)} aria-label="Leave or sign out" data-testid="shore-watch-signout"><LogOut className="h-5 w-5" /></button>
       </header>
