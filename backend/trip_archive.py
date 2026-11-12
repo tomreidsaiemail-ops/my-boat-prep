@@ -77,7 +77,8 @@ def _stats(items: list, crew: list, invites: list, path: list) -> dict:
 
 def _summary(a: dict) -> dict:
     return {k: a.get(k) for k in ("archive_id", "trip_id", "name", "archived_at", "depart_at", "finish_at", "stats")} | {
-        "route_start": (a.get("details") or {}).get("route_start", ""), "route_dest": (a.get("details") or {}).get("route_dest", "")}
+        "route_start": (a.get("details") or {}).get("route_start", ""), "route_dest": (a.get("details") or {}).get("route_dest", ""),
+        "crew_names": [c.get("name") for c in a.get("crew") or [] if c.get("name")]}
 
 
 @router.post("/boats/{boat_id}/trip-archives")

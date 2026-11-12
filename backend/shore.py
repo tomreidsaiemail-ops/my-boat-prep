@@ -60,7 +60,7 @@ def status_of(t: dict | None) -> dict:
 
 def tracking_brief(d: dict) -> dict:
     t = d.get("tracking") or {}
-    return {"on": bool(t.get("on")), "trip_id": t.get("trip_id")}
+    return {"on": bool(t.get("on")), "trip_id": t.get("trip_id"), "ashore_since": t.get("ashore_since") if t.get("on") else None}
 
 
 async def ensure_indexes():
@@ -251,8 +251,12 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
             upd["$set"].update({"tracking.last_at": last["at"], "tracking.last": {"lat": last["lat"], "lon": last["lon"]}})
         if ashore:
             upd["$set"]["tracking.ashore_at"] = now.isoformat()  # still heard from, just not logged
+            if not t.get("ashore_since"):
+                upd["$set"]["tracking.ashore_since"] = now.isoformat()
+                t["ashore_since"] = now.isoformat()
         else:
-            upd["$unset"]["tracking.ashore_at"] = ""
+            upd["$unset"].update({"tracking.ashore_at": "", "tracking.ashore_since": ""})
+            t.pop("ashore_since", None)
         await db.user_boats.update_one(q, {k: v for k, v in upd.items() if v})
     return {"saved": saved, "ashore": ashore, "tracking": tracking_brief(doc)}
 
@@ -337,7 +341,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     q = {"owner_id": owner_id, "boat_id": boat_id}
     if owner_id != user["user_id"] or user.get("shore_only"):
         q["shore_ids"] = user["user_id"]
-    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "tracking": 1, "distress": 1})
+    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "boat.skipper": 1, "boat.skipper_phone": 1, "tracking": 1, "distress": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer a shore contact for this boat")
     t = doc.get("tracking") or {}
@@ -345,7 +349,8 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     if t.get("trip_id"):
         pts = await db.track_points.find({"trip_id": t["trip_id"]}, {"_id": 0, "lat": 1, "lon": 1, "at": 1, "kind": 1}).sort("at", 1).to_list(5000)
     return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
-            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress")}
+            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"),
+            "skipper": (doc.get("boat") or {}).get("skipper", ""), "skipper_phone": (doc.get("boat") or {}).get("skipper_phone", "")}
 
 
 # ---------- Cron: email shore contacts after two missed hourly pings ----------

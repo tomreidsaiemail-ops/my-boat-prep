@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 import { openList } from "@/lib/trips";
-import { archivePayload, finishedTrip, resetTrip, restoreTarget, restoreTrip, snoozeTrip } from "@/lib/tripArchive";
+import { addLogEntry, archivePayload, finishedTrip, removeLogEntry, resetTrip, restoreTarget, restoreTrip, snoozeTrip } from "@/lib/tripArchive";
 
 // Archived trips for the skipper's boat: the finished-trip prompt, archive + Undo, restore and delete.
 export default function useTripArchives({ boat, state, mutate, online, enabled }) {
@@ -30,7 +30,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     const to = restoreTarget(stateRef.current, a);
     try {
       const { data } = await api.post(`${base}/${a.archive_id}/restore`, { to_trip_id: to.id });
-      mutate((s) => restoreTrip(s, data, to));
+      mutate((s) => removeLogEntry(restoreTrip(s, data, to), a.archive_id));
       setArchives((l) => (l || []).filter((x) => x.archive_id !== a.archive_id));
       toast.dismiss(a.archive_id);
       toast.success(to.add && to.id !== a.trip_id ? `Restored as ${to.name}, so your current trip isn't touched` : `${to.name} is back as an active trip`);
@@ -47,7 +47,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     setBusy(true);
     try {
       const { data } = await api.post(base, { ...archivePayload(stateRef.current, id), email_shore: mail.shore !== false, email_crew: mail.crew !== false });
-      mutate((s) => resetTrip(s, id));
+      mutate((s) => addLogEntry(resetTrip(s, id), data));
       setArchives((l) => [data, ...(l || [])]);
       toast.success(`${data.name} archived. The wrap-up email goes out in 3 minutes unless you Undo`, { id: data.archive_id, duration: 10000, action: { label: "Undo", onClick: () => restore(data) } });
     } catch (e) {

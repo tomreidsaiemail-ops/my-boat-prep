@@ -8,7 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { SignOutDialog } from "@/components/boat/SignOutDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
-import { pendingAgreement, pendingRsvp } from "@/lib/pendingAgreement";
+import { pendingAgreement, pendingPhone, pendingRsvp } from "@/lib/pendingAgreement";
+import { PhoneReminderDialog } from "@/components/boat/PhoneReminderDialog";
 import { SignOutRsvpDialog } from "@/components/boat/crew/SignOutRsvpDialog";
 import { MagicBalance } from "@/components/boat/MagicBalance";
 
@@ -31,9 +32,11 @@ export const AccountMenu = () => {
   const [termsFor, setTermsFor] = useState("");
   const [rsvpSend, setRsvpSend] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [askPhone, setAskPhone] = useState(null);
   if (!user) return null;
   const leave = () => { const n = unsyncedCount(); if (n > 0) setWarnCount(n); else logout(); };
-  const afterRsvp = () => { const v = pendingAgreement(); if (v) setTermsFor(v); else leave(); };
+  const afterTerms = () => { const save = pendingPhone(); if (save) setAskPhone(() => save); else leave(); };
+  const afterRsvp = () => { const v = pendingAgreement(); if (v) setTermsFor(v); else afterTerms(); };
   const signOut = () => { const ask = pendingRsvp(); if (ask) setRsvpSend(ask); else afterRsvp(); };
   // Crew on several trips are asked about each one they haven't answered.
   const nextRsvp = () => { setRsvpSend(null); setTimeout(() => { const ask = pendingRsvp(); if (ask) setRsvpSend(ask); else afterRsvp(); }, 150); };
@@ -66,7 +69,8 @@ export const AccountMenu = () => {
     <SignOutRsvpDialog ask={rsvpSend} onDone={nextRsvp} onClose={() => setRsvpSend(null)} />
     <ConfirmDelete item={termsFor ? {} : null} testId="signout-terms" title="Boat Terms and Conditions not accepted yet"
       note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Boat Walk Through.`}
-      confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); leave(); }} onClose={() => setTermsFor("")} />
+      confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); afterTerms(); }} onClose={() => setTermsFor("")} />
+    <PhoneReminderDialog save={askPhone} unsynced={unsyncedCount} onLeave={() => { setAskPhone(null); leave(); }} onClose={() => setAskPhone(null)} />
     <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
     </>
   );

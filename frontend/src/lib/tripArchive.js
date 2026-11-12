@@ -1,5 +1,19 @@
 import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
+import { when } from "@/lib/routeNotes";
 
+const hm = (ms) => { const m = Math.round(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+
+// An archived trip's line in the Ship's Log, removed again if the trip is restored.
+export const logLine = (a) => {
+  const s = a.stats || {};
+  const route = [a.route_start, a.route_dest].filter(Boolean).join(" to ");
+  const dates = [a.depart_at && `departed ${when(a.depart_at)}`, a.finish_at && `finished ${when(a.finish_at)}`].filter(Boolean).join(", ");
+  const track = s.points ? `${s.distance_nm} nm tracked${s.tracked_from && s.tracked_to ? ` over ${hm(new Date(s.tracked_to) - new Date(s.tracked_from))}` : ""}` : "";
+  const crew = (a.crew_names || []).length ? `Crew: ${a.crew_names.join(", ")}` : "No crew listed";
+  return [`Trip "${a.name}"${route ? `: ${route}` : ""}`, dates, track, crew, `Checklist ${s.ticked || 0}/${s.total || 0} ticked`].filter(Boolean).join(". ") + ".";
+};
+export const addLogEntry = (s, a) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id: Date.now(), label: logLine(a), checked: false, archive_id: a.archive_id }] } });
+export const removeLogEntry = (s, archiveId) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).filter((i) => i.archive_id !== archiveId) } });
 export const statLine = (s = {}) => [`${s.ticked || 0}/${s.total || 0} ticked`, `${s.crew || 0} crew`, s.points ? `${s.distance_nm} nm tracked` : "no GPS path"].join(" · ");
 const SNOOZE_KEY = "mbp_trip_done_snooze";
 const today = () => new Date().toLocaleDateString("en-CA");

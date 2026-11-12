@@ -114,5 +114,5 @@ export default function useShoreTracking(boat, gps, online) {
     return () => { document.removeEventListener("visibilitychange", grab); window.removeEventListener("mbp:track-awake", grab); lock?.release().catch(() => {}); };
   }, [on]);
 
-  return { on, queued: read(QUEUE, []).length };
+  return { on, tracking, queued: read(QUEUE, []).length };
 }

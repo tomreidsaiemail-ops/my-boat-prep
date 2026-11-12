@@ -4,6 +4,8 @@ import useShoreTracking from "@/hooks/useShoreTracking";
 import useTripArchives from "@/hooks/useTripArchives";
 import useShoreAlert from "@/hooks/useShoreAlert";
 import { ShoreAlertBar } from "@/components/boat/shore/ShoreAlertBar";
+import { AshorePrompt } from "@/components/boat/shore/AshorePrompt";
+import { setPendingPhone } from "@/lib/pendingAgreement";
 import { ArchivedTrips } from "@/components/boat/trips/ArchivedTrips";
 import { TripFinishPrompt } from "@/components/boat/trips/TripFinishPrompt";
 import useGps, { distressPosition } from "@/hooks/useGps";
@@ -177,7 +179,7 @@ export default function BoatPrep({ boatId, boats }) {
   const onBoard = useOnBoardCrew(boats.current.boat_id, online, !crew);
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
-  useShoreTracking(boats.current, gps, online);
+  const shoreTrack = useShoreTracking(boats.current, gps, online);
   const shoreAlert = useShoreAlert(boats.current, crew, online, gps);
   // A skipper's own boat starts with their account name and sign-in email, so they don't have to type them again.
   useEffect(() => {
@@ -185,7 +187,18 @@ export default function BoatPrep({ boatId, boats }) {
     const b = state.boat || {};
     const fill = { ...(!(b.skipper || "").trim() && user.name ? { skipper: user.name } : {}), ...(!(b.log_email || "").trim() && user.email ? { log_email: user.email } : {}) };
     if (Object.keys(fill).length) mutate((st) => ({ ...st, boat: { ...st.boat, ...fill } }), { count: false });
+    if (!(b.skipper_phone || "").trim()) {
+      api.get("/crew-register/my-phone").then(({ data }) => {
+        if (data.phone) mutate((st) => (st.boat?.skipper_phone ? st : { ...st, boat: { ...st.boat, skipper_phone: data.phone } }), { count: false });
+      }).catch(() => {});
+    }
   }, [loaded, online, !pending, crew, boats.current.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Signing out asks for the Skipper's Phone while it's blank, so a shore contact can call in an emergency.
+  const phoneMissing = loaded && !crew && !boats.current.charter_lock && !(state.boat?.skipper_phone || "").trim();
+  useEffect(() => {
+    setPendingPhone(phoneMissing ? (phone) => mutate((st) => ({ ...st, boat: { ...st.boat, skipper_phone: phone } })) : null);
+    return () => setPendingPhone(null);
+  }, [phoneMissing]); // eslint-disable-line react-hooks/exhaustive-deps
   const trips = useTripArchives({ boat: boats.current, state, mutate, online, enabled: loaded && !crew && !boats.current.charter_lock && !boats.current.charter?.returned_at });
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
@@ -961,6 +974,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
+      <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
         onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} />
       <CharterBanner entry={boats.current} online={online} onTerms={() => setCharterTerms((n) => n + 1)} onEnded={() => boats.refresh()} />

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { CheckCircle2, Eye, Loader2, Siren } from "lucide-react";
+import { CheckCircle2, Eye, Loader2, Phone, Siren } from "lucide-react";
 import { alertWhen, alertWhere } from "@/components/boat/shore/ShoreAlertBar";
 
 const NAMES = { mayDay: "MAYDAY", panPan: "PAN-PAN" };
 
 // What the shore contact sees: a red Mayday / Pan-Pan alert, or the green stand-down once someone aboard clears it.
-export const ShoreAlertNotice = ({ alert: a, me, onSeen }) => {
+export const ShoreAlertNotice = ({ alert: a, me, onSeen, skipper, phone }) => {
   const [busy, setBusy] = useState(false);
   if (!a) return null;
   if (a.state === "cleared") {
@@ -22,6 +22,9 @@ export const ShoreAlertNotice = ({ alert: a, me, onSeen }) => {
       <p className="text-sm font-semibold" data-testid="shore-alert-notice-detail">{alertWhen(a.at)} by {a.by_name}. {alertWhere(a)}</p>
       {a.pos && <p className="text-xs" data-testid="shore-alert-notice-pos">Position when pressed: {a.pos.lat.toFixed(5)}, {a.pos.lon.toFixed(5)}</p>}
       <p className="text-xs">Try calling the skipper. If you can&apos;t reach the boat and are worried, contact the Coastguard or emergency services.</p>
+      {phone
+        ? <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} className="btn-ghost mt-1 min-h-12 justify-center gap-2 bg-white text-base font-extrabold text-[var(--red)]" data-testid="shore-alert-call-btn"><Phone className="h-5 w-5" /> Call the skipper{skipper ? ` (${skipper})` : ""}: {phone}</a>
+        : <p className="text-xs font-bold" data-testid="shore-alert-no-phone">The skipper hasn&apos;t added a phone number to the boat yet.</p>}
       {(a.seen || []).length > 0 && <p className="text-xs font-bold" data-testid="shore-alert-notice-seen">Seen by {a.seen.map((s) => s.name).join(", ")}</p>}
       {onSeen && !(a.seen || []).some((s) => s.by === me) && (
         <button type="button" className="btn-ghost mt-1 min-h-11 justify-center gap-2 bg-white text-[var(--red)]" disabled={busy} data-testid="shore-alert-seen-btn"

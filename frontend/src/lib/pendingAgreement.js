@@ -7,3 +7,8 @@ export const pendingAgreement = () => pending;
 let rsvp = null;
 export const setPendingRsvp = (send) => { rsvp = send || null; };
 export const pendingRsvp = () => rsvp;
+
+// A skipper with no Skipper's Phone on their boat is asked for it before signing out. Holds the save function.
+let phone = null;
+export const setPendingPhone = (save) => { phone = save || null; };
+export const pendingPhone = () => phone;

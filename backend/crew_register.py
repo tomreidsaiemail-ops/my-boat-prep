@@ -127,6 +127,13 @@ async def record_walkthrough(owner_id: str, boat_id: str, user: dict, quick: boo
                                            "name": str(name).strip()[:60], "email": user["email"].lower(), "email_key": key, "status": "unregistered", "created_at": now, "updated_at": now})
 
 
+@router.get("/my-phone")
+async def my_phone(user: dict = Depends(get_current_user)):
+    """The phone number from the latest crew registration with this user's email, to fill the Skipper's Phone box."""
+    r = await db.crew_register.find_one({"email_key": email_key(user["email"]), "phone": {"$nin": ["", None]}}, {"_id": 0, "phone": 1}, sort=[("updated_at", -1)])
+    return {"phone": (r or {}).get("phone", "")}
+
+
 @router.get("/walkthrough")
 async def walkthrough_done(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,80}$")], boat_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")],
                            user: dict = Depends(get_current_user)):
