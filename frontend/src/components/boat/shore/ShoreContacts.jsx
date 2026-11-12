@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
+import { Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
@@ -120,9 +120,12 @@ export const ShoreContacts = ({ boat, vessel, online, onTrackingChange }) => {
         text="While My Boat Prep is open on a phone aboard, it sends the boat's position every 1 km, or an hourly check-in when anchored. Turn it off at the end of the trip." />
       {(t.on || t.state === "arrived") && <ShoreStatus status={t} testId="shore-tracking-status" />}
       {t.on && (
-        <button type="button" onClick={arrived} disabled={!online || arriving} className="btn-solid min-h-12 justify-center gap-2 !bg-emerald-700" data-testid="shore-arrived-btn">
-          {arriving ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />} Arrived safely
-        </button>
+        <div className="flex items-center gap-3" data-testid="shore-arrived-row">
+          <span className="text-sm font-bold text-[var(--navy)]" data-testid="shore-arrived-label">Click when arrived:</span>
+          <button type="button" onClick={arrived} disabled={!online || arriving} className="btn-solid min-h-12 flex-1 justify-center gap-2 !bg-emerald-700" data-testid="shore-arrived-btn">
+            {arriving && <Loader2 className="h-5 w-5 animate-spin" />} Arrived
+          </button>
+        </div>
       )}
       <Switch checked={awake} onChange={keepAwake} testId="shore-awake-switch" title="Keep this screen awake while tracking"
         text="Phones pause the app when the screen locks. Leave a phone on charge with this on to keep sending positions." />
