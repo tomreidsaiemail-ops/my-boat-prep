@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Settings, ShieldAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,7 +26,12 @@ export const Ignore300Warning = ({ online }) => {
 export const MySettingsDialog = ({ open, onClose }) => {
   const { user, setUser } = useAuth();
   const [busy, setBusy] = useState(false);
-  const online = navigator.onLine;
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const up = () => setOnline(navigator.onLine);
+    window.addEventListener("online", up); window.addEventListener("offline", up);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", up); };
+  }, []);
   const toggle = async (on) => {
     setBusy(true);
     try {

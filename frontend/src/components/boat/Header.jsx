@@ -24,7 +24,7 @@ const BroadcastBubble = ({ mode }) => {
   const openShore = () => {
     window.dispatchEvent(new CustomEvent("mbp:open-crew", { detail: { section: "shore" } }));
   };
-  const cls = `inline-flex h-7 shrink-0 items-center gap-0.5 rounded-full px-2.5 font-mono text-[11px] font-extrabold ${dark ? "bg-[#0b2a5b] text-white" : "bg-sky-200 text-sky-900"}`;
+  const cls = `inline-flex h-7 shrink-0 items-center gap-0.5 rounded-full px-2 font-mono text-[11px] font-extrabold ${dark ? "bg-[#0b2a5b] text-white" : "bg-sky-200 text-sky-900"}`;
   const title = mode === "land" ? "Broadcasting every position to your shore contact, including on land" : mode === "b300" ? "Shore contact tracking on: positions on land or within about 300 m of it are kept private" : "Broadcasting to your shore contact: this position has been relayed";
   return dark
     ? <button type="button" onClick={openShore} className={`${cls} [transition:transform_.1s] active:scale-95`} title={title} aria-label={`${title}. Open the Shore Contact panel`} data-testid="broadcast-bubble" data-mode={mode}>{label}<span aria-hidden>!</span></button>
@@ -34,11 +34,11 @@ const BroadcastBubble = ({ mode }) => {
 export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels }) => (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2">
         <BrandMark />
-        <h1 className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight sm:text-3xl" data-testid="app-title">My Boat Prep</h1>
+        <h1 className={`min-w-0 truncate whitespace-nowrap font-display font-extrabold tracking-tight sm:text-3xl ${broadcast ? "text-sm min-[400px]:text-xl" : "text-xl"}`} data-testid="app-title">My Boat Prep</h1>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         <BroadcastBubble mode={broadcast} />
         <NetworkToggle online={online} pending={pending} onGoOffline={onGoOffline} onGoOnline={onGoOnline} />
       </div>

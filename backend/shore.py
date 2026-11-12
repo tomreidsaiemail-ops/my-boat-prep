@@ -231,7 +231,7 @@ async def add_points(payload: PointsIn, user: dict = Depends(get_current_user)):
     if payload.trip_id not in (t.get("trip_ids") or []):
         return {"saved": 0, "tracking": tracking_brief(doc)}
     now = _now()
-    # Land filter: only positions on the water are logged, unless the sender is on the admin exclusion list.
+    # Land filter: only positions on the water are logged, unless the sender turned on My Settings > Ignore 300 metre.
     points = payload.points if excluded(user) else [p for p in payload.points if await on_water(p.lat, p.lon)]
     latest = max(payload.points, key=lambda p: p.at)
     ashore = latest not in points

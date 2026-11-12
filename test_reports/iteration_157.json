@@ -1,0 +1,42 @@
+{
+  "summary": "Tested iteration 157: My settings > Privacy (ignore_300), the Ignore 300 metre help panel, the land filter bypass, the broadcast bubble (b300 / b300x / land), clicking the bubble to scroll to the Arrived row, and the + country code phone check (Boat Details, sign-out reminder, crew register API and RegEntryDialog). Backend: 12/12 new pytest pass, plus 6/6 in the iter156 regression suite. Frontend: every requested flow works on desktop 1920 and mobile 390. One design issue: at 390px the bubble overlaps the 'My Boat Prep' title.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "shore.py add_points", "issue": "A stale comment still says the land filter applies 'unless the sender is on the admin exclusion list'. It now reads users.privacy.ignore_300."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Header at mobile 390px", "issues": ["No horizontal overflow (scrollWidth 390), but the bubble sits on top of the app title. Title right edge is at 193px and the bubble's left edge at 175px. 'Prep' is partly hidden by B300 and fully hidden by B/LAND!. Fix: let the title truncate or shrink (e.g. a smaller title, or hide 'Prep' at <400px), or give the bubble its own space."]},
+      {"screen": "Header gps-position", "issues": ["The text turns blue (data-relayed=true) even when this device shows 'Position unavailable'. The relayed state is per boat on the server, not per device. Minor and arguably expected."]},
+      {"screen": "Crew dialog with B/LAND!", "issues": ["Right after turning ignore_300 on, the bubble shows B/LAND! while the Shore Contact panel still says 'Ashore, tracking paused' until the next ping. Minor inconsistency."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ignore300_phone_iter157.py", "/app/test_reports/pytest/iter157.xml"],
+  "action_items": [
+    "Fix the 390px header overlap between broadcast-bubble and app-title",
+    "Optional: update the stale exclusion-list comment in shore.py add_points"
+  ],
+  "critical_code_review_comments": [
+    "MySettingsDialog reads navigator.onLine once per render and doesn't update when the connection changes. Consider using the app's online state.",
+    "tracking_brief.relayed is true once anything was relayed on the trip (last_at). After a land ping, ashore_since correctly switches the bubble back to b300, so the behaviour matches the spec.",
+    "Phone regex is the same on the frontend (lib/phone.js) and backend (crew_register.PHONE). The backend also checks nok_phone and PUT updates (tested)."
+  ],
+  "updated_files": ["/app/backend/tests/test_ignore300_phone_iter157.py"],
+  "success_rate": {"backend": "100%", "frontend": "95% (all flows pass; one mobile layout overlap)"},
+  "verified": [
+    "Account menu order: plan item, then account-settings-item, then logout. my-settings-dialog shows 6 warning lines (3 paragraphs, Notes, 2 bullets). The tick saves through PUT /api/me/privacy, survives a reload and can be unticked.",
+    "Help menu shows 'Ignore 300 Metre Warning...' and opens help-dialog with 6 lines.",
+    "Land point with ignore_300 on: saved 1, ashore false. With it off: saved 0, ashore true. Water point clears ashore_since. Admin template list 'GPS broadcast exclusion users' is gone and the Ignore 300 warning list exists.",
+    "Bubble b300: light sky colour, a SPAN, not clickable, gps text not relayed. b300x: dark #0b2a5b BUTTON 'B300!', gps-position data-relayed=true, colour rgb(29,78,216). Land mode: 'B/LAND!'. No bubble for a new user with tracking off.",
+    "Clicking the dark bubble opens the crew dialog and scrolls shore-arrived-row into the viewport (desktop and mobile).",
+    "skipper-phone-error shows for '021 555 1234' and clears for '+64 21 555 1234'. phone-reminder-save-btn is disabled with an error for the local number and enabled for the international one; save and sign out goes to /login. POST and PUT /api/crew-register with a local number return 400 with the 'Start the phone number with +...' message. RegEntryDialog shows the PHONE_HINT toast and marks the phone input aria-invalid."
+  ],
+  "seed_data_creation": "Two fresh password accounts test_phrem_<ts>@example.com were created for the sign-out reminder test and are signed out. Crew register TEST_Phone entries were deleted by id.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Final state: test-user-pro ignore_300=false, tracking on for main (trip 79b7e9a6...), skipper_phone blank. The last ping was on land, so ashore_since is set and the bubble shows light B300. Post a water ping (-36.60, 175.00) to get B300!. The /api/admin-lists prefix must be a known one ('Admin - Help Panel - '). Use the admin endpoint /api/admin/template-lists to check list names. Boats come from /api/me/boats. CrewRegistrationPrompt was reviewed in code only (same phoneFieldErrors and PHONE_HINT path as RegEntryDialog), not through the UI."
+}
