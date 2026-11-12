@@ -29,7 +29,7 @@ export const SendShoppingButton = ({ boat, vessel, person, provisions, online, t
       <button type="button" className="btn-ghost h-8 gap-1 px-2 text-xs" onClick={email} disabled={busy || !online || !person.email} data-testid={`${testId}-shopping-email-btn`}>
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingBasket className="h-3.5 w-3.5" />} Send shopping list ({items.length})
       </button>
-      <button type="button" className="btn-ghost h-8 gap-1 px-2 text-xs" onClick={copy} data-testid={`${testId}-shopping-copy-btn`}>Copy for WhatsApp</button>
+      <button type="button" className="btn-ghost h-8 gap-1 px-2 text-xs" onClick={copy} data-testid={`${testId}-shopping-copy-btn`}><ShoppingBasket className="h-3.5 w-3.5" /> Copy for WhatsApp</button>
     </div>
   );
 };
