@@ -180,3 +180,5 @@ async def delete_archive(boat_id: BoatPath, archive_id: ArchivePath, user: dict 
 async def ensure_indexes():
     await db.trip_archives.create_index([("owner_id", 1), ("boat_id", 1), ("archived_at", -1)])
     await db.trip_archives.create_index("archive_id", unique=True)
+    await db.trip_maps.create_index("key", unique=True)
+    await db.trip_maps.create_index("at", expireAfterSeconds=2 * 365 * 24 * 3600)

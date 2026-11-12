@@ -17,7 +17,7 @@ export const TripFinishPrompt = ({ ask, onConfirm, onClose, onMail }) => (
         <li>Saved: the checklist and ticks, route and weather notes, crew and their replies, stats and the GPS path.</li>
         <li>Cleared: all ticks, dates, route and weather, and the crew and invites on this trip.</li>
         <li>You can Undo straight away, or Restore it later from Archived Trips.</li>
-        <li>A wrap-up email with the route map, miles and crew goes to you 3 minutes later (not if you Undo). Also send it to:</li>
+        <li>A wrap-up email with the route map, miles and crew goes to you 3 minutes later. Undo, or Restore it from Archived Trips within those 3 minutes, and it isn&apos;t sent. Also send it to:</li>
         <li className="list-none space-y-1 pt-1">
           <Mail on={ask?.mail?.shore !== false} label="Shore contacts" onChange={(v) => onMail("shore", v)} testId="trip-finish-mail-shore" />
           <Mail on={ask?.mail?.crew !== false} label="The trip's crew" onChange={(v) => onMail("crew", v)} testId="trip-finish-mail-crew" />

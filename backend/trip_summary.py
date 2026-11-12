@@ -67,8 +67,10 @@ def _html(a: dict, skipper: str, map_url: str) -> str:
 
 async def send_summary(archive_id: str):
     """Sends once, and only if the archive is still there (Undo or Restore deletes it)."""
-    a = await db.trip_archives.find_one_and_update({"archive_id": archive_id, "summary.sent_at": {"$exists": False}, "summary.claimed": {"$ne": True}},
-                                                   {"$set": {"summary.claimed": True}}, projection={"_id": 0})
+    now = datetime.now(timezone.utc)
+    free = [{"summary.claimed_at": {"$exists": False}}, {"summary.claimed_at": {"$lt": (now - timedelta(minutes=10)).isoformat()}}]
+    a = await db.trip_archives.find_one_and_update({"archive_id": archive_id, "summary.sent_at": {"$exists": False}, "$or": free},
+                                                   {"$set": {"summary.claimed_at": now.isoformat()}}, projection={"_id": 0})
     if not a:
         return
     owner = await db.users.find_one({"user_id": a["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
@@ -94,7 +96,7 @@ async def send_summary(archive_id: str):
         await db.trip_archives.update_one({"archive_id": archive_id}, {"$set": {"summary.sent_at": datetime.now(timezone.utc).isoformat(), "summary.to": len(to)}})
     except Exception as e:  # noqa: BLE001  try again on the next check
         log.warning("Trip summary email failed for %s: %s", archive_id, e)
-        await db.trip_archives.update_one({"archive_id": archive_id}, {"$unset": {"summary.claimed": ""}})
+        await db.trip_archives.update_one({"archive_id": archive_id}, {"$unset": {"summary.claimed_at": ""}})
 
 
 async def _later(archive_id: str):
@@ -102,8 +104,13 @@ async def _later(archive_id: str):
     await send_summary(archive_id)
 
 
+_tasks: set = set()
+
+
 def schedule(archive_id: str):
-    asyncio.create_task(_later(archive_id))
+    t = asyncio.create_task(_later(archive_id))
+    _tasks.add(t)
+    t.add_done_callback(_tasks.discard)
 
 
 async def send_due():

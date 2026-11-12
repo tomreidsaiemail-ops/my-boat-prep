@@ -30,7 +30,7 @@ def created():
 
 
 def payload(trip="routeHazards"):
-    return {"trip_id": trip, "name": "TEST_Route Planning", "items": [{"id": "a", "checked": True}, {"id": "b", "checked": False}],
+    return {"email_shore": False, "email_crew": False, "trip_id": trip, "name": "TEST_Route Planning", "items": [{"id": "a", "checked": True}, {"id": "b", "checked": False}],
             "details": {"route_start": "TEST_Start", "route_dest": "TEST_Dest"}, "depart_at": "2026-01-01T08:00", "finish_at": "2026-01-02T08:00",
             "window": {"start": None, "end": None}}
 

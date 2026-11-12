@@ -99,11 +99,16 @@ async def _mail_retry(to: list, subject: str, html: str):
     log.error("Shore alert email gave up: %s", subject)
 
 
+_tasks: set = set()
+
+
 def _mail(to: list, subject: str, html: str) -> bool:
     """Sent in the background with retries, so a busy email service never loses a Mayday or holds up the boat's phone."""
     if not to:
         return False
-    asyncio.create_task(_mail_retry(to, subject, html))
+    t = asyncio.create_task(_mail_retry(to, subject, html))
+    _tasks.add(t)
+    t.add_done_callback(_tasks.discard)
     return True
 
 

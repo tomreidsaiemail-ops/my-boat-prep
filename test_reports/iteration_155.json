@@ -1,0 +1,36 @@
+{
+  "summary": "Tested all 4 features end to end. Backend: 12 of 12 pytest tests passed (file tests/test_iter155_seen_summary.py). The 3-minute send test was checked by hand in Mongo because the background pytest process was killed while it waited: sent_at came 180.5s after due_at, to=1 (skipper only), the map JPEG was stored, and GET /api/trip-map/<key>.jpg returned 200 image/jpeg 640x400. Shore seen works: idempotent, a non-shore-contact gets 404, no auth gets 401, the skipper's GET shows seen. Crew endpoint returns shore_contacts=2 and shore_ok_at for test-user-free. Agreement PDF returns 200 and contains the full 961-character cupboard comment. Frontend: /shore seen button -> 'Seen by Beta Shore, Shore Only', the button hides and stays hidden after reload, toast 'The boat can see you've seen the alert'. Skipper red bar shows both '<name> has seen it'. Crew dialog shore line: free=ok, beta=todo. Archive dialog: both checkboxes ticked by default, they untick and re-tick, the wrap-up text shows, the toast text is correct, Undo restored the trip (0 archives left on main, crew still there). Walkthrough shows the full 961-character comment with no clipping; the counter caps input at 1000/1000.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "trip_summary.send_summary", "issue": "If the process dies after summary.claimed=true and before sent_at, send_due never retries: its query does not filter on claimed, but send_summary's find_one_and_update needs claimed != true. That summary is lost for good."},
+      {"endpoint": "trip_summary.schedule / shore_alert._mail", "issue": "asyncio.create_task results are not kept anywhere, so the task can be garbage-collected (Python docs warning). Keep them in a module-level set."},
+      {"endpoint": "GET /api/trip-map/{key}.jpg", "issue": "The map uses plain OpenStreetMap street tiles, not a nautical chart (the request says 'on a chart'). Consider an OpenSeaMap seamark overlay. db.trip_maps has no TTL or cleanup."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Archive confirm dialog (TripFinishPrompt)", "issues": ["The 'Shore contacts' and 'The trip's crew' checkboxes show even when the boat has no shore contacts or the trip has no crew", "The Undo toast lasts only 10s, but the email waits 3 min. After 10s the only way to cancel is Restore or Delete from Archived Trips, and the dialog text could say so"]},
+      {"screen": "Main page / Route Planning", "issues": ["Date and datetime fields use the browser's native picker (existing behaviour, not new)"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter155_seen_summary.py", "/app/test_reports/pytest/pytest_iter155.xml"],
+  "action_items": [
+    "Optional: let send_due retry stale claimed summaries (for example, claimed for more than 10 min with no sent_at)",
+    "Optional: keep references to background tasks",
+    "Optional: hide the archive email checkboxes when there are no shore contacts or crew; consider chart tiles (OpenSeaMap) for the map"
+  ],
+  "critical_code_review_comments": [
+    "alert_seen quietly returns 200 with the current distress when alert_id doesn't match or the alert is cleared. That is fine, but the client cannot tell 'not recorded' from 'recorded'",
+    "trip_summary._html escapes values properly; restore and delete correctly stop the send because send_summary needs the archive to exist",
+    "Existing tests/test_trip_archives.py archives the real main boat (default email_shore/email_crew=True). The emails are only cancelled because the tests restore or delete within 3 min; a failure partway could send real emails. Pass email_shore=false, email_crew=false in those tests"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter155_seen_summary.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temp boat TEST_sum2 (owner test-user-pro), 3 track_points (trip_id TEST_sum2_trip), 3 archives and 1 trip_map were created, then all deleted by hand. 1 panPan alert was raised (its emails went out), then stood down; its state is cleared. 1 trip summary email was sent to the skipper only. The main-boat Route Planning archive was undone (0 archives on main). The Fridge comment was put back to its original text through the UI.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest in the FOREGROUND with -n 0 and timeout 300: test_sent_after_3_min waits up to 240s, and a background run gets killed, which skips the fixture teardown (clean TEST_sum2 by hand). The test raises 1 real panPan alert on main and leaves it active; stand it down afterwards via POST /api/shore/alert/stand-down. Crew cards repeat once per trip (crew-member-<id>-agreement-shore appears twice), so use .first. Walkthrough titles are uppercase in inner_text. The zone-map-toggle may need expanding before crew-walkthrough-btn shows. The archive Undo is the toast's 'Undo' button in [data-sonner-toast]."
+}
