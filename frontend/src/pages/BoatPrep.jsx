@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
 import useShoreTracking from "@/hooks/useShoreTracking";
+import useTripArchives from "@/hooks/useTripArchives";
+import { ArchivedTrips } from "@/components/boat/trips/ArchivedTrips";
+import { TripFinishPrompt } from "@/components/boat/trips/TripFinishPrompt";
 import useGps, { distressPosition } from "@/hooks/useGps";
 import useEmailSender from "@/hooks/useEmailSender";
 import useTips, { TIPS_ID, TIPS_LIST } from "@/hooks/useTips";
@@ -173,6 +176,7 @@ export default function BoatPrep({ boatId, boats }) {
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
   useShoreTracking(boats.current, gps, online);
+  const trips = useTripArchives({ boat: boats.current, state, mutate, online, enabled: loaded && !crew && !boats.current.charter_lock && !boats.current.charter?.returned_at });
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);
@@ -927,7 +931,8 @@ export default function BoatPrep({ boatId, boats }) {
         <PrintView lists={lists} data={withInheritedDue(data, registry)} labelFor={labelFor} boat={boat} verboseDate={VERBOSE_DATE} title={title} onBack={() => setPrintMode(null)}
           onEmail={ownerOnly(() => needPro("Email PDF") && mail.requestSend(ids, title))} online={online} sending={mail.sending}
           emailed={mail.sentKey === ids.join(",")} locked={!premium} />
-        {emailPrompt}
+        <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} />
+      {emailPrompt}
       </>
     );
   }
@@ -1087,6 +1092,7 @@ export default function BoatPrep({ boatId, boats }) {
               <Trash2 className="h-4 w-4" /> Delete this list
             </button>
           )}
+          {!crew && isTripList(active) && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} />}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (

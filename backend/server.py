@@ -53,6 +53,7 @@ from admin_analytics import router as admin_analytics_router  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
 from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
+from trip_archive import router as trip_archive_router, ensure_indexes as trip_archive_indexes  # noqa: E402
 import auth as auth_module  # noqa: E402
 from usage import backfill_usage  # noqa: E402
 from photos import router as photos_router, init_storage, get_object  # noqa: E402
@@ -580,6 +581,7 @@ app.include_router(service_history_router)
 app.include_router(crew_router)
 app.include_router(crew_agreement_router)
 app.include_router(shore_router)
+app.include_router(trip_archive_router)
 app.include_router(crew_briefings_router)
 app.include_router(zone_colours_router)
 app.include_router(template_backup_router)
@@ -650,6 +652,7 @@ async def create_indexes():
     await db.user_boats.create_index("crew")
     await db.users.create_index("joincrew.email_key", sparse=True)
     await shore_indexes()
+    await trip_archive_indexes()
     asyncio.create_task(joincrew.lock_stripe_box())
     await db.deleted_boats.create_index("deleted_at", expireAfterSeconds=7 * 86400)
     await db.user_boats.create_index("charter_expires_at", expireAfterSeconds=0)
