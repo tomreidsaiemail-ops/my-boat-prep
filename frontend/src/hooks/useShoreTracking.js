@@ -79,11 +79,14 @@ export default function useShoreTracking(boat, gps, online) {
   // Stopped for 5 minutes more than 100 m from the last position sent (e.g. tied up at the dock): send where the boat is now.
   const stopped = (last) => !!(fix.current && still.current && metres(last, fix.current) >= STOP_M && Date.now() - still.current.since >= STOP_MS);
 
+  // When the last position sent was a stop and the boat is still there, the skipper is asked if they've arrived.
+  const [stopAt, setStopAt] = useState(() => { const l = read(LAST, null); return l?.kind === "stop" ? l.at : null; });
   const add = (kind) => {
     if (!fix.current) return;
     const point = { ...fix.current, at: Date.now(), kind, owner_id: owner, boat_id: boat.boat_id, trip_id: trip };
     write(QUEUE, [...read(QUEUE, []), point].slice(-5000));
-    write(LAST, { trip, lat: point.lat, lon: point.lon, at: point.at });
+    write(LAST, { trip, lat: point.lat, lon: point.lon, at: point.at, kind: kind === "ping" ? read(LAST, null)?.kind : kind });
+    if (kind !== "ping") setStopAt(kind === "stop" ? point.at : null);
     if (navigator.onLine) send();
   };
 
@@ -93,6 +96,7 @@ export default function useShoreTracking(boat, gps, online) {
     const last = read(LAST, null);
     if (!last || last.trip !== trip) add("start");
     else if (metres(last, fix.current) >= MOVE_M) add("move");
+    else if (stopAt && metres(last, fix.current) > STOP_M) setStopAt(null);
   }, [on, trip, gps.lat, gps.lon, gps.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Hourly heartbeat while stationary, and send anything queued once back online.
@@ -126,5 +130,5 @@ export default function useShoreTracking(boat, gps, online) {
     return () => { document.removeEventListener("visibilitychange", grab); window.removeEventListener("mbp:track-awake", grab); lock?.release().catch(() => {}); };
   }, [on]);
 
-  return { on, tracking, queued: read(QUEUE, []).length };
+  return { on, tracking, queued: read(QUEUE, []).length, stopAt: on && read(LAST, null)?.trip === trip ? stopAt : null };
 }

@@ -6,6 +6,15 @@ const when = (iso) => new Date(iso).toLocaleString("en-NZ", { day: "2-digit", mo
 
 const NAMES = { mayDay: "MAYDAY", panPan: "PAN-PAN" };
 
+// Where the boat stopped (e.g. tied up at a dock): a navy pin with an anchor.
+const DOCK = L.divIcon({
+  className: "shore-dock-marker",
+  html: '<div data-testid="shore-map-dock-marker" style="width:28px;height:28px;border-radius:50%;background:#0f2a4a;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">'
+    + '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 // An active Mayday / Pan-Pan: red where it was pressed; when that's over 100 m away, the last reported position too.
 const drawAlert = (g, a) => {
   const at = a.pos || a.last;
@@ -53,8 +62,10 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     L.polyline(line, { color: "#0f2a4a", weight: 4, opacity: 0.85 }).addTo(g);
     const first = points[0];
     const now = points[points.length - 1];
+    points.filter((p) => p.kind === "stop" && p !== now).forEach((p) => L.marker([p.lat, p.lon], { icon: DOCK }).bindTooltip(`Stopped here · ${when(p.at)}`).addTo(g));
+    if (now.kind === "stop") L.marker([now.lat, now.lon], { icon: DOCK, zIndexOffset: 1000 }).bindTooltip(`Stopped here · ${when(now.at)}`, { permanent: true, direction: "top", offset: [0, -14] }).addTo(g);
     L.circleMarker([first.lat, first.lon], { radius: 6, color: "#0f2a4a", weight: 2, fillColor: "#fff", fillOpacity: 1 }).bindTooltip(`Start · ${when(first.at)}`).addTo(g);
-    L.circleMarker([now.lat, now.lon], { radius: 10, color: "#fff", weight: 3, fillColor: "#f97316", fillOpacity: 1 }).bindTooltip(`${endLabel} · ${when(now.at)}`, { permanent: false }).addTo(g);
+    if (now.kind !== "stop") L.circleMarker([now.lat, now.lon], { radius: 10, color: "#fff", weight: 3, fillColor: "#f97316", fillOpacity: 1 }).bindTooltip(`${endLabel} · ${when(now.at)}`, { permanent: false }).addTo(g);
     if (!fitted.current) {
       fitted.current = true;
       if (line.length > 1) map.current.fitBounds(line, { padding: [30, 30], maxZoom: 14 });

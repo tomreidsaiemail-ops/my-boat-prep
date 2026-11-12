@@ -6,17 +6,21 @@ import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 const SNOOZE = "mbp_ashore_snooze";
 const HOUR = 60 * 60 * 1000;
 const all = () => { try { return JSON.parse(localStorage.getItem(SNOOZE) || "{}"); } catch { return {}; } };
-const snoozed = (trip) => (all()[trip] || 0) > Date.now();
-const snooze = (trip) => localStorage.setItem(SNOOZE, JSON.stringify(Object.fromEntries([...Object.entries(all()).filter(([, t]) => t > Date.now()), [trip, Date.now() + HOUR]])));
+const snoozed = (key) => (all()[key] || 0) > Date.now();
+const snooze = (key, ms) => localStorage.setItem(SNOOZE, JSON.stringify(Object.fromEntries([...Object.entries(all()).filter(([, t]) => t > Date.now()), [key, Date.now() + ms]])));
+const time = (iso) => new Date(iso).toLocaleString("en-NZ", { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
-// After an hour ashore the skipper is asked if they've arrived, so shore contacts aren't left wondering.
-export const AshorePrompt = ({ boat, tracking, online }) => {
+// The skipper is asked if they've arrived when the boat stops (once per stop) or after an hour ashore, so shore contacts aren't left wondering.
+export const AshorePrompt = ({ boat, tracking, stopAt, online }) => {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 60 * 1000); return () => clearInterval(id); }, []);
   const since = tracking?.on ? tracking.ashore_since : null;
   const trip = tracking?.trip_id;
-  const show = !!since && online && !boat?.crew && now - new Date(since).getTime() >= HOUR && !snoozed(trip);
+  const stopKey = stopAt ? `${trip}|stop|${stopAt}` : "";
+  const ashore = !!since && now - new Date(since).getTime() >= HOUR && !snoozed(trip);
+  const stopped = !!stopAt && tracking?.on && !snoozed(stopKey);
+  const show = (ashore || stopped) && online && !boat?.crew;
   const arrived = async () => {
     setBusy(true);
     try {
@@ -26,9 +30,16 @@ export const AshorePrompt = ({ boat, tracking, online }) => {
     } catch (e) { toast.error(apiError(e, "Couldn't finish the trip")); }
     setBusy(false);
   };
+  const notYet = () => {
+    if (stopped) snooze(stopKey, 24 * HOUR);
+    if (ashore) snooze(trip, HOUR);
+    setNow(Date.now());
+  };
+  const note = ashore
+    ? `Your boat has been ashore since ${time(since)}. Tap Arrived to end tracking and tell your shore contacts you arrived safely.`
+    : `Your boat stopped here at ${stopAt ? time(new Date(stopAt).toISOString()) : "a few minutes ago"}, and your shore contacts have this position. If you've arrived, tap Arrived to end tracking and tell them you arrived safely.`;
   return (
-    <ConfirmDelete item={show && !busy ? {} : null} testId="ashore-prompt" danger={false} title="Arrived?"
-      note={`Your boat has been ashore since ${since ? new Date(since).toLocaleString("en-NZ", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "over an hour ago"}. Tap Arrived to end tracking and tell your shore contacts you arrived safely.`}
-      confirmLabel="Arrived" cancelLabel="Not yet" onConfirm={arrived} onClose={() => { snooze(trip); setNow(Date.now()); }} />
+    <ConfirmDelete item={show && !busy ? {} : null} testId="ashore-prompt" danger={false} title="Arrived?" note={note}
+      confirmLabel="Arrived" cancelLabel="Not yet" onConfirm={arrived} onClose={notYet} />
   );
 };
