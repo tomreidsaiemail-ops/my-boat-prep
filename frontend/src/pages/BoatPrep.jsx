@@ -740,6 +740,12 @@ export default function BoatPrep({ boatId, boats }) {
     const people = [...(info?.crew || []), ...(info?.invites || []).filter((i) => !i.declined_at)].map((m) => m.name);
     setCooks([...new Set([crew ? boats.current.owner_name : me || "Skipper", ...(crew ? [boats.current.my_name || me] : []), ...people].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
+  const loadShoppers = async () => {
+    if (crew) { loadCooks(); return; }
+    const me = (user.name || "").trim() || "Skipper";
+    const reg = online ? await api.get("/crew-register", { timeout: 20000 }).then((r) => r.data.crew).catch(() => []) : [];
+    setCooks([...new Set([me, ...reg.map((r) => (r.name || "").trim())].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
+  };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
   const addMealToPlan = (target, meal) => {
     const id = mealTarget(target);
@@ -1112,7 +1118,7 @@ export default function BoatPrep({ boatId, boats }) {
           {showMpa && <DietBanner />}
           {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
           {canEditList && active.id === "provisions" && (
-            <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { loadCooks(); setDialog({ type: "shoppers" }); }} data-testid="assign-shoppers-btn">
+            <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { loadShoppers(); setDialog({ type: "shoppers" }); }} data-testid="assign-shoppers-btn">
               <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
             </button>
           )}
