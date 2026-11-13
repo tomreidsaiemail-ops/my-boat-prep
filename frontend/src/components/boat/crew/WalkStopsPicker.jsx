@@ -86,13 +86,25 @@ const StopRow = ({ s, areas, on, contents, onFlip, onContents, comment, star, ph
   );
 };
 
-// Cupboards with neither a photo nor a comment can't be a stop.
-const Missing = ({ list }) => (
-  <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-amber-500 bg-amber-50 p-2.5 text-sm" role="alert" data-testid="walk-stops-missing">
-    <p className="flex gap-2 font-bold text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> These cupboards do not have a photo and a comment, and are not labelled on a zone map photo, so are not part of the walkthrough. Add a comment and a photo, or label the cupboard on a zone map photo, then those cupboards can be selected for the default crew walkthrough or for crew members interested in that particular cupboard.</p>
-    <p className="pl-6 font-semibold text-amber-950" data-testid="walk-stops-missing-names">{list.map((a) => a.name).join(", ")}</p>
-  </div>
-);
+// Cupboards with neither a photo nor a comment can't be a stop. Hiding the list is remembered until the list itself changes.
+const Missing = ({ list, boatId }) => {
+  const key = `mbp_walk_missing_hidden_${boatId}`;
+  const sig = list.map((a) => a.id).sort().join(",");
+  const [hidden, setHidden] = useState(() => localStorage.getItem(key) === sig);
+  const flip = () => { if (hidden) localStorage.removeItem(key); else localStorage.setItem(key, sig); setHidden(!hidden); };
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-amber-500 bg-amber-50 p-2.5 text-sm" role="alert" data-testid="walk-stops-missing" data-hidden={hidden ? "true" : "false"}>
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-900" />
+        <p className="min-w-0 flex-1 font-bold text-amber-900">{hidden
+          ? `${list.length} ${list.length === 1 ? "cupboard is" : "cupboards are"} not part of the walkthrough.`
+          : "These cupboards do not have a photo and a comment, and are not labelled on a zone map photo, so are not part of the walkthrough. Add a comment and a photo, or label the cupboard on a zone map photo, then those cupboards can be selected for the default crew walkthrough or for crew members interested in that particular cupboard."}</p>
+        <button type="button" onClick={flip} className="shrink-0 text-xs font-bold text-amber-900 underline underline-offset-2 hover:opacity-70" aria-expanded={!hidden} data-testid="walk-stops-missing-toggle">{hidden ? "Show" : "Hide"}</button>
+      </div>
+      {!hidden && <p className="pl-6 font-semibold text-amber-950" data-testid="walk-stops-missing-names">{list.map((a) => a.name).join(", ")}</p>}
+    </div>
+  );
+};
 
 // The skipper picks the default stops on the crew's Boat Walk Through (all, to start) and which show their contents (none, to start).
 export const WalkStopsPicker = ({ boat, areas = [], online, onSaved }) => {
@@ -128,7 +140,7 @@ export const WalkStopsPicker = ({ boat, areas = [], online, onSaved }) => {
       {open && (
         <div className="flex flex-col gap-2 border-t border-[var(--line)] p-3">
           <p className="text-xs text-[var(--muted)]">Untick cupboards of less importance. Crew only see the ticked stops in the Boat Terms and Conditions walkthrough, unless you pick their own stops when you invite them. Tap Comment to read a cupboard&apos;s comment. Tap Contents (green with a tick) to show what&apos;s stowed in that cupboard during the walkthrough.</p>
-          {missing.length > 0 && <Missing list={missing} />}
+          {missing.length > 0 && <Missing list={missing} boatId={boat.boat_id} />}
           <StopList steps={steps} areas={areas} skip={skip} boat={boat} stars={boat.walk_stars || []} onFlip={flip} onSetMany={(keys, v) => setSkip((l) => setStops(l, keys, v))} />
           {steps.length > 0 && (
             <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={!changed || busy || !on} onClick={save} data-testid="walk-stops-save-btn">
