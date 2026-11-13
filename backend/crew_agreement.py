@@ -86,7 +86,7 @@ async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = D
     await owned_boat(user, boat_id)
     doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1, "areas": 1})
     stops = all_stops(doc)
-    known = {*stops, *(CONTENTS + k for k in stops)}
+    known = {*stops, *(CONTENTS + k for k in stops if not k.endswith(":comment"))}
     skip = [s for s in dict.fromkeys(payload.skip) if s in known]
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"walk_skip": skip}})
     return {"walk_skip": skip}

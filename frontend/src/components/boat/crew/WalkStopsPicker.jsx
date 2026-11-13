@@ -41,7 +41,7 @@ const StopRow = ({ s, areas, on, contents, onFlip, onContents, comment }) => {
       <div className="flex min-h-9 flex-wrap items-center gap-2">
         <label className="flex min-w-0 flex-1 items-center gap-2.5 text-sm">
           <input type="checkbox" checked={on} onChange={onFlip} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${t}-checkbox`} />
-          <span className="min-w-0 break-words">{pinName(s.pin, areas)}{s.cupboard && <span className="ml-1 text-xs font-semibold text-[var(--muted)]">(cupboard photo)</span>}</span>
+          <span className="min-w-0 break-words">{pinName(s.pin, areas)}{s.cupboard && <span className="ml-1 whitespace-nowrap text-xs font-semibold text-[var(--muted)]">(cupboard photo)</span>}</span>
         </label>
         {comment && (
           <Bubble on={show} onClick={() => setShow(!show)} testId={`${t}-comment-bubble`} aria-label={show ? "Hide the comment" : "Show the comment"}

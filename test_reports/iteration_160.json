@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the new walkthrough rules and the Contents bubble, back end and front end, at 390x844. Everything requested works. Skipper side: the picker shows (2 of 2) with the Galley comment-only stop and Fridge under OTHER CUPBOARDS marked '(cupboard photo)'. The walk-stops-missing warning has the exact new wording and lists TEST_Port Locker, TEST_Gantry, Freezer, Dry Goods, Hanging Basket, Pantry, Bilge, Gantry. The old walk-stops-unlabelled warning is gone. The Fridge Contents bubble goes from light red (rgb 254,226,226, data-on=false) to green with a tick (data-on=true); the Galley comment stop has no Contents bubble. Saving shows the toast 'Walkthrough now has 2 stops', walk_skip becomes ['+c:area:amw1pvdq802hq'], and the bubble is still on after a reload. Playback: 'Crew walkthrough (2 stops)'. The Fridge stop shows walkthrough-photo once, walkthrough-cupboard-photo is absent, the cupboard comment shows, and the contents list shows only when Contents is on (checked on and off). Invite crew > per-crew stops: the dialog picks up the default contents (on). Toggling it gives 'Own stops, 2 of 2', and 'Back to the default stops' returns to 'Default'. The invite was closed without sending. Crew side (free user, crew boat): the agreement list shows 1. Galley and 2. Fridge; Fridge shows its cupboard photo, its comment, and contents only when on. Back end: new tests/test_walk_contents.py, 5 of 5 pass. Problem found: the existing tests/test_walk_stops_quick.py ran its setup twice in parallel and damaged the pro boat's real data. I restored it.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "tests/test_walk_stops_quick.py (test file, not app code)", "issue": "Test isolation bug that damaged real data. pytest.ini runs xdist with --dist loadscope, which spreads test classes (TestWalkStops, TestQuickAccept) across workers. Each worker runs the module-scoped setup on test-user-pro/main at the same time. Setup strips every area's photo and adds TEST_area_* cupboards; teardown writes back the areas it saved. When the runs overlap, the second worker saves the already-stripped areas and writes them back last. After my run, Fridge (amw1pvdq802hq) had lost its photo, TEST_area_tg1/tg2/th1 were left in areas, walk_skip was left as ['f634...:tg2'], and 2 tests failed (test_full_accept_sets_full_at, test_quick_accept_with_old_walk). I restored the Fridge photo {id 888bae6c-40d2-4d8f-ae65-625f4248dd1a, v 2026-11-10T06:39:58.047039+00:00}, the photo id comes from iteration_146. I also removed the TEST_area_* entries and set walk_skip to [].", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "PUT /api/boats/{id}/walk-stops", "issue": "Accepts '+c:<comment-stop>' keys (for example '+c:f634...:comment') even though comment-only stops have no contents. Harmless, but the filter could drop them."},
+      {"endpoint": "POST /api/boats/{id}/invites (crew.py WalkSkip)", "issue": "The invite's walk_skip is not checked against all_stops, so unknown keys are stored. stop_ids ignores them, so the effect is cosmetic."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Default walkthrough stops / per-crew dialog at 390px", "issues": ["The '(cupboard photo)' hint next to Fridge breaks mid-word ('cupboa' / 'rd photo') because of break-words when the Comment and Contents bubbles squeeze the label. Consider whitespace-nowrap on the hint or putting it on its own line."]},
+      {"screen": "Crew agreement dialog", "issues": ["The agreement shows as accepted but 'Boat Walk Through (0 of 2 ticked)', because the stored stops point to old pins (pmwa5...) that are no longer on the Galley photo. This existed before this change: changing the stops after crew accept does not reset or flag the agreement."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_walk_contents.py", "/app/test_reports/pytest/walk_contents.xml"],
+  "action_items": [
+    "HIGH: Fix tests/test_walk_stops_quick.py so it can't run its setup twice at once and damage real data. Options: merge both classes into one class, mark them with @pytest.mark.xdist_group (and run with --dist loadgroup), or test on a separate TEST_ boat instead of test-user-pro/main. Also save the areas without throwing away photos when restoring.",
+    "Optional: in save_walk_stops, keep only '+c:' keys for non-comment stops; check the invite's walk_skip against all_stops.",
+    "Optional: stop the '(cupboard photo)' hint breaking mid-word at 390px."
+  ],
+  "critical_code_review_comments": [
+    "Back end all_stops and front end allStops agree, including the 'area:<id>' stop key, so the agreement's required stops match the list.",
+    "Unlabelled cupboards that have only a photo, or only a comment, are left out silently: they are neither stops nor listed in the warning. This matches the spec, but skippers may not see why those cupboards are missing."
+  ],
+  "updated_files": ["/app/backend/tests/test_walk_contents.py"],
+  "success_rate": {"backend": "100% of the new tests (5/5); the existing test_walk_stops_quick.py has 2/7 failing because of the parallel-run problem", "frontend": "100% (5/5 requested flows)"},
+  "seed_data_creation": "No new records. Restored data damaged by the test_walk_stops_quick.py run: Fridge photo id 888bae6c..., removed TEST_area_tg1/tg2/th1, walk_skip=[]. Pins on the f634/e7b3 maps are [] as before. The free crew's agreement on pro/main is unchanged (accepted_at 2026-11-12T21:41:30).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro main: Galley f634a094 has only a comment (comment stop); Fridge amw1pvdq802hq has photo 888bae6c and a comment, not labelled -> stop 'area:amw1pvdq802hq'. Do NOT run test_walk_stops_quick.py with xdist until it is fixed (it damages areas). Run test_walk_contents.py with -n 0. The crew agreement opens from the crew-agreement-bar (it is a button). Navigation: zone-map-toggle -> crew-walkthrough-btn."
+}

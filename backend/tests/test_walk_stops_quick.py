@@ -85,7 +85,7 @@ class TestWalkStops:
         assert ALL[1] not in r2.json()["agreement"]["stops"]
 
 
-class TestQuickAccept:
+    # Quick accept (same class so xdist loadscope never runs the shared setup twice at once)
     def test_quick_without_walk_400(self):
         db.walkthroughs.delete_one({"owner_id": OWNER, "boat_id": BOAT, "user_id": CREW})
         r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [], "accept": True, "quick": True, "shore_ok": True})
