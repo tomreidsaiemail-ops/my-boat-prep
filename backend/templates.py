@@ -213,7 +213,8 @@ async def push_role_briefings(items: list, now: str):
             await db.user_boats.update_one({"_id": b["_id"]}, {"$set": {f"data.{lid}": nxt, "updated_at": now}})
 
 
-TRIM_BRIEFING = ("Watch out for the boom at all times! Re trimming, put 3 to 4 wraps clockwise on the drum, keep your thumbs out and palms facing the winch, "
+TRIM_BRIEFING = ("- Watch out for the boom at all times!\n"
+                 "- Re trimming, put 3 to 4 wraps clockwise on the drum, keep your thumbs out and palms facing the winch, "
                  "and hold the tail clear of the pinch area without wrapping it around your hand or body.")
 
 

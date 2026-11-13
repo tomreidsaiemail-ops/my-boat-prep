@@ -71,7 +71,14 @@ async def owned_boat(user: dict, boat_id: str, allow_charter: bool = False) -> d
 
 
 def brief_hash(text: str) -> str:
-    return hashlib.sha256(str(text).strip().encode()).hexdigest()[:16]
+    """Same hash whether a briefing is one paragraph or '- ' bullets, so re-formatting doesn't make crew read it again."""
+    flat = " ".join(re.sub(r"^\s*-\s+", "", ln) for ln in str(text).splitlines())
+    return hashlib.sha256(" ".join(flat.split()).encode()).hexdigest()[:16]
+
+
+def brief_read(stored: str, text: str) -> bool:
+    """A crew member's read still counts for this briefing (also matches reads saved before bullets, hashed on the raw text)."""
+    return bool(stored) and stored in (brief_hash(text), hashlib.sha256(str(text).strip().encode()).hexdigest()[:16])
 
 
 async def note_shopping(owner_id: str, boat_id: str, email: str, count: int):
@@ -348,8 +355,8 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
         for r in rs:
             b = briefs.get(r.lower(), "")
             hit = reads.get((uid, r.lower())) if uid else None
-            out.append({"role": r, "has_briefing": bool(b), "read_at": hit["at"] if hit and b and hit.get("hash") == brief_hash(b) else None,
-                        "read_old": bool(hit and b and hit.get("hash") != brief_hash(b))})
+            out.append({"role": r, "has_briefing": bool(b), "read_at": hit["at"] if hit and b and brief_read(hit.get("hash"), b) else None,
+                        "read_old": bool(hit and b and not brief_read(hit.get("hash"), b))})
         return out
     for i in invites:
         i["prep"] = prep.get((i.get("name") or "").strip().lower())

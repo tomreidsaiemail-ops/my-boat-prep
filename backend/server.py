@@ -39,7 +39,7 @@ from crew import router as crew_router, backfill_invite_keys, add_racing_roles  
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from zone_schematics import router as zone_schematics_router  # noqa: E402
 from templates import add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes, seed_trim_briefings  # noqa: E402
-from role_briefings import seed_role_safety_briefings  # noqa: E402
+from role_briefings import seed_role_briefing_bullets, seed_role_safety_briefings  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template, crew_skip  # noqa: E402
 from crew_briefings import router as crew_briefings_router  # noqa: E402
@@ -710,6 +710,7 @@ async def create_indexes():
     await add_racing_roles()
     await seed_trim_briefings()
     await seed_role_safety_briefings()
+    await seed_role_briefing_bullets()
     await seed_common_meals()
     await db.user_meals.create_index([("user_id", 1), ("id", 1)], unique=True)
     await seed_budget_template()
