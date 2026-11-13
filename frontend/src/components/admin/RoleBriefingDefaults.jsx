@@ -1,3 +1,4 @@
+import { BRIEFING_TAGS_HINT } from "@/lib/briefingFill";
 import { useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
 import { isHeadingLine } from "@/lib/outline";
@@ -19,8 +20,9 @@ const Role = ({ label, text, onChange }) => {
       {open && (
         <textarea value={text} onChange={(e) => onChange(e.target.value.slice(0, BRIEFING_MAX))} rows={4} maxLength={BRIEFING_MAX}
           placeholder="e.g. Watch out for the boom at all times!" aria-label={`Default Role Briefing for ${label}`}
-          className="field-input mx-3 mb-3 !h-auto min-h-[6rem] w-[calc(100%-1.5rem)] resize-y py-2 font-normal leading-snug" data-testid={`${t}-input`} />
+          className="field-input mx-3 mb-1 !h-auto min-h-[6rem] w-[calc(100%-1.5rem)] resize-y py-2 font-normal leading-snug" data-testid={`${t}-input`} />
       )}
+      {open && <p className="mx-3 mb-3 text-xs text-[var(--muted)]" data-testid={`${t}-tags`}>{BRIEFING_TAGS_HINT}</p>}
     </li>
   );
 };

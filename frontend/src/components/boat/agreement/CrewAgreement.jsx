@@ -48,7 +48,7 @@ export const CrewAgreement = ({ boat, vessel, areas, online }) => {
         </button>
       </div>
       {open && free && <CrewAgreementDialog data={data} boat={boat} vessel={vessel} areas={areas} online={online}
-        onSaved={(a) => setData((d) => ({ ...d, agreement: a }))} onRead={(role, at) => setData((d) => ({ ...d, roles: d.roles.map((r) => (r.role === role ? { ...r, read_at: at } : r)) }))} onClose={() => setOpen(false)} />}
+        onSaved={(a) => setData((d) => ({ ...d, agreement: a }))} onRead={(role, at, video) => setData((d) => ({ ...d, roles: d.roles.map((r) => (r.role === role ? { ...r, read_at: at, video_choice: video || "" } : r)) }))} onClose={() => setOpen(false)} />}
     </>
   );
 };

@@ -10,6 +10,7 @@ import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
+import { shownBriefing } from "@/lib/briefingFill";
 import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 import { DEFAULT_TRIP } from "@/lib/trips";
@@ -18,11 +19,11 @@ import { CrewWalkStops } from "@/components/boat/crew/CrewWalkStops";
 
 const APP_URL = "https://myboatprep.com";
 
-export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {}, shopping = [], offer = false }) => [
+export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefings = {}, shopping = [], offer = false, details = {} }) => [
   `*${name ? `Hi ${name}, you're` : "You're"} invited to crew on ${vessel}*`,
   `Skipper: ${skipper}`,
   roles.length ? `Your role: ${roles.join(", ")}` : null,
-  ...roles.filter((r) => briefings[r.toLowerCase()]).map((r) => `\n*Role briefing - ${r}*\n${briefings[r.toLowerCase()]}`),
+  ...roles.filter((r) => briefings[r.toLowerCase()]).map((r) => `\n*Role briefing - ${r}*\n${shownBriefing(briefings[r.toLowerCase()], details)}`),
   shopping.length ? `\n*Food to bring on board*\n${shopping.map((i) => `- ${i}`).join("\n")}` : null,
   notes.trim() ? `\n*Planned voyage or race*\n${notes.trim()}` : null,
   `\nJoin on My Boat Prep: ${APP_URL}`,
@@ -32,7 +33,7 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
 
-export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
@@ -85,7 +86,7 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
   const editNotes = (v) => { setTouched(true); setNotes(v); };
 
   const shopping = shoppingFor(provisions, crewName);
-  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping, offer: !!info.joincrew_live });
+  const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping, offer: !!info.joincrew_live, details: details || {} });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));
   const saveNotes = () => { if (online && notes.trim() !== savedFor(trip)) api.put(`/boats/${boat.boat_id}/voyage-notes`, { notes, trip_id: trip }).then(onInvited).catch(() => {}); };

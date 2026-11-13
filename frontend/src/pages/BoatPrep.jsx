@@ -1231,7 +1231,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
-      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
+      {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}
       <ResetListsDialog open={dialog?.type === "reset"} options={resetOptions(state, templates)} onConfirm={confirmReset} onClose={() => setDialog(null)} />
       <DeleteListDialog list={dialog?.type === "deleteList" ? dialog.list : null} onConfirm={deleteList} onClose={() => setDialog(null)} />

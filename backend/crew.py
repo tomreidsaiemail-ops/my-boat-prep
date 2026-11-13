@@ -8,6 +8,7 @@ from typing import Annotated, Dict, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
+from briefing_fill import html_lines, shown, video_url
 from db import db
 from auth import get_current_user, require_premium
 from email_service import send_email
@@ -160,7 +161,7 @@ def invite_html(owner: str, vessel: str, email: str, link: str, roles: List[str]
     extra = f'<p><b>Your role:</b> {escape(", ".join(roles))}</p>' if roles else ""
     for r in roles:
         if (b := (briefings or {}).get(r.lower())):
-            extra += f'<p><b>Role briefing - {escape(r)}:</b><br/>{escape(b).replace(chr(10), "<br/>")}</p>'
+            extra += f'<p><b>Role briefing - {escape(r)}:</b><br/>{html_lines(b)}</p>'
     extra += shopping_html(shopping or []) + shore_brief_html(shore)
     if notes.strip():
         extra += f'<p><b>Planned voyage or race:</b><br/>{escape(notes.strip()).replace(chr(10), "<br/>")}</p>'
@@ -290,6 +291,7 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
         briefs = await role_briefings(user["user_id"], boat_id)
         wanted = {r.lower() for r in roles}
         briefs.update({role_label(k).lower(): str(v).strip()[:2000] for k, v in payload.briefings.items() if role_label(k).lower() in wanted and str(v).strip()})
+        briefs = {k: shown(v, doc.get("boat") or {}) for k, v in briefs.items()}
         await send_email(to=[email], subject=f"Join the crew of {vessel} on My Boat Prep",
                          html=invite_html(user.get("name") or user["email"], vessel, email, f"{public_base(request)}/", roles, notes, briefs, name,
                                           [s.strip() for s in payload.shopping if s.strip()], await joincrew.live(), bool(doc.get("shore"))))
@@ -355,8 +357,9 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
         for r in rs:
             b = briefs.get(r.lower(), "")
             hit = reads.get((uid, r.lower())) if uid else None
-            out.append({"role": r, "has_briefing": bool(b), "read_at": hit["at"] if hit and b and brief_read(hit.get("hash"), b) else None,
-                        "read_old": bool(hit and b and not brief_read(hit.get("hash"), b))})
+            ok = bool(hit and b and brief_read(hit.get("hash"), b))
+            out.append({"role": r, "has_briefing": bool(b), "read_at": hit["at"] if ok else None, "read_old": bool(hit and b and not ok),
+                        "video": bool(video_url(b)), "video_choice": hit.get("video", "") if ok and video_url(b) else ""})
         return out
     for i in invites:
         i["prep"] = prep.get((i.get("name") or "").strip().lower())

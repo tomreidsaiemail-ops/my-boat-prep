@@ -3,10 +3,12 @@ from datetime import datetime, timezone
 from typing import Annotated, List, Optional
 from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from typing import Literal
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user, to_user_out
 import joincrew
+from briefing_fill import fill, shown, video_url
 from crew import SHORE_BRIEF, BoatPath, brief_hash, brief_read, owned_boat, role_briefings
 from crew_register import record_walkthrough
 from agreement_pdf import build_agreement_pdf
@@ -121,7 +123,7 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "areas": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
+                                       {"_id": 0, "boat": 1, "boat_terms": 1, "zone_maps": 1, "areas": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -134,7 +136,12 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
     roles = (doc.get("crew_roles") or {}).get(user["user_id"]) or []
     reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0})}
     seen = lambda r: (reads.get(r.lower()) or {}).get("at") if briefs.get(r.lower()) and brief_read((reads.get(r.lower()) or {}).get("hash"), briefs[r.lower()]) else None  # noqa: E731
-    return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [{"role": r, "briefing": briefs.get(r.lower(), ""), "read_at": seen(r)} for r in roles],
+
+    def role_view(r):
+        text, video = fill(briefs.get(r.lower(), ""), doc.get("boat") or {})
+        at = seen(r)
+        return {"role": r, "briefing": text, "video": video, "read_at": at, "video_choice": (reads.get(r.lower()) or {}).get("video", "") if at and video else ""}
+    return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [role_view(r) for r in roles],
             "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user),
             "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [],
             "joincrew_offer": not user.get("joincrew") and not to_user_out(user).has_subscription and await joincrew.live()}
@@ -175,6 +182,7 @@ class BriefingReadIn(BaseModel):
     owner_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,80}$")
     boat_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
     role: str = Field(min_length=1, max_length=60)
+    video: Literal["", "watched", "will_watch", "no_time"] = ""
 
 
 @router.post("/crew/briefing-read")
@@ -187,10 +195,12 @@ async def briefing_read(payload: BriefingReadIn, user: dict = Depends(get_curren
     brief = (await role_briefings(payload.owner_id, payload.boat_id)).get(key)
     if not brief:
         raise HTTPException(status_code=400, detail="There's no briefing for that role yet")
+    if video_url(brief) and not payload.video:
+        raise HTTPException(status_code=400, detail="Pick one of the briefing video options first")
     now = datetime.now(timezone.utc).isoformat()
     await db.briefing_reads.update_one({"owner_id": payload.owner_id, "boat_id": payload.boat_id, "user_id": user["user_id"], "role_key": key},
-                                       {"$set": {"hash": brief_hash(brief), "at": now}}, upsert=True)
-    return {"role": payload.role, "read_at": now}
+                                       {"$set": {"hash": brief_hash(brief), "at": now, "video": payload.video if video_url(brief) else ""}}, upsert=True)
+    return {"role": payload.role, "read_at": now, "video_choice": payload.video if video_url(brief) else ""}
 
 
 class WhereIn(BaseModel):
@@ -224,6 +234,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     people = {u["user_id"]: u for u in await db.users.find({"user_id": {"$in": [owner_id, member]}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(2)}
     crew_user, owner = people.get(member) or {}, people.get(owner_id) or {}
     briefs = await role_briefings(owner_id, boat_id)
+    pdf_reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": member}, {"_id": 0})}
     rec = (doc.get("agreements") or {}).get(member) or {}
     areas = {a.get("id"): a for a in doc.get("areas") or [] if isinstance(a, dict)}
     pins = [(f"{m['id']}:{p['id']}", (areas.get(p.get("area_id")) or {}).get("name") or p.get("label") or f"Stop {n + 1}",
@@ -234,7 +245,8 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     pdf = build_agreement_pdf({
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
         "crew_name": crew_name, "crew_email": crew_user.get("email", ""),
-        "roles": [(r, briefs.get(r.lower(), "")) for r in (doc.get("crew_roles") or {}).get(member) or []],
+        "roles": [(r, shown(briefs[r.lower()], doc.get("boat") or {}, (pdf_reads.get(r.lower()) or {}).get("video", "")) if briefs.get(r.lower()) else "")
+                  for r in (doc.get("crew_roles") or {}).get(member) or []],
         "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [(name, note) for sid, name, note in pins if sid in (rec.get("stops") or [])], "agreement": rec})
     safe = re.sub(r"[^\w .-]", "", crew_name)[:60] or "Crew"
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="Boat Agreement - {safe}.pdf"'})

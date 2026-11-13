@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Footprints, Loader2 } from "lucide-react";
+import { Check, Footprints, Loader2, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -22,27 +22,53 @@ const Lines = ({ lines, testId }) => (
   </ul>
 );
 
-const Roles = ({ roles, onRead, busy }) => (roles.length ? roles.map((r, k) => (
-  <div key={r.role} className="flex flex-col gap-1.5 rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
-    <b>{r.role}</b>
-    <p className="whitespace-pre-wrap" data-testid={`agreement-role-${k}-briefing`}>{r.briefing || "No briefing from the skipper for this role yet."}</p>
-    {r.briefing && (r.read_at
-      ? <span className="inline-flex items-center gap-1 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900" data-testid={`agreement-role-${k}-read`}><Check className="h-3.5 w-3.5" strokeWidth={3} /> Read {new Date(r.read_at).toLocaleDateString()}</span>
-      : <label className="flex items-center gap-2 self-start rounded-md border-[1.5px] border-[var(--navy)] bg-white px-2.5 py-1.5 text-sm font-bold" data-testid={`agreement-role-${k}-read-btn`}>
-          {busy === r.role ? <Loader2 className="h-5 w-5 animate-spin" /> : <input type="checkbox" checked={false} onChange={() => onRead(r.role)} className="h-5 w-5 accent-emerald-700" data-testid={`agreement-role-${k}-read-checkbox`} />}
-          I&apos;ve read the {r.role} briefing
-        </label>)}
-  </div>
-)) : <p className="text-sm text-[var(--muted)]" data-testid="agreement-no-roles">The skipper hasn't given you a role yet.</p>);
+const VIDEO_CHOICES = [["watched", "I have watched the briefing video"], ["will_watch", "I will watch the briefing video before we leave"], ["no_time", "I won't have time to watch the briefing video"]];
+export const videoChoiceText = (v) => (VIDEO_CHOICES.find(([k]) => k === v) || [])[1] || "";
+
+const VideoChoices = ({ k, value, onChange }) => (
+  <fieldset className="flex flex-col gap-1 rounded-md border-[1.5px] border-[var(--line)] bg-white p-2" data-testid={`agreement-role-${k}-video-choices`}>
+    <legend className="px-1 text-xs font-bold text-[var(--muted)]">Pick one</legend>
+    {VIDEO_CHOICES.map(([v, label]) => (
+      <label key={v} className="flex items-center gap-2 text-sm font-semibold">
+        <input type="radio" name={`video-${k}`} checked={value === v} onChange={() => onChange(v)} className="h-4 w-4 accent-[var(--navy)]" data-testid={`agreement-role-${k}-video-${v}`} />{label}
+      </label>
+    ))}
+  </fieldset>
+);
+
+const Role = ({ r, k, onRead, busy }) => {
+  const [choice, setChoice] = useState("");
+  const need = !!r.video && !choice;
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
+      <b>{r.role}</b>
+      <p className="whitespace-pre-wrap" data-testid={`agreement-role-${k}-briefing`}>{r.briefing || "No briefing from the skipper for this role yet."}</p>
+      {r.video && <a href={r.video} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 self-start font-bold text-red-700 underline" data-testid={`agreement-role-${k}-video-link`}><PlayCircle className="h-4 w-4" /> Watch the briefing video</a>}
+      {r.briefing && (r.read_at
+        ? <span className="inline-flex flex-wrap items-center gap-1 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900" data-testid={`agreement-role-${k}-read`}><Check className="h-3.5 w-3.5" strokeWidth={3} /> Read {new Date(r.read_at).toLocaleDateString()}{r.video_choice ? ` · ${videoChoiceText(r.video_choice)}` : ""}</span>
+        : <>
+            <label className={`flex items-center gap-2 self-start rounded-md border-[1.5px] border-[var(--navy)] bg-white px-2.5 py-1.5 text-sm font-bold ${need ? "opacity-60" : ""}`} data-testid={`agreement-role-${k}-read-btn`}>
+              {busy === r.role ? <Loader2 className="h-5 w-5 animate-spin" /> : <input type="checkbox" checked={false} disabled={need} onChange={() => onRead(r.role, choice)} className="h-5 w-5 accent-emerald-700" data-testid={`agreement-role-${k}-read-checkbox`} />}
+              I&apos;ve read the {r.role} briefing
+            </label>
+            {r.video && <VideoChoices k={k} value={choice} onChange={setChoice} />}
+            {need && <p className="text-xs font-semibold text-[var(--muted)]" data-testid={`agreement-role-${k}-video-hint`}>Pick one of the video options to confirm.</p>}
+          </>)}
+    </div>
+  );
+};
+
+const Roles = ({ roles, onRead, busy }) => (roles.length ? roles.map((r, k) => <Role key={r.role} r={r} k={k} onRead={onRead} busy={busy} />)
+  : <p className="text-sm text-[var(--muted)]" data-testid="agreement-no-roles">The skipper hasn't given you a role yet.</p>);
 
 export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved, onRead, onClose }) => {
   const [reading, setReading] = useState("");
-  const read = async (role) => {
+  const read = async (role, video = "") => {
     if (!online) { toast.error("Go online to confirm you've read the briefing"); return; }
     setReading(role);
     try {
-      const { data: res } = await api.post("/crew/briefing-read", { owner_id: boat.owner_id, boat_id: boat.boat_id, role });
-      onRead(role, res.read_at);
+      const { data: res } = await api.post("/crew/briefing-read", { owner_id: boat.owner_id, boat_id: boat.boat_id, role, video });
+      onRead(role, res.read_at, res.video_choice);
       toast.success(`Thanks! The skipper can see you've read the ${role} briefing`);
     } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
     finally { setReading(""); }

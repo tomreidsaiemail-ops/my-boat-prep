@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from db import db
 from auth import get_current_user
+from briefing_fill import html_lines, shown
 from crew import BoatPath, owned_boat, public_base, role_briefings, shore_brief_html
 from email_service import send_email
 
@@ -17,7 +18,7 @@ class BriefingIn(BaseModel):
 
 
 def briefing_html(skipper: str, vessel: str, name: str, briefs: List[tuple], notes: str, link: str, shore: bool = False) -> str:
-    rows = "".join(f'<p style="margin:0 0 12px"><b>{escape(r)}</b><br/>{escape(b).replace(chr(10), "<br/>")}</p>' for r, b in briefs)
+    rows = "".join(f'<p style="margin:0 0 12px"><b>{escape(r)}</b><br/>{html_lines(b)}</p>' for r, b in briefs)
     plan = f'<p style="margin:16px 0 0"><b>Voyage or race notes:</b><br/>{escape(notes).replace(chr(10), "<br/>")}</p>' if notes else ""
     return (
         '<div style="font-family:Arial,sans-serif;color:#0f172a;max-width:560px">'
@@ -48,7 +49,7 @@ async def resend_briefings(boat_id: BoatPath, payload: BriefingIn, request: Requ
     sent, skipped = [], []
     for m in members:
         name = names.get(m["user_id"]) or m.get("name") or m["email"]
-        mine = [(r, briefs[r.lower()]) for r in roles.get(m["user_id"]) or [] if briefs.get(r.lower())]
+        mine = [(r, shown(briefs[r.lower()], doc.get("boat") or {})) for r in roles.get(m["user_id"]) or [] if briefs.get(r.lower())]
         if not mine and not doc.get("shore"):
             skipped.append(name)
             continue
