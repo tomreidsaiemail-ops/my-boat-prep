@@ -47,7 +47,11 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
   const tripPlan = cur.plan ?? plan;
   // The trip picked last time sticks for the next invite on this boat.
   const tripKey = `mbp_invite_trip_${boat?.owner_id || "own"}_${boat?.boat_id}`;
-  const pickTrip = (id) => { localStorage.setItem(tripKey, id); setTrip(id); setNotes(savedFor(id) || planFor(id)); setTouched(false); setError(""); };
+  // The picker shows on the first invite each session; after a trip is picked or an invite sent it just names the trip, with Change.
+  const pickedKey = `${tripKey}_session`;
+  const [choosing, setChoosing] = useState(false);
+  const keepTrip = () => sessionStorage.setItem(pickedKey, "1");
+  const pickTrip = (id) => { localStorage.setItem(tripKey, id); keepTrip(); setTrip(id); setNotes(savedFor(id) || planFor(id)); setTouched(false); setError(""); };
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -70,7 +74,7 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
   // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
   useEffect(() => {
     if (!open) return;
-    setQueue([]); setSent({}); setCheck(null); setWalkSkip(null);
+    setQueue([]); setSent({}); setCheck(null); setWalkSkip(null); setChoosing(!sessionStorage.getItem(pickedKey));
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
     const kept = localStorage.getItem(tripKey);
     const t = trips.some((x) => x.id === draft?.trip) ? draft.trip : trips.some((x) => x.id === kept) ? kept : trips[0]?.id || DEFAULT_TRIP;
@@ -95,6 +99,7 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
     setQuickBusy(true); setError("");
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/quick-invite`, { entry_id: picked.entry_id, trip_id: trip, trip_name: cur.name, roles, ...ownWalk }, { timeout: 30000 });
+      keepTrip();
       toast.success(`${picked.name} is in for ${cur.name} (Quick Invite)${data.joined ? "" : ". They join the moment they first sign in"}. Nothing was sent to them.`);
       sessionStorage.removeItem(INVITE_DRAFT);
       setCrewName(""); setEmail(""); setRoles([]); setPicked(null);
@@ -115,6 +120,7 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
       await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name, ...ownWalk }, { timeout: 30000 });
       const who = email.trim();
       sessionStorage.removeItem(INVITE_DRAFT);
+      keepTrip();
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
       if (mode === "qr") setQrFor(who);
       else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
@@ -146,7 +152,13 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
           <DialogTitle className="font-display text-xl font-extrabold">Invite crew to {name}</DialogTitle>
           <DialogDescription className="text-left text-sm">They join by logging in to My Boat Prep with this email. No link to click.</DialogDescription>
         </DialogHeader>
-        {trips.length > 1 && (
+        {trips.length > 1 && !choosing && (
+          <p className="flex flex-wrap items-baseline gap-x-2 text-sm" data-testid="crew-invite-trip-sticky">
+            <span className="field-label">Trip:</span> <b data-testid="crew-invite-trip-name">{cur.name}</b>
+            <button type="button" onClick={() => setChoosing(true)} className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" data-testid="crew-invite-trip-change-btn">Change</button>
+          </p>
+        )}
+        {trips.length > 1 && choosing && (
           <label className="flex flex-col gap-1.5">
             <span className="field-label">Which trip (Route Planning list)?</span>
             <select value={trip} data-no-dirty onChange={(e) => pickTrip(e.target.value)} className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-trip-select">

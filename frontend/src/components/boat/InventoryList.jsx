@@ -267,6 +267,10 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   (boat?.zone_maps || []).forEach((m) => (m.pins || []).forEach((p) => { if (p.area_id && !pinFor[p.area_id]) pinFor[p.area_id] = { mapId: m.id, pinId: p.id }; }));
   const openArea = (id) => {
     setQuery("");
+    // Unfolds the zone group the cupboard (or its parent cupboard) sits in, or there's nothing to scroll to.
+    const top = areas.find((a) => a.id === id)?.parent_id || id;
+    const g = rainbowGroups(areas.filter((a) => !a.parent_id).map((a) => ({ area: a })), zones).find((x) => x.rows.some((r) => r.area.id === top));
+    if (g && folds.includes(g.key || "none")) setFoldList(folds.filter((k) => k !== (g.key || "none")));
     setFocus({ id, at: Date.now() });
     // Waits for a closing dialog (e.g. the Crew Walkthrough) to hand focus back first, or the page jumps back up.
     setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
