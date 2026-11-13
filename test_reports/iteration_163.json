@@ -1,0 +1,31 @@
+{
+  "summary": "I ran read-only checks on the change that turns Role Briefings into '- ' bullets. Backend: 11/11 pytest tests pass, plus a check against the git history. The admin Crew Roles template has 43/43 briefings in bullet form, and they match SAFETY_BRIEFINGS exactly. Radio Operator is exactly the 6 lines asked for. No line holds more than one sentence or ';' clause. The seed file has 43 keys in bullet form, and as_bullets leaves them unchanged. The migration role_briefing_bullets is recorded once and logged once. brief_hash gives the same hash for the paragraph and bullet versions. brief_read accepts hashes made the old way (sha256 of text.strip()) for all 43 briefings, both in the current file and in the previous paragraph version from git, so no crew member has to re-read. Every word is kept: as_bullets(paragraph) == seed for all 43. Emails and the PDF already turn newlines into <br/>. Frontend: on /admin/templates, Crew Roles editor > Default Role Briefings (43 of 43), the Radio Operator textarea shows 6 lines, one bullet each. As Pro, the Helm Edit Item Role Briefing shows 4 bullet lines. In Invite Crew, picking Helm shows 4 bullets on separate lines in the message preview (pre-wrap). No invite was sent. I could not reach the crew member's Crew Agreement view without changing data: test-user-free has no roles on pro/main. The code uses whitespace-pre-wrap there. Two issues found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "startup migration seed_role_briefing_bullets (backend/role_briefings.py)", "issue": "Boats still holding the OLD Port/Starboard Trim default were not converted. That default is the original TRIM_BRIEFING paragraph seeded by seed_trim_briefings: 'Watch out for the boom at all times! Re trimming, put 3 to 4 wraps...'. 17 Port/Starboard Trim items in preview are still one paragraph, e.g. test-user-pro/main item 9 Port Trim, plus the free, beta and admin boats and 6 real user boats. The cause: `olds` only holds _flat(SAFETY_BRIEFINGS) and the current template briefings. It does not hold _flat(TRIM_BRIEFING), and the template's trim text had already been replaced by the newer safety version. The migration flag is already set in preview, so a fix needs a new migration id, e.g. 'trim_briefing_bullets'. The same will happen in prod."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RoleBriefingField (Edit Item dialog, Crew Roles)", "issue": "The Role Briefing textarea is only about 46px tall (clientHeight 46 vs scrollHeight 198 for Helm). The 'h-auto' class loses to the fixed height from .field-input, so rows={4} has no effect. Only about 1.5 lines of the first bullet show, and the user has to scroll or resize to see the other bullets. RoleBriefingPrompt already uses '!h-auto min-h-[7rem]', so use the same here.", "selector": "[data-testid='edit-item-briefing-input']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_role_briefing_bullets.py", "/app/test_reports/pytest/role_bullets.xml"],
+  "action_items": [
+    "Add a one-off migration (new id) that converts boat Crew Roles items whose briefing _flat-matches TRIM_BRIEFING but is not already bulleted to as_bullets(...). Or add _flat(TRIM_BRIEFING) to `olds` and run it under a new migration id.",
+    "RoleBriefingField.jsx: change 'h-auto' to '!h-auto min-h-[7rem]' (or similar) so the bullets show without scrolling."
+  ],
+  "critical_code_review_comments": [
+    "as_bullets SENTENCE regex will also split after abbreviations followed by a capital letter (e.g. 'e.g. VHF', 'approx. Noon'). The 43 defaults are fine, but admin- or skipper-written text could get broken bullets. Low risk.",
+    "The migration writes the db.migrations record after the updates, using insert_one with no upsert or guard. If two workers start at the same time, both can run it and one insert will raise DuplicateKeyError. The updates are idempotent, so this is low risk."
+  ],
+  "updated_files": ["/app/backend/tests/test_role_briefing_bullets.py"],
+  "success_rate": {"backend": "100% (11/11); 1 migration-coverage gap found by a separate DB check", "frontend": "90% (all requested views show bullets on separate lines; the edit textarea is too short)"},
+  "seed_data_creation": "None. Read-only. No templates, briefings, invites or emails were changed or sent.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin Crew Roles template list_id is tpl_9f5620bc49 (/admin/templates, template-list-edit-<id>, template-role-briefing-radio-operator-toggle/-input). The Pro boat 'main' Crew Roles list is tpl_test67crew: item 12 Helm (bullets), item 9 Port Trim (old paragraph, not converted). Invite: boat-crew-btn > crew-invite-open-btn > crew-role-chip-2 (Helm) > role-briefing-prompt-keep-btn > crew-message-preview. Run: cd /app/backend && python -m pytest tests/test_role_briefing_bullets.py -p no:xdist -o addopts=''"
+}

@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 import re
 
 from db import db
-from templates import CREW_ROLES_NAME, _role_key, push_role_briefings
+from templates import CREW_ROLES_NAME, TRIM_BRIEFING, _role_key, push_role_briefings
 
 SENTENCE = re.compile(r"(?<=[.!?;])\s+(?=[A-Z'\"(‘“])")
+ABBREV = re.compile(r"\b(?:e\.g|i\.e|etc|approx|no|vs|ca|incl|min|max|Mr|Mrs|Ms|Dr|St)\.$", re.I)
 
 SAFETY_BRIEFINGS = {
     # Navigation & Communications
@@ -267,13 +268,25 @@ async def seed_role_safety_briefings():
     await db.migrations.insert_one({"_id": "role_safety_briefings", "at": now})
 
 
+BULLETS_MIGRATION = "role_briefing_bullets_v2"
+# The first Port/Starboard Trim default, still on some boats.
+OLD_TRIM_BRIEFING = ("Watch out for the boom at all times! Re trimming, put 3 to 4 wraps clockwise on the drum, keep your thumbs out and palms facing the winch, "
+                     "and hold the tail clear of the pinch area without wrapping it around your hand or body.")
+
+
 def as_bullets(text: str) -> str:
     """A briefing as one '- ' bullet per sentence (and per ';' clause), keeping every word; already-bulleted text is left alone."""
     t = str(text or "").strip()
     lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
     if not t or all(ln.startswith("- ") for ln in lines):
         return t
-    return "\n".join(f"- {p}" for p in SENTENCE.split(" ".join(t.split())) if p.strip())
+    parts = []
+    for p in SENTENCE.split(" ".join(t.split())):
+        if parts and ABBREV.search(parts[-1]):
+            parts[-1] += f" {p}"
+        elif p.strip():
+            parts.append(p)
+    return "\n".join(f"- {p}" for p in parts)
 
 
 def _flat(text: str) -> str:
@@ -282,11 +295,11 @@ def _flat(text: str) -> str:
 
 async def seed_role_briefing_bullets():
     """Runs once: every default Role Briefing in the admin Crew Roles list becomes '- ' bullet points; boats' copies still matching a default follow."""
-    if await db.migrations.find_one({"_id": "role_briefing_bullets"}):
+    if await db.migrations.find_one({"_id": BULLETS_MIGRATION}):
         return
     now = datetime.now(timezone.utc).isoformat()
     tpl = await db.list_templates.find_one({"custom": True, "name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}}, {"_id": 1, "items": 1})
-    olds = {_flat(v) for v in SAFETY_BRIEFINGS.values()}
+    olds = {_flat(v) for v in SAFETY_BRIEFINGS.values()} | {_flat(TRIM_BRIEFING), _flat(OLD_TRIM_BRIEFING)}
     if tpl:
         olds |= {_flat(i["briefing"]) for i in tpl.get("items") or [] if i.get("briefing")}
         items = [{**i, "briefing": as_bullets(i["briefing"])} if i.get("briefing") else i for i in tpl.get("items") or []]
@@ -302,4 +315,4 @@ async def seed_role_briefing_bullets():
             changed += 1
             await db.user_boats.update_one({"_id": b["_id"]}, {"$set": {f"data.{lid}": nxt, "updated_at": now}})
     logging.getLogger(__name__).info("Role briefings as bullets: template %s, %d boats", bool(tpl), changed)
-    await db.migrations.insert_one({"_id": "role_briefing_bullets", "at": now})
+    await db.migrations.update_one({"_id": BULLETS_MIGRATION}, {"$setOnInsert": {"at": now}}, upsert=True)

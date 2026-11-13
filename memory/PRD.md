@@ -911,3 +911,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Web pick: GET /api/boats/{id}/zone-schematics/search/{sid}/image/{rid} proxies the full picture (same-origin, <=2400px) -> crop -> POST .../pick multipart (result_id, file) saves it with source link. Uploads (picker "Upload My Own Diagram" and Boat Inventory upload) go through the same crop step before POST /zone-maps.
 - Crop step: Rotate left/right (90° via canvas re-render, crop box refits; Reset keeps the turn, resets zoom/crop). (2026-06)
 - Search again (2026-06): label 'Search again', free, POST .../search/{sid}/again adds 'overhead schematics only'; Serper called once per search (cached via again_id); button hides after one use, back on reopen.
+
+## Role Briefings as bullets (2026-06)
+- All 43 admin Crew Roles default briefings are "- " bullets (one per sentence / ';' clause, every word kept). Seed: backend/role_briefings.py SAFETY_BRIEFINGS + templates.TRIM_BRIEFING.
+- Startup migration `role_briefing_bullets_v2` (seed_role_briefing_bullets): converts the template + boat copies that still match a default (incl. old trim default); skipper-written briefings untouched. Runs once in prod on deploy.
+- crew.brief_hash ignores bullets/whitespace; brief_read also accepts old-style hashes -> no crew has to re-read.
+- Views already respect newlines (agreement whitespace-pre-wrap, invite preview pre-wrap, emails/PDF <br/>). Edit Item Role Briefing textarea made taller (!h-auto min-h-[8rem], rows 7).
+- Tested iteration_163 (+ tests/test_role_briefing_bullets.py 11 pass).
