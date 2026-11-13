@@ -126,6 +126,14 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
                 className="field-input" data-testid="boat-year-input" />
             </label>
             {(onMaintSetup || onZoneMap) && <p className="col-span-2 self-end pb-2 text-xs text-[var(--muted)]" data-testid="boat-year-hint">Make, model and year of manufacture are needed for the buttons below.</p>}
+            {onZoneMap && (
+              <p className="col-span-3 flex flex-wrap items-baseline gap-x-2 text-sm" data-testid="boat-layout-row" title={boat.layout_detail || undefined}>
+                <span className="field-label">Layout</span>
+                {boat.layout ? <b data-testid="boat-layout-name">{boat.layout}</b> : <span className="text-xs text-[var(--muted)]" data-testid="boat-layout-none">Not chosen yet. The Magic Mariner shows your model&apos;s factory layouts when you create a Zone Map Overview.</span>}
+                {boat.layout && <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" data-testid="boat-layout-change-btn"
+                  onClick={() => { if (!identityReady(boat)) { toast.error(IDENTITY_NEEDED); return; } onChange("layout", ""); onChange("layout_detail", ""); onZoneMap(); }}>Change</button>}
+              </p>
+            )}
             {onMaintSetup && (
               <button type="button" onClick={() => (identityReady(boat) ? onMaintSetup() : toast.error(IDENTITY_NEEDED))}
                 className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">

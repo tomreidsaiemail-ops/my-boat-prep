@@ -929,6 +929,12 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  // The Magic Mariner layout pick (Zone Map Overviews) is saved on the boat details.
+  useEffect(() => {
+    const f = (e) => { if (!crew) Object.entries(e.detail).forEach(([k, v]) => updateBoat(k, v)); };
+    window.addEventListener("mbp:set-boat-fields", f);
+    return () => window.removeEventListener("mbp:set-boat-fields", f);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   // Remembers the shore email as it was before the skipper started deleting, so clearing it (in one go or by backspacing) can offer to remove that shore contact.
   const shoreFull = useRef({ boat: null, email: "" });
   const shoreNow = useRef("");

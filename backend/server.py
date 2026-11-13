@@ -143,6 +143,8 @@ class BoatDetails(BaseModel):
     make: str = ""
     model: str = ""
     year_built: str = ""
+    layout: str = Field(default="", max_length=80)
+    layout_detail: str = Field(default="", max_length=400)
     hull_colour: str = ""
     deck_colour: str = ""
     budget_currency: str = ""

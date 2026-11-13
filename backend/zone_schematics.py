@@ -33,11 +33,17 @@ PLANS = [
 ]
 
 
+def _name(boat: dict) -> str:
+    return " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
+
+
 def plan_prompt(boat: dict, what: str) -> str:
     size = f", {boat['loa']} {'ft' if boat.get('units') == 'ft' else 'm'} long" if str(boat.get("loa") or "").strip() else ""
-    name = " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
     kind = str(boat.get("boat_type") or "boat").strip()
-    return (f"A clean top-down layout plan of a {name} ({kind}{size}). Draw the {what}. "
+    layout = str(boat.get("layout") or "").strip()
+    detail = str(boat.get("layout_detail") or "").strip()
+    pick = f"This boat has the factory layout '{layout}'{': ' + detail if detail else ''}. Draw exactly that configuration. " if layout else ""
+    return (f"A clean top-down layout plan of a {_name(boat)} ({kind}{size}). Draw the {what}. {pick}"
             "Match the real layout of this make and model as published by the manufacturer, as closely as you know it. "
             "Style: technical wireframe line drawing like a boat builder's brochure plan, thin dark navy lines on a plain white background, no shading, no people, "
             "landscape orientation with the bow pointing right. Label each area clearly in short English words (e.g. Cockpit, Helm, Saloon, Galley, Nav station, "
@@ -66,14 +72,17 @@ async def _one(job_id: str, owner: str, n: int, boat: dict) -> bool:
         return False
 
 
-async def _run(job_id: str, owner: str, boat: dict, source: str):
+async def _run(job_id: str, owner: str, boat: dict, source):
     done = await asyncio.gather(*[_one(job_id, owner, n, boat) for n in range(len(PLANS))])
-    if not any(done):
+    if not any(done) and source:
         await quota.refund(owner, source)
     await db.zone_schematics.update_one({"job_id": job_id}, {"$set": {"status": "done" if any(done) else "failed", "finished_at": datetime.now(timezone.utc).isoformat()}})
 
 
 class PlanBoat(BaseModel):
+    layout: str = Field(default="", max_length=80)
+    layout_detail: str = Field(default="", max_length=400)
+    layouts_job: str = Field(default="", pattern=r"^([a-f0-9-]{36})?$")
     boat_type: str = Field(default="", max_length=60)
     make: str = Field(default="", max_length=60)
     model: str = Field(default="", max_length=60)
@@ -90,13 +99,16 @@ async def start_schematics(boat_id: BoatPath, payload: PlanBoat, user: dict = De
     boat = payload.model_dump()
     if not (str(boat.get("make") or "").strip() and str(boat.get("model") or "").strip()):
         raise HTTPException(status_code=400, detail="Add your boat's make and model first")
-    sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built"))
+    sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built", "layout"))
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-    recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "status": {"$in": ["running", "done"]}, "created_at": {"$gte": week_ago}},
+    recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "kind": {"$ne": "layouts"}, "status": {"$in": ["running", "done"]}, "created_at": {"$gte": week_ago}},
                                                {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
     if recent:
         return {"job_id": recent["job_id"], "total": len(PLANS), "scans_left": await quota.left(user["user_id"]), "reused": True}
-    source = await quota.consume(user["user_id"])
+    # Picking a layout from a fresh Layout check draws its plans without another Magic use (one use in total).
+    free = boat.pop("layouts_job") and await db.zone_schematics.find_one_and_update(
+        {"job_id": payload.layouts_job, "owner_id": user["user_id"], "boat_id": boat_id, "kind": "layouts", "plans_free": True}, {"$set": {"plans_free": False}})
+    source = None if free else await quota.consume(user["user_id"])
     job_id = str(uuid.uuid4())
     await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "status": "running", "images": [], "failed": 0,
                                          "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
@@ -117,7 +129,8 @@ async def _job(job_id: str, user: dict) -> dict:
 async def schematics_status(job_id: JobPath, user: dict = Depends(get_current_user)):
     job = await _job(job_id, user)
     images = sorted(job["images"], key=lambda i: i["id"])
-    return {"status": job["status"], "total": len(PLANS), "failed": job.get("failed", 0), "images": [{"id": i["id"], "title": i["title"]} for i in images]}
+    return {"status": job["status"], "total": job.get("total", len(PLANS)), "failed": job.get("failed", 0),
+            "images": [{"id": i["id"], "title": i["title"], "summary": i.get("summary", "")} for i in images]}
 
 
 @router.get("/zone-schematics/{job_id}/{img_id}")
@@ -130,6 +143,79 @@ async def schematic_image(job_id: JobPath, img_id: ImgPath, user: dict = Depends
     except Exception:
         raise HTTPException(status_code=502, detail="Couldn't load the picture")
     return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+LAYOUTS_PROMPT = """List the factory interior layout configurations the {boat} ({kind}) was built in, as published by the builder
+(e.g. galley to port or starboard, 2 or 3 or 4 cabins, owner's or charter version). Give at most 4, most common first, and only ones you are confident existed.
+If it was only built one way, give just that one. Reply with strict JSON only:
+{{"layouts": [{{"label": "Layout A: Port Galley", "summary": "Galley to port, nav station to starboard, 3 cabins, 2 heads"}}]}}
+Labels start "Layout A:", "Layout B:" and so on, then 2 to 4 words naming what makes that layout different."""
+
+
+async def _layout_image(job_id: str, owner: str, n: int, boat: dict, v: dict) -> bool:
+    try:
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"zonelayout-{job_id}-{n}", system_message="You draw clear boat layout plans.")
+        chat.with_model("gemini", MODEL).with_params(modalities=["image", "text"])
+        _, images = await chat.send_message_multimodal_response(UserMessage(text=plan_prompt({**boat, "layout": v["label"], "layout_detail": v["summary"]}, PLANS[3][1])))
+        if not images:
+            raise ValueError("no image")
+        img = Image.open(io.BytesIO(base64.b64decode(images[0]["data"]))).convert("RGB")
+        img.thumbnail((1600, 1600))
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=85)
+        path = f"{APP_NAME}/zone-schematics/{owner}/{job_id}/{n}.jpg"
+        await asyncio.to_thread(put_object, path, out.getvalue(), "image/jpeg")
+        await db.zone_schematics.update_one({"job_id": job_id}, {"$push": {"images": {"id": str(n), "title": v["label"], "summary": v["summary"], "path": path}}})
+        return True
+    except Exception as e:
+        log.error(f"Zone layout {n} failed: {e}")
+        await db.zone_schematics.update_one({"job_id": job_id}, {"$inc": {"failed": 1}})
+        return False
+
+
+async def _layouts_run(job_id: str, owner: str, boat: dict, source: str):
+    """Asks which factory layouts the model came in, then draws a labelled full-interior plan of each for the skipper to pick from."""
+    kind = str(boat.get("boat_type") or "boat").strip()
+    try:
+        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"zonelayouts-{job_id}",
+                       system_message="You know boat builders' published layouts and reply with strict JSON.").with_model("gemini", "gemini-3-flash-preview")
+        reply = await chat.send_message(UserMessage(text=LAYOUTS_PROMPT.format(boat=_name(boat), kind=kind)))
+        raw = json.loads(re.search(r"\{.*\}", str(reply), re.S).group(0)).get("layouts") or []
+        layouts = [{"label": str(v.get("label") or "").strip()[:80], "summary": str(v.get("summary") or "").strip()[:400]} for v in raw if isinstance(v, dict) and str(v.get("label") or "").strip()][:4]
+    except Exception as e:
+        log.error(f"Zone layouts list failed: {e}")
+        layouts = []
+    layouts = layouts or [{"label": "Layout A: Standard", "summary": ""}]
+    await db.zone_schematics.update_one({"job_id": job_id}, {"$set": {"total": len(layouts)}})
+    done = await asyncio.gather(*[_layout_image(job_id, owner, n, boat, v) for n, v in enumerate(layouts)])
+    if not any(done):
+        await quota.refund(owner, source)
+    await db.zone_schematics.update_one({"job_id": job_id}, {"$set": {"status": "done" if any(done) else "failed", "finished_at": datetime.now(timezone.utc).isoformat(),
+                                                                      **({} if any(done) else {"plans_free": False})}})
+
+
+@router.post("/boats/{boat_id}/zone-layouts")
+async def start_layouts(boat_id: BoatPath, payload: PlanBoat, user: dict = Depends(require_premium)):
+    """Magic Mariner shows up to 4 labelled factory layouts of the make and model; the picked one's plans are then drawn for the same Magic use."""
+    if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    boat = payload.model_dump(exclude={"layout", "layout_detail", "layouts_job"})
+    if not (str(boat.get("make") or "").strip() and str(boat.get("model") or "").strip()):
+        raise HTTPException(status_code=400, detail="Add your boat's make and model first")
+    sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built"))
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "kind": "layouts", "status": {"$in": ["running", "done"]}, "created_at": {"$gte": week_ago}},
+                                               {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
+    if recent:
+        return {"job_id": recent["job_id"], "scans_left": await quota.left(user["user_id"]), "reused": True}
+    source = await quota.consume(user["user_id"])
+    job_id = str(uuid.uuid4())
+    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "kind": "layouts", "status": "running", "images": [], "failed": 0,
+                                         "total": 4, "plans_free": True, "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
+    task = asyncio.create_task(_layouts_run(job_id, user["user_id"], boat, source))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return {"job_id": job_id, "scans_left": await quota.left(user["user_id"])}
 
 
 class UseIn(BaseModel):
