@@ -145,10 +145,8 @@ class BoatDetails(BaseModel):
     model: str = ""
     year_built: str = ""
     layout: str = Field(default="", max_length=80)
-    layout_detail: str = Field(default="", max_length=600)
-    layout_galley: str = Field(default="", max_length=20)
-    layout_ref: str = Field(default="", pattern=r"^([a-f0-9-]{36}/[0-9])?$")
-    layout_source: str = Field(default="", max_length=500)
+    layout_detail: str = Field(default="", max_length=400)
+    layout_comment: str = Field(default="", max_length=300)
     hull_colour: str = ""
     deck_colour: str = ""
     budget_currency: str = ""

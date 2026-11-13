@@ -63,7 +63,7 @@ export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps
             <ImagePlus className="h-4 w-4" /> Upload my own schematic or photo
           </button>
           <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => { setChoose(false); setPlans(true); }} data-testid="zone-overview-magic-btn">
-            <Sparkles className="h-4 w-4" /> Magic Mariner: draw more to pick from
+            <Sparkles className="h-4 w-4" /> Magic Mariner: draw a layout plan
           </button>
         </DialogContent>
       </Dialog>

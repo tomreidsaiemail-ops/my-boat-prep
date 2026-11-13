@@ -1,138 +1,106 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2, PencilLine, RefreshCw, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
-import { LinkedText } from "@/components/boat/LinkedText";
-import useAdminLists from "@/hooks/useAdminLists";
 
-const HELP_NAME = "admin - help panel - zone map selection";
 const boatName = (b) => [b.make, b.model].map((s) => (s || "").trim()).filter(Boolean).join(" ");
 export const zoneMapLabel = (b) => `Create ${(b.boat_type || "").trim() || "boat"} ZONE MAP OVERVIEWS for a ${boatName(b)}...`;
+export const LAYOUT_EXAMPLE = "e.g. Owner's version, 3 cabins, galley on port, head in fore peak";
 
-const Help = ({ online, boat }) => {
-  const help = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === HELP_NAME)?.items;
-  return (
-    <div className="flex flex-col gap-1 rounded-md bg-sky-50 p-3 text-sm" data-testid="zone-plans-help">
-      {help?.length ? help.map((i, k) => (
-        <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""}><LinkedText text={i.label} testId={`zone-plans-help-link-${k}`} /></p>
-      )) : <p data-testid="zone-plans-help-default">The Magic Mariner is drawing top-down layout plans of a {boatName(boat)}. Select a couple that help you map out your cockpit, saloon, galley and cabins, then tap Continue. They become Zone Map Overviews, where you drag your colours onto each area.</p>}
+const boatBody = (b, comment, retry) => ({ boat_type: b.boat_type || "", make: b.make || "", model: b.model || "", year_built: b.year_built || "",
+  loa: String(b.loa || ""), units: b.units === "ft" ? "ft" : "m", layout_comment: (comment || "").trim(), retry });
+const saveComment = (layout_comment) => window.dispatchEvent(new CustomEvent("mbp:set-boat-fields", { detail: { layout_comment } }));
+
+const Describe = ({ comment, setComment, onRedraw, onBack }) => (
+  <div className="flex flex-col gap-2" data-testid="zone-plan-describe">
+    <label htmlFor="zone-plan-comment" className="text-sm font-bold">Describe your boat&apos;s layout and the Magic Mariner will draw it again (1 Magic use).</label>
+    <textarea id="zone-plan-comment" rows={3} maxLength={300} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={LAYOUT_EXAMPLE}
+      className="field-input min-h-[84px] py-2" data-testid="zone-plan-comment-input" />
+    <div className="flex gap-2">
+      <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onBack} data-testid="zone-plan-describe-back-btn">Back</button>
+      <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={!comment.trim()} onClick={onRedraw} data-testid="zone-plan-redraw-btn">
+        <RefreshCw className="h-4 w-4" /> Redraw my layout
+      </button>
     </div>
-  );
-};
-
-const Plan = ({ job, img, on, onToggle }) => (
-  <button type="button" onClick={onToggle} aria-pressed={on} data-testid={`zone-plan-${img.id}`}
-    className={`relative flex flex-col overflow-hidden rounded-md border-2 bg-white text-left [transition:border-color_.15s] ${on ? "border-[var(--navy)]" : "border-[var(--line)]"}`}>
-    <img src={`${API}/zone-schematics/${job}/${img.id}`} alt={`${img.title} layout plan`} className="aspect-[16/10] w-full object-contain" />
-    <span className="px-2 py-1.5 text-xs font-bold">{img.title}</span>
-    {on && <CheckCircle2 className="absolute right-1.5 top-1.5 h-6 w-6 rounded-full bg-white text-[var(--green)]" data-testid={`zone-plan-${img.id}-ticked`} />}
-  </button>
+  </div>
 );
 
-const Layout = ({ job, img, onPick, busy }) => (
-  <button type="button" onClick={onPick} disabled={busy} data-testid={`zone-layout-${img.id}`}
-    className="flex flex-col overflow-hidden rounded-md border-2 border-[var(--line)] bg-white text-left [transition:border-color_.15s] hover:border-[var(--navy)] disabled:opacity-60">
-    <img src={`${API}/zone-schematics/${job}/${img.id}`} alt={`${img.title} plan`} className="aspect-[16/10] w-full object-contain" />
-    <span className="px-2 pt-1.5 text-sm font-extrabold text-[var(--navy)]" data-testid={`zone-layout-${img.id}-label`}>{img.title}</span>
-    {img.summary && <span className="px-2 pb-1.5 text-xs text-[var(--muted)]">{img.summary}</span>}
-  </button>
-);
-
-const boatBody = (b) => ({ boat_type: b.boat_type || "", make: b.make || "", model: b.model || "", year_built: b.year_built || "", loa: String(b.loa || ""), units: b.units === "ft" ? "ft" : "m" });
-const saveLayout = (layout, detail) => window.dispatchEvent(new CustomEvent("mbp:set-boat-fields", { detail: { layout, layout_detail: detail } }));
-
-// Magic Mariner: first the model's factory layouts (up to 4, labelled) to pick from, then the 4 layout plans of the picked one,
-// all for one Magic use. A boat with a layout already chosen goes straight to its plans; Change layout shows the layouts again.
+// Magic Mariner: one labelled full-interior plan from make, model, year and the skipper's layout comment. The skipper confirms it
+// matches their boat (it becomes a Zone Map Overview) or describes the layout and has it redrawn; every drawing is one Magic use.
 export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClose }) => {
-  const [stage, setStage] = useState("layouts");
-  const [layoutsJob, setLayoutsJob] = useState(null);
   const [job, setJob] = useState(null);
-  const [status, setStatus] = useState({ status: "idle", images: [], total: 4, failed: 0 });
-  const [picked, setPicked] = useState([]);
+  const [status, setStatus] = useState({ status: "idle", images: [] });
+  const [comment, setComment] = useState(boat.layout_comment || "");
+  const [describing, setDescribing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const timer = useRef(null);
-  const run = async (path, body, fail) => {
-    setError(""); setPicked([]); setJob(null); setStatus({ status: "running", images: [], total: 4, failed: 0 });
-    if (!online) { setError("Drawing layout plans needs a signal"); setStatus((s) => ({ ...s, status: "idle" })); return null; }
-    try {
-      const { data } = await api.post(path, body, { timeout: 30000 });
-      setJob(data.job_id);
-      return data.job_id;
-    } catch (e) { setError(apiError(e, fail)); setStatus((s) => ({ ...s, status: "idle" })); return null; }
+  const draw = async (text, retry = false) => {
+    setError(""); setDescribing(false); setJob(null); setStatus({ status: "running", images: [] });
+    if (!online) { setError("Drawing a layout plan needs a signal"); setStatus({ status: "idle", images: [] }); return; }
+    try { setJob((await api.post(`/boats/${boatId}/zone-schematics`, boatBody(boat, text, retry), { timeout: 30000 })).data.job_id); }
+    catch (e) { setError(apiError(e, "The Magic Mariner couldn't start the layout plan, please try again")); setStatus({ status: "idle", images: [] }); }
   };
-  const showLayouts = async () => {
-    setStage("layouts");
-    setLayoutsJob(await run(`/boats/${boatId}/zone-layouts`, boatBody(boat), "The Magic Mariner couldn't look up the layouts, please try again"));
-  };
-  const drawPlans = (layout, detail, fromJob) => {
-    setStage("plans");
-    run(`/boats/${boatId}/zone-schematics`, { ...boatBody(boat), layout: layout || "", layout_detail: detail || "", layouts_job: fromJob || "" }, "The Magic Mariner couldn't start the layout plans, please try again");
-  };
-  const pickLayout = (img) => { saveLayout(img.title, img.summary || ""); drawPlans(img.title, img.summary, layoutsJob); };
   useEffect(() => {
     if (!open) { clearInterval(timer.current); setJob(null); return; }
-    if (boat.layout) drawPlans(boat.layout, boat.layout_detail); else showLayouts();
+    setComment(boat.layout_comment || "");
+    draw(boat.layout_comment || "");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!job) return undefined;
     const poll = () => api.get(`/zone-schematics/${job}`, { timeout: 15000 }).then(({ data }) => {
       setStatus(data);
       if (data.status !== "running") clearInterval(timer.current);
-      if (data.status === "failed") setError("The Magic Mariner couldn't draw the plans this time. Your Magic use was given back, please try again.");
+      if (data.status === "failed") setError("The Magic Mariner couldn't draw the plan this time. Your Magic use was given back, please try again.");
     }).catch(() => {});
     poll();
     timer.current = setInterval(poll, 3000);
     return () => clearInterval(timer.current);
   }, [job]);
-  const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const finish = async () => {
+  const redraw = () => { saveComment(comment.trim()); draw(comment, true); };
+  const accept = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post(`/boats/${boatId}/zone-schematics/${job}/use`, { image_ids: picked });
-      toast.success(`${picked.length} Zone Map ${picked.length === 1 ? "Overview" : "Overviews"} added. Drag your colours onto ${picked.length === 1 ? "it" : "them"}.`);
+      const { data } = await api.post(`/boats/${boatId}/zone-schematics/${job}/use`, { image_ids: [status.images[0].id] });
+      toast.success("Zone Map Overview added. Drag your colours onto it.");
       onDone(data.zone_maps);
-    } catch (e) { toast.error(apiError(e, "Couldn't add the plans, please try again")); }
+    } catch (e) { toast.error(apiError(e, "Couldn't add the plan, please try again")); }
     setBusy(false);
   };
-  const layouts = stage === "layouts";
-  const waiting = status.status === "running" ? Math.max(0, status.total - status.images.length - status.failed) : 0;
+  const plan = status.images[0];
+  const running = status.status === "running";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="zone-plans-dialog" data-stage={stage}>
+      <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="zone-plans-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold"><Sparkles className="h-5 w-5 shrink-0" /> {zoneMapLabel(boat).replace(/\.\.\.$/, "")}</DialogTitle>
-          <DialogDescription className="text-left text-xs">Magic Mariner · AI-drawn plans based on the builder's published layouts, not the official drawings.</DialogDescription>
+          <DialogDescription className="text-left text-xs">Magic Mariner · an AI-drawn plan from your make, model, year and layout comment, not the builder&apos;s official drawing.</DialogDescription>
         </DialogHeader>
-        {layouts
-          ? <p className="rounded-md bg-sky-50 p-3 text-sm" data-testid="zone-layouts-help">The {boatName(boat)} came in {status.status === "running" && !status.images.length ? "one or more" : status.total === 1 ? "one" : `${status.total}`} factory {status.total === 1 ? "layout" : "layouts"}. Tap the one that matches your boat, and the Magic Mariner draws its deck, saloon & galley, cabins and full interior plans (no extra Magic use).</p>
-          : <>
-            {boat.layout && <p className="flex flex-wrap items-baseline gap-x-2 text-sm" data-testid="zone-plans-layout">Layout: <b>{boat.layout}</b>
-              <button type="button" className="text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={showLayouts} data-testid="zone-plans-change-layout-btn">Change layout</button></p>}
-            <Help online={online} boat={boat} />
-          </>}
+        {comment.trim() && !describing && <p className="text-sm" data-testid="zone-plan-comment-used">Your layout comment: <b>{comment.trim()}</b></p>}
         {error && <div role="alert" className="flex flex-col gap-2 rounded-md bg-red-50 p-3 text-sm font-bold text-[var(--red)]" data-testid="zone-plans-error">{error}
-          <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" onClick={() => (layouts ? showLayouts() : drawPlans(boat.layout, boat.layout_detail))} data-testid="zone-plans-retry-btn">Try again</button></div>}
-        <div className={`grid gap-2 ${layouts ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2"}`} data-testid={layouts ? "zone-layouts-grid" : "zone-plans-grid"}>
-          {status.images.map((img) => (layouts
-            ? <Layout key={img.id} job={job} img={img} busy={!job} onPick={() => pickLayout(img)} />
-            : <Plan key={img.id} job={job} img={img} on={picked.includes(img.id)} onToggle={() => toggle(img.id)} />))}
-          {Array.from({ length: waiting }, (_, k) => (
-            <div key={`w${k}`} className="flex aspect-[16/12] flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-[var(--line)] text-xs text-[var(--muted)]" data-testid="zone-plan-waiting">
-              <Loader2 className="h-5 w-5 animate-spin" /> {layouts ? "Checking layouts..." : "Drawing..."}
-            </div>
-          ))}
-        </div>
-        {status.status === "running" && <p className="text-xs text-[var(--muted)]" data-testid="zone-plans-progress">{layouts ? `Drawing ${status.images.length} of ${status.total} layouts.` : `Drawing ${status.images.length} of ${status.total} plans.`} This takes about a minute.</p>}
-        <div className="flex gap-2">
-          <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} data-testid="zone-plans-cancel-btn">Cancel</button>
-          {!layouts && (
-            <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={!picked.length || busy} onClick={finish} data-testid="zone-plans-continue-btn">
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />} {picked.length ? `Continue with ${picked.length}` : "Select 1 or more plans"}
+          <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" onClick={() => draw(comment, true)} data-testid="zone-plans-retry-btn">Try again</button></div>}
+        {running && (
+          <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-[var(--line)] text-sm text-[var(--muted)]" data-testid="zone-plan-waiting">
+            <Loader2 className="h-6 w-6 animate-spin" /> Drawing your layout plan. This takes about a minute.
+          </div>
+        )}
+        {plan && (
+          <figure className="overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
+            <img src={`${API}/zone-schematics/${job}/${plan.id}`} alt={`${boatName(boat)} full interior layout plan`} className="aspect-[16/10] w-full object-contain" data-testid="zone-plan-image" />
+          </figure>
+        )}
+        {plan && !describing && <>
+          <p className="text-base font-extrabold text-[var(--navy)]" data-testid="zone-plan-question">Does this match your boat&apos;s layout?</p>
+          <div className="flex gap-2">
+            <button type="button" className="btn-ghost h-12 flex-1 justify-center gap-2" onClick={() => setDescribing(true)} data-testid="zone-plan-no-btn"><PencilLine className="h-4 w-4" /> No</button>
+            <button type="button" className="btn-solid h-12 flex-[2] justify-center gap-2" disabled={busy} onClick={accept} data-testid="zone-plan-yes-btn">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Yes, use this plan
             </button>
-          )}
-        </div>
+          </div>
+        </>}
+        {describing && <Describe comment={comment} setComment={setComment} onRedraw={redraw} onBack={() => setDescribing(false)} />}
+        {!plan && !describing && <button type="button" className="btn-ghost h-12 justify-center" onClick={onClose} data-testid="zone-plans-cancel-btn">Cancel</button>}
       </DialogContent>
     </Dialog>
   );
