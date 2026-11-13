@@ -924,3 +924,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Filled in: crew agreement view, invite email, re-sent briefing email, WhatsApp invite text, agreement PDF (with video link + answer when the read is current). Raw text kept for hashing/editing.
 - Crew agreement: "Watch the briefing video" link + 3 radio choices under "I've read ..."; required (server 400 without). Stored on briefing_reads.video. Skipper Crew list RoleBubble shows "Watched video / Will watch video / Won't watch video" + popover sentence.
 - Tags hint under Edit Item Role Briefing, Invite role-briefing prompt, admin Default Role Briefings. Tested iteration_164 (tests/test_briefing_tags_video.py 7 pass).
+
+## Admin Role Briefing updates reach skippers + skipper sees filled tags (2026-06)
+- BUG FIX: templates.push_role_briefings now also updates boat roles still holding an earlier default (template_versions + old items + seeds, compared ignoring bullets/whitespace); skipper-written/blanked untouched. Startup migration role_briefing_resync_v1 re-pushed current admin defaults (preview: 9 boats). Verified iteration_165.
+- Tags are admin-only: hint removed from skipper Edit Item + Invite prompt; skipper editors show fillDetails() text (boat details filled, blank details/YOUTUBE kept); unchanged save keeps tagged text (still follows defaults). Verified iteration_166.

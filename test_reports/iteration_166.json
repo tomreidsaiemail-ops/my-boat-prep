@@ -1,0 +1,23 @@
+{
+  "summary": "Tested the skipper-facing change where tags are filled in and the hint is removed, plus the admin help text and the backend regression. All requested checks passed. Pro user (test_session_pro_1), Crew Roles > Edit Helm (12): the textarea shows 'TEST_Kia Ora', 'ZMA123' and 'Beneteau Oceanis 38'. <MMSI NUMBER> and <LENGTH> stay as tags because those details are blank, and the <YOUTUBE:...> line stays as written. edit-item-briefing-tags is absent and no 'Fill-in tags' text appears. Saving without touching the briefing keeps the stored text byte-identical, tags included (only the item ts changes). Appending ' Extra.' saves the filled text: it contains TEST_Kia Ora, has no <VESSEL> and includes Extra. The original Helm briefing was then restored exactly through the UI and checked against GET /api/me/boat. Invite Crew > Helm chip: the role-briefing prompt shows the filled text, role-briefing-prompt-tags is absent, and 'Keep it as it is' leaves the stored briefing unchanged. No invite was sent. Admin /admin/templates > Edit Crew Roles > Default Role Briefings: the help text mentions 'or still has an earlier default' and template-role-briefing-*-tags shows the full tags hint. Backend regression with -n0: 22 of 22 passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Default Role Briefings (desktop)", "issues": ["Cosmetic: the open role's briefing textarea seems to touch or slightly overflow the right border of its card, with no visible right margin."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_admin_role_briefing_push.py", "/app/backend/tests/test_briefing_tags_video.py", "/app/backend/tests/test_role_briefing_bullets.py", "/app/test_reports/pytest/pytest_iter166.xml"],
+  "action_items": ["Optional: check the right margin of the admin role briefing textarea in RoleBriefingDefaults.jsx."],
+  "critical_code_review_comments": [
+    "BoatPrep saveEdit's 'untouched' check compares trimmed text against fillDetails(stored). If the skipper edits the text and then returns it exactly to the filled version, it counts as untouched and the tags are kept. That is acceptable.",
+    "Invite prompt: a changed text is saved as filled text (the skipper's own). 'Keep' does not save, so the tags are kept. Consistent with the requirement."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None. Helm (tpl_test67crew id 12) on test-user-pro/main was edited during the test and restored exactly to the original tagged text (verified via the API).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Admin Crew Roles editor: click the button 'Edit Crew Roles' (template-list-edit-<id>). Skipper edit: list-selector > option 'Crew Roles' > checklist-item-edit-12 > Save button in the dialog. Invite flow: boat-crew-btn > crew-invite-open-btn > crew-role-chip-N (Helm was the 3rd chip) > role-briefing-prompt. The Helm chip was toggled in the invite draft, but no invite was sent."
+}
