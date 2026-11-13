@@ -8,6 +8,7 @@ import { TierBadge } from "@/components/boat/AccountMenu";
 import { TierLog, UserTierHistory } from "@/components/admin/TierLog";
 import { FreeTierDialog } from "@/components/admin/FreeTierDialog";
 import { MagicQuotaSettings } from "@/components/admin/MagicQuotaSettings";
+import { ReloginSettings } from "@/components/admin/ReloginSettings";
 import { fmtCost, fmtTokens, plural } from "@/pages/AdminAnalytics";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
@@ -116,6 +117,7 @@ export default function Admin() {
       <Link to="/" className="btn-ghost self-start px-4" data-testid="admin-back-btn"><ArrowLeft className="h-4 w-4" /> Back to lists</Link>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">User tiers</h1>
       <MagicQuotaSettings />
+      <ReloginSettings />
       <p className="text-sm text-[var(--muted)]" data-testid="admin-counts">
         {users ? `${total} users${users.length < total ? ` (showing the newest ${users.length})` : ""}: ${counts.free || 0} Free, ${counts.beta_tester || 0} Beta, ${counts.pro || 0} Pro${users.length < total ? " shown" : ""}` : "Loading..."}
       </p>

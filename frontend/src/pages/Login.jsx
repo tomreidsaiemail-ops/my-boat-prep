@@ -1,7 +1,8 @@
 import { Link, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Anchor, WifiOff } from "lucide-react";
+import { Anchor, RefreshCw, WifiOff } from "lucide-react";
+import { UPDATED_PARAM } from "@/lib/appUpdate";
 import { BrandMark } from "@/components/boat/Header";
 import { useAuth } from "@/context/AuthContext";
 import { OAUTH_STATE_KEY } from "@/components/auth/GoogleCallback";
@@ -36,6 +37,7 @@ export default function Login() {
   useEffect(() => { api.get("/payments/offer/public").then(({ data }) => setLaunchFree(!!data.first200)).catch(() => {}); }, []);
   if (user) return <Navigate to="/" replace />;
   const online = navigator.onLine;
+  const updated = new URLSearchParams(window.location.search).has(UPDATED_PARAM);
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-between gap-8 px-6 pb-10 pt-12" data-testid="login-page">
       <section className="mbp-pop flex flex-col gap-5">
@@ -45,6 +47,11 @@ export default function Login() {
           Checklists, Ship&apos;s Log and Mayday scripts for skippers. Works at sea with no signal.
         </p>
         <First5000Banner variant="login" />
+        {updated && (
+          <p className="flex items-start gap-2 rounded-lg bg-sky-50 px-4 py-3 text-sm font-bold text-[var(--navy)]" role="status" data-testid="login-updated-note">
+            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" /> My Boat Prep has been updated. Please sign in again. Any changes not yet saved are kept on this phone and save once you&apos;re signed in.
+          </p>
+        )}
         <PasswordForm />
         <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]"><span className="h-px flex-1 bg-[var(--line)]" />or<span className="h-px flex-1 bg-[var(--line)]" /></div>
         <button type="button" onClick={signIn} disabled={!online} data-testid="google-signin-btn"

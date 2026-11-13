@@ -97,6 +97,10 @@ async def get_current_user(request: Request) -> dict:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Session expired")
+    from app_version import relogin_doc, session_state
+    if session_state(session, await relogin_doc(), datetime.now(timezone.utc)) == "rejected":
+        await db.user_sessions.delete_one({"session_token": token})
+        raise HTTPException(status_code=401, detail="Signed out for an app update. Please sign in again.")
     user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

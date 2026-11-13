@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { applyTemplates, freshState, migrateState, stamp } from "@/lib/defaults";
 import { autoTypeData } from "@/lib/mpa";
+import { reportSync } from "@/lib/appUpdate";
 
 const STATE_KEY = "mbp_state_v3";
 const OUTBOX_KEY = "mbp_outbox_v3";
@@ -72,6 +73,8 @@ export default function useBoatStore(userId, boatEntry) {
   useEffect(() => { localStorage.setItem(stateKey(boatId), JSON.stringify(state)); }, [state, boatId]);
   useEffect(() => { localStorage.setItem(outboxKey(boatId), String(pending)); }, [pending, boatId]);
   useEffect(() => { localStorage.setItem(MANUAL_OFFLINE_KEY, manualOffline ? "1" : "0"); }, [manualOffline]);
+  useEffect(() => { reportSync(pending, online); }, [pending, online]);
+  useEffect(() => () => reportSync(0, true), []);
 
   useEffect(() => {
     const up = () => { setBrowserOnline(true); setReachable(true); };

@@ -21,6 +21,7 @@ import ShoreJoin, { SHORE_JOIN_KEY } from "@/pages/ShoreJoin";
 import { TermsGate } from "@/components/auth/TermsGate";
 import { MagicLimitDialog } from "@/components/boat/MagicLimitDialog";
 import { AdminModeStrip } from "@/components/auth/AdminModeStrip";
+import { UpdateGuard } from "@/components/auth/UpdateGuard";
 import { captureQr } from "@/lib/qrScan";
 
 captureQr();
@@ -66,6 +67,7 @@ function App() {
         <AuthProvider>
           <UpgradeProvider>
             <AdminModeStrip />
+            <UpdateGuard />
             <AppRouter />
             <MagicLimitDialog />
           </UpgradeProvider>
