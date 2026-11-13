@@ -4,6 +4,11 @@ import { Check, ExternalLink, ImagePlus, Loader2, RefreshCw, Search } from "luci
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
+import { CropDialog, useCropStep } from "@/components/boat/zone/CropDialog";
+
+const blobError = async (e, fallback) => {
+  try { return JSON.parse(await e.response.data.text()).detail || fallback; } catch { return apiError(e, fallback); }
+};
 
 const boatName = (b) => [b.make, b.model].map((s) => (s || "").trim()).filter(Boolean).join(" ");
 export const zoneMapLabel = (b) => `Create ${(b.boat_type || "").trim() || "boat"} ZONE MAP OVERVIEWS for a ${boatName(b)}...`;
@@ -39,31 +44,46 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
     setLoading(false);
   };
   useEffect(() => { if (open) run(); else { setSearch(null); setPicked(null); setError(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const step = useCropStep();
+  const saveWeb = async (blob) => {
+    const form = new FormData();
+    form.append("result_id", picked);
+    form.append("file", blob, "schematic.jpg");
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/boats/${boatId}/zone-schematics/search/${search.search_id}/pick`, form, { timeout: 60000 });
+      toast.success("Zone Map Overview added. Drag your colours onto it.");
+      step.close();
+      onDone(data.zone_maps);
+    } catch (e) { toast.error(apiError(e, "Couldn't save that picture, please try again")); }
+    setBusy(false);
+  };
   const use = async () => {
     setBusy(true);
     try {
-      const { data } = await api.post(`/boats/${boatId}/zone-schematics/search/${search.search_id}/pick`, { result_id: picked }, { timeout: 45000 });
-      toast.success("Zone Map Overview added. Drag your colours onto it.");
-      onDone(data.zone_maps);
-    } catch (e) { toast.error(apiError(e, "Couldn't add that picture, please pick another")); }
+      const { data } = await api.get(`/boats/${boatId}/zone-schematics/search/${search.search_id}/image/${picked}`, { responseType: "blob", timeout: 45000 });
+      step.open(data, saveWeb);
+    } catch (e) { toast.error(await blobError(e, "Couldn't open that picture, please pick another")); }
+    setBusy(false);
+  };
+  const saveUpload = async (blob) => {
+    const form = new FormData();
+    form.append("file", blob, "zone-overview.jpg");
+    form.append("kind", "overview");
+    setBusy(true);
+    try { const maps = (await api.post(`/boats/${boatId}/zone-maps`, form, { timeout: 60000 })).data.zone_maps; step.close(); onDone(maps); toast.success("Your diagram was added as a Zone Map Overview"); }
+    catch (e2) { toast.error(apiError(e2, "Couldn't save your diagram")); }
     setBusy(false);
   };
   const upload = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    let blob;
-    try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a picture"); return; }
-    const form = new FormData();
-    form.append("file", blob, "zone-overview.jpg");
-    form.append("kind", "overview");
-    setBusy(true);
-    try { onDone((await api.post(`/boats/${boatId}/zone-maps`, form, { timeout: 60000 })).data.zone_maps); toast.success("Your diagram was added as a Zone Map Overview"); }
-    catch (e2) { toast.error(apiError(e2, "Couldn't save your diagram")); }
-    setBusy(false);
+    try { step.open(await shrink(file, 2400), saveUpload); } catch { toast.error("That file doesn't look like a picture"); }
   };
   const hit = search?.results.find((r) => r.id === picked);
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="zone-plans-dialog">
         <DialogHeader>
@@ -104,5 +124,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
         )}
       </DialogContent>
     </Dialog>
+    <CropDialog src={step.crop?.src} busy={busy} onSave={(b) => step.crop?.save(b)} onCancel={step.close} />
+    </>
   );
 };

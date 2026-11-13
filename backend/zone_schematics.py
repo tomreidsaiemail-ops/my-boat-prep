@@ -10,7 +10,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from urllib.parse import urlparse
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
@@ -18,7 +19,7 @@ from db import db
 from auth import require_premium
 import quota
 from photos import APP_NAME, get_object, put_object
-from inventory import MAX_BOAT_MAPS, boat_maps
+from inventory import MAX_BOAT_MAPS, _read_picture, boat_maps
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -100,30 +101,52 @@ async def _download(url: str, page: str = "") -> bytes:
         r = await http.get(url, headers={"Referer": page} if page else None)
     if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/") or len(r.content) > MAX_BYTES:
         raise ValueError(f"{r.status_code} {r.headers.get('content-type')}")
-    img = Image.open(io.BytesIO(r.content))
+    return _jpeg(r.content, 2400)
+
+
+def _jpeg(raw: bytes, side: int = 1600) -> bytes:
+    """Any picture as a white-backed JPEG no bigger than side x side."""
+    img = Image.open(io.BytesIO(raw))
     if img.mode in ("RGBA", "LA", "P"):
         img = img.convert("RGBA")
         bg = Image.new("RGB", img.size, "white")
         bg.paste(img, mask=img.split()[3])
         img = bg
     img = img.convert("RGB")
-    img.thumbnail((1600, 1600))
+    img.thumbnail((side, side))
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=88)
     return buf.getvalue()
 
 
-class PickIn(BaseModel):
-    result_id: str = Field(pattern=r"^[0-9]{1,2}$")
+ResultId = Annotated[str, Path(pattern=r"^[0-9]{1,2}$")]
+
+
+async def _hit(boat_id: str, search_id: str, result_id: str, user: dict) -> dict:
+    s = await db.zone_searches.find_one({"search_id": search_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0})
+    hit = next((r for r in (s or {}).get("results") or [] if r["id"] == result_id), None)
+    if not hit:
+        raise HTTPException(status_code=404, detail="That search has expired. Search again.")
+    return hit
+
+
+@router.get("/boats/{boat_id}/zone-schematics/search/{search_id}/image/{result_id}")
+async def schematic_image(boat_id: BoatPath, search_id: SearchPath, result_id: ResultId, user: dict = Depends(require_premium)):
+    """The chosen web picture, fetched through the app so the skipper can zoom and crop it."""
+    hit = await _hit(boat_id, search_id, result_id, user)
+    try:
+        data = await _download(hit["link"], hit["source_url"])
+    except Exception as e:
+        log.warning(f"Schematic download failed {hit['link'][:120]}: {e!r}")
+        raise HTTPException(status_code=422, detail="That website won't let us copy the full picture. Pick another one, or upload your own diagram.")
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/boats/{boat_id}/zone-schematics/search/{search_id}/pick")
-async def pick_schematic(boat_id: BoatPath, search_id: SearchPath, payload: PickIn, user: dict = Depends(require_premium)):
-    """Copies the chosen web image to the boat (private to it, with the source link) as a new Zone Map Overview."""
-    s = await db.zone_searches.find_one({"search_id": search_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0})
-    hit = next((r for r in (s or {}).get("results") or [] if r["id"] == payload.result_id), None)
-    if not hit:
-        raise HTTPException(status_code=404, detail="That search has expired. Search again.")
+async def pick_schematic(boat_id: BoatPath, search_id: SearchPath, result_id: str = Form(pattern=r"^[0-9]{1,2}$"), file: UploadFile = File(...),
+                         user: dict = Depends(require_premium)):
+    """Saves the skipper's (cropped) copy of the chosen web picture to the boat, private to it with the source link, as a new Zone Map Overview."""
+    hit = await _hit(boat_id, search_id, result_id, user)
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1})
     if doc is None:
@@ -132,10 +155,11 @@ async def pick_schematic(boat_id: BoatPath, search_id: SearchPath, payload: Pick
     if len(maps) >= MAX_BOAT_MAPS:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
     try:
-        data = await _download(hit["link"], hit["source_url"])
-    except Exception as e:
-        log.warning(f"Schematic download failed {hit['link'][:120]}: {e!r}")
-        raise HTTPException(status_code=422, detail="That website won't let us copy the full picture. Pick another one, or upload your own diagram.")
+        data = _jpeg(await _read_picture(file))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="That picture couldn't be read. Please try again.")
     map_id = str(uuid.uuid4())
     path = f"{APP_NAME}/boat-zone-maps/{user['user_id']}/{map_id}.jpg"
     try:

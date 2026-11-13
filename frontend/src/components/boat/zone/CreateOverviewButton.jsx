@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { ImagePlus, Loader2, Search, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
+import { CropDialog, useCropStep } from "@/components/boat/zone/CropDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
 
@@ -34,18 +35,20 @@ export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps
     window.addEventListener(RESUME_ZONE, resume);
     return () => window.removeEventListener(RESUME_ZONE, resume);
   }, []);
-  const upload = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    let blob;
-    try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a picture"); return; }
+  const step = useCropStep();
+  const save = async (blob) => {
     const form = new FormData();
     form.append("file", blob, "zone-overview.jpg");
     form.append("kind", "overview");
     setBusy(true);
-    try { onMaps((await api.post(`/boats/${boat.boat_id}/zone-maps`, form, { timeout: 60000 })).data.zone_maps); toast.success("Your Zone Map Overview was added after the existing one"); }
+    try { const maps = (await api.post(`/boats/${boat.boat_id}/zone-maps`, form, { timeout: 60000 })).data.zone_maps; step.close(); onMaps(maps); toast.success("Your Zone Map Overview was added after the existing one"); }
     catch (e2) { toast.error(apiError(e2, "Couldn't save the Zone Map Overview")); } finally { setBusy(false); }
+  };
+  const upload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try { step.open(await shrink(file, 2400), save); } catch { toast.error("That file doesn't look like a picture"); }
   };
   return (
     <>
@@ -53,6 +56,7 @@ export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Create Zone Map Overview (Schematic)
       </button>
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="zone-overview-upload-input" />
+      <CropDialog src={step.crop?.src} busy={busy} onSave={(b) => step.crop?.save(b)} onCancel={step.close} />
       <Dialog open={choose} onOpenChange={(o) => !o && setChoose(false)}>
         <DialogContent className="flex max-w-sm flex-col gap-3 rounded-lg border-2 border-[var(--navy)]" data-testid="zone-overview-choice-dialog">
           <DialogHeader>

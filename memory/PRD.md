@@ -905,3 +905,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Keys: GOOGLE_SEARCH_API_KEY, GOOGLE_SEARCH_CX (backend secrets). BLOCKER 2026-11-13: Google returns 403 "This project does not have the access to Custom Search JSON API" (API not enabled on that Cloud project; Google closed it to new customers and shuts it down 1 Jan 2027). Serper suggested as replacement.
 
 - 2026-11-13: Switched to Serper; live test Oceanis 411 returned 10 real schematics; picks from 6 sites saved OK; sailboatdata.com blocks copying (Cloudflare 403) -> friendly 422. GOOGLE_SEARCH_* keys now unused.
+
+## Zoom & Crop step (2026-06)
+- react-cropper 2.3.3 + cropperjs 1.6.2. `zone/CropDialog.jsx` (useCropStep hook): pinch/scroll zoom, drag to pan, free-shape crop box, Zoom in/out, Reset, Save Crop (canvas -> JPEG <=1600px), Use whole picture, Cancel.
+- Web pick: GET /api/boats/{id}/zone-schematics/search/{sid}/image/{rid} proxies the full picture (same-origin, <=2400px) -> crop -> POST .../pick multipart (result_id, file) saves it with source link. Uploads (picker "Upload My Own Diagram" and Boat Inventory upload) go through the same crop step before POST /zone-maps.
