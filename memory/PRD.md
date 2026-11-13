@@ -918,3 +918,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - crew.brief_hash ignores bullets/whitespace; brief_read also accepts old-style hashes -> no crew has to re-read.
 - Views already respect newlines (agreement whitespace-pre-wrap, invite preview pre-wrap, emails/PDF <br/>). Edit Item Role Briefing textarea made taller (!h-auto min-h-[8rem], rows 7).
 - Tested iteration_163 (+ tests/test_role_briefing_bullets.py 11 pass).
+
+## Role Briefing tags + briefing video (2026-06)
+- backend/briefing_fill.py (+ frontend lib/briefingFill.js for WhatsApp text): tags <VESSEL> <BOAT NAME> <CALLSIGN> <MMSI NUMBER>/<MMSI> <SKIPPER> <SKIPPER PHONE> <MAKE> <MODEL> <YEAR> <LENGTH> <BEAM> <DRAFT> <MAST HEIGHT> (with m/ft) <HULL COLOUR>; blank detail keeps its tag; <YOUTUBE:url> (youtube.com/youtu.be only) removed from text -> video link.
+- Filled in: crew agreement view, invite email, re-sent briefing email, WhatsApp invite text, agreement PDF (with video link + answer when the read is current). Raw text kept for hashing/editing.
+- Crew agreement: "Watch the briefing video" link + 3 radio choices under "I've read ..."; required (server 400 without). Stored on briefing_reads.video. Skipper Crew list RoleBubble shows "Watched video / Will watch video / Won't watch video" + popover sentence.
+- Tags hint under Edit Item Role Briefing, Invite role-briefing prompt, admin Default Role Briefings. Tested iteration_164 (tests/test_briefing_tags_video.py 7 pass).

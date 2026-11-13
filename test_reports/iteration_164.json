@@ -1,0 +1,36 @@
+{
+  "summary": "Tested Role Briefing fill-in tags + <YOUTUBE:url> briefing video choices end to end. Backend: 7/7 pytest pass (agreement fill: TEST_Kia Ora/ZMA123/<MMSI NUMBER> kept/Beneteau Oceanis 38, YOUTUBE tag removed, video url; briefing-read 400 without video, 422 bogus, 200 will_watch persisted; skipper /api/boats/main/crew shows video true + video_choice; no-video role read works without video; PDF builds and contains 'Briefing video: <url>' + the chosen answer). Frontend crew flow passed (filled briefing one bullet per line, video link target=_blank opens YouTube, checkbox disabled + hint until a radio picked, radios exclusive, 'Read <date> · I have watched the briefing video'). Tags hint shown in Edit Item, Invite role briefing prompt and admin Default Role Briefings. Invite preview shows filled details and 'Briefing video: https://www.youtube.com/watch?v=dQw4w9WgXcQ' (nothing sent). FOUND AND FIXED a CRITICAL crash: RoleBubble.jsx used VIDEO_SHORT and VIDEO_TAG without defining them, so the skipper's Crew dialog crashed with 'VIDEO_SHORT is not defined' as soon as a crew member had read a briefing with a video answer. After the fix the bubble shows 'Watched video' and the popover reads '... Video: they have watched the briefing video.'",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/crew/agreement/pdf", "issue": "The PDF prints the saved video answer (pdf_reads[..].video) even when the read is out of date (briefing changed since, hash mismatch). The agreement view and the crew list only show it when the read is current. Only add the answer when brief_read(hash, brief) is true."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RoleBubble (Crew dialog)", "issue": "FIXED by testing agent: VIDEO_SHORT and VIDEO_TAG were undefined, so the app crashed at runtime when the skipper opened the Crew dialog after a crew member had answered the video question", "selector": "[data-testid^=crew-member-][data-testid$=-video]", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew Registration dialog (seen in passing, not part of this feature)", "issues": ["Date of birth uses the browser's native date input, not the shadcn calendar"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_briefing_tags_video.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Review the RoleBubble.jsx fix (I added VIDEO_TAG short labels and VIDEO_SHORT popover sentences). Change the wording if you want something different.",
+    "ESLint no-undef did not catch an undefined identifier ('Compiled successfully'). Consider turning no-undef on so this kind of crash shows at build time.",
+    "Optional: in the agreement PDF, leave out the video answer when the read is out of date."
+  ],
+  "critical_code_review_comments": [
+    "RoleBubble.jsx referenced constants that were never declared or imported (runtime ReferenceError). Fixed.",
+    "Video constants are duplicated in 3 places (briefing_fill.py VIDEO_CHOICES/VIDEO_SHORT, CrewAgreementDialog VIDEO_CHOICES, RoleBubble). Consider one shared frontend module in lib/briefingFill.js.",
+    "Blank boat details keep their tag as the spec asks, e.g. 'a <LENGTH> Beneteau Oceanis 38' for the seeded boat. This is correct."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/crew/RoleBubble.jsx", "/app/backend/tests/test_briefing_tags_video.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% after fix (skipper Crew dialog crashed before the fix)"},
+  "seed_data_creation": "None kept. The test gives test-user-beta the role Mainsheet for a moment, then sets it back to []. Its briefing_read was deleted by id key. test-user-free's briefing_reads for test-user-pro/main were cleared at the end, so the crew flow can be retested.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Free user has its own boat also named TEST_Kia Ora (boat-option-main), so pick boat-option-c_test-user-pro_main in boat-selector. A crew-reg-dialog pops up first; close it with Escape. Then click crew-agreement-bar. Skipper: boat-crew-btn opens the Crew dialog. Edit Item: list-selector > option 'Crew Roles' > checklist-item-edit-12 (Helm). Admin: /admin/templates > template-list-edit-tpl_9f5620bc49. Run: cd /app/backend && python -m pytest tests/test_briefing_tags_video.py -n0 (order matters).",
+  "rca of the issue": "RoleBubble.jsx rendered VIDEO_TAG[b.video_choice] and VIDEO_SHORT[b.video_choice] but neither was declared. They are only reached when read_at and video_choice are set, so the crash only shows once a crew member has answered. Reproduced as Pro: open the Crew dialog after free crew read Helm with a video answer -> 'VIDEO_SHORT is not defined'. Fix: declare both maps in RoleBubble.jsx."
+}

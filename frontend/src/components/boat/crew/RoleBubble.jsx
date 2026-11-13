@@ -2,6 +2,10 @@ import { Check, Circle, FileText, PlayCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { localWhen } from "@/lib/timeAgo";
 
+// The crew member's answer to the briefing video (same keys as the server's briefing_fill.VIDEO_CHOICES).
+const VIDEO_TAG = { watched: "Watched video", will_watch: "Will watch video", no_time: "Won't watch video" };
+const VIDEO_SHORT = { watched: "they have watched the briefing video", will_watch: "they will watch the briefing video before you leave", no_time: "they won't have time to watch the briefing video" };
+
 const status = (b, who, joined) => {
   if (!b.has_briefing) return { tone: "bg-orange-300 text-orange-950", Icon: null, text: `No Role Briefing for ${b.role} yet. Add one in your Crew Roles list.` };
   if (!joined) return { tone: "bg-orange-300 text-orange-950", Icon: Circle, text: `The ${b.role} briefing is in ${who}'s invite email. They confirm they've read it after they join.` };

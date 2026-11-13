@@ -235,6 +235,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     crew_user, owner = people.get(member) or {}, people.get(owner_id) or {}
     briefs = await role_briefings(owner_id, boat_id)
     pdf_reads = {r["role_key"]: r async for r in db.briefing_reads.find({"owner_id": owner_id, "boat_id": boat_id, "user_id": member}, {"_id": 0})}
+    pdf_video = lambda key, brief: (pdf_reads.get(key) or {}).get("video", "") if brief_read((pdf_reads.get(key) or {}).get("hash"), brief) else ""  # noqa: E731
     rec = (doc.get("agreements") or {}).get(member) or {}
     areas = {a.get("id"): a for a in doc.get("areas") or [] if isinstance(a, dict)}
     pins = [(f"{m['id']}:{p['id']}", (areas.get(p.get("area_id")) or {}).get("name") or p.get("label") or f"Stop {n + 1}",
@@ -245,7 +246,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     pdf = build_agreement_pdf({
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
         "crew_name": crew_name, "crew_email": crew_user.get("email", ""),
-        "roles": [(r, shown(briefs[r.lower()], doc.get("boat") or {}, (pdf_reads.get(r.lower()) or {}).get("video", "")) if briefs.get(r.lower()) else "")
+        "roles": [(r, shown(briefs[r.lower()], doc.get("boat") or {}, pdf_video(r.lower(), briefs[r.lower()])) if briefs.get(r.lower()) else "")
                   for r in (doc.get("crew_roles") or {}).get(member) or []],
         "terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "stops": [(name, note) for sid, name, note in pins if sid in (rec.get("stops") or [])], "agreement": rec})
     safe = re.sub(r"[^\w .-]", "", crew_name)[:60] or "Crew"
