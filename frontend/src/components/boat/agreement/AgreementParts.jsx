@@ -26,8 +26,8 @@ const Stop = ({ step, pins, areas, ticked, onTick, n, boat }) => {
           imgClass="max-h-[36vh] w-full rounded-md object-contain" testId={`agreement-stop-${n}-photo`} />
         <SkipperComment text={step.pic.map?.comment} testId={`agreement-stop-${n}-skipper-comment`} />
         {!note && <SkipperComment text={area?.comment} label="Cupboard comment" testId={`agreement-stop-${n}-cupboard-comment`} />}
-        {!note && <CupboardPhoto boat={boat} area={area} testId={`agreement-stop-${n}-cupboard-photo`} />}
-        {!note && <WalkStopContents area={area} areas={areas} />}
+        {!note && !step.cupboard && <CupboardPhoto boat={boat} area={area} testId={`agreement-stop-${n}-cupboard-photo`} />}
+        {!note && step.contents && <WalkStopContents area={area} areas={areas} />}
       </>}
     </li>
   );

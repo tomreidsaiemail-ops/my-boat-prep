@@ -39,8 +39,9 @@ def cleanup():
 def setup():
     cleanup()
     assert s(PRO).put(f"{BASE_URL}/api/me/boat", params={"boat_id": BOAT}, json=boat_state()).status_code == 200
-    DB.user_boats.update_one({"owner_id": PRO_ID, "boat_id": BOAT}, {"$set": {"zone_maps": [
-        {"id": "m1", "updated_at": T0, "pins": [{"id": "p1", "x": 0.1, "y": 0.1, "label": "Galley"}, {"id": "p2", "x": 0.5, "y": 0.5, "label": "Lazarette"}]}]}})
+    # Labelled cupboards need a comment to be a walkthrough stop.
+    DB.user_boats.update_one({"owner_id": PRO_ID, "boat_id": BOAT}, {"$set": {"areas": [{"id": "a1", "name": "Galley", "comment": "Fridge on the left"}, {"id": "a2", "name": "Lazarette", "comment": "Fenders"}], "zone_maps": [
+        {"id": "m1", "updated_at": T0, "pins": [{"id": "p1", "x": 0.1, "y": 0.1, "label": "Galley", "area_id": "a1"}, {"id": "p2", "x": 0.5, "y": 0.5, "label": "Lazarette", "area_id": "a2"}]}]}})
     yield
     cleanup()
 

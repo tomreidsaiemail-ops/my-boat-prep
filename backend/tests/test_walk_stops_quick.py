@@ -29,13 +29,19 @@ def setup():
     walk = db.walkthroughs.find_one({"owner_id": OWNER, "boat_id": BOAT, "user_id": CREW}, {"_id": 0})
     had_entry = db.crew_register.find_one({"owner_id": OWNER, "kind": "crew", "email_key": "test.user.free@example.com"}, {"_id": 1})
     free_skip = db.user_boats.find_one({"owner_id": CREW, "boat_id": BOAT}, {"_id": 0, "walk_skip": 1}) or {}
+    # Labelled cupboards need a comment to be a walkthrough stop.
+    # Other cupboard stops (own photo + comment) are hidden from these tests by dropping their photos until teardown.
+    areas = (db.user_boats.find_one({"owner_id": OWNER, "boat_id": BOAT}, {"_id": 0, "areas": 1}) or {}).get("areas") or []
+    db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"areas": [{k: v for k, v in a.items() if k != "photo"} for a in areas]
+                                                                             + [{"id": f"TEST_area_{p}", "name": f"TEST_Cupboard {p}", "comment": "TEST comment"} for ps in MAPS.values() for p in ps]}})
     for m, ps in MAPS.items():
         r = s(PRO).put(f"{BASE_URL}/api/boats/{BOAT}/zone-maps/{m}/pins",
-                       json={"pins": [{"id": p, "x": 0.3 + 0.2 * i, "y": 0.5, "label": f"TEST_Cupboard {p}", "area_id": None} for i, p in enumerate(ps)]})
+                       json={"pins": [{"id": p, "x": 0.3 + 0.2 * i, "y": 0.5, "label": f"TEST_Cupboard {p}", "area_id": f"TEST_area_{p}"} for i, p in enumerate(ps)]})
         assert r.status_code == 200, r.text
     yield
     for m in MAPS:
         s(PRO).put(f"{BASE_URL}/api/boats/{BOAT}/zone-maps/{m}/pins", json={"pins": []})
+    db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"areas": areas}})
     db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"walk_skip": doc.get("walk_skip") or [], f"agreements.{CREW}": (doc.get("agreements") or {}).get(CREW)}})
     if not had_entry:
         db.crew_register.delete_one({"owner_id": OWNER, "kind": "crew", "email_key": "test.user.free@example.com", "status": "unregistered"})
@@ -82,15 +88,15 @@ class TestWalkStops:
 class TestQuickAccept:
     def test_quick_without_walk_400(self):
         db.walkthroughs.delete_one({"owner_id": OWNER, "boat_id": BOAT, "user_id": CREW})
-        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [], "accept": True, "quick": True})
+        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [], "accept": True, "quick": True, "shore_ok": True})
         assert r.status_code == 400
 
     def test_accept_requires_all_stops(self):
-        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [ALL[0]], "accept": True})
+        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [ALL[0]], "accept": True, "shore_ok": True})
         assert r.status_code == 400
 
     def test_full_accept_sets_full_at(self):
-        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [ALL[0], ALL[2]], "accept": True})
+        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [ALL[0], ALL[2]], "accept": True, "shore_ok": True})
         assert r.status_code == 200, r.text
         a = r.json()["agreement"]
         assert a["accepted_at"] and not a.get("quick")
@@ -103,7 +109,7 @@ class TestQuickAccept:
         db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$unset": {f"agreements.{CREW}": ""}})
         g = s(FREE).get(f"{BASE_URL}/api/crew/agreement", params=AG).json()
         assert g["walkthrough"] == {"full_at": old} and g["agreement"] is None
-        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [], "accept": True, "quick": True})
+        r = s(FREE).post(f"{BASE_URL}/api/crew/agreement", json={**AG, "stops": [], "accept": True, "quick": True, "shore_ok": True})
         assert r.status_code == 200, r.text
         a = r.json()["agreement"]
         assert a["quick"] is True and a["full_at"] == old and sorted(a["stops"]) == sorted([ALL[0], ALL[2]])

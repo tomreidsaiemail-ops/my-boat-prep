@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Footprints, RotateCcw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { walkSteps } from "@/components/boat/CrewWalkthrough";
+import { allStops } from "@/components/boat/CrewWalkthrough";
 import { StopList, keyOf, walkPics } from "@/components/boat/crew/WalkStopsPicker";
 
 const sameList = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
@@ -10,7 +10,7 @@ const sameList = (a, b) => a.length === b.length && a.every((x) => b.includes(x)
 const summary = (steps, skip) => {
   const counts = new Map();
   steps.filter((s) => !skip.includes(keyOf(s))).forEach((s) => {
-    const n = s.pic.map.zone || s.pic.map.name || "Zone map";
+    const n = s.groupName || "Zone map";
     counts.set(n, (counts.get(n) || 0) + 1);
   });
   return [...counts].map(([n, c]) => `${n} (${c})`).join(" ");
@@ -19,7 +19,7 @@ const summary = (steps, skip) => {
 // Invite crew: this crew member's own walkthrough stops (a chef and a mechanic need different ones). Null = the boat's default.
 export const CrewWalkStops = ({ boat, areas = [], skip, onChange }) => {
   const [draft, setDraft] = useState(null);
-  const steps = boat ? walkSteps(walkPics(boat)) : [];
+  const steps = boat ? allStops(walkPics(boat), areas, boat) : [];
   if (!steps.length) return null;
   const def = boat.walk_skip || [];
   const cur = skip || def;
@@ -39,7 +39,7 @@ export const CrewWalkStops = ({ boat, areas = [], skip, onChange }) => {
         <DialogContent className="max-h-[90dvh] max-w-md overflow-y-auto" data-testid="crew-walk-stops-dialog">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">Walkthrough stops for this crew member</DialogTitle>
-            <DialogDescription>Tick the stops they walk through when they accept the Boat Terms. It starts from your default stops.</DialogDescription>
+            <DialogDescription>Tick the stops they walk through when they accept the Boat Terms, and tap Contents to show them what&apos;s stowed there. It starts from your default stops and contents.</DialogDescription>
           </DialogHeader>
           {draft && <div className="flex flex-col gap-2"><StopList steps={steps} areas={areas} skip={draft} onFlip={flip} /></div>}
           {draft && !sameList(draft, def) && (

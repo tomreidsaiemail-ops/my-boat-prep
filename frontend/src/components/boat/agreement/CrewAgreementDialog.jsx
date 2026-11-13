@@ -47,7 +47,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
     } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
     finally { setReading(""); }
   };
-  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })), boat.walk_skip || []);
+  const steps = walkSteps((boat.zone_maps || []).map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m })), boat.walk_skip || [], areas, boat);
   const [ticked, setTicked] = useState(data.agreement?.stops || []);
   const [busy, setBusy] = useState("");
   const [walking, setWalking] = useState(null);

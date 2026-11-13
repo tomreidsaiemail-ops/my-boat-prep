@@ -60,17 +60,33 @@ def crew_skip(doc: dict, uid: str | None) -> List[str]:
     return own[uid] if uid and uid in own else doc.get("walk_skip") or []
 
 
+CONTENTS = "+c:"  # walk_skip entries starting with this switch a stop's cupboard contents on in the walkthrough
+
+
+def all_stops(doc: dict) -> List[str]:
+    """Labelled cupboards need a comment (the zone map photo is their photo); photos with only a Skipper's comment stay a stop;
+    cupboards not labelled on any photo need their own photo and a comment."""
+    areas = [a for a in doc.get("areas") or [] if isinstance(a, dict)]
+    by_id = {a.get("id"): a for a in areas}
+    said = lambda a: bool(str((a or {}).get("comment") or "").strip())  # noqa: E731
+    maps = doc.get("zone_maps") or []
+    pinned = {p.get("area_id") for m in maps for p in m.get("pins") or []}
+    pins = [f"{m['id']}:{p['id']}" for m in maps for p in map_pins(m) if p["id"] == "comment" or said(by_id.get(p.get("area_id")))]
+    return pins + [f"area:{a['id']}" for a in areas if not a.get("parent_id") and a.get("id") not in pinned and said(a) and (a.get("photo") or {}).get("id")]
+
+
 def stop_ids(doc: dict, uid: str | None = None) -> List[str]:
     skip = set(crew_skip(doc, uid))
-    return [s for s in (f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)) if s not in skip]
+    return [s for s in all_stops(doc) if s not in skip]
 
 
 @router.put("/boats/{boat_id}/walk-stops")
 async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = Depends(get_current_user)):
     """The skipper leaves less important cupboards out of the Boat Walk Through."""
     await owned_boat(user, boat_id)
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1})
-    known = {f"{m['id']}:{p['id']}" for m in doc.get("zone_maps") or [] for p in map_pins(m)}
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1, "areas": 1})
+    stops = all_stops(doc)
+    known = {*stops, *(CONTENTS + k for k in stops)}
     skip = [s for s in dict.fromkeys(payload.skip) if s in known]
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"walk_skip": skip}})
     return {"walk_skip": skip}
@@ -90,7 +106,7 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
+                                       {"_id": 0, "boat_terms": 1, "zone_maps": 1, "areas": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -198,6 +214,7 @@ async def agreement_pdf(boat_id: BoatQ, owner_id: Annotated[Optional[str], Query
     pins = [(f"{m['id']}:{p['id']}", (areas.get(p.get("area_id")) or {}).get("name") or p.get("label") or f"Stop {n + 1}",
              str((areas.get(p.get("area_id")) or {}).get("comment") or (m.get("comment") if p["id"] == "comment" else "") or "").strip()[:1000])
             for m in doc.get("zone_maps") or [] for n, p in enumerate(map_pins(m))]
+    pins += [(f"area:{a.get('id')}", a.get("name") or "Cupboard", str(a.get("comment") or "").strip()[:1000]) for a in areas.values()]
     crew_name = (doc.get("crew_names") or {}).get(member) or crew_user.get("name") or crew_user.get("email") or "Crew"
     pdf = build_agreement_pdf({
         "vessel": (doc.get("boat") or {}).get("vessel") or "My Boat", "skipper": owner.get("name") or owner.get("email") or "Skipper",
