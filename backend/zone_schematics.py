@@ -24,8 +24,9 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 SearchPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
-SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
-UA = {"User-Agent": "Mozilla/5.0 (compatible; MyBoatPrep/1.0; +https://myboatprep.com)"}
+SEARCH_URL = "https://google.serper.dev/images"
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+      "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"}
 MAX_BYTES = 8_000_000
 
 
@@ -34,23 +35,20 @@ def search_query(boat: dict) -> str:
     return f"schematic overhead image line drawing {who}"
 
 
-async def google_images(query: str) -> list[dict]:
-    """Top Google Images results (one Custom Search call, up to 10)."""
-    params = {"key": os.environ["GOOGLE_SEARCH_API_KEY"], "cx": os.environ["GOOGLE_SEARCH_CX"], "q": query, "searchType": "image", "num": 10, "safe": "active"}
+async def web_images(query: str) -> list[dict]:
+    """Top Google Images results via Serper (up to 10)."""
     async with httpx.AsyncClient(timeout=15) as http:
-        r = await http.get(SEARCH_URL, params=params)
+        r = await http.post(SEARCH_URL, json={"q": query, "num": 10}, headers={"X-API-KEY": os.environ["SERPER_API_KEY"], "Content-Type": "application/json"})
     if r.status_code != 200:
-        msg = (r.json().get("error") or {}).get("message", "") if r.headers.get("content-type", "").startswith("application/json") else r.text[:200]
-        log.error(f"Google image search failed {r.status_code}: {msg}")
+        log.error(f"Serper image search failed {r.status_code}: {r.text[:200]}")
         raise HTTPException(status_code=503, detail="The image search isn't available right now. Please try again later, or upload your own diagram.")
     out = []
-    for n, it in enumerate(r.json().get("items") or []):
-        img = it.get("image") or {}
-        if not it.get("link") or not img.get("thumbnailLink"):
+    for it in (r.json().get("images") or [])[:10]:
+        if not it.get("imageUrl") or not it.get("thumbnailUrl"):
             continue
-        page = img.get("contextLink") or ""
-        out.append({"id": str(n), "link": it["link"], "thumb": img["thumbnailLink"], "title": str(it.get("title") or "")[:140],
-                    "source_url": page, "host": it.get("displayLink") or urlparse(page).hostname or "", "width": img.get("width"), "height": img.get("height")})
+        page = it.get("link") or ""
+        out.append({"id": str(len(out)), "link": it["imageUrl"], "thumb": it["thumbnailUrl"], "title": str(it.get("title") or "")[:140],
+                    "source_url": page, "host": it.get("domain") or urlparse(page).hostname or "", "width": it.get("imageWidth"), "height": it.get("imageHeight")})
     return out
 
 
@@ -84,7 +82,7 @@ async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict =
             return {**_public(recent), "reused": True, "scans_left": await quota.left(user["user_id"])}
     source = await quota.consume(user["user_id"])
     try:
-        results = await google_images(query)
+        results = await web_images(query)
     except Exception:
         await quota.refund(user["user_id"], source)
         raise
@@ -97,9 +95,9 @@ async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict =
     return {**_public(s), "scans_left": await quota.left(user["user_id"])}
 
 
-async def _download(url: str) -> bytes:
+async def _download(url: str, page: str = "") -> bytes:
     async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=UA) as http:
-        r = await http.get(url)
+        r = await http.get(url, headers={"Referer": page} if page else None)
     if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/") or len(r.content) > MAX_BYTES:
         raise ValueError(f"{r.status_code} {r.headers.get('content-type')}")
     img = Image.open(io.BytesIO(r.content))
@@ -134,7 +132,7 @@ async def pick_schematic(boat_id: BoatPath, search_id: SearchPath, payload: Pick
     if len(maps) >= MAX_BOAT_MAPS:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
     try:
-        data = await _download(hit["link"])
+        data = await _download(hit["link"], hit["source_url"])
     except Exception as e:
         log.warning(f"Schematic download failed {hit['link'][:120]}: {e!r}")
         raise HTTPException(status_code=422, detail="That website won't let us copy the full picture. Pick another one, or upload your own diagram.")

@@ -899,7 +899,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 
 ## Zone schematic = WEB IMAGE SEARCH (2026-06, replaces all AI drawing)
 - AI image generation removed (layout_rules.py, plan drawing, /zone-schematics jobs, layout_comment field all gone). Magically Place Colours (vision only) kept.
-- POST /api/boats/{id}/zone-schematics/search {boat_type, make, model, year_built, fresh}: Google Custom Search JSON API (searchType=image, 10 results), query "schematic overhead image line drawing YEAR MAKE MODEL"; 1 Magic use (refunded on error / no results); same query reused 30 days (db.zone_searches).
+- POST /api/boats/{id}/zone-schematics/search {boat_type, make, model, year_built, fresh}: SERPER (POST google.serper.dev/images, X-API-KEY = SERPER_API_KEY, 10 results; switched from Google CSE 2026-11-13), query "schematic overhead image line drawing YEAR MAKE MODEL"; 1 Magic use (refunded on error / no results); same query reused 30 days (db.zone_searches).
 - POST .../search/{search_id}/pick {result_id}: server downloads full image -> boat-zone-maps object storage -> overview "Schematic" with source_url/source_title (shown as "Source:" link on the overview). Blocked sites -> 422 friendly message.
 - Dialog: thumbnail grid (2/3 cols), source link, "Use this schematic", "Upload My Own Diagram", "Search again (1 Magic use)". Choice dialog: "Search the web for my schematic".
 - Keys: GOOGLE_SEARCH_API_KEY, GOOGLE_SEARCH_CX (backend secrets). BLOCKER 2026-11-13: Google returns 403 "This project does not have the access to Custom Search JSON API" (API not enabled on that Cloud project; Google closed it to new customers and shuts it down 1 Jan 2027). Serper suggested as replacement.
+
+- 2026-11-13: Switched to Serper; live test Oceanis 411 returned 10 real schematics; picks from 6 sites saved OK; sailboatdata.com blocks copying (Cloudflare 403) -> friendly 422. GOOGLE_SEARCH_* keys now unused.
