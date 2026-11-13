@@ -120,7 +120,7 @@ async def _apply(p: dict, admin_id: str, now: str):
         if changed and not lst.private:
             await push_indents(old["list_id"], old, items, now)
             if CREW_ROLES_NAME.match(p["name"]):
-                await push_role_briefings(items, now)
+                await push_role_briefings(items, now, old["list_id"], old["items"])
         return
     await db.list_templates.insert_one({"list_id": p["new_id"], "custom": True, "name": p["name"], "description": lst.description.strip(), "items": items,
                                         "private": lst.private, "note": note, "created_at": lst.created_at or now, "updated_at": now, "updated_by": admin_id})

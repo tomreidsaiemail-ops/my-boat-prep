@@ -189,7 +189,7 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     if changed and not upd["private"]:
         await push_indents(list_id, doc, items, upd["updated_at"])
         if CREW_ROLES_NAME.match(name):
-            await push_role_briefings(items, upd["updated_at"])
+            await push_role_briefings(items, upd["updated_at"], list_id, doc["items"])
     return _custom_out({**doc, **upd})
 
 
@@ -200,17 +200,49 @@ def _role_key(label: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"^\s*\*\s*", "", re.sub(r"^\s*\d+[.)]\s*", "", str(label)))).strip().lower()
 
 
-async def push_role_briefings(items: list, now: str):
-    """Default Role Briefings reach every boat's Crew Roles list, only on roles the skipper has never given a briefing (a blanked one stays blank)."""
+def _flat_brief(text: str) -> str:
+    return " ".join(" ".join(re.sub(r"^\s*-\s+", "", ln) for ln in str(text or "").splitlines()).split())
+
+
+async def _past_defaults(list_id: str | None, extra: list | None = None) -> dict:
+    """Every Role Briefing the master Crew Roles list has had, per role (from its kept versions), so boats still on an old default can follow."""
+    past: dict = {}
+    olds = [extra or []]
+    if list_id:
+        olds += [v.get("items") or [] async for v in db.template_versions.find({"list_id": list_id}, {"_id": 0, "items": 1})]
+    for its in olds:
+        for i in its:
+            if i.get("briefing"):
+                past.setdefault(_role_key(i["label"]), set()).add(_flat_brief(i["briefing"]))
+    return past
+
+
+async def push_role_briefings(items: list, now: str, list_id: str | None = None, old_items: list | None = None, seeds: dict | None = None):
+    """Default Role Briefings reach every boat's Crew Roles list: roles with no briefing yet, and roles still holding an earlier default.
+    A briefing the skipper wrote (or blanked) is left alone."""
     want = {_role_key(i["label"]): i["briefing"] for i in items if i.get("briefing")}
     if not want:
-        return
+        return 0
+    past = await _past_defaults(list_id, old_items)
+    for k, v in (seeds or {}).items():
+        past.setdefault(k, set()).add(_flat_brief(v))
+
+    def follow(i):
+        k = _role_key(i.get("label", ""))
+        if k not in want:
+            return False
+        if "briefing" not in i:
+            return True
+        return i["briefing"] != want[k] and bool(i["briefing"]) and _flat_brief(i["briefing"]) in past.get(k, set())
+    changed = 0
     async for b in db.user_boats.find({"registry.name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}}, {"_id": 1, "registry": 1, "data": 1}):
         lid = next((r["id"] for r in b.get("registry") or [] if CREW_ROLES_NAME.match(str(r.get("name", "")))), None)
         cur = (b.get("data") or {}).get(lid) or []
-        nxt = [{**i, "briefing": want[_role_key(i.get("label", ""))], "ts": now} if "briefing" not in i and _role_key(i.get("label", "")) in want else i for i in cur]
+        nxt = [{**i, "briefing": want[_role_key(i.get("label", ""))], "ts": now} if follow(i) else i for i in cur]
         if nxt != cur:
+            changed += 1
             await db.user_boats.update_one({"_id": b["_id"]}, {"$set": {f"data.{lid}": nxt, "updated_at": now}})
+    return changed
 
 
 TRIM_BRIEFING = ("- Watch out for the boom at all times!\n"

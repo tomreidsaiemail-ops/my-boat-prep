@@ -316,3 +316,18 @@ async def seed_role_briefing_bullets():
             await db.user_boats.update_one({"_id": b["_id"]}, {"$set": {f"data.{lid}": nxt, "updated_at": now}})
     logging.getLogger(__name__).info("Role briefings as bullets: template %s, %d boats", bool(tpl), changed)
     await db.migrations.update_one({"_id": BULLETS_MIGRATION}, {"$setOnInsert": {"at": now}}, upsert=True)
+
+
+async def resync_role_briefings():
+    """Runs once: boats still holding an earlier default Role Briefing get the admin's current one (fixes edits made before this was pushed)."""
+    if await db.migrations.find_one({"_id": "role_briefing_resync_v1"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    tpl = await db.list_templates.find_one({"custom": True, "private": {"$ne": True}, "name": {"$regex": r"^\s*crew roles\s*$", "$options": "i"}},
+                                           {"_id": 0, "list_id": 1, "items": 1})
+    if tpl:
+        old_trim = {"port trim": OLD_TRIM_BRIEFING, "starboard trim": OLD_TRIM_BRIEFING}
+        seeds = {**SAFETY_BRIEFINGS, **old_trim}
+        n = await push_role_briefings(tpl.get("items") or [], now, tpl.get("list_id"), None, seeds)
+        logging.getLogger(__name__).info("Role briefings resync: %d boats", n)
+    await db.migrations.update_one({"_id": "role_briefing_resync_v1"}, {"$setOnInsert": {"at": now}}, upsert=True)
