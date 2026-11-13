@@ -29,7 +29,8 @@ async def _read_picture(file: UploadFile) -> bytes:
 
 def boat_maps(doc: dict) -> list:
     return [{"id": m["id"], "v": m.get("updated_at", ""), "pins": m.get("pins") or [], "name": m.get("name", ""), "colour": m.get("colour", ""),
-             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or [], "zone": m.get("zone", ""), "comment": m.get("comment", "")}
+             "kind": m.get("kind", "photo"), "swatches": m.get("swatches") or [], "zone": m.get("zone", ""), "comment": m.get("comment", ""),
+             "source_url": m.get("source_url", ""), "source_title": m.get("source_title", "")}
             for m in fill_colours(doc.get("zone_maps") or [])]
 
 

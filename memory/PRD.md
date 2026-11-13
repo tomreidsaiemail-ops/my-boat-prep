@@ -867,3 +867,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Vessel make/model/year_built and maintenance lists (registry kind "maint" + data) confirmed stored in user_boats; forced logout never deletes local outbox (same user re-login resyncs).
 - AGENT RULE: before each publish, advise the user whether the deploy is "major" (needs everyone signed out: auth/session changes, breaking data-shape changes). Normal deploys just auto-reload.
 - WARNING for testing: never leave a past relogin_at in preview DB; it kills seeded test sessions after 10 min. Always DELETE /api/admin/relogin after tests.
+
+## Zone schematic redesign: factory layouts from the web (2026-06, IN PROGRESS, preview only)
+- New `backend/layout_research.py`: Gemini googleSearch grounding finds factory layouts + sources; scrapes source pages for layout drawings; vision check (gemini-2.5-flash) keeps only real top-down plans of that boat.
+- `zone_schematics.py`: drawings traced from the verified builder drawing when found, else from web facts; prompt now fixes orientation (bow right, PORT = top half); galley-side check + one redraw; "need_description" status + POST /boats/{id}/zone-layouts/{job}/describe when nothing is online; builder drawing offered as a private plan with source link; stale jobs (>10 min) auto-fail + refund on status poll.
+- ABORTED 2026-11-13 at user request: concurrent image generation calls stalled in the server (each call 49s+ and the 4 parallel draws never finished, likely shared-key rate limiting from heavy testing). Backend restarted, 2 running jobs marked failed. Frontend (describe prompt, source links) NOT built yet. NOT deployed.
+- Findings: gemini-3-flash-preview misread galley side in a test; gemini-2.5-flash read it correctly. Builder drawings were found for Jeanneau SO 410 (yachtaris.com) but not for Beneteau Oceanis 38.
+- Next: draw layouts one at a time (no parallel), add a hard per-job time budget, then build the UI.
