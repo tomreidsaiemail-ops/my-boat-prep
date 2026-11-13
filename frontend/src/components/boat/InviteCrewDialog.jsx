@@ -45,7 +45,9 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
   const savedFor = (id) => (id === DEFAULT_TRIP ? info.voyage_notes : info.trip_notes?.[id]) || "";
   const planFor = (id) => (trips.find((t) => t.id === id) || { plan }).plan || "";
   const tripPlan = cur.plan ?? plan;
-  const pickTrip = (id) => { setTrip(id); setNotes(savedFor(id) || planFor(id)); setTouched(false); setError(""); };
+  // The trip picked last time sticks for the next invite on this boat.
+  const tripKey = `mbp_invite_trip_${boat?.owner_id || "own"}_${boat?.boat_id}`;
+  const pickTrip = (id) => { localStorage.setItem(tripKey, id); setTrip(id); setNotes(savedFor(id) || planFor(id)); setTouched(false); setError(""); };
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -70,7 +72,8 @@ export const InviteCrewDialog = ({ open, boat, areas = [], name, info, plan = ""
     if (!open) return;
     setQueue([]); setSent({}); setCheck(null); setWalkSkip(null);
     const draft = JSON.parse(sessionStorage.getItem(INVITE_DRAFT) || "null");
-    const t = trips.some((x) => x.id === draft?.trip) ? draft.trip : trips[0]?.id || DEFAULT_TRIP;
+    const kept = localStorage.getItem(tripKey);
+    const t = trips.some((x) => x.id === draft?.trip) ? draft.trip : trips.some((x) => x.id === kept) ? kept : trips[0]?.id || DEFAULT_TRIP;
     setTrip(t);
     setCrewName(draft?.name || ""); setEmail(draft?.email || ""); setRoles(draft?.roles || []); setError(""); setQrFor(""); setAskClear(""); setNotes((draft && draft.notes) || savedFor(t) || planFor(t)); setTouched(!!draft?.notes);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
