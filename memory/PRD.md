@@ -882,3 +882,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Dialog asks "Does this match your boat's layout?" Yes = Zone Map Overview; No = edit comment + Redraw (1 Magic use, saves comment to boat).
 - Owner upload fallback in CreateOverviewButton unchanged. Stale running jobs fail + refund after 7 min.
 - Tested iteration_161: backend 8/8, frontend 100%.
+
+## Strict layout comment enforcement (2026-06)
+- Plans now drawn BOW UP (port = left, starboard = right) with BOW/PORT/STARBOARD on the plan (the old bow-right plan looked "flipped" to skippers).
+- `backend/layout_rules.py`: gemini-2.5-flash parses the comment into rules (area, side, position, aft_of/forward_of, cabin/heads counts) -> STRICT LAYOUT RULES in the prompt; after drawing, vision locates every labelled area and `check()` tests each rule; up to 2 correction passes (image edit with the violations listed); best plan kept; status returns checked/problems; dialog shows green "Checked..." or amber problems list.
+- Tests: backend/tests/test_layout_rules.py (5 offline); live drawings matched for Oceanis 411 (1 correction pass) and Sun Odyssey 36i; iteration_162 UI pass; portrait crop fixed (shrink-0).

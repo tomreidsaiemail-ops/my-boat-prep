@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend only, at 390px, ONE live drawing (Beta, job 7a97d42f-12e4-40ec-a572-fca4234ffa13). Set Make Beneteau, Model Oceanis 411, Year 2000 and the exact skipper's layout comment, then tapped zone-map-create-btn. zone-plan-waiting showed 'Drawing your layout and checking every zone against your comment. This can take up to 3 minutes.' and zone-plan-comment-used showed the comment. The job finished in about 50s. It returned a portrait plan (848x1264), the orientation line 'Bow at the top: port on the left, starboard on the right.', and zone-plan-check-ok ('Checked against your layout comment: everything is where you said.'). Checked the full-size image by eye: BOW is labelled at the top, PORT on the left and STARBOARD on the right. HEADS are in the fore peak, the FORWARD CABIN (v berth) is behind them, the SALOON is midships with the GALLEY to its left (port) mid-boat, and the NAV STATION is on the right (starboard) just aft of the saloon. The second HEADS is aft on the left (port), and the AFT PORT CABIN and AFT STARBOARD CABIN sit either side of the cockpit, with the Lazarette at the stern. All of this matches the comment. No opened the describe step with the comment prefilled exactly, and Back returned to the plan. Yes closed the dialog, showed the toast 'Zone Map Overview added. Drag your colours onto it.' and saved a map ('Full interior', kind overview) to the database. I then removed it with DELETE /api/boats/main/zone-maps/{id}, which returned zone_maps []. There is no horizontal overflow (dialog scrollWidth 386 = clientWidth, document 390). Bug: the portrait plan is CROPPED in the dialog (details below). Redraw was not tapped.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ZoneSchematicsDialog plan figure", "issue": "The portrait plan is cropped at 390x844. The img is 334x439 (52vh), but the figure around it is squeezed to about 280px tall. The figure is a child of the DialogContent flex-col (max-h-[92vh] overflow-y-auto), which shrinks it, and its overflow-hidden clips the image. Only BOW down to the NAV STATION shows; the aft heads, aft port/starboard cabins, cockpit and lazarette are hidden. This means the skipper cannot check the aft half of the plan before tapping Yes. Fix: add shrink-0 to the figure (zone-plan-0), or to all dialog children, so the dialog scrolls instead.", "selector": "[data-testid='zone-plan-0']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ZoneSchematicsDialog opening over Additional details", "issues": ["In the screenshot taken just after opening, the zone dialog and the Additional details dialog underneath show through each other. This is most likely the open animation caught mid-fade and is cosmetic only."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "ZoneSchematicsDialog.jsx: add 'shrink-0' to the figure [data-testid=zone-plan-0] (and to other direct children if needed) so the portrait plan shows in full at max-h 52vh and the dialog scrolls, instead of the figure being squeezed and clipped by overflow-hidden."
+  ],
+  "critical_code_review_comments": [
+    "DialogContent is flex-col with max-h-[92vh] overflow-y-auto. Its children shrink by default, and any child with overflow-hidden (the figure) gets clipped. Add shrink-0 to these children."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "90% (all flows pass; portrait image cropped)"},
+  "seed_data_creation": "None kept. The added zone map 2eb4723b-... was deleted. Beta boat make/model/year/layout comment are now Beneteau / Oceanis 411 / 2000 / the test comment.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Beta boat main currently has no zone maps. Opening the zone dialog starts a drawing straight away, so every check of the image layout costs one drawing. Job 7a97d42f-12e4-40ec-a572-fca4234ffa13 image is at /api/zone-schematics/<job>/0 (Beta cookie). The plan content was correct and the check passed with no correction pass needed in this run."
+}

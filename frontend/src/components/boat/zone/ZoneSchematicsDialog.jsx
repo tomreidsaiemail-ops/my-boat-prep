@@ -101,7 +101,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           </div>
         )}
         {plan && (
-          <figure className="relative min-h-[200px] overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
+          <figure className="relative min-h-[200px] shrink-0 overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
             <img src={`${API}/zone-schematics/${job}/${plan.id}`} alt={`${boatName(boat)} full interior layout plan`} onLoad={() => setShown(job)}
               className="max-h-[52vh] w-full object-contain" data-testid="zone-plan-image" />
             {shown !== job && <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-[var(--muted)]" data-testid="zone-plan-image-loading" />}
