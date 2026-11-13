@@ -887,3 +887,7 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Plans now drawn BOW UP (port = left, starboard = right) with BOW/PORT/STARBOARD on the plan (the old bow-right plan looked "flipped" to skippers).
 - `backend/layout_rules.py`: gemini-2.5-flash parses the comment into rules (area, side, position, aft_of/forward_of, cabin/heads counts) -> STRICT LAYOUT RULES in the prompt; after drawing, vision locates every labelled area and `check()` tests each rule; up to 2 correction passes (image edit with the violations listed); best plan kept; status returns checked/problems; dialog shows green "Checked..." or amber problems list.
 - Tests: backend/tests/test_layout_rules.py (5 offline); live drawings matched for Oceanis 411 (1 correction pass) and Sun Odyssey 36i; iteration_162 UI pass; portrait crop fixed (shrink-0).
+
+## Magically Place Colours: below deck by default (2026-06)
+- auto-swatches body {include_deck}: default skips presets matching deck|anchor|lazarette (cockpit, transom, cabins, heads, galley, saloon, nav, engine room, stateroom placed). "Include deck zones" tick (unticked by default) in OverviewMap.
+- Prompt picks the most specific label per area and uses PORT/STARBOARD words on the plan. `spread()` nudges overlapping labels apart (sized for the 288px map, max 0.15/0.1 from their area).

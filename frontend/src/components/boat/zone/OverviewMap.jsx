@@ -83,11 +83,12 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   };
   const used = new Set(swatches.map((s) => s.label));
   const [placing, setPlacing] = useState(false);
+  const [withDeck, setWithDeck] = useState(false);
   const autoPlace = async () => {
     if (!online) { toast.error("You need a signal for the Magic Mariner"); return; }
     setPlacing(true);
     try {
-      const { data } = await api.post(`/boats/${boat.boat_id}/zone-maps/${map.id}/auto-swatches`, {}, { timeout: 90000 });
+      const { data } = await api.post(`/boats/${boat.boat_id}/zone-maps/${map.id}/auto-swatches`, { include_deck: withDeck }, { timeout: 90000 });
       onMaps(data.zone_maps);
       const made = onZoneDefaults?.((data.zone_maps.find((m) => m.id === map.id) || {}).swatches || []) || 0;
       toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}${made ? ` and added ${made} ${made === 1 ? "cupboard" : "cupboards"} for those zones` : ""}. Drag any that need nudging.`, { duration: 6000 });
@@ -161,6 +162,11 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
           </button>
+          <label className="flex min-h-9 flex-wrap items-center gap-x-2 text-sm font-bold" data-testid={`${t}-deck-label`}>
+            <input type="checkbox" checked={withDeck} onChange={(e) => setWithDeck(e.target.checked)} disabled={placing} className="h-5 w-5 accent-[var(--navy)]" data-testid={`${t}-deck-checkbox`} />
+            Include deck zones
+            <span className="basis-full pl-7 text-xs font-semibold text-[var(--muted)]">{withDeck ? "decks, anchor locker and lazarettes too" : "below deck, cockpit and transom only"}</span>
+          </label>
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to add photos of that zone and scan its cupboards; press and hold it to remove it."}</p>
           <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (

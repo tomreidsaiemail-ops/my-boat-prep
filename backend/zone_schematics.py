@@ -225,14 +225,55 @@ async def use_schematics(boat_id: BoatPath, job_id: JobPath, payload: UseIn, use
 
 PLACE_PROMPT = """This is a top-down layout plan of a boat (a {boat}). Find where each of these areas is on the plan:
 {labels}
-Only include areas you can actually see or confidently locate on this plan; skip the rest. Port is the boat's left side and starboard its right side when facing the bow.
-Give the centre of each area as x and y fractions of the image width and height (0 = left/top, 1 = right/bottom). Each area at most once.
+Only include areas you can actually see or confidently locate on this plan; skip the rest. If the plan shows the words PORT and STARBOARD, use them;
+otherwise port is the boat's left side and starboard its right side when facing the bow. Each area of the plan gets at most one label: pick the single
+most specific label that fits it (e.g. a cabin aft on the port side is "Port Aft cabin" if that label is listed, a heads in the bow is "Heads Fore").
+Give the centre of each area as x and y fractions of the image width and height (0 = left/top, 1 = right/bottom). Each label at most once.
 Reply with JSON only: {{"places": [{{"label": "<exact label from the list>", "x": 0.42, "y": 0.37}}]}}"""
+DECK_RE = re.compile(r"deck|anchor|lazarette", re.I)
+MAP_PX = 288
+
+
+class AutoIn(BaseModel):
+    include_deck: bool = False
+
+
+def spread(places: list[dict], aspect: float) -> list[dict]:
+    """Nudges overlapping colour labels apart (sizes as shown on a {MAP_PX}px-high plan), each staying close to its area."""
+    w_px = MAP_PX * aspect
+    size = [((len(p["label"]) * 6 + 18) / w_px, 24 / MAP_PX) for p in places]
+    home = [(p["x"], p["y"]) for p in places]
+    for _ in range(60):
+        moved = False
+        for i in range(len(places)):
+            for j in range(i + 1, len(places)):
+                a, b = places[i], places[j]
+                ox = (size[i][0] + size[j][0]) / 2 - abs(a["x"] - b["x"])
+                oy = (size[i][1] + size[j][1]) / 2 - abs(a["y"] - b["y"])
+                if ox <= 0 or oy <= 0:
+                    continue
+                moved = True
+                if oy <= ox:
+                    d = (oy / 2 + 0.002) * (1 if a["y"] >= b["y"] else -1)
+                    a["y"] += d
+                    b["y"] -= d
+                else:
+                    d = (ox / 2 + 0.002) * (1 if a["x"] >= b["x"] else -1)
+                    a["x"] += d
+                    b["x"] -= d
+        for k, p in enumerate(places):
+            hx, hy = home[k]
+            p["x"] = min(max(p["x"], hx - 0.15, size[k][0] / 2), hx + 0.15, 1 - size[k][0] / 2)
+            p["y"] = min(max(p["y"], hy - 0.1, size[k][1] / 2), hy + 0.1, 1 - size[k][1] / 2)
+        if not moved:
+            break
+    return places
 
 
 @router.post("/boats/{boat_id}/zone-maps/{map_id}/auto-swatches")
-async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")], user: dict = Depends(require_premium)):
-    """Magic Mariner looks at a Zone Map Overview and drops every predetermined colour it can find onto it, replacing the squares already there."""
+async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")], payload: AutoIn | None = None, user: dict = Depends(require_premium)):
+    """Magic Mariner drops the predetermined colours it can find onto a Zone Map Overview, replacing the squares already there.
+    Below-deck zones plus cockpit and transom by default; deck zones only when asked."""
     from zone_colours import colour_presets
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1, "boat": 1})
@@ -240,6 +281,8 @@ async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r
     if not m:
         raise HTTPException(status_code=404, detail="Zone Map Overview not found")
     presets = (await colour_presets(user))["presets"]
+    if not (payload and payload.include_deck):
+        presets = [p for p in presets if not DECK_RE.search(p["label"])]
     if not presets:
         raise HTTPException(status_code=400, detail="Add colours to Admin - Zone Map Predetermined Colours first")
     try:
@@ -270,6 +313,12 @@ async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r
         if pre and pre["label"] not in seen:
             seen.add(pre["label"])
             out.append({"id": f"a{uuid.uuid4().hex[:10]}", "x": x, "y": y, "colour": pre["colour"], "label": pre["label"]})
+    if out:
+        try:
+            w, h = Image.open(io.BytesIO(data)).size
+            out = spread(out, w / h)
+        except Exception as e:
+            log.warning(f"Couldn't spread colour labels: {e!r}")
     if not out:
         await quota.refund(user["user_id"], source)
         raise HTTPException(status_code=422, detail="The Magic Mariner couldn't find any of your zone colours on this plan. Drag them on yourself.")
