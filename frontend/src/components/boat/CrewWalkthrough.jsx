@@ -9,8 +9,8 @@ import { CupboardPhoto, areaPhotoUrl } from "@/components/boat/inventory/Cupboar
 import { areaZones } from "@/lib/zoneColours";
 
 // Stops, photo by photo in the order the labels were placed. A photo with no labels but a Skipper's comment is one stop of its own.
-// Labelled cupboards need a comment (the zone map photo is their photo). Cupboards not labelled on any photo need their own photo
-// and a comment, and go just before the stops of the zone map photo for their zone.
+// Every labelled cupboard is a stop. Cupboards not labelled on any photo need their own photo and a comment, and go just before
+// the labelled stops of the zone map photo for their zone.
 const COMMENT = "comment";
 export const isCommentStop = (s) => s.pin.id === COMMENT;
 const mapPins = (m) => (m?.pins?.length ? m.pins
@@ -19,7 +19,6 @@ const said = (t) => !!(t || "").trim();
 export const CONTENTS = "+c:";
 export const stepKey = (s) => `${s.pic.key}:${s.pin.id}`;
 export const allStops = (pics, areas = [], boat) => {
-  const byId = new Map(areas.map((a) => [a.id, a]));
   const pinned = new Set(pics.flatMap((p) => (p.map?.pins || []).map((x) => x.area_id)));
   const zones = areaZones(boat, areas);
   const loose = areas.filter((a) => !a.parent_id && !pinned.has(a.id) && said(a.comment) && a.photo?.id).map((a) => ({
@@ -31,7 +30,7 @@ export const allStops = (pics, areas = [], boat) => {
   pics.forEach((p) => {
     const name = p.name || p.map?.zone || p.map?.name || "Zone map";
     if (p.map?.kind !== "overview" && p.map?.colour) loose.filter((s) => s.colour === p.map.colour && !used.has(s)).forEach((s) => { used.add(s); out.push({ ...s, group: p.key, groupName: name }); });
-    mapPins(p.map).filter((pin) => pin.id === COMMENT || said(byId.get(pin.area_id)?.comment)).forEach((pin) => out.push({ pic: p, pin, group: p.key, groupName: name }));
+    mapPins(p.map).forEach((pin) => out.push({ pic: p, pin, group: p.key, groupName: name }));
   });
   return [...out, ...loose.filter((s) => !used.has(s)).map((s) => ({ ...s, group: "cupboards", groupName: "Other cupboards" }))];
 };

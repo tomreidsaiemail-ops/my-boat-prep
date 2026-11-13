@@ -12,18 +12,29 @@ export const walkPics = (boat) => (boat.zone_maps || []).map((m) => ({ key: m.id
 const commentOf = (s, areas) => said(isCommentStop(s) ? s.pic.map.comment : areas.find((a) => a.id === s.pin.area_id)?.comment);
 
 // Every stop grouped by zone map photo, each ticked in or out, with a Contents bubble that shows the cupboard's contents in the walkthrough.
-export const StopList = ({ steps, areas, skip, onFlip }) => {
+export const StopList = ({ steps, areas, skip, onFlip, onSetMany }) => {
   const groups = [...new Map(steps.map((s) => [s.group, s.groupName])).entries()];
-  return groups.map(([g, name]) => (
+  return groups.map(([g, name]) => {
+    const keys = steps.filter((s) => s.group === g).map(keyOf);
+    const allOn = keys.every((k) => !skip.includes(k));
+    return (
     <div key={g} className="flex flex-col gap-1" data-testid={`walk-stops-map-${g}`}>
-      <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]">{name}</p>
+      <div className="flex items-baseline gap-2">
+        <p className="min-w-0 flex-1 text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]">{name}</p>
+        <button type="button" onClick={() => onSetMany(keys, !allOn)} className="shrink-0 text-xs font-bold text-[var(--navy)] underline underline-offset-2 hover:opacity-70" data-testid={`walk-stops-map-${g}-all-btn`}>
+          {allOn ? "Remove all" : "Add all"}
+        </button>
+      </div>
       {steps.filter((s) => s.group === g).map((s) => (
         <StopRow key={keyOf(s)} s={s} areas={areas} on={!skip.includes(keyOf(s))} contents={skip.includes(CONTENTS + keyOf(s))}
           onFlip={() => onFlip(keyOf(s))} onContents={() => onFlip(CONTENTS + keyOf(s))} comment={commentOf(s, areas)} />
       ))}
     </div>
-  ));
+    );
+  });
 };
+// Ticks (on) or unticks a set of stops in a walk_skip list.
+export const setStops = (list, keys, on) => (on ? list.filter((k) => !keys.includes(k)) : [...new Set([...list, ...keys])]);
 
 const Bubble = ({ on, onClick, children, testId, ...rest }) => (
   <button type="button" onClick={onClick} aria-pressed={on} data-testid={testId} {...rest}
@@ -41,7 +52,7 @@ const StopRow = ({ s, areas, on, contents, onFlip, onContents, comment }) => {
       <div className="flex min-h-9 flex-wrap items-center gap-2">
         <label className="flex min-w-0 flex-1 items-center gap-2.5 text-sm">
           <input type="checkbox" checked={on} onChange={onFlip} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${t}-checkbox`} />
-          <span className="min-w-0 break-words">{pinName(s.pin, areas)}{s.cupboard && <span className="ml-1 whitespace-nowrap text-xs font-semibold text-[var(--muted)]">(cupboard photo)</span>}</span>
+          <span className="min-w-0 break-words">{pinName(s.pin, areas)}{!isCommentStop(s) && <span className="ml-1 whitespace-nowrap text-xs font-semibold text-[var(--muted)]">{s.cupboard ? "(cupboard photo)" : "(labelled)"}</span>}</span>
         </label>
         {comment && (
           <Bubble on={show} onClick={() => setShow(!show)} testId={`${t}-comment-bubble`} aria-label={show ? "Hide the comment" : "Show the comment"}
@@ -105,7 +116,7 @@ export const WalkStopsPicker = ({ boat, areas = [], online, onSaved }) => {
         <div className="flex flex-col gap-2 border-t border-[var(--line)] p-3">
           <p className="text-xs text-[var(--muted)]">Untick cupboards of less importance. Crew only see the ticked stops in the Boat Terms and Conditions walkthrough, unless you pick their own stops when you invite them. Tap Comment to read a cupboard&apos;s comment. Tap Contents (green with a tick) to show what&apos;s stowed in that cupboard during the walkthrough.</p>
           {missing.length > 0 && <Missing list={missing} />}
-          <StopList steps={steps} areas={areas} skip={skip} onFlip={flip} />
+          <StopList steps={steps} areas={areas} skip={skip} onFlip={flip} onSetMany={(keys, v) => setSkip((l) => setStops(l, keys, v))} />
           {steps.length > 0 && (
             <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={!changed || busy || !on} onClick={save} data-testid="walk-stops-save-btn">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} {on ? "Save walkthrough stops" : "Keep at least one stop"}

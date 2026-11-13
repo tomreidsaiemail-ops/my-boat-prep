@@ -64,14 +64,14 @@ CONTENTS = "+c:"  # walk_skip entries starting with this switch a stop's cupboar
 
 
 def all_stops(doc: dict) -> List[str]:
-    """Labelled cupboards need a comment (the zone map photo is their photo); photos with only a Skipper's comment stay a stop;
+    """Every cupboard labelled on a zone map photo is a stop, and so is a photo with only a Skipper's comment;
     cupboards not labelled on any photo need their own photo and a comment."""
     areas = [a for a in doc.get("areas") or [] if isinstance(a, dict)]
     by_id = {a.get("id"): a for a in areas}
     said = lambda a: bool(str((a or {}).get("comment") or "").strip())  # noqa: E731
     maps = doc.get("zone_maps") or []
     pinned = {p.get("area_id") for m in maps for p in m.get("pins") or []}
-    pins = [f"{m['id']}:{p['id']}" for m in maps for p in map_pins(m) if p["id"] == "comment" or said(by_id.get(p.get("area_id")))]
+    pins = [f"{m['id']}:{p['id']}" for m in maps for p in map_pins(m)]
     return pins + [f"area:{a['id']}" for a in areas if not a.get("parent_id") and a.get("id") not in pinned and said(a) and (a.get("photo") or {}).get("id")]
 
 
