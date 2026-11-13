@@ -97,7 +97,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard, a box or a fol
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, batchHelp, onSyncStores, onSignOff, vessel = "", loaded = true }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, onWalkStars, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, batchHelp, onSyncStores, onSignOff, vessel = "", loaded = true }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -268,7 +268,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const openArea = (id) => {
     setQuery("");
     setFocus({ id, at: Date.now() });
-    setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    // Waits for a closing dialog (e.g. the Crew Walkthrough) to hand focus back first, or the page jumps back up.
+    setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
   };
   const [batchOpen, setBatchOpen] = useState(false);
   const [zone, setZone] = useState(null);
@@ -420,7 +421,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   return (
     <section className="flex flex-col gap-3" data-testid="inventory-list">
       <ZoneMap version={shared.zone_map_v} admin={admin} online={online} onChanged={(v) => onSharedChange({ zone_map_v: v })}
-        boat={boat} details={details} canEdit={!readOnly} onBoatMaps={onBoatMaps} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} onZoneDefaults={addZoneDefaults} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
+        boat={boat} details={details} canEdit={!readOnly} onBoatMaps={onBoatMaps} onWalkStars={onWalkStars} areas={areas} onOpenArea={openArea} onAddAreas={addAreasNamed} onZoneDefaults={addZoneDefaults} focusPin={mapFocus} onSignOff={onSignOff} onZone={boat && !boat.owner_id ? setZone : undefined} />
       {!readOnly && suggestions.length > 0 && (
         <button type="button" className="btn-ghost h-12 justify-center" onClick={() => setDialog({ type: "suggest" })} data-testid="inventory-suggest-btn">
           <Lightbulb className="h-4 w-4" /> Add from suggested cupboards ({suggestions.length})

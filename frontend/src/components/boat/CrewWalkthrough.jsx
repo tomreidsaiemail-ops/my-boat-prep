@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, PenLine } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, PenLine, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PinnedPhoto, pinName } from "@/components/boat/PinnedPhoto";
 import { StopContents } from "@/components/boat/inventory/FolderPeek";
@@ -43,7 +43,7 @@ export const WalkStopContents = StopContents;
 const stopKey = (s) => s.id || `${s.pic.key}:${s.pin.id}`;
 
 // `ticked`/`onTick` (from the Boat Terms and Conditions) add an "I've seen it" tick to each stop; `onSeen` ticks each stop as it's shown.
-export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, ticked, onTick, onSeen, start = 0, boat }) => {
+export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, ticked, onTick, onSeen, start = 0, boat, stars = [], onStar }) => {
   const [pos, setN] = useState(start);
   const seenKey = steps.length ? stopKey(steps[Math.min(pos, steps.length - 1)]) : "";
   useEffect(() => { if (seenKey && onSeen) onSeen(seenKey); }, [seenKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,11 +61,20 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
   const ask = () => setLeaving(true);
   return (
     <Dialog open onOpenChange={(o) => !o && ask()}>
-      <DialogContent guard={false} className="max-h-[94vh] max-w-2xl overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-4" data-testid="walkthrough-dialog">
+      <DialogContent guard={false} className="flex h-[92vh] max-w-2xl flex-col gap-3 rounded-lg border-2 border-[var(--navy)] p-4" data-testid="walkthrough-dialog">
         <DialogHeader>
-          <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
+          <div className="flex items-start gap-2 pr-6">
+            <DialogTitle className="min-w-0 flex-1 font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
+            {onStar && (
+              <button type="button" onClick={() => onStar(stopKey(step))} aria-pressed={stars.includes(stopKey(step))} className="icon-btn h-9 w-9 shrink-0 [transition:transform_.1s] active:scale-90"
+                aria-label={stars.includes(stopKey(step)) ? "Remove the gold star" : "Give this stop a gold star"} title="Gold star (only you see it)" data-testid="walkthrough-star-btn">
+                <Star className={`h-5 w-5 ${stars.includes(stopKey(step)) ? "fill-amber-400 text-amber-500" : "text-[var(--muted)]"}`} />
+              </button>
+            )}
+          </div>
           <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · {note ? "read the skipper's comment on this photo." : "here's what's stowed in this spot."}</DialogDescription>
         </DialogHeader>
+        <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1" data-testid="walkthrough-body">
         {!note && <CupboardName name={pinName(step.pin, areas)} testId="walkthrough-cupboard-name" />}
         <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
@@ -80,13 +89,14 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
           </label>
         )}
         {area && !onTick && <button type="button" className="btn-ghost h-9 w-fit justify-self-start px-3 text-xs" onClick={() => { onClose(); onOpenArea(area.id); }} data-testid="walkthrough-open-area-btn">Open in Boat Inventory</button>}
+        </div>
         {last && onSignOff && (
           <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={signing} data-testid="walkthrough-signoff-btn"
             onClick={async () => { setSigning(true); if (await onSignOff(steps.length)) onClose(); else setSigning(false); }}>
             {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />} Sign off in Ship's Log
           </button>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2" data-testid="walkthrough-nav">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" disabled={n === 0} onClick={() => setN(n - 1)} data-testid="walkthrough-back-btn"><ChevronLeft className="h-4 w-4" /> Back</button>
           {!last
             ? <button type="button" className="btn-solid h-11 flex-1 justify-center" onClick={() => setN(n + 1)} data-testid="walkthrough-next-btn">Next <ChevronRight className="h-4 w-4" /></button>

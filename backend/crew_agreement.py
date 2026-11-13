@@ -92,6 +92,21 @@ async def save_walk_stops(boat_id: BoatPath, payload: WalkSkipIn, user: dict = D
     return {"walk_skip": skip}
 
 
+class WalkStarsIn(BaseModel):
+    stars: List[Annotated[str, Field(max_length=120)]] = Field(max_length=600)
+
+
+@router.put("/boats/{boat_id}/walk-stars")
+async def save_walk_stars(boat_id: BoatPath, payload: WalkStarsIn, user: dict = Depends(get_current_user)):
+    """Gold stars the skipper gives stops on the Crew Walkthrough. Only the skipper sees them; crew never get them."""
+    await owned_boat(user, boat_id)
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "zone_maps": 1, "areas": 1})
+    known = set(all_stops(doc))
+    stars = [s for s in dict.fromkeys(payload.stars) if s in known]
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"walk_stars": stars}})
+    return {"walk_stars": stars}
+
+
 async def standard_terms() -> List[dict]:
     doc = await db.list_templates.find_one({"custom": True, "name": {"$regex": TERMS_LIST, "$options": "i"}}, {"_id": 0, "items": 1})
     return [{"label": i["label"], **({"indent": True} if i.get("indent") else {})} for i in (doc or {}).get("items") or []]

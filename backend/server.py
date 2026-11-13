@@ -446,7 +446,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
         "owner_id": d["owner_id"] if crew_role else None, "owner_name": (owner.get("name") or owner.get("email", "")) if crew_role else "",
         "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
-        "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None),
+        "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None), "walk_stars": [] if crew_role else d.get("walk_stars") or [],
         "charter_lock": d.get("charter_lock"), "charter": d.get("charter"), "tracking": tracking_brief(d),
     }
 
@@ -455,7 +455,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
 async def list_boats(user: dict = Depends(get_current_user)):
     await claim_charters(user)
     await claim_quick(user)
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "tracking": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "walk_stars": 1, "tracking": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)

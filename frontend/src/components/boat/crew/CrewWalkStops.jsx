@@ -41,7 +41,7 @@ export const CrewWalkStops = ({ boat, areas = [], skip, onChange }) => {
             <DialogTitle className="font-display text-xl">Walkthrough stops for this crew member</DialogTitle>
             <DialogDescription>Tick the stops they walk through when they accept the Boat Terms, and tap Contents to show them what&apos;s stowed there. It starts from your default stops and contents.</DialogDescription>
           </DialogHeader>
-          {draft && <div className="flex flex-col gap-2"><StopList steps={steps} areas={areas} skip={draft} onFlip={flip} onSetMany={(keys, v) => setDraft((l) => setStops(l, keys, v))} /></div>}
+          {draft && <div className="flex flex-col gap-2"><StopList steps={steps} areas={areas} skip={draft} boat={boat} stars={boat.walk_stars || []} onFlip={flip} onSetMany={(keys, v) => setDraft((l) => setStops(l, keys, v))} /></div>}
           {draft && !sameList(draft, def) && (
             <button type="button" className="flex items-center gap-1 self-start text-xs font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => setDraft(def)} data-testid="crew-walk-stops-default-btn">
               <RotateCcw className="h-3.5 w-3.5" /> Back to the default stops

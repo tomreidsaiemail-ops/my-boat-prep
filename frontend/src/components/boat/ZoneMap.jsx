@@ -94,11 +94,20 @@ const AdminTools = ({ has, online, onChanged }) => {
   );
 };
 
-export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, areas = [], onOpenArea, onAddAreas, onZoneDefaults, focusPin, onSignOff, onZone }) => {
+export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {}, canEdit, onBoatMaps, onWalkStars, areas = [], onOpenArea, onAddAreas, onZoneDefaults, focusPin, onSignOff, onZone }) => {
   const helpLists = useAdminLists(HELP_PREFIX, online);
   const help = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const walkHelpItems = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === WALK_HELP_NAME)?.items;
   const [walkHelp, setWalkHelp] = useState(null);
+  // Gold stars: the skipper marks key stops while stepping through; only the skipper sees them.
+  const starStop = async (key) => {
+    if (!online) { toast.error("Go online to give a stop a gold star"); return; }
+    const cur = boat.walk_stars || [];
+    const next = cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key];
+    onWalkStars?.(next);
+    try { const { data } = await api.put(`/boats/${boat.boat_id}/walk-stars`, { stars: next }); onWalkStars?.(data.walk_stars); }
+    catch (e) { onWalkStars?.(cur); toast.error(apiError(e, "Couldn't save the gold star")); }
+  };
   const [open, setOpen] = useState(null);
   const [labelling, setLabelling] = useState(null);
   const [expanded, setExpanded] = useState(false);
@@ -253,7 +262,8 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           {open?.map && <SkipperComment text={open.map.comment} testId="zone-map-full-comment" />}
         </DialogContent>
       </Dialog>
-      {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff} />}
+      {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff}
+        stars={boat?.walk_stars || []} onStar={canEdit && boat && !boat.owner_id ? starStop : undefined} />}
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
     </section>
