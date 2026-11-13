@@ -76,7 +76,7 @@ const StopRow = ({ s, areas, on, contents, onFlip, onContents, comment }) => {
 // Cupboards with neither a photo nor a comment can't be a stop.
 const Missing = ({ list }) => (
   <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-amber-500 bg-amber-50 p-2.5 text-sm" role="alert" data-testid="walk-stops-missing">
-    <p className="flex gap-2 font-bold text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> These cupboards do not have a photo and a comment so are not part of the walkthrough. Add a comment and a photo then those cupboards can be selected for the default crew walkthrough or for crew members interested in that particular cupboard.</p>
+    <p className="flex gap-2 font-bold text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> These cupboards do not have a photo and a comment, and are not labelled on a zone map photo, so are not part of the walkthrough. Add a comment and a photo, or label the cupboard on a zone map photo, then those cupboards can be selected for the default crew walkthrough or for crew members interested in that particular cupboard.</p>
     <p className="pl-6 font-semibold text-amber-950" data-testid="walk-stops-missing-names">{list.map((a) => a.name).join(", ")}</p>
   </div>
 );
