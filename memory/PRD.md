@@ -910,3 +910,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - react-cropper 2.3.3 + cropperjs 1.6.2. `zone/CropDialog.jsx` (useCropStep hook): pinch/scroll zoom, drag to pan, free-shape crop box, Zoom in/out, Reset, Save Crop (canvas -> JPEG <=1600px), Use whole picture, Cancel.
 - Web pick: GET /api/boats/{id}/zone-schematics/search/{sid}/image/{rid} proxies the full picture (same-origin, <=2400px) -> crop -> POST .../pick multipart (result_id, file) saves it with source link. Uploads (picker "Upload My Own Diagram" and Boat Inventory upload) go through the same crop step before POST /zone-maps.
 - Crop step: Rotate left/right (90° via canvas re-render, crop box refits; Reset keeps the turn, resets zoom/crop). (2026-06)
+- Search again (2026-06): label 'Search again', free, POST .../search/{sid}/again adds 'overhead schematics only'; Serper called once per search (cached via again_id); button hides after one use, back on reopen.

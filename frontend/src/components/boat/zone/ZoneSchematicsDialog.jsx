@@ -43,7 +43,17 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
     catch (e) { setError(apiError(e, "The search didn't work, please try again")); }
     setLoading(false);
   };
-  useEffect(() => { if (open) run(); else { setSearch(null); setPicked(null); setError(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // One free narrower search each time the window opens.
+  const [againUsed, setAgainUsed] = useState(false);
+  const again = async () => {
+    setAgainUsed(true); setPicked(null);
+    const first = search;
+    setSearch(null); setLoading(true);
+    try { setSearch((await api.post(`/boats/${boatId}/zone-schematics/search/${first.search_id}/again`, {}, { timeout: 30000 })).data); }
+    catch (e) { setSearch(first); toast.error(apiError(e, "Couldn't search again right now")); }
+    setLoading(false);
+  };
+  useEffect(() => { setAgainUsed(false); if (open) run(); else { setSearch(null); setPicked(null); setError(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const step = useCropStep();
   const saveWeb = async (blob) => {
     const form = new FormData();
@@ -117,9 +127,9 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           <ImagePlus className="h-4 w-4" /> Upload My Own Diagram
         </button>
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="zone-search-upload-input" />
-        {search && (
-          <button type="button" className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--muted)] underline" disabled={loading} onClick={() => run(true)} data-testid="zone-search-again-btn">
-            <RefreshCw className="h-3.5 w-3.5" /> Search again (1 Magic use)
+        {search && !againUsed && (
+          <button type="button" className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--muted)] underline" disabled={loading || busy} onClick={again} data-testid="zone-search-again-btn">
+            <RefreshCw className="h-3.5 w-3.5" /> Search again
           </button>
         )}
       </DialogContent>

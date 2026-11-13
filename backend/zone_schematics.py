@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api")
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 SearchPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 SEARCH_URL = "https://google.serper.dev/images"
+AGAIN_WORDS = "overhead schematics only"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
       "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"}
 MAX_BYTES = 8_000_000
@@ -94,6 +95,28 @@ async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict =
          "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)}
     await db.zone_searches.insert_one({**s})
     return {**_public(s), "scans_left": await quota.left(user["user_id"])}
+
+
+@router.post("/boats/{boat_id}/zone-schematics/search/{search_id}/again")
+async def search_again(boat_id: BoatPath, search_id: SearchPath, user: dict = Depends(require_premium)):
+    """One free follow-up search narrowed to overhead schematics; done once per search, then the same results are shown again."""
+    key = {"search_id": search_id, "owner_id": user["user_id"], "boat_id": boat_id}
+    first = await db.zone_searches.find_one(key, {"_id": 0})
+    if not first:
+        raise HTTPException(status_code=404, detail="That search has expired. Close and search again.")
+    if first.get("again_id"):
+        again = await db.zone_searches.find_one({"search_id": first["again_id"], "owner_id": user["user_id"]}, {"_id": 0})
+        if again:
+            return {**_public(again), "reused": True}
+    query = f"{first['query']} {AGAIN_WORDS}"
+    results = await web_images(query)
+    if not results:
+        raise HTTPException(status_code=404, detail="No more overhead schematics found. Pick one above, or upload your own diagram.")
+    again = {"search_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "query": query, "results": results,
+             "created_at": datetime.now(timezone.utc).isoformat(), "expires": first["expires"]}
+    await db.zone_searches.insert_one({**again})
+    await db.zone_searches.update_one(key, {"$set": {"again_id": again["search_id"]}})
+    return _public(again)
 
 
 async def _download(url: str, page: str = "") -> bytes:
