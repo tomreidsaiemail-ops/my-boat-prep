@@ -874,3 +874,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - ABORTED 2026-11-13 at user request: concurrent image generation calls stalled in the server (each call 49s+ and the 4 parallel draws never finished, likely shared-key rate limiting from heavy testing). Backend restarted, 2 running jobs marked failed. Frontend (describe prompt, source links) NOT built yet. NOT deployed.
 - Findings: gemini-3-flash-preview misread galley side in a test; gemini-2.5-flash read it correctly. Builder drawings were found for Jeanneau SO 410 (yachtaris.com) but not for Beneteau Oceanis 38.
 - Next: draw layouts one at a time (no parallel), add a hard per-job time budget, then build the UI.
+
+## Zone schematic ROLLED BACK to single plan (2026-06)
+- Web-search/multi-layout engine removed (layout_research.py deleted, /zone-layouts endpoints gone).
+- New boat field `layout_comment` ("Skipper's layout comment", next to Year of manufacture in Additional details).
+- POST /api/boats/{id}/zone-schematics draws ONE labelled full-interior plan from make/model/year + comment (bow right, port = top). If the comment names the galley side, gemini-2.5-flash checks it and redraws once. 1 Magic use per drawing; retry=true forces a new drawing.
+- Dialog asks "Does this match your boat's layout?" Yes = Zone Map Overview; No = edit comment + Redraw (1 Magic use, saves comment to boat).
+- Owner upload fallback in CreateOverviewButton unchanged. Stale running jobs fail + refund after 7 min.
+- Tested iteration_161: backend 8/8, frontend 100%.

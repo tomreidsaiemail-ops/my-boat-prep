@@ -39,7 +39,7 @@ STYLE = ("Style: technical wireframe line drawing like a boat builder's brochure
          "Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
 SIDE_WORDS = {"port": "port side (TOP half of the picture)", "starboard": "starboard side (BOTTOM half of the picture)"}
 VISION_MODEL = "gemini-2.5-flash"
-STALE_MINUTES = 10
+STALE_MINUTES = 7
 
 
 def galley_side(comment: str) -> str:

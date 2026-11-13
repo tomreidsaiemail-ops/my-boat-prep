@@ -1,0 +1,28 @@
+{
+  "summary": "Tested the single full-interior Zone Map Overview plan, end to end (backend + frontend at 390px). Used 4 live drawings in total, one at a time: 2 backend (Pro: first + retry) and 2 UI (Beta: first + redraw). Every requested item passed. Backend: POST /boats/main/zone-schematics returns total 1 and uses exactly 1 Magic use; the job finishes in 10-16s with images=[{id '0', title 'Full interior'}]; /0 returns a JPEG and /1 returns 404. The same fields with retry=false reuse the job (reused true, no use spent). retry=true makes a new job and uses 1 more. /use adds one 'Full interior' overview and it was deleted afterwards. The old /zone-layouts endpoint returns 404. A layout_comment over 300 characters returns 422 on both the schematics and PUT /me/boat endpoints, and a PUT/GET round trip keeps the value. Frontend: the Skipper's layout comment input sits next to Year of manufacture on the same row and stays after closing/reopening and after a reload. No horizontal overflow at 390px. The create button opens the dialog with a spinner and the comment, then shows one image (naturalWidth 1376) and the question with Yes/No. No opens describe with the comment prefilled; Back returns to the question; Redraw is disabled when empty. Redraw spends 1 use (46->45->44) and saves the new comment to the boat. Yes shows the toast 'Zone Map Overview added. Drag your colours onto it.', closes the dialogs and the overview appears in Zone Maps. Upload fallback: zone-overview-create-btn opens the choice dialog with the upload button (file chooser opens) and 'Magic Mariner: draw a layout plan'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ZoneSchematicsDialog after Redraw", "issues": ["After the job is done, the plan box stays empty white for about 1-2s while the JPEG loads, with no spinner. Consider a loading state until the image's onLoad fires."]},
+      {"screen": "Additional details at 390px", "issues": ["The 'Year of manufacture' label wraps to 2 lines while 'Skipper's layout comment' is 1 line. The inputs still line up, so this is cosmetic only. The long comment is cut off inside the single-line input."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_plan_single.py", "/app/test_reports/pytest/pytest_results_161.xml"],
+  "action_items": [
+    "Optional: show a spinner over zone-plan-image until it loads.",
+    "Optional: when the backend reloads (a deploy or file save) it kills the in-memory drawing tasks. The user then sees the spinner until the 10-minute stale check fails the job and refunds the use. Consider a shorter stale window for 1-image jobs (drawings take 10-60s)."
+  ],
+  "critical_code_review_comments": [
+    "zone_schematics.py: the reuse signature leaves out loa/units, so changing only the length reuses the old plan. Probably fine, but note it.",
+    "_draw: when the comment names the galley side, a wrong-side result triggers a second image call that is still billed as 1 Magic use. That matches the spec, but it doubles load on the rate-limited key.",
+    "Backend hot reload also fires when files under backend/tests change, which kills in-flight drawing tasks. Avoid saving test files while a drawing is running."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_plan_single.py"],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100%"},
+  "seed_data_creation": "Beta user's own boat 'main' now has boat_type 'Yacht - Sloop', make Jeanneau, model 'Sun Odyssey 349', year 2016, layout_comment \"TEST_ Owner's version, 3 cabins, galley on port, head in fore peak\" (needed for zone-map-create-btn). The zone maps added by tests were deleted: Beta main zone_maps is back to [], and Pro main is unchanged (Full interior, Galley, Galley 2). Magic uses spent: Pro 2 (24->22), Beta 2 (46->44).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Live tests in test_zone_plan_single.py need ZONE_LIVE=1 (2 drawings) and must run serially with -n 0 (pytest.ini forces xdist). Beta's own boat is reached via /shore -> shore-chooser-own-main. Open Additional details with window.dispatchEvent(new Event('mbp:open-details')). Zone Maps section: click zone-map-toggle first. A Crew Registration dialog (pro boat) may pop up for Beta after Yes; that is unrelated, close it with Escape."
+}

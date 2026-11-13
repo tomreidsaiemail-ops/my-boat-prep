@@ -35,6 +35,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
   const [describing, setDescribing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [shown, setShown] = useState(null);
   const timer = useRef(null);
   const draw = async (text, retry = false) => {
     setError(""); setDescribing(false); setJob(null); setStatus({ status: "running", images: [] });
@@ -86,8 +87,10 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           </div>
         )}
         {plan && (
-          <figure className="overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
-            <img src={`${API}/zone-schematics/${job}/${plan.id}`} alt={`${boatName(boat)} full interior layout plan`} className="aspect-[16/10] w-full object-contain" data-testid="zone-plan-image" />
+          <figure className="relative overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
+            <img src={`${API}/zone-schematics/${job}/${plan.id}`} alt={`${boatName(boat)} full interior layout plan`} onLoad={() => setShown(job)}
+              className="aspect-[16/10] w-full object-contain" data-testid="zone-plan-image" />
+            {shown !== job && <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-[var(--muted)]" data-testid="zone-plan-image-loading" />}
           </figure>
         )}
         {plan && !describing && <>
