@@ -5,225 +5,149 @@ import json
 import logging
 import os
 import re
-import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, List
-from fastapi import APIRouter, Depends, HTTPException, Path, Response
+from typing import Annotated
+from urllib.parse import urlparse
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 from db import db
-from auth import get_current_user, require_premium
+from auth import require_premium
 import quota
 from photos import APP_NAME, get_object, put_object
 from inventory import MAX_BOAT_MAPS, boat_maps
-from layout_rules import check, locate, parse_rules, rules_prompt
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
-JobPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
-ImgPath = Annotated[str, Path(pattern=r"^[0-9]$")]
-MODEL = "gemini-3.1-flash-image-preview"
-_tasks = set()
-PLAN_TITLE = "Full interior"
+SearchPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
+SEARCH_URL = "https://www.googleapis.com/customsearch/v1"
+UA = {"User-Agent": "Mozilla/5.0 (compatible; MyBoatPrep/1.0; +https://myboatprep.com)"}
+MAX_BYTES = 8_000_000
 
 
-def _name(boat: dict) -> str:
-    return " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
+def search_query(boat: dict) -> str:
+    who = " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
+    return f"schematic overhead image line drawing {who}"
 
 
-SIDES = ("Wide landscape orientation with the stern on the LEFT, the bow pointing RIGHT and the centreline running horizontally across the picture, "
-         "so the boat's PORT side is the TOP half of the picture and its STARBOARD side the BOTTOM half. Write the small words BOW at the right end, STERN at the left end, "
-         "PORT along the top edge and STARBOARD along the bottom edge, outside the hull.")
-STYLE = ("Style: technical wireframe line drawing like a boat builder's brochure plan, thin dark navy lines on a plain white background, no shading, no people. "
-         "Clearly draw and label in short English words: Galley, Nav station, Saloon, every cabin with one short name that includes the word cabin (e.g. Forward cabin, Aft port cabin) and every "
-         "toilet compartment with one short name that includes the word Heads (e.g. Forward heads). One label per area, never two. Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
-STALE_MINUTES = 8
-MAX_FIXES = 2
-TIME_BUDGET = 240
-
-
-def plan_prompt(boat: dict, rules: str = "", fix: str = "") -> str:
-    size = f", {boat['loa']} {'ft' if boat.get('units') == 'ft' else 'm'} long" if str(boat.get("loa") or "").strip() else ""
-    kind = str(boat.get("boat_type") or "boat").strip()
-    comment = str(boat.get("layout_comment") or "").strip()
-    said = f"The skipper describes this boat's layout as: \"{comment}\".\n" if comment else ""
-    return (f"A clean top-down full interior accommodation plan of a {_name(boat)} ({kind}{size}), from bow to stern.\n{said}{rules}{fix}"
-            f"Where the skipper says nothing, follow the real layout of this make and model as published by the builder. {SIDES} {STYLE}")
-
-
-async def _image(prompt: str, session: str, ref: bytes | None = None) -> bytes | None:
-    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=session, system_message="You draw clear boat layout plans and follow placement rules exactly.")
-    chat.with_model("gemini", MODEL).with_params(modalities=["image", "text"])
-    files = [ImageContent(image_base64=base64.b64encode(ref).decode())] if ref else None
-    try:
-        _, images = await asyncio.wait_for(chat.send_message_multimodal_response(UserMessage(text=prompt, file_contents=files)), 150)
-    except asyncio.TimeoutError:
-        log.warning(f"{session}: drawing timed out")
-        return None
-    if not images:
-        return None
-    img = Image.open(io.BytesIO(base64.b64decode(images[0]["data"]))).convert("RGB")
-    img.thumbnail((1600, 1600))
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=85)
-    return buf.getvalue()
-
-
-async def _draw(boat: dict, session: str) -> tuple[bytes, list | None]:
-    """Draws the plan, checks every zone against the skipper's comment and runs correction passes; returns the best plan and what still doesn't match (None = not checked)."""
-    parsed = await parse_rules(str(boat.get("layout_comment") or ""), f"{session}-rules")
-    rules = rules_prompt(parsed)
-    start, best, fix, prev = time.monotonic(), None, "", None
-    for attempt in range(1 + (MAX_FIXES if rules else 0)):
-        if attempt and time.monotonic() - start > TIME_BUDGET:
-            break
-        # First correction edits the faulty plan; the last one draws afresh so a stubborn mistake isn't copied.
-        data = await _image(plan_prompt(boat, rules, fix), f"{session}-{attempt}", prev if attempt == 1 else None)
-        if not data:
+async def google_images(query: str) -> list[dict]:
+    """Top Google Images results (one Custom Search call, up to 10)."""
+    params = {"key": os.environ["GOOGLE_SEARCH_API_KEY"], "cx": os.environ["GOOGLE_SEARCH_CX"], "q": query, "searchType": "image", "num": 10, "safe": "active"}
+    async with httpx.AsyncClient(timeout=15) as http:
+        r = await http.get(SEARCH_URL, params=params)
+    if r.status_code != 200:
+        msg = (r.json().get("error") or {}).get("message", "") if r.headers.get("content-type", "").startswith("application/json") else r.text[:200]
+        log.error(f"Google image search failed {r.status_code}: {msg}")
+        raise HTTPException(status_code=503, detail="The image search isn't available right now. Please try again later, or upload your own diagram.")
+    out = []
+    for n, it in enumerate(r.json().get("items") or []):
+        img = it.get("image") or {}
+        if not it.get("link") or not img.get("thumbnailLink"):
             continue
-        if not rules:
-            return data, None
-        located = await locate(data, f"{session}-check{attempt}")
-        problems = check(parsed, located) if located else None
-        log.info(f"{session} pass {attempt}: {problems}")
-        if problems is None:
-            best = best or (data, None)
-            break
-        if best is None or best[1] is None or len(problems) < len(best[1]):
-            best = (data, problems)
-        if not problems:
-            break
-        fix = (("CORRECTION PASS: the attached plan broke the skipper's rules: " if attempt == 0 else "A previous draft broke the skipper's rules, do not repeat these mistakes: ")
-               + " ".join(problems)
-               + " Redraw the whole plan so every rule above is met exactly: bow pointing right, stern on the left, port at the top, starboard at the bottom.\n")
-        prev = data
-    if not best:
-        raise ValueError("no image")
-    return best
+        page = img.get("contextLink") or ""
+        out.append({"id": str(n), "link": it["link"], "thumb": img["thumbnailLink"], "title": str(it.get("title") or "")[:140],
+                    "source_url": page, "host": it.get("displayLink") or urlparse(page).hostname or "", "width": img.get("width"), "height": img.get("height")})
+    return out
 
 
-async def _put(path: str, data: bytes):
-    for attempt in range(3):
-        try:
-            return await asyncio.to_thread(put_object, path, data, "image/jpeg")
-        except Exception:
-            if attempt == 2:
-                raise
-            await asyncio.sleep(1.5 * (attempt + 1))
+def _public(s: dict) -> dict:
+    return {"search_id": s["search_id"], "query": s["query"],
+            "results": [{k: r[k] for k in ("id", "thumb", "title", "source_url", "host", "width", "height")} for r in s["results"]]}
 
 
-async def _run(job_id: str, owner: str, boat: dict, source):
-    try:
-        data, problems = await _draw(boat, f"zoneplan-{job_id}")
-        path = f"{APP_NAME}/zone-schematics/{owner}/{job_id}/0.jpg"
-        await _put(path, data)
-        await db.zone_schematics.update_one({"job_id": job_id}, {"$push": {"images": {"id": "0", "title": PLAN_TITLE, "path": path, "checked": problems is not None,
-                                                                                     "problems": problems or []}}})
-        status = "done"
-    except Exception as e:
-        log.error(f"Zone schematic {job_id} failed: {e!r}")
-        if source:
-            await quota.refund(owner, source)
-        status = "failed"
-    await db.zone_schematics.update_one({"job_id": job_id, "status": "running"}, {"$set": {"status": status, "finished_at": datetime.now(timezone.utc).isoformat()}})
-
-
-class PlanBoat(BaseModel):
-    layout_comment: str = Field(default="", max_length=300)
-    retry: bool = False
+class SearchBoat(BaseModel):
     boat_type: str = Field(default="", max_length=60)
     make: str = Field(default="", max_length=60)
     model: str = Field(default="", max_length=60)
     year_built: str = Field(default="", max_length=10)
-    loa: str = Field(default="", max_length=20)
-    units: str = Field(default="m", pattern="^(m|ft)$")
+    fresh: bool = False
 
 
-@router.post("/boats/{boat_id}/zone-schematics")
-async def start_schematics(boat_id: BoatPath, payload: PlanBoat, user: dict = Depends(require_premium)):
-    """Magic Mariner draws one full-interior plan from make, model, year and the skipper's layout comment; one Magic use, runs in the background."""
+@router.post("/boats/{boat_id}/zone-schematics/search")
+async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict = Depends(require_premium)):
+    """Web image search for the boat's schematic; one Magic use (given back when nothing is found). The same search is reused for 30 days."""
     if not await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 1}):
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
-    boat = payload.model_dump(exclude={"retry"})
-    if not (str(boat.get("make") or "").strip() and str(boat.get("model") or "").strip()):
+    boat = payload.model_dump()
+    if not (boat["make"].strip() and boat["model"].strip()):
         raise HTTPException(status_code=400, detail="Add your boat's make and model first")
-    sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built", "layout_comment"))
-    if not payload.retry:
-        week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 5, "status": {"$in": ["running", "done"]},
-                                                    "created_at": {"$gte": week_ago}}, {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
+    query = search_query(boat)
+    if not payload.fresh:
+        recent = await db.zone_searches.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "query": query,
+                                                  "created_at": {"$gte": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()}},
+                                                 {"_id": 0}, sort=[("created_at", -1)])
         if recent:
-            return {"job_id": recent["job_id"], "total": 1, "scans_left": await quota.left(user["user_id"]), "reused": True}
+            return {**_public(recent), "reused": True, "scans_left": await quota.left(user["user_id"])}
     source = await quota.consume(user["user_id"])
-    job_id = str(uuid.uuid4())
-    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 5, "status": "running", "images": [], "failed": 0,
-                                         "total": 1, "source": source, "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
-    task = asyncio.create_task(_run(job_id, user["user_id"], boat, source))
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
-    return {"job_id": job_id, "total": 1, "scans_left": await quota.left(user["user_id"])}
-
-
-async def _job(job_id: str, user: dict) -> dict:
-    job = await db.zone_schematics.find_one({"job_id": job_id, "owner_id": user["user_id"]}, {"_id": 0})
-    if not job:
-        raise HTTPException(status_code=404, detail="Those layout plans are no longer available")
-    return job
-
-
-@router.get("/zone-schematics/{job_id}")
-async def schematics_status(job_id: JobPath, user: dict = Depends(get_current_user)):
-    job = await _job(job_id, user)
-    stale = (datetime.now(timezone.utc) - timedelta(minutes=STALE_MINUTES)).isoformat()
-    if job["status"] == "running" and job.get("created_at", "") < stale and await db.zone_schematics.find_one_and_update(
-            {"job_id": job_id, "status": "running"}, {"$set": {"status": "done" if job["images"] else "failed"}}):
-        # Cut short (e.g. by an app update): keep what was drawn, or give the Magic use back.
-        if not job["images"] and job.get("source"):
-            await quota.refund(user["user_id"], job["source"])
-        job = await _job(job_id, user)
-    images = sorted(job["images"], key=lambda i: i["id"])
-    return {"status": job["status"], "total": job.get("total", 1), "failed": job.get("failed", 0),
-            "images": [{"id": i["id"], "title": i["title"], "checked": bool(i.get("checked")), "problems": i.get("problems") or []} for i in images]}
-
-
-@router.get("/zone-schematics/{job_id}/{img_id}")
-async def schematic_image(job_id: JobPath, img_id: ImgPath, user: dict = Depends(get_current_user)):
-    img = next((i for i in (await _job(job_id, user))["images"] if i["id"] == img_id), None)
-    if not img:
-        raise HTTPException(status_code=404, detail="No such plan")
     try:
-        data = await asyncio.to_thread(get_object, img["path"])
+        results = await google_images(query)
     except Exception:
-        raise HTTPException(status_code=502, detail="Couldn't load the picture")
-    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+        await quota.refund(user["user_id"], source)
+        raise
+    if not results:
+        await quota.refund(user["user_id"], source)
+        raise HTTPException(status_code=404, detail="No schematics found on the web for this boat. Upload your own diagram instead.")
+    s = {"search_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "query": query, "results": results,
+         "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)}
+    await db.zone_searches.insert_one({**s})
+    return {**_public(s), "scans_left": await quota.left(user["user_id"])}
 
 
-class UseIn(BaseModel):
-    image_ids: List[Annotated[str, Field(pattern=r"^[0-9]$")]] = Field(min_length=1, max_length=4)
+async def _download(url: str) -> bytes:
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True, headers=UA) as http:
+        r = await http.get(url)
+    if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/") or len(r.content) > MAX_BYTES:
+        raise ValueError(f"{r.status_code} {r.headers.get('content-type')}")
+    img = Image.open(io.BytesIO(r.content))
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        bg = Image.new("RGB", img.size, "white")
+        bg.paste(img, mask=img.split()[3])
+        img = bg
+    img = img.convert("RGB")
+    img.thumbnail((1600, 1600))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=88)
+    return buf.getvalue()
 
 
-@router.post("/boats/{boat_id}/zone-schematics/{job_id}/use")
-async def use_schematics(boat_id: BoatPath, job_id: JobPath, payload: UseIn, user: dict = Depends(require_premium)):
-    job = await _job(job_id, user)
+class PickIn(BaseModel):
+    result_id: str = Field(pattern=r"^[0-9]{1,2}$")
+
+
+@router.post("/boats/{boat_id}/zone-schematics/search/{search_id}/pick")
+async def pick_schematic(boat_id: BoatPath, search_id: SearchPath, payload: PickIn, user: dict = Depends(require_premium)):
+    """Copies the chosen web image to the boat (private to it, with the source link) as a new Zone Map Overview."""
+    s = await db.zone_searches.find_one({"search_id": search_id, "owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0})
+    hit = next((r for r in (s or {}).get("results") or [] if r["id"] == payload.result_id), None)
+    if not hit:
+        raise HTTPException(status_code=404, detail="That search has expired. Search again.")
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
     doc = await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1})
-    if doc is None or job["boat_id"] != boat_id:
+    if doc is None:
         raise HTTPException(status_code=404, detail="Boat not found")
-    picked = [i for i in sorted(job["images"], key=lambda i: i["id"]) if i["id"] in set(payload.image_ids)]
-    if not picked:
-        raise HTTPException(status_code=400, detail="Pick at least one layout plan")
     maps = list(doc.get("zone_maps") or [])
-    if len(maps) + len(picked) > MAX_BOAT_MAPS:
+    if len(maps) >= MAX_BOAT_MAPS:
         raise HTTPException(status_code=400, detail=f"Each boat can have up to {MAX_BOAT_MAPS} zone maps. Remove one first.")
-    now = datetime.now(timezone.utc).isoformat()
-    for i in picked:
-        maps.append({"id": str(uuid.uuid4()), "path": i["path"], "content_type": "image/jpeg", "updated_at": now, "name": i["title"], "kind": "overview", "swatches": []})
+    try:
+        data = await _download(hit["link"])
+    except Exception as e:
+        log.warning(f"Schematic download failed {hit['link'][:120]}: {e!r}")
+        raise HTTPException(status_code=422, detail="That website won't let us copy the full picture. Pick another one, or upload your own diagram.")
+    map_id = str(uuid.uuid4())
+    path = f"{APP_NAME}/boat-zone-maps/{user['user_id']}/{map_id}.jpg"
+    try:
+        await asyncio.to_thread(put_object, path, data, "image/jpeg")
+    except Exception:
+        raise HTTPException(status_code=503, detail="Couldn't save the picture. Please try again.")
+    maps.append({"id": map_id, "path": path, "content_type": "image/jpeg", "updated_at": datetime.now(timezone.utc).isoformat(), "name": "Schematic",
+                 "kind": "overview", "swatches": [], "source_url": hit["source_url"], "source_title": hit["host"]})
     await db.user_boats.update_one(key, {"$set": {"zone_maps": maps}})
     return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
-
 
 
 PLACE_PROMPT = """This is a top-down layout plan of a boat (a {boat}). Find where each of these areas is on the plan:

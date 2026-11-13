@@ -896,3 +896,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Landscape: stern left, bow right, centreline horizontal; PORT = top half, STARBOARD = bottom half; BOW/STERN/PORT/STARBOARD words on plan. layout_rules check uses port y<0.5, forward x>0.58, aft_of = smaller x; bow must be "right".
 - Counts rule now forbids extra heads/cabins; correction pass 1 edits the faulty plan, pass 2 draws fresh with "do not repeat" list. spread() sizes for phone width 330px.
 - Live test Oceanis 411 comment: correct on first pass (2 heads, 3 cabins, galley port midships, nav starboard aft of saloon).
+
+## Zone schematic = WEB IMAGE SEARCH (2026-06, replaces all AI drawing)
+- AI image generation removed (layout_rules.py, plan drawing, /zone-schematics jobs, layout_comment field all gone). Magically Place Colours (vision only) kept.
+- POST /api/boats/{id}/zone-schematics/search {boat_type, make, model, year_built, fresh}: Google Custom Search JSON API (searchType=image, 10 results), query "schematic overhead image line drawing YEAR MAKE MODEL"; 1 Magic use (refunded on error / no results); same query reused 30 days (db.zone_searches).
+- POST .../search/{search_id}/pick {result_id}: server downloads full image -> boat-zone-maps object storage -> overview "Schematic" with source_url/source_title (shown as "Source:" link on the overview). Blocked sites -> 422 friendly message.
+- Dialog: thumbnail grid (2/3 cols), source link, "Use this schematic", "Upload My Own Diagram", "Search again (1 Magic use)". Choice dialog: "Search the web for my schematic".
+- Keys: GOOGLE_SEARCH_API_KEY, GOOGLE_SEARCH_CX (backend secrets). BLOCKER 2026-11-13: Google returns 403 "This project does not have the access to Custom Search JSON API" (API not enabled on that Cloud project; Google closed it to new customers and shuts it down 1 Jan 2027). Serper suggested as replacement.

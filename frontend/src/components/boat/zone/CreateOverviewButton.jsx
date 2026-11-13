@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Sparkles } from "lucide-react";
+import { ImagePlus, Loader2, Search, Sparkles } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
 
-// Boat type, make, model and year are needed for the Magic Mariner to draw the plans.
+// Boat type, make, model and year are needed to search the web for the boat's schematic.
 export const identityFull = (b = {}) => !!(b.boat_type?.trim() && b.make?.trim() && b.model?.trim() && /^\d{4}$/.test(b.year_built || ""));
 const OPEN_DETAILS = "mbp:open-boat-details-for-zone";
 export const RESUME_ZONE = "mbp:zone-overview-create";
@@ -14,7 +14,7 @@ export const askDetailsForZone = () => window.dispatchEvent(new Event(OPEN_DETAI
 export const onAskDetailsForZone = (fn) => { window.addEventListener(OPEN_DETAILS, fn); return () => window.removeEventListener(OPEN_DETAILS, fn); };
 
 // "Create Zone Map Overview (Schematic)": fill in the boat details first; with an overview already there, upload your own
-// schematic/photo or have the Magic Mariner draw more. New overviews always go after the existing ones.
+// schematic/photo or search the web again. New overviews always go after the existing ones.
 export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps }) => {
   const [choose, setChoose] = useState(false);
   const [plans, setPlans] = useState(false);
@@ -63,7 +63,7 @@ export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps
             <ImagePlus className="h-4 w-4" /> Upload my own schematic or photo
           </button>
           <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => { setChoose(false); setPlans(true); }} data-testid="zone-overview-magic-btn">
-            <Sparkles className="h-4 w-4" /> Magic Mariner: draw a layout plan
+            <Search className="h-4 w-4" /> Search the web for my schematic
           </button>
         </DialogContent>
       </Dialog>

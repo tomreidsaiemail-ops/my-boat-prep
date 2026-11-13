@@ -94,7 +94,7 @@ export const BoatDetails = ({ boat, onChange, onBatchScan, onOrganise, onHome, o
       onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} zoneDone={!!zone?.coloured} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
     {zone && <ZoneSchematicsDialog open={plans} boat={boat} boatId={zone.boatId} online={zone.online} onDone={plansDone} onClose={() => setPlans(false)} />}
     <ConfirmDelete item={ask ? [1] : null} danger={false} title="Create a zone map?" confirmLabel="Create zone map" cancelLabel="Not now" testId="zone-map-ask"
-      note={`Your boat doesn't have a zone map yet. The Magic Mariner can draw layout plans of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}
+      note={`Your boat doesn't have a zone map yet. We can search the web for a schematic of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}
       onConfirm={() => { creating.current = true; setAsk(false); setMore(true); setPlans(true); }}
       onClose={() => { setAsk(false); if (!creating.current) onDetailsClosed?.(); creating.current = false; }} />
   </>;

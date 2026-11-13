@@ -157,7 +157,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
     window.addEventListener("mbp:show-zone-map", show);
     return () => window.removeEventListener("mbp:show-zone-map", show);
   }, []);
-  // A skipper opening an empty Zone Map is taken to Additional details, where the Magic Mariner can draw layout plans.
+  // A skipper opening an empty Zone Map is taken to Additional details, where they can search the web for a schematic.
   const toggle = () => {
     if (!expanded && canEdit && !admin && !all.length) window.dispatchEvent(new Event("mbp:open-details"));
     setExpanded((x) => !x);

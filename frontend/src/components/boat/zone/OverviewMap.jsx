@@ -143,6 +143,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   return (
     <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
       <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</p>
+      {map.source_url && <a href={map.source_url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-semibold text-[var(--muted)] underline" data-testid={`${t}-source`}>Source: {map.source_title || "web"}</a>}
       <div ref={box} className={`relative mx-auto w-fit max-w-full ${armed ? "cursor-crosshair" : ""}`} onClick={tapPlan} data-testid={`${t}-plan`}>
         <img src={src} alt={`${map.name || "Zone Map"} overview`} className="block max-h-72 max-w-full rounded-md" draggable={false} />
         {swatches.map((s) => (

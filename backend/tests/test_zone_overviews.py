@@ -7,7 +7,6 @@ from PIL import Image
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
 API = f"{BASE_URL}/api"
-JOB = open("/tmp/job").read().strip()
 MID = open("/tmp/mid").read().strip()
 PRO = {"Cookie": "session_token=test_session_pro_1"}
 FREE = {"Cookie": "session_token=test_session_free_1"}
@@ -105,22 +104,6 @@ class TestPhotoAndUse:
         finally:
             requests.delete(f"{API}/boats/main/zone-maps/{photo['id']}", headers=PRO, timeout=30)
 
-    def test_use_adds_colourless_overviews(self):
-        r = requests.post(f"{API}/boats/main/zone-schematics/{JOB}/use", json={"image_ids": ["0", "1"]}, headers=PRO, timeout=30)
-        assert r.status_code == 200, r.text
-        new = [m for m in r.json()["zone_maps"] if m["id"] != MID and m["kind"] == "overview"]
-        try:
-            assert [m["name"] for m in new] == ["Deck & cockpit", "Saloon & galley"]
-            assert all(m["colour"] == "" and m["swatches"] == [] for m in new)
-            # a new photo afterwards still gets Gold
-            p = requests.post(f"{API}/boats/main/zone-maps", files={"file": ("z.jpg", jpeg(), "image/jpeg")}, headers=PRO, timeout=60).json()["zone_maps"]
-            photo = next(m for m in p if m["kind"] == "photo")
-            new.append(photo)
-            assert photo["colour"] == "Gold"
-        finally:
-            for m in new:
-                requests.delete(f"{API}/boats/main/zone-maps/{m['id']}", headers=PRO, timeout=30)
-        assert [m["id"] for m in maps()] == [MID]
 
     def test_crew_sees_overview_with_swatches(self):
         r = requests.get(f"{API}/me/boats", headers=FREE, timeout=30)
