@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, List
@@ -17,6 +18,7 @@ from auth import get_current_user, require_premium
 import quota
 from photos import APP_NAME, get_object, put_object
 from inventory import MAX_BOAT_MAPS, boat_maps
+from layout_rules import check, locate, parse_rules, rules_prompt
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -32,73 +34,72 @@ def _name(boat: dict) -> str:
     return " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
 
 
-SIDES = ("Landscape orientation with the bow pointing RIGHT and the stern on the left, so the boat's PORT side is the TOP half of the picture "
-         "and its STARBOARD side the BOTTOM half.")
+SIDES = ("Portrait orientation with the bow pointing UP at the top of the picture and the stern at the bottom, so the boat's PORT side is the LEFT half "
+         "of the picture and its STARBOARD side the RIGHT half. Write the small words BOW at the top, PORT down the left edge and STARBOARD down the right edge, outside the hull.")
 STYLE = ("Style: technical wireframe line drawing like a boat builder's brochure plan, thin dark navy lines on a plain white background, no shading, no people. "
-         "Clearly draw and label in short English words: Galley, Nav station, Saloon, each cabin (e.g. Forward cabin, Aft cabin), Heads. "
-         "Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
-SIDE_WORDS = {"port": "port side (TOP half of the picture)", "starboard": "starboard side (BOTTOM half of the picture)"}
-VISION_MODEL = "gemini-2.5-flash"
-STALE_MINUTES = 7
+         "Clearly draw and label in short English words: Galley, Nav station, Saloon, every cabin (with the word Cabin, e.g. Forward cabin, Aft port cabin) and every "
+         "toilet compartment (Heads). Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
+STALE_MINUTES = 8
+MAX_FIXES = 2
+TIME_BUDGET = 240
 
 
-def galley_side(comment: str) -> str:
-    m = re.search(r"galley\W+(?:\w+\W+){0,3}?(port|starboard|stbd)|(port|starboard|stbd)\W+(?:\w+\W+){0,2}?galley", comment or "", re.I)
-    side = (m.group(1) or m.group(2)).lower() if m else ""
-    return "starboard" if side == "stbd" else side
-
-
-def plan_prompt(boat: dict) -> str:
+def plan_prompt(boat: dict, rules: str = "", fix: str = "") -> str:
     size = f", {boat['loa']} {'ft' if boat.get('units') == 'ft' else 'm'} long" if str(boat.get("loa") or "").strip() else ""
     kind = str(boat.get("boat_type") or "boat").strip()
     comment = str(boat.get("layout_comment") or "").strip()
-    said = (f"The skipper describes this boat's layout as: \"{comment}\". Follow that description exactly; it overrides anything you know about this model. "
-            if comment else "")
-    side = galley_side(comment)
-    galley = f"The galley is on the {SIDE_WORDS[side]}. " if side else ""
-    return (f"A clean top-down full interior accommodation plan of a {_name(boat)} ({kind}{size}), from bow to stern, as in the builder's brochure. {said}{galley}"
-            f"Otherwise match the real layout of this make and model as published by the manufacturer. {SIDES} {STYLE}")
+    said = f"The skipper describes this boat's layout as: \"{comment}\".\n" if comment else ""
+    return (f"A clean top-down full interior accommodation plan of a {_name(boat)} ({kind}{size}), from bow to stern.\n{said}{rules}{fix}"
+            f"Where the skipper says nothing, follow the real layout of this make and model as published by the builder. {SIDES} {STYLE}")
 
 
-SIDE_CHECK = """This is a top-down boat layout plan with the bow pointing right. Is the area labelled Galley (or the stove and sink) in the top half
-or the bottom half of the picture? Reply with strict JSON only: {"galley": "top" or "bottom" or "none"}"""
-
-
-async def _galley_half(data: bytes, session: str) -> str:
+async def _image(prompt: str, session: str, ref: bytes | None = None) -> bytes | None:
+    chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=session, system_message="You draw clear boat layout plans and follow placement rules exactly.")
+    chat.with_model("gemini", MODEL).with_params(modalities=["image", "text"])
+    files = [ImageContent(image_base64=base64.b64encode(ref).decode())] if ref else None
     try:
-        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=session, system_message="You read boat plans and reply with strict JSON.").with_model("gemini", VISION_MODEL)
-        reply = await asyncio.wait_for(chat.send_message(UserMessage(text=SIDE_CHECK, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])), 40)
-        return str(json.loads(re.search(r"\{.*\}", str(reply), re.S).group(0)).get("galley") or "")
-    except Exception as e:
-        log.warning(f"Galley side check failed: {e!r}")
-        return ""
+        _, images = await asyncio.wait_for(chat.send_message_multimodal_response(UserMessage(text=prompt, file_contents=files)), 150)
+    except asyncio.TimeoutError:
+        log.warning(f"{session}: drawing timed out")
+        return None
+    if not images:
+        return None
+    img = Image.open(io.BytesIO(base64.b64decode(images[0]["data"]))).convert("RGB")
+    img.thumbnail((1600, 1600))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85)
+    return buf.getvalue()
 
 
-async def _draw(boat: dict, session: str) -> bytes:
-    """One plan from the image model; redrawn once if the comment names the galley side and it lands on the other side."""
-    want = {"port": "top", "starboard": "bottom"}.get(galley_side(boat.get("layout_comment", "")))
-    out = None
-    for attempt in range(2 if want else 1):
-        chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"{session}-{attempt}", system_message="You draw clear boat layout plans.")
-        chat.with_model("gemini", MODEL).with_params(modalities=["image", "text"])
-        try:
-            _, images = await asyncio.wait_for(chat.send_message_multimodal_response(UserMessage(text=plan_prompt(boat))), 150)
-        except asyncio.TimeoutError:
-            log.warning(f"{session}: drawing timed out")
-            continue
-        if not images:
-            continue
-        img = Image.open(io.BytesIO(base64.b64decode(images[0]["data"]))).convert("RGB")
-        img.thumbnail((1600, 1600))
-        buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=85)
-        out = buf.getvalue()
-        if not want or await _galley_half(out, f"{session}-side{attempt}") in (want, "none", ""):
+async def _draw(boat: dict, session: str) -> tuple[bytes, list | None]:
+    """Draws the plan, checks every zone against the skipper's comment and runs correction passes; returns the best plan and what still doesn't match (None = not checked)."""
+    parsed = await parse_rules(str(boat.get("layout_comment") or ""), f"{session}-rules")
+    rules = rules_prompt(parsed)
+    start, best, fix, prev = time.monotonic(), None, "", None
+    for attempt in range(1 + (MAX_FIXES if rules else 0)):
+        if attempt and time.monotonic() - start > TIME_BUDGET:
             break
-        log.info(f"{session}: galley drawn on the wrong side, redrawing")
-    if not out:
+        data = await _image(plan_prompt(boat, rules, fix), f"{session}-{attempt}", prev if fix else None)
+        if not data:
+            continue
+        if not rules:
+            return data, None
+        located = await locate(data, f"{session}-check{attempt}")
+        problems = check(parsed, located) if located else None
+        log.info(f"{session} pass {attempt}: {problems}")
+        if problems is None:
+            best = best or (data, None)
+            break
+        if best is None or best[1] is None or len(problems) < len(best[1]):
+            best = (data, problems)
+        if not problems:
+            break
+        fix = ("CORRECTION PASS: the attached plan broke the skipper's rules: " + " ".join(problems)
+               + " Redraw the whole plan so every rule above is met exactly, bow up, port on the left.\n")
+        prev = data
+    if not best:
         raise ValueError("no image")
-    return out
+    return best
 
 
 async def _put(path: str, data: bytes):
@@ -113,10 +114,11 @@ async def _put(path: str, data: bytes):
 
 async def _run(job_id: str, owner: str, boat: dict, source):
     try:
-        data = await _draw(boat, f"zoneplan-{job_id}")
+        data, problems = await _draw(boat, f"zoneplan-{job_id}")
         path = f"{APP_NAME}/zone-schematics/{owner}/{job_id}/0.jpg"
         await _put(path, data)
-        await db.zone_schematics.update_one({"job_id": job_id}, {"$push": {"images": {"id": "0", "title": PLAN_TITLE, "path": path}}})
+        await db.zone_schematics.update_one({"job_id": job_id}, {"$push": {"images": {"id": "0", "title": PLAN_TITLE, "path": path, "checked": problems is not None,
+                                                                                     "problems": problems or []}}})
         status = "done"
     except Exception as e:
         log.error(f"Zone schematic {job_id} failed: {e!r}")
@@ -148,13 +150,13 @@ async def start_schematics(boat_id: BoatPath, payload: PlanBoat, user: dict = De
     sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built", "layout_comment"))
     if not payload.retry:
         week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 3, "status": {"$in": ["running", "done"]},
+        recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 4, "status": {"$in": ["running", "done"]},
                                                     "created_at": {"$gte": week_ago}}, {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
         if recent:
             return {"job_id": recent["job_id"], "total": 1, "scans_left": await quota.left(user["user_id"]), "reused": True}
     source = await quota.consume(user["user_id"])
     job_id = str(uuid.uuid4())
-    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 3, "status": "running", "images": [], "failed": 0,
+    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 4, "status": "running", "images": [], "failed": 0,
                                          "total": 1, "source": source, "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
     task = asyncio.create_task(_run(job_id, user["user_id"], boat, source))
     _tasks.add(task)
@@ -181,7 +183,7 @@ async def schematics_status(job_id: JobPath, user: dict = Depends(get_current_us
         job = await _job(job_id, user)
     images = sorted(job["images"], key=lambda i: i["id"])
     return {"status": job["status"], "total": job.get("total", 1), "failed": job.get("failed", 0),
-            "images": [{"id": i["id"], "title": i["title"]} for i in images]}
+            "images": [{"id": i["id"], "title": i["title"], "checked": bool(i.get("checked")), "problems": i.get("problems") or []} for i in images]}
 
 
 @router.get("/zone-schematics/{job_id}/{img_id}")

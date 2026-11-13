@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Check, Loader2, PencilLine, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Loader2, PencilLine, RefreshCw, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 
@@ -11,6 +11,20 @@ export const LAYOUT_EXAMPLE = "e.g. Owner's version, 3 cabins, galley on port, h
 const boatBody = (b, comment, retry) => ({ boat_type: b.boat_type || "", make: b.make || "", model: b.model || "", year_built: b.year_built || "",
   loa: String(b.loa || ""), units: b.units === "ft" ? "ft" : "m", layout_comment: (comment || "").trim(), retry });
 const saveComment = (layout_comment) => window.dispatchEvent(new CustomEvent("mbp:set-boat-fields", { detail: { layout_comment } }));
+
+const CheckNote = ({ plan }) => {
+  if (!plan.checked) return null;
+  if (!plan.problems.length) {
+    return <p className="flex items-start gap-2 rounded-md bg-emerald-50 p-2.5 text-sm font-bold text-emerald-900" data-testid="zone-plan-check-ok">
+      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Checked against your layout comment: everything is where you said.</p>;
+  }
+  return (
+    <div className="flex flex-col gap-1 rounded-md bg-amber-50 p-2.5 text-sm text-amber-950" data-testid="zone-plan-check-problems">
+      <p className="flex items-start gap-2 font-bold"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> The Magic Mariner couldn&apos;t fully match your comment:</p>
+      {plan.problems.map((t, k) => <p key={k} className="pl-6" data-testid={`zone-plan-problem-${k}`}>{t}</p>)}
+    </div>
+  );
+};
 
 const Describe = ({ comment, setComment, onRedraw, onBack }) => (
   <div className="flex flex-col gap-2" data-testid="zone-plan-describe">
@@ -83,17 +97,19 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" onClick={() => draw(comment, true)} data-testid="zone-plans-retry-btn">Try again</button></div>}
         {running && (
           <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-[var(--line)] text-sm text-[var(--muted)]" data-testid="zone-plan-waiting">
-            <Loader2 className="h-6 w-6 animate-spin" /> Drawing your layout plan. This takes about a minute.
+            <Loader2 className="h-6 w-6 animate-spin" /> {comment.trim() ? "Drawing your layout and checking every zone against your comment. This can take up to 3 minutes." : "Drawing your layout plan. This takes about a minute."}
           </div>
         )}
         {plan && (
-          <figure className="relative overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
+          <figure className="relative min-h-[200px] overflow-hidden rounded-md border-2 border-[var(--line)] bg-white" data-testid="zone-plan-0">
             <img src={`${API}/zone-schematics/${job}/${plan.id}`} alt={`${boatName(boat)} full interior layout plan`} onLoad={() => setShown(job)}
-              className="aspect-[16/10] w-full object-contain" data-testid="zone-plan-image" />
+              className="max-h-[52vh] w-full object-contain" data-testid="zone-plan-image" />
             {shown !== job && <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-[var(--muted)]" data-testid="zone-plan-image-loading" />}
           </figure>
         )}
+        {plan && <p className="text-xs text-[var(--muted)]" data-testid="zone-plan-orientation">Bow at the top: port on the left, starboard on the right.</p>}
         {plan && !describing && <>
+          <CheckNote plan={plan} />
           <p className="text-base font-extrabold text-[var(--navy)]" data-testid="zone-plan-question">Does this match your boat&apos;s layout?</p>
           <div className="flex gap-2">
             <button type="button" className="btn-ghost h-12 flex-1 justify-center gap-2" onClick={() => setDescribing(true)} data-testid="zone-plan-no-btn"><PencilLine className="h-4 w-4" /> No</button>
