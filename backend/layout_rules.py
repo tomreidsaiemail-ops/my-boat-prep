@@ -1,4 +1,4 @@
-"""The skipper's layout comment as strict placement rules, and a check of a drawn plan against them (bow up: port = left, starboard = right)."""
+"""The skipper's layout comment as strict placement rules, and a check of a drawn plan against them (bow right: port = top half, starboard = bottom half)."""
 import asyncio
 import base64
 import json
@@ -10,8 +10,8 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 log = logging.getLogger(__name__)
 TEXT_MODEL = VISION_MODEL = "gemini-2.5-flash"
 AREAS = ("galley", "nav station", "saloon", "cabin", "heads")
-SIDE_TEXT = {"port": "LEFT half of the picture (port)", "starboard": "RIGHT half of the picture (starboard)", "centre": "on the centre line"}
-POS_TEXT = {"forward": "in the TOP third (forward, towards the bow)", "midships": "in the MIDDLE third (midships)", "aft": "in the BOTTOM third (aft, towards the stern)"}
+SIDE_TEXT = {"port": "TOP half of the picture (port)", "starboard": "BOTTOM half of the picture (starboard)", "centre": "on the centre line"}
+POS_TEXT = {"forward": "in the RIGHT third (forward, towards the bow)", "midships": "in the MIDDLE third (midships)", "aft": "in the LEFT third (aft, towards the stern)"}
 
 PARSE_PROMPT = """A skipper described the interior layout of their boat:
 "{comment}"
@@ -24,7 +24,7 @@ Reply with strict JSON only: {{"cabins": 0, "heads": 0, "rules": [{{"area": "gal
 LOCATE_PROMPT = """This is a top-down boat interior layout plan. First say which way the bow (the pointed end) points: up, down, left or right.
 Then list every labelled area of the interior (cabins, heads, galley, nav station, saloon and so on) with the exact label text and the centre of
 that area as x and y fractions of the picture width and height (0 = left/top, 1 = right/bottom). Ignore the words PORT, STARBOARD and BOW.
-Reply with strict JSON only: {"bow": "up", "areas": [{"label": "Galley", "x": 0.3, "y": 0.5}]}"""
+Reply with strict JSON only: {"bow": "right", "areas": [{"label": "Galley", "x": 0.5, "y": 0.3}]}"""
 
 
 def _json(text) -> dict:
@@ -59,7 +59,7 @@ async def parse_rules(comment: str, session: str) -> dict:
 
 def rule_text(r: dict) -> str:
     where = [SIDE_TEXT[r["side"]] if r["side"] else "", POS_TEXT[r["position"]] if r["position"] else "",
-             f"directly below (aft of) the {r['aft_of'].title()}" if r["aft_of"] else "", f"directly above (forward of) the {r['forward_of'].title()}" if r["forward_of"] else ""]
+             f"directly left of (aft of) the {r['aft_of'].title()}" if r["aft_of"] else "", f"directly right of (forward of) the {r['forward_of'].title()}" if r["forward_of"] else ""]
     return f"{'A ' if r['area'] in ('cabin', 'heads') else ''}{r['area'].title()}: " + ", ".join(w for w in where if w)
 
 
@@ -67,7 +67,9 @@ def rules_prompt(parsed: dict) -> str:
     if not parsed["rules"] and not parsed["cabins"] and not parsed["heads"]:
         return ""
     lines = [f"- {rule_text(r)}" for r in parsed["rules"] if r["side"] or r["position"] or r["aft_of"] or r["forward_of"]]
-    counts = " ".join(f"Draw exactly {n} {k}{'' if k == 'heads' else 's'}, no more and no fewer." for k, n in (("cabin", parsed["cabins"]), ("heads", parsed["heads"])) if n)
+    counts = " ".join(f"There are exactly {n} {k}{'' if k == 'heads' else 's'} in total, no more and no fewer: only the ones placed above. "
+                      f"Do not add any other {'heads, toilets or washrooms' if k == 'heads' else 'cabins or sleeping cabins'} anywhere, even if this model usually has them."
+                      for k, n in (("cabin", parsed["cabins"]), ("heads", parsed["heads"])) if n)
     return ("STRICT LAYOUT RULES from the skipper. These are fixed positions, not suggestions; they override anything you know about this model:\n"
             + "\n".join(lines) + (f"\n{counts}" if counts else "") + "\n")
 
@@ -89,11 +91,11 @@ def _kind(label: str) -> str:
 
 def _fits(r: dict, a: dict, found: dict) -> bool:
     x, y = a["x"], a["y"]
-    side = {"port": x < 0.5, "starboard": x > 0.5, "centre": 0.3 <= x <= 0.7}.get(r["side"], True)
-    pos = {"forward": y < 0.42, "midships": 0.28 <= y <= 0.72, "aft": y > 0.58}.get(r["position"], True)
+    side = {"port": y < 0.5, "starboard": y > 0.5, "centre": 0.3 <= y <= 0.7}.get(r["side"], True)
+    pos = {"forward": x > 0.58, "midships": 0.28 <= x <= 0.72, "aft": x < 0.42}.get(r["position"], True)
     ref = lambda k: found.get(k) or []  # noqa: E731
-    aft = all(y > o["y"] for o in ref(r["aft_of"])) if r["aft_of"] and ref(r["aft_of"]) else True
-    fwd = all(y < o["y"] for o in ref(r["forward_of"])) if r["forward_of"] and ref(r["forward_of"]) else True
+    aft = all(x < o["x"] for o in ref(r["aft_of"])) if r["aft_of"] and ref(r["aft_of"]) else True
+    fwd = all(x > o["x"] for o in ref(r["forward_of"])) if r["forward_of"] and ref(r["forward_of"]) else True
     return side and pos and aft and fwd
 
 
@@ -101,8 +103,8 @@ def check(parsed: dict, located: dict) -> list[str]:
     """Plain-English problems with the drawn plan; [] when it follows every rule."""
     problems = []
     bow = str(located.get("bow") or "").lower()
-    if bow and bow != "up":
-        problems.append(f"The bow points {bow}; it must point up (port on the left, starboard on the right).")
+    if bow and bow != "right":
+        problems.append(f"The bow points {bow}; it must point right (stern on the left, port at the top, starboard at the bottom).")
     found = {}
     for a in located.get("areas") or []:
         try:

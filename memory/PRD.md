@@ -891,3 +891,8 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Magically Place Colours: below deck by default (2026-06)
 - auto-swatches body {include_deck}: default skips presets matching deck|anchor|lazarette (cockpit, transom, cabins, heads, galley, saloon, nav, engine room, stateroom placed). "Include deck zones" tick (unticked by default) in OverviewMap.
 - Prompt picks the most specific label per area and uses PORT/STARBOARD words on the plan. `spread()` nudges overlapping labels apart (sized for the 288px map, max 0.15/0.1 from their area).
+
+## Plan orientation back to BOW RIGHT (2026-06, user request)
+- Landscape: stern left, bow right, centreline horizontal; PORT = top half, STARBOARD = bottom half; BOW/STERN/PORT/STARBOARD words on plan. layout_rules check uses port y<0.5, forward x>0.58, aft_of = smaller x; bow must be "right".
+- Counts rule now forbids extra heads/cabins; correction pass 1 edits the faulty plan, pass 2 draws fresh with "do not repeat" list. spread() sizes for phone width 330px.
+- Live test Oceanis 411 comment: correct on first pass (2 heads, 3 cabins, galley port midships, nav starboard aft of saloon).

@@ -107,7 +107,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
             {shown !== job && <Loader2 className="absolute inset-0 m-auto h-6 w-6 animate-spin text-[var(--muted)]" data-testid="zone-plan-image-loading" />}
           </figure>
         )}
-        {plan && <p className="text-xs text-[var(--muted)]" data-testid="zone-plan-orientation">Bow at the top: port on the left, starboard on the right.</p>}
+        {plan && <p className="text-xs text-[var(--muted)]" data-testid="zone-plan-orientation">Bow to the right, stern on the left: port along the top, starboard along the bottom.</p>}
         {plan && !describing && <>
           <CheckNote plan={plan} />
           <p className="text-base font-extrabold text-[var(--navy)]" data-testid="zone-plan-question">Does this match your boat&apos;s layout?</p>

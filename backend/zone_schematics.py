@@ -34,11 +34,12 @@ def _name(boat: dict) -> str:
     return " ".join(str(boat.get(k) or "").strip() for k in ("year_built", "make", "model") if str(boat.get(k) or "").strip())
 
 
-SIDES = ("Portrait orientation with the bow pointing UP at the top of the picture and the stern at the bottom, so the boat's PORT side is the LEFT half "
-         "of the picture and its STARBOARD side the RIGHT half. Write the small words BOW at the top, PORT down the left edge and STARBOARD down the right edge, outside the hull.")
+SIDES = ("Wide landscape orientation with the stern on the LEFT, the bow pointing RIGHT and the centreline running horizontally across the picture, "
+         "so the boat's PORT side is the TOP half of the picture and its STARBOARD side the BOTTOM half. Write the small words BOW at the right end, STERN at the left end, "
+         "PORT along the top edge and STARBOARD along the bottom edge, outside the hull.")
 STYLE = ("Style: technical wireframe line drawing like a boat builder's brochure plan, thin dark navy lines on a plain white background, no shading, no people. "
-         "Clearly draw and label in short English words: Galley, Nav station, Saloon, every cabin (with the word Cabin, e.g. Forward cabin, Aft port cabin) and every "
-         "toilet compartment (Heads). Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
+         "Clearly draw and label in short English words: Galley, Nav station, Saloon, every cabin with one short name that includes the word cabin (e.g. Forward cabin, Aft port cabin) and every "
+         "toilet compartment with one short name that includes the word Heads (e.g. Forward heads). One label per area, never two. Other areas may be labelled too (e.g. Cockpit, Lazarette, Hanging locker). No other text, no watermark.")
 STALE_MINUTES = 8
 MAX_FIXES = 2
 TIME_BUDGET = 240
@@ -79,7 +80,8 @@ async def _draw(boat: dict, session: str) -> tuple[bytes, list | None]:
     for attempt in range(1 + (MAX_FIXES if rules else 0)):
         if attempt and time.monotonic() - start > TIME_BUDGET:
             break
-        data = await _image(plan_prompt(boat, rules, fix), f"{session}-{attempt}", prev if fix else None)
+        # First correction edits the faulty plan; the last one draws afresh so a stubborn mistake isn't copied.
+        data = await _image(plan_prompt(boat, rules, fix), f"{session}-{attempt}", prev if attempt == 1 else None)
         if not data:
             continue
         if not rules:
@@ -94,8 +96,9 @@ async def _draw(boat: dict, session: str) -> tuple[bytes, list | None]:
             best = (data, problems)
         if not problems:
             break
-        fix = ("CORRECTION PASS: the attached plan broke the skipper's rules: " + " ".join(problems)
-               + " Redraw the whole plan so every rule above is met exactly, bow up, port on the left.\n")
+        fix = (("CORRECTION PASS: the attached plan broke the skipper's rules: " if attempt == 0 else "A previous draft broke the skipper's rules, do not repeat these mistakes: ")
+               + " ".join(problems)
+               + " Redraw the whole plan so every rule above is met exactly: bow pointing right, stern on the left, port at the top, starboard at the bottom.\n")
         prev = data
     if not best:
         raise ValueError("no image")
@@ -150,13 +153,13 @@ async def start_schematics(boat_id: BoatPath, payload: PlanBoat, user: dict = De
     sig = "|".join(str(boat.get(k) or "").strip().lower() for k in ("boat_type", "make", "model", "year_built", "layout_comment"))
     if not payload.retry:
         week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 4, "status": {"$in": ["running", "done"]},
+        recent = await db.zone_schematics.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 5, "status": {"$in": ["running", "done"]},
                                                     "created_at": {"$gte": week_ago}}, {"_id": 0, "job_id": 1}, sort=[("created_at", -1)])
         if recent:
             return {"job_id": recent["job_id"], "total": 1, "scans_left": await quota.left(user["user_id"]), "reused": True}
     source = await quota.consume(user["user_id"])
     job_id = str(uuid.uuid4())
-    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 4, "status": "running", "images": [], "failed": 0,
+    await db.zone_schematics.insert_one({"job_id": job_id, "owner_id": user["user_id"], "boat_id": boat_id, "sig": sig, "v": 5, "status": "running", "images": [], "failed": 0,
                                          "total": 1, "source": source, "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)})
     task = asyncio.create_task(_run(job_id, user["user_id"], boat, source))
     _tasks.add(task)
@@ -231,7 +234,7 @@ most specific label that fits it (e.g. a cabin aft on the port side is "Port Aft
 Give the centre of each area as x and y fractions of the image width and height (0 = left/top, 1 = right/bottom). Each label at most once.
 Reply with JSON only: {{"places": [{{"label": "<exact label from the list>", "x": 0.42, "y": 0.37}}]}}"""
 DECK_RE = re.compile(r"deck|anchor|lazarette", re.I)
-MAP_PX = 288
+MAP_PX, PHONE_PX = 288, 330
 
 
 class AutoIn(BaseModel):
@@ -239,9 +242,10 @@ class AutoIn(BaseModel):
 
 
 def spread(places: list[dict], aspect: float) -> list[dict]:
-    """Nudges overlapping colour labels apart (sizes as shown on a {MAP_PX}px-high plan), each staying close to its area."""
-    w_px = MAP_PX * aspect
-    size = [((len(p["label"]) * 6 + 18) / w_px, 24 / MAP_PX) for p in places]
+    """Nudges overlapping colour labels apart (sized as shown on a phone), each staying close to its area."""
+    h_px = min(MAP_PX, PHONE_PX / aspect)
+    w_px = h_px * aspect
+    size = [((len(p["label"]) * 6 + 18) / w_px, 24 / h_px) for p in places]
     home = [(p["x"], p["y"]) for p in places]
     for _ in range(60):
         moved = False
