@@ -41,6 +41,7 @@ import { TemplateUpdateNote } from "@/components/boat/TemplateUpdateNote";
 import { CrewBanner } from "@/components/boat/CrewBanner";
 import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
 import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
+import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName } from "@/components/boat/CrewPrepProgress";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
@@ -689,7 +690,9 @@ export default function BoatPrep({ boatId, boats }) {
     const mealHead = isMealHead(items, item.id);
     if (mealHead && editCook !== null) text = withCook(text, editCook);
     const shopper = active.id === "provisions" ? (editShopper ?? item.shopper ?? "").trim() : "";
-    const briefing = isRoleItem(item) ? editBriefing.trim() : item.briefing;
+    // Untouched: keep the stored text (with the admin's fill-in tags) so it still follows the default.
+    const untouched = isRoleItem(item) && editBriefing.trim() === fillDetails(item.briefing || "", boat).trim();
+    const briefing = isRoleItem(item) && !untouched ? editBriefing.trim() : item.briefing;
     setItems((list) => list.map((i) => {
       if (i.id !== item.id) return i;
       const { dynamic, area, meal_type: mt, meal_type_auto: auto, briefing: _b, shopper: _s, ...rest } = i;
@@ -1141,7 +1144,7 @@ export default function BoatPrep({ boatId, boats }) {
           {listSearch && items.length > 0 && <ListSearch value={listQuery} onChange={setListQuery} shown={shown.length} total={shownByArea.length} placeholder={`Search ${active.name}`} testId="checklist-search" />}
           {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
           <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (active.id === "provisions") loadShoppers(); else if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(item.briefing || ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (active.id === "provisions") loadShoppers(); else if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
             ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
             mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : undefined}
             clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}

@@ -10,7 +10,7 @@ import { RolePicker } from "@/components/boat/RolePicker";
 import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
-import { shownBriefing } from "@/lib/briefingFill";
+import { fillDetails, shownBriefing } from "@/lib/briefingFill";
 import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 import { DEFAULT_TRIP } from "@/lib/trips";
@@ -202,7 +202,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
             As Roles are clicked &amp; added, show Role Briefing
           </label>
         )}
-        <RoleBriefingPrompt role={asking} current={briefings[asking.toLowerCase()] || ""} isNew={!!asking && knownRole && !knownRole(asking)} onSkip={nextPrompt}
+        <RoleBriefingPrompt role={asking} current={fillDetails(briefings[asking.toLowerCase()] || "", details || {})} isNew={!!asking && knownRole && !knownRole(asking)} onSkip={nextPrompt}
           onSave={(text) => { onSaveBriefing(asking, text); nextPrompt(); }} />
         <CrewWalkStops boat={boat} areas={areas} skip={walkSkip} onChange={setWalkSkip} />
         <div className="flex flex-col gap-1.5">

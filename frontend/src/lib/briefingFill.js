@@ -20,11 +20,14 @@ const videoUrl = (text) => {
   } catch { return ""; }
 };
 
+// The boat's details in place of the admin's fill-in tags (a blank detail or <YOUTUBE:...> stays as written), so skippers just see their boat.
+export const fillDetails = (text, boat = {}) => String(text || "")
+  .replace(/<\s*([A-Za-z][A-Za-z ]*[A-Za-z])\s*>/g, (all, tag) => { const get = TAGS[tag.toUpperCase().split(/\s+/).join(" ")]; return (get && get(boat || {})) || all; });
+
 // Plain text for messages: details filled in (a blank detail keeps its tag) and the video link at the end.
 export const shownBriefing = (text, boat = {}) => {
   const url = videoUrl(text);
-  const body = String(text || "").replace(new RegExp(VIDEO.source, "gi"), "")
-    .replace(/<\s*([A-Za-z][A-Za-z ]*[A-Za-z])\s*>/g, (all, tag) => { const get = TAGS[tag.toUpperCase().split(/\s+/).join(" ")]; return (get && get(boat || {})) || all; })
+  const body = fillDetails(String(text || "").replace(new RegExp(VIDEO.source, "gi"), ""), boat)
     .split("\n").map((l) => l.trimEnd()).filter((l) => !["", "-"].includes(l.trim())).join("\n").trim();
   return url ? `${body}\n\nBriefing video: ${url}` : body;
 };

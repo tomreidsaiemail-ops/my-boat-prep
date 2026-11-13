@@ -1,0 +1,24 @@
+{
+  "summary": "Fix verified: an admin save of the Crew Roles template (tpl_9f5620bc49) now pushes the new Default Role Briefing to every boat whose briefing for that role is missing or still matches an earlier default. Tested through the API (new pytest file) and the UI (admin /admin/templates > Crew Roles > Default Role Briefings > Helm, add '- TEST admin update line.', save). After the save the skipper test-user-beta/main Helm shows the new text in GET /api/me/boat and in the UI briefing badge after reload. 22 boats followed. Skipper-written briefings (test-user-pro YOUTUBE/tags Helm, and a TEST_ custom on test-user-free) were not changed, and their ts stayed the same on pro. A blanked '' briefing (test-admin-1) stayed blank. Putting the original text back (UI and API) sent all 22 boats back to the original, with 0 left on the TEST text. Template items are byte-identical to the backup taken before testing. Regression tests test_role_briefing_bullets.py and test_briefing_tags_video.py pass with -n0. Total 22/22 pytest pass. Startup log has 'Role briefings resync: 9 boats'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin > Template lists > Crew Roles editor > Default Role Briefings", "issues": ["The help text is out of date. It still says 'Saving fills it into every boat's Crew Roles where the skipper has no briefing for that role yet'. It should also say that boats still on an earlier default get the update."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_admin_role_briefing_push.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["Optional: update the help text in RoleBriefingDefaults.jsx so it matches the new behaviour (boats still on an earlier default follow)."],
+  "critical_code_review_comments": [
+    "_past_defaults only knows template_versions, which are cut to VERSIONS_KEPT=30, plus old_items. A boat that sat on a default more than 30 saves old will stop following. This is acceptable, but worth knowing.",
+    "A skipper whose own text happens to equal some past default (after flattening) is treated as following. This is an unlikely edge case and acceptable.",
+    "The restore path in template_backup.py calls push_role_briefings with old list_id/items. I reviewed it but did not run it, because restoring a backup is a bulk operation on admin data."
+  ],
+  "updated_files": ["/app/backend/tests/test_admin_role_briefing_push.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. During the tests, test-admin-1/main Helm was set to '' and test-user-free/main Helm to a TEST_ custom text, then both were put back to their original items. The admin Crew Roles template was put back exactly (verified equal to the /tmp backup). Side effect: each save adds a template_versions entry and gives a fresh ts to the Helm item on boats that follow the default, including real users' boats (text back to the original).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The test boats (free/beta/admin/pro) use crew roles list id tpl_test67crew with Helm id 12 and have no Helmsman/Radio Operator; use the Helm role. Beta has home=shore: open /shore > shore-chooser-own-main. Its boat is unnamed, so guard() blocks the Edit Item dialog; read the briefing from the checklist-item-briefing-badge-12 title instead. The admin account shows the Terms acceptance screen on '/'. Run test_admin_role_briefing_push.py with -n0. It restores the template and boats itself."
+}
