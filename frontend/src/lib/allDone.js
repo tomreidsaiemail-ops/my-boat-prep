@@ -18,13 +18,13 @@ export const tankSummary = (levels = {}) => {
 export const routeTrips = (registry, boat) => tripLists(registry).map((t) => {
   const b = tripBoat(boat, t.id);
   const w = b.weather || {};
-  const startAt = w.event_at || w.depart_at || "";
+  const startAt = w.depart_at || "";
   return { id: t.id, name: t.name, event: String(w.event_name || "").trim(), start: String(b.route_start || "").trim(), dest: String(b.route_dest || "").trim(),
     from: dmy(w.depart_at), to: dmy(w.finish_at), startDay: startAt.slice(0, 10), startOn: dmy(startAt), departAt: w.depart_at || "" };
 });
 
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-// Route Plans starting today, earliest Departure time first.
+// Route Plans departing today, earliest Departure time first.
 const todays = (trips) => trips.filter((t) => t.startDay === today()).sort((a, b) => (a.departAt || "~").localeCompare(b.departAt || "~"));
 
 // The skipper's pick holds for the day it was made; otherwise today's earliest departure.
@@ -34,8 +34,8 @@ export const pickTrip = (trips, id, day) => (day === today() && trips.find((t) =
 export const tripIssue = (trips, trip) => {
   if (!trip || trip.startDay === today()) return "";
   const first = todays(trips)[0];
-  if (!first) return "No Route Plan starts today. Set today's Start date in Route Planning before you depart.";
-  return `${trip.name} ${trip.startOn ? `starts ${trip.startOn}, not today` : "has no Start date"}. Pick ${first.name} or change its Start date before you depart.`;
+  if (!first) return "No Route Plan starts today. Set today's DEPARTURE DATE in Route Planning before you depart.";
+  return `${trip.name} ${trip.startOn ? `departs ${trip.startOn}, not today` : "has no Departure date"}. Pick ${first.name} or change its Departure date before you depart.`;
 };
 
 // "Trip Name Mana-Picton, 1/1/2027 - 10/1/2027"
