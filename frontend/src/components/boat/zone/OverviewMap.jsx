@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { ChevronDown, Loader2, Palette, Sparkles, Trash2 } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
-import { CalloutPlan, ink } from "@/components/boat/zone/Callouts";
+import { CalloutPlan, MAX_ROW, ink } from "@/components/boat/zone/Callouts";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -120,18 +120,20 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
-  // Drag a zone name along the top or bottom of the plan; a tap opens the zone like its dot.
+  // Drag a zone name along, above or below the plan; a tap opens the zone like its dot.
   const dragLabel = (e, s) => {
     e.preventDefault(); e.stopPropagation();
     const sx = e.clientX, sy = e.clientY;
     let moved = false, last = s;
+    // Measured once: the plan shifts as name rows are added above it.
+    const r = box.current?.getBoundingClientRect();
     const move = (ev) => {
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < (canEdit ? 6 : 10)) return;
       moved = true;
-      if (!canEdit) return;
-      const r = box.current?.getBoundingClientRect();
-      if (!r) return;
-      last = { ...s, lx: clamp((ev.clientX - r.left) / r.width), band: ev.clientY < r.top + r.height / 2 ? "top" : "bottom" };
+      if (!canEdit || !r) return;
+      const band = ev.clientY < r.top + r.height / 2 ? "top" : "bottom";
+      const out = band === "top" ? r.top - ev.clientY : ev.clientY - r.bottom;
+      last = { ...s, lx: clamp((ev.clientX - r.left) / r.width), band, lrow: Math.min(MAX_ROW, Math.max(0, Math.floor(out / 24))) };
       setSwatches((all) => all.map((x) => (x.id === s.id ? last : x)));
     };
     const up = () => {
@@ -143,15 +145,14 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
   };
   const tapPlan = (e) => {
     if (armed) { const pos = at(e.clientX, e.clientY); if (pos) place(armed, pos); return; }
-    if (selected) { setSelected(null); return; }
-    onImage?.();
+    if (selected) setSelected(null);
   };
   return (
     <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
       <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</p>
       {map.source_url && <a href={map.source_url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-semibold text-[var(--muted)] underline" data-testid={`${t}-source`}>Source: {map.source_title || "web"}</a>}
       <CalloutPlan src={src} alt={`${map.name || "Zone Map"} overview`} imgClass="block max-h-72 max-w-full rounded-md" swatches={swatches} boxRef={box}
-        selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} className={armed ? "cursor-crosshair" : ""} testId={t} planTestId={`${t}-plan`}
+        selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} onOpen={onImage} className={armed ? "cursor-crosshair" : ""} testId={t} planTestId={`${t}-plan`}
         onRemove={canEdit ? (e, s) => { e.stopPropagation(); setSelected(null); save(swatches.filter((x) => x.id !== s.id)); } : null} />
       {canEdit && (
         <>
@@ -170,7 +171,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             Include deck zones
             <span className="basis-full pl-7 text-xs font-semibold text-[var(--muted)]">{withDeck ? "decks, anchor locker and lazarettes too" : "below deck, cockpit and transom only"}</span>
           </label>
-          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name to move it along the top or bottom."}</p>
+          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name to move it left, right, up or down. Open image shows the plan full size."}</p>
           <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"

@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
 const ROW = 24;
+export const MAX_ROW = 5;
 export const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 const textW = (s) => (s.label || s.colour).length * 6.4 + 14;
 
@@ -16,8 +17,8 @@ export const layoutLabels = (swatches, W) => {
       .forEach(({ s, w, cx: want }) => {
         const fit = (c) => (w >= W ? W / 2 : Math.min(Math.max(c, w / 2), W - w / 2));
         const cx = fit(want);
-        let row = ends.findIndex((e) => cx - w / 2 >= e + 4);
-        if (row < 0) row = ends.length;
+        let row = Math.min(s.lrow || 0, MAX_ROW);
+        while (ends[row] != null && cx - w / 2 < ends[row] + 4) row += 1;
         ends[row] = cx + w / 2;
         out[s.id] = { band, row, cx, w };
       });
@@ -40,7 +41,7 @@ const useSize = (ref) => {
 };
 
 // A plan with a zone-coloured dot on each zone and a line out to its name.
-export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, onDotDown, onLabelDown, onRemove, onClick, className = "", testId, planTestId }) => {
+export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, onDotDown, onLabelDown, onRemove, onClick, onOpen, className = "", testId, planTestId }) => {
   const own = useRef(null);
   const box = boxRef || own;
   const { w: W, h: H } = useSize(box);
@@ -53,6 +54,12 @@ export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, on
     <div className={`relative mx-auto w-fit max-w-full ${className}`} style={{ paddingTop: top, paddingBottom: bottom }} onClick={onClick} data-testid={planTestId || testId}>
       <div ref={box} className="relative">
         <img src={src} alt={alt} className={imgClass} draggable={false} />
+        {onOpen && (
+          <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onOpen(); }} aria-label="Open image"
+            className="absolute right-1 top-1 z-40 flex h-8 items-center gap-1 rounded-md bg-white/90 px-2 text-[11px] font-extrabold text-[var(--navy)] shadow ring-1 ring-[var(--line)]" data-testid={`${testId}-open-image-btn`}>
+            <Maximize2 className="h-3.5 w-3.5" /> Open image
+          </button>
+        )}
       </div>
       {W > 0 && (
         <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={W} height={top + H + bottom} aria-hidden="true">

@@ -89,6 +89,7 @@ class Swatch(BaseModel):
     label: str = Field(default="", max_length=40)
     lx: Optional[float] = Field(default=None, ge=0, le=1)
     band: Optional[Literal["top", "bottom"]] = None
+    lrow: Optional[int] = Field(default=None, ge=0, le=5)
 
 
 class SwatchesIn(BaseModel):
