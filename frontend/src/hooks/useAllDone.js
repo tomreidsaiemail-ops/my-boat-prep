@@ -29,7 +29,7 @@ const statusStep = (d, sig, what, summary) => {
 export default function useAllDone({ state, mutate, tickedBy, online, boatId, trackingOn }) {
   const [plan, setPlan] = useState(null);
   const [busy, setBusy] = useState(false);
-  const setShore = (step, contacts) => setPlan((p) => (p?.kind === "depart" ? { ...p, contacts, steps: p.steps.map((s) => (s.id === "shore" ? { id: "shore", ...step } : s)) } : p));
+  const setShore = (step, contacts) => setPlan((p) => (p?.kind === "depart" ? { ...p, contacts, checking: false, steps: p.steps.map((s) => (s.id === "shore" ? { id: "shore", ...step } : s)) } : p));
 
   const openDepart = () => {
     const b = state.boat || {};
@@ -51,7 +51,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
           : { tone: "info", text: "Checking your shore contacts..." }) },
     ];
     const blocked = levelsBlock(b, d.levels) || logBlock(b, d);
-    setPlan({ kind: "depart", trip, blocked, steps, contacts: 0 });
+    setPlan({ kind: "depart", trip, blocked, steps, contacts: 0, checking: !blocked && askShore });
     if (!blocked && askShore) {
       api.get(`/boats/${boatId}/shore`, { timeout: 10000 }).then(({ data }) => {
         const n = (data.contacts || []).length;

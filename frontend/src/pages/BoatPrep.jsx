@@ -458,6 +458,7 @@ export default function BoatPrep({ boatId, boats }) {
 
   const tickedBy = crew ? (boats.current.my_name || user.name || "Crew").trim() : "";
   const setTicks = (fn) => setItems((list) => stampTicks(list, fn(list), tickedBy));
+  const doneGuard = () => guard() || (toast.error("Fill in the vessel, skipper and callsign at the top first"), false);
   const allDone = useAllDone({ state, mutate, tickedBy, online, boatId: boats.current.boat_id, trackingOn: shoreTrack.on });
   const toggle = (id) => {
     if (!guard()) return;
@@ -1091,7 +1092,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && active.id === "leavingDock" && (
         <RoutePlanCard trips={routeTrips(state.registry, boat)} trip={pickTrip(routeTrips(state.registry, boat), boat.route_trip)} underway={boat.underway}
-          onPick={(id) => updateBoat("route_trip", id)} onDepart={() => guard() && allDone.openDepart()} />
+          onPick={(id) => updateBoat("route_trip", id)} onDepart={() => doneGuard() && allDone.openDepart()} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
@@ -1100,7 +1101,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
         <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
-      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} onArrive={() => guard() && allDone.openArrive(active.id, active.name)} />}
+      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {isTripList(active) && boat.underway?.trip_id === active.id && <UnderwayBubble underway={boat.underway} testId="trip-underway-bubble" />}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />

@@ -1,15 +1,14 @@
 import { batteriesOf, batteryName, isLow } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
 
-const TANKS = [["fuel", "fuel"], ["gas", "LPG"], ["water", "Water"]];
+const TANKS = [["fuel", "Fuel"], ["gas", "LPG"], ["water", "Water"]];
 const dmy = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ""); return m ? `${+m[3]}/${+m[2]}/${m[1]}` : ""; };
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export const missingLevels = (boat, levels = {}) => [...TANKS.map(([k, n]) => [k, cap(n)]), ...batteriesOf(boat).map((b) => [`bat_${b.id}`, batteryName(b)])]
+export const missingLevels = (boat, levels = {}) => [...TANKS, ...batteriesOf(boat).map((b) => [`bat_${b.id}`, batteryName(b)])]
   .filter(([k]) => !levels[k]).map(([, n]) => n);
 export const levelsBlock = (boat, levels) => { const m = missingLevels(boat, levels); return m.length ? `Pick a level for ${m.join(", ")} first.` : ""; };
 
-// "Adequate fuel, LPG, Water." with any tank at 1/4 or empty called out as low.
+// "Adequate Fuel, LPG, Water." with any tank at 1/4 or empty called out as low.
 export const tankSummary = (levels = {}) => {
   const low = TANKS.filter(([k]) => isLow(levels[k])).map(([, n]) => n);
   const ok = TANKS.filter(([k]) => levels[k] && !isLow(levels[k])).map(([, n]) => n);

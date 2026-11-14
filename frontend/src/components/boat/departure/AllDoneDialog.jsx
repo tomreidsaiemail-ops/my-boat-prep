@@ -24,8 +24,8 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose }) => {
               )}
             <div className="flex gap-2">
               {!plan.blocked && (
-                <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={onConfirm} disabled={busy} data-testid="all-done-confirm-btn">
-                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}{depart ? "Depart now" : "Log arrival"}
+                <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={onConfirm} disabled={busy || plan.checking} data-testid="all-done-confirm-btn">
+                  {(busy || plan.checking) && <Loader2 className="h-4 w-4 animate-spin" />}{depart ? "Depart now" : "Log arrival"}
                 </button>
               )}
               <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} disabled={busy} data-testid="all-done-cancel-btn">{plan.blocked ? "OK" : "Cancel"}</button>

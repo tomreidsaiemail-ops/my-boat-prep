@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the Leaving Dock / Arrival all-done feature batch end to end as admin (test-admin-1, boat main) on mobile 390px, with a quick desktop check. Backend: 5/5 pytest passed (route_trip and underway persist and clear, validation, shore guards, unauth). Frontend: everything requested works. Route Plan card sits above the departure check; the select only shows with more than one trip and the choice survives a reload. Tank collapse writes localStorage mbp_tanks_collapsed=1, survives a reload and is shared with the arrival check; battery collapse works. Ticking the log checkbox collapses the check with 'Adequate fuel, LPG, Water. Dock status logged.' or 'Low fuel, Water. Adequate LPG. Dock status logged.'. Show/Hide works, and unticking removes the entry. DEPART: the blocked message names the missing levels with no confirm button; the steps list is correct; confirm ticks 16/16, adds no second status entry when already copied, copies the status when it wasn't, logs 'Departed, all checks done - <line> - <time>', and shows the bubble on the Leaving Dock card and on the chosen trip list only (checked for both the default and the copy trip). ARRIVED on Arriving at Destination and Returning to Dock: underway and trip line show; blocked when levels are missing; confirm ticks all items, logs the status and the Arrived entry, and clears the bubble everywhere. Shore: with a temporary example.com contact, DEPART made PUT /shore/tracking 200 and ARRIVED made POST /shore/arrived 200 (toast 'Emailed 1 shore contact'). With no contact, the step said 'No shore contact set up, so position sharing stays off'. No horizontal overflow at 390px. Data in the database persisted correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Leaving the Dock status check", "issues": ["When a Route Planning copy is chosen in the Route Plan card (e.g. Wellington-Nelson), the Magic Mariner Passage Calculation start/destination fields and passagePlan() in the departure summary still use the default trip's route_start/route_dest (Mana-Picton). Possibly confusing; consider using tripBoat(boat, route_trip)"]},
+      {"screen": "tankSummary text", "issues": ["Inconsistent capitalisation: 'Low Water. Adequate fuel, LPG.' (TANKS names in lib/allDone.js are 'fuel', 'LPG', 'Water')"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_all_done_route_trip.py", "/app/test_reports/pytest/pytest_all_done.xml"],
+  "action_items": [
+    "Optional: make the departure check passage plan follow the chosen route_trip, or say in the UI that it uses the main Route Planning route",
+    "Optional: standardise capitalisation in tankSummary (e.g. 'Fuel, LPG, Water')"
+  ],
+  "critical_code_review_comments": [
+    "useAllDone.openDepart: the shore contacts GET is asynchronous. If the user taps 'Depart now' before it returns, plan.contacts is 0 and tracking is not turned on. The step still shows 'Checking your shore contacts...'. Consider disabling confirm until the shore check has finished",
+    "DEPART/ARRIVED buttons go through guard(), which needs vessel/skipper/callsign set. With an unnamed boat, tapping DEPART does nothing visible near the button (the warning shows in the top zone). Consider passing a zone so the warning appears next to the card",
+    "Not tested: the DepartureLogDialog regression. The admin Leaving Dock list has no 'Departure' heading item with indented children, so the head-tick trigger couldn't be exercised"
+  ],
+  "updated_files": ["/app/backend/tests/test_all_done_route_trip.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Temporarily changed test-admin-1/main for testing: vessel/skipper/callsign, route_start/dest, weather event/dates, a copy trip 'custom_TESTtrip', and a temporary shore contact test.shore.alldone@example.com. Restored the whole doc from a pre-test mongoexport afterwards; the shore contact and tracking were removed. Admin terms accepted via POST /api/auth/accept-terms. The TESTalldone test boat was deleted.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin main boat needs vessel+skipper+callsign set or guard() blocks all list actions. Open lists via window.dispatchEvent(new CustomEvent('mbp:open-list',{detail:'leavingDock'})). Battery pickers use testids level-bat-<id>-<level> and level-arrive-bat-<id>-<level>; default batteries are engine and house. After closing a Radix dialog, wait about 500ms before clicking the page. PUT /api/me/boat needs updated_at and boat_ts.",
+  "rca of the issue": ""
+}

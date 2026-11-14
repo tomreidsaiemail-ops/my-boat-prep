@@ -930,3 +930,6 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Tags are admin-only: hint removed from skipper Edit Item + Invite prompt; skipper editors show fillDetails() text (boat details filled, blank details/YOUTUBE kept); unchanged save keeps tagged text (still follows defaults). Verified iteration_166.
 
 - 2026-06: Synced Production admin master "Arriving at Destination" (arrivingDest, 72 items, updated_at 2026-11-04T22:59:42Z) into Preview list_templates via read-only deployer export.
+
+- 2026-06: Leaving Dock UX: collapsible Fuel/LPG/Water status (shared with Arrival check), status check auto-collapses with summary once logged, Route Plan card (pick trip, trip summary line), DEPART, ALL CHECKS DONE (confirm window; ticks all, logs status + route, Underway bubble, turns on shore tracking if a contact exists). ARRIVED, ALL CHECKS DONE on Arriving at Destination / Returning to Dock (ticks all, logs arrival, clears Underway, shore arrived email). boat.route_trip + boat.underway persisted (server BoatDetails). Files: hooks/useAllDone.js, lib/allDone.js, components/boat/departure/{RoutePlanCard,ArrivedCard,AllDoneDialog,UnderwayBubble}.jsx. Tested iteration_167.
+- Backlog: passage calculation on Leaving Dock still uses the main Route Planning route, not the chosen trip copy.
