@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeftRight, Droplets, Flame, Fuel, Minus, Plus } from "lucide-react";
 import { gasChange, num, tankChange, tankUnit } from "@/lib/telemetry";
+import { CollapseToggle, useCollapsed } from "@/components/boat/departure/BatteryStatus";
 
 const AMOUNT_RE = /^\d{0,4}([.,]\d{0,1})?$/;
 const COUNT_RE = /^\d{0,2}$/;
@@ -22,6 +23,7 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
   const [tank, setTank] = useState("fuel");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
+  const [collapsed, toggle] = useCollapsed(`mbp_tankchange_collapsed_${prefix || "depart"}`);
   const gas = tank === "gas";
   const u = gas ? "bottles" : tankUnit(boat);
   const pick = (k) => { setTank(k); setAmount(""); setError(""); };
@@ -39,7 +41,8 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
   const p = `${prefix}tank-change`;
   return (
     <div className="flex flex-col gap-2 rounded-lg bg-[var(--panel)] p-3" data-testid={p}>
-      <p className="field-label">Add or use fuel, water and LPG</p>
+      <CollapseToggle label="Add or use fuel, water and LPG" collapsed={collapsed} onToggle={toggle} testId={`${p}-toggle`} />
+      {collapsed ? <p className="text-sm text-[var(--muted)]" data-testid={`${p}-summary`}>Log fuel or water added or used, and LPG bottles swapped.</p> : <>
       <div className="flex gap-2">{TABS.map(([k, Icon, label]) => <Tab key={k} k={k} Icon={Icon} label={label} on={tank === k} onPick={pick} prefix={prefix} />)}</div>
       <div className="flex flex-wrap gap-2">
         <span className="relative min-w-[110px] flex-1">
@@ -58,6 +61,7 @@ export const TankChange = ({ boat, engineType, levels = {}, amounts = {}, onSet,
         {gas ? `Swapped: empty bottles swapped for full ones${levels.gas && num(boat.gas_bottles) ? " (the LPG level above goes up)" : ""}. Added or Removed: full spare bottles brought on board or taken off (spare bottles now ${num(boat.gas_extra)}). ` : ""}
         Goes into the Ship&apos;s Log straight away with the estimated weight change{!gas && levels[tank] ? ", and the level above is updated" : ""}.
       </p>
+      </>}
     </div>
   );
 };
