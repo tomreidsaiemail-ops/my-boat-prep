@@ -31,6 +31,12 @@ import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
+import { RoutePlanCard } from "@/components/boat/departure/RoutePlanCard";
+import { ArrivedCard } from "@/components/boat/departure/ArrivedCard";
+import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
+import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
+import useAllDone from "@/hooks/useAllDone";
+import { pickTrip, routeTrips } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";
 
@@ -452,6 +458,7 @@ export default function BoatPrep({ boatId, boats }) {
 
   const tickedBy = crew ? (boats.current.my_name || user.name || "Crew").trim() : "";
   const setTicks = (fn) => setItems((list) => stampTicks(list, fn(list), tickedBy));
+  const allDone = useAllDone({ state, mutate, tickedBy, online, boatId: boats.current.boat_id, trackingOn: shoreTrack.on });
   const toggle = (id) => {
     if (!guard()) return;
     if (active.id !== "leavingDock") { setTicks((list) => list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i))); return; }
@@ -1083,12 +1090,18 @@ export default function BoatPrep({ boatId, boats }) {
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
       {!crew && active.id === "leavingDock" && (
+        <RoutePlanCard trips={routeTrips(state.registry, boat)} trip={pickTrip(routeTrips(state.registry, boat), boat.route_trip)} underway={boat.underway}
+          onPick={(id) => updateBoat("route_trip", id)} onDepart={() => guard() && allDone.openDepart()} />
+      )}
+      {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
           onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
         <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
+      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} onArrive={() => guard() && allDone.openArrive(active.id, active.name)} />}
+      {isTripList(active) && boat.underway?.trip_id === active.id && <UnderwayBubble underway={boat.underway} testId="trip-underway-bubble" />}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
@@ -1233,6 +1246,7 @@ export default function BoatPrep({ boatId, boats }) {
           help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
+      <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onConfirm={allDone.confirm} onClose={allDone.close} />
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}

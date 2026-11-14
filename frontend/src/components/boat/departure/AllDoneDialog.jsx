@@ -1,0 +1,38 @@
+import { AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const ICON = { ok: <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />, info: <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />, warn: <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /> };
+
+// What DEPART or ARRIVED is about to tick and log, shown before anything changes.
+export const AllDoneDialog = ({ plan, busy, onConfirm, onClose }) => {
+  const depart = plan?.kind === "depart";
+  return (
+    <Dialog open={!!plan} onOpenChange={(o) => !o && !busy && onClose()}>
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="all-done-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
+        {plan && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-display text-lg font-extrabold">{depart ? "About to depart" : "About to log your arrival"}</DialogTitle>
+              <DialogDescription>{plan.blocked ? "Finish this first, then try again:" : "This is what will be ticked and logged in the Ship's Log:"}</DialogDescription>
+            </DialogHeader>
+            {plan.blocked
+              ? <p role="alert" className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="all-done-blocked"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{plan.blocked}</p>
+              : (
+                <ul className="flex flex-col gap-2" data-testid="all-done-steps">
+                  {plan.steps.map((s) => <li key={s.id} className="flex items-start gap-2 text-sm" data-testid={`all-done-step-${s.id}`}>{ICON[s.tone || "ok"]}<span className="whitespace-pre-line">{s.text}</span></li>)}
+                </ul>
+              )}
+            <div className="flex gap-2">
+              {!plan.blocked && (
+                <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={onConfirm} disabled={busy} data-testid="all-done-confirm-btn">
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}{depart ? "Depart now" : "Log arrival"}
+                </button>
+              )}
+              <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} disabled={busy} data-testid="all-done-cancel-btn">{plan.blocked ? "OK" : "Cancel"}</button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

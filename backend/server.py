@@ -170,6 +170,8 @@ class BoatDetails(BaseModel):
     arrive: Dict[str, Any] = Field(default_factory=dict)
     weather: Dict[str, Any] = Field(default_factory=dict)
     trips: Dict[str, Any] = Field(default_factory=dict)
+    route_trip: str = Field(default="", max_length=80)
+    underway: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("trips", mode="before")
     @classmethod
@@ -188,7 +190,7 @@ class BoatDetails(BaseModel):
         v = str(v if v is not None else "").strip().replace(",", ".")
         return v if re.fullmatch(r"\d{0,6}(\.\d{0,2})?", v) else ""
 
-    @field_validator("depart", "arrive", mode="before")
+    @field_validator("depart", "arrive", "underway", mode="before")
     @classmethod
     def depart_size(cls, v):
         return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 12000 else {}
