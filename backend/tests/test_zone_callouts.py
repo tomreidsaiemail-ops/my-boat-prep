@@ -74,3 +74,28 @@ class TestLabelFields:
 
     def test_unauth(self):
         assert requests.put(URL, json={"swatches": []}, timeout=30).status_code == 401
+
+
+    # Label row (lrow 0..5) for dragging names up/down above/below the plan (same class so xdist loadscope keeps it on one worker)
+    @pytest.mark.parametrize("row", [0, 3, 5])
+    def test_lrow_saved(self, row):
+        sw = current()
+        sw[0] = {**sw[0], "lrow": row, "band": "top"}
+        assert requests.put(URL, json={"swatches": sw}, headers=PRO, timeout=30).status_code == 200
+        got = next(s for s in current() if s["id"] == sw[0]["id"])
+        assert got["lrow"] == row and isinstance(got["lrow"], int)
+
+    @pytest.mark.parametrize("bad", [6, -1, 2.5, "x"])
+    def test_lrow_invalid_422(self, bad):
+        sw = current()
+        before = current()
+        sw[0] = {**sw[0], "lrow": bad}
+        r = requests.put(URL, json={"swatches": sw}, headers=PRO, timeout=30)
+        assert r.status_code == 422
+        assert current() == before
+
+    def test_lrow_omitted_not_stored(self):
+        sw = [{k: v for k, v in s.items() if k not in ("lx", "band", "lrow")} for s in current()]
+        assert requests.put(URL, json={"swatches": sw}, headers=PRO, timeout=30).status_code == 200
+        for s in current():
+            assert "lrow" not in s

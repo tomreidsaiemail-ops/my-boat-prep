@@ -6,8 +6,8 @@ import { ZONE_COLOURS } from "@/lib/zoneColours";
 export const ZoneCupboards = ({ zone, rows, render, t }) => {
   const [open, setOpen] = useState(false);
   return (
-    // Cupboard changes save as they're made, so opening them never counts as unsaved work in the zone window.
-    <div className="rounded-md border-[1.5px] border-[var(--line)] bg-white" data-no-dirty data-testid={`${t}-cupboards`}>
+    // Ticks save as they're made; only an item typed but not added counts as unsaved work in the zone window.
+    <div className="rounded-md border-[1.5px] border-[var(--line)] bg-white" data-autosave data-testid={`${t}-cupboards`}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-10 w-full items-center gap-2 px-2.5 text-left text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid={`${t}-cupboards-toggle`}>
         <ChevronDown className={`h-4 w-4 shrink-0 [transition:transform_.15s] ${open ? "" : "-rotate-90"}`} />
         <span className="h-3.5 w-3.5 shrink-0 rounded-[4px] border border-black/20" style={{ backgroundColor: ZONE_COLOURS[zone.colour] }} />

@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the three user-feedback fixes as test-user-pro / boat 'main', mostly at 390px with a check at 1920px. Backend test_zone_callouts.py now has 18 tests (8 new for lrow) and all 18 pass. (1) ZoneDialog discard prompt: with Fridge, Pantry and Dry Goods temporarily set to Galley/Orange, I opened zone-picker-galley, expanded the cupboards group and then Fridge. I ticked and unticked an item, opened and cancelled the item edit dialog, and collapsed both again. Closing by X, Escape or an outside click never showed discard-changes-dialog. Typing (click plus keyboard) in quick-name or quick-where and then closing by X, Escape or an outside click always showed the prompt. Keep editing kept the window open with the text still there, and Discard changes closed it without creating a cupboard. Typing and then deleting the text did not prompt. (2) Label drag up and down: dragging Galley 82px above the plan saved band top and lrow 3, the label sat on row 3, and it was still there after a reload. Dragging below the plan saved band bottom and lrow 2. Dragging side to side near the edge saved lrow 0 with the new lx. Dragging 200px above clamped to lrow 5. Labels never overlapped, page width stayed 390 at 390px and 1920 at 1920px, and no dialog opened during drags. (3) Open image: tapping the plan, tapping the padding above it, and dragging a dot or a label never opened zone-map-dialog. The open-image button opened zone-map-dialog with zone-overview-full showing 9 dots, 9 lines and 9 labels and no button inside it. With a palette colour armed, the button opened the image without placing the colour, and the next tap on the plan placed it (9 to 10 swatches). Regression: tapping a dot or label opens zone-dialog-galley; holding a dot for 800ms shows the remove X, which saves 9 to 8 with no dialog. Crew (test_session_free_1 on c_test-user-pro_main) sees no palette; tapping the plan does nothing; dragging a label does not move it or send a PUT; Open image works; tapping a label opens that zone's photo. All data restored and checked against the backup (areas and zone_maps identical).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ZoneDialog / ZoneCupboards (data-no-dirty)", "issue": "data-no-dirty covers the whole cupboards group, including each cupboard's 'Add item' text and qty inputs (inventory-add-name-<id>, inventory-add-qty-<id>). Typing 'TEST_typed' into an expanded cupboard's Add item field and pressing Escape closed the zone window with no prompt, so the typed item was lost. The feedback says to prompt only when work would be lost, and here it is lost. Suggested fix: put data-no-dirty only on checkboxes, toggles and buttons (or on the list's checkbox/radio state), not on text inputs, or let a non-empty add-item field count as dirty.", "selector": "[data-testid=zone-dialog-<slug>-cupboards-list] [data-testid^=inventory-add-name-]", "priority": "MEDIUM"},
+      {"component": "Callouts layoutLabels", "issue": "A dragged label gives way to others instead of winning its row. I dragged Galley to bottom lrow 2 and it was saved as 2, but it drew on row 3 because Starboard Aft cabin (lower cx, lrow 0, already pushed to row 2) took row 2 first. Labels are placed in cx order, so the label the user just dragged can be pushed out. The spec says 'other names step out'. Suggestion: place labels with an explicit lrow before the default ones (or the most recently dragged one first).", "selector": "zone-overview-<mapId>-label-<id>", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Zone Map Overview", "issues": ["While the image is still loading (plan box 0px wide), the Open image button wraps onto two lines ('Open / image'). Add whitespace-nowrap.", "The Open image button (z-40, top-right of the plan) can cover a dot placed in the top-right corner, which would make that dot impossible to tap or drag. Fine for the current data."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_callouts.py", "/app/test_reports/pytest/zone_callouts.xml"],
+  "action_items": [
+    "Narrow data-no-dirty in ZoneCupboards so text typed in a cupboard's Add item field (inventory-add-name/qty) still triggers the discard prompt, or treat a non-empty add-item field as dirty",
+    "Optional: in layoutLabels, give priority to swatches with an explicit lrow (the dragged label) so others step out instead",
+    "Optional: whitespace-nowrap on the open-image button"
+  ],
+  "critical_code_review_comments": [
+    "dialog.jsx takes the dirty baseline lazily on the first pointerdown or keydown inside the content. Radix's Escape listener runs on document capture, before the content's own capture listener. So if a value changes with no earlier pointerdown or keydown (programmatic fill, autofill, dictation), nothing is flagged as dirty. Real users always fire one of these first, so it is low risk, but tests must use click plus keyboard.type, not page.fill.",
+    "dragLabel measures the plan rect once at pointerdown, which is correct, but the band is still chosen by r.top + r.height/2 while out is measured from the edge. Dragging inside the top half of the plan gives lrow 0 in the top band (expected).",
+    "Backend Swatch.lrow is Optional[int] ge=0 le=5 with exclude_none. 2.5 and 'x' correctly return 422."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_callouts.py"],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "~93% (all requested checks pass; 1 medium gap found: typed add-item text inside the cupboard group closes with no prompt)"},
+  "seed_data_creation": "Temporary only: zone Galley/Orange on Fridge, Pantry and Dry Goods, plus swatch changes. Everything restored from the /tmp backup and verified identical.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use click plus keyboard.type, not page.fill, to test the discard guard (the baseline is taken on the first pointerdown or keydown). test_zone_callouts.py must keep every test in one class, because xdist loadscope races on the shared swatches. Fridge area id amw1pvdq802hq, Pantry amw1pvdq8s919, Galley swatch ad2a3f9b0b9, Saloon a57da25b544. Crew boat option: boat-option-c_test-user-pro_main.",
+  "rca of the issue": "Add-item text is lost with no prompt because ZoneCupboards puts data-no-dirty on the container, so skipField() leaves out every input inside it, text inputs included."
+}

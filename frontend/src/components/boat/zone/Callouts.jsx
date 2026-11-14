@@ -8,18 +8,19 @@ export const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 const textW = (s) => (s.label || s.colour).length * 6.4 + 14;
 
 // Zone names sit above or below the plan, never on it; a name that would overlap steps out to a further row.
+// Names the skipper moved up or down keep their row; the rest step out around them.
 export const layoutLabels = (swatches, W) => {
   const out = {};
   ["top", "bottom"].forEach((band) => {
-    const ends = [];
-    swatches.map((s) => ({ s, w: textW(s), cx: (s.lx ?? s.x) * W })).filter(({ s }) => (s.band || (s.y < 0.5 ? "top" : "bottom")) === band)
-      .sort((a, b) => a.cx - b.cx)
-      .forEach(({ s, w, cx: want }) => {
-        const fit = (c) => (w >= W ? W / 2 : Math.min(Math.max(c, w / 2), W - w / 2));
-        const cx = fit(want);
+    const used = [];
+    const free = (row, l, r) => !(used[row] || []).some(([a, b]) => l < b + 4 && r > a - 4);
+    swatches.filter((s) => (s.band || (s.y < 0.5 ? "top" : "bottom")) === band)
+      .map((s) => { const w = textW(s); return { s, w, cx: w >= W ? W / 2 : Math.min(Math.max((s.lx ?? s.x) * W, w / 2), W - w / 2) }; })
+      .sort((a, b) => (a.s.lrow == null) - (b.s.lrow == null) || a.cx - b.cx)
+      .forEach(({ s, w, cx }) => {
         let row = Math.min(s.lrow || 0, MAX_ROW);
-        while (ends[row] != null && cx - w / 2 < ends[row] + 4) row += 1;
-        ends[row] = cx + w / 2;
+        while (!free(row, cx - w / 2, cx + w / 2)) row += 1;
+        (used[row] = used[row] || []).push([cx - w / 2, cx + w / 2]);
         out[s.id] = { band, row, cx, w };
       });
   });
@@ -56,7 +57,7 @@ export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, on
         <img src={src} alt={alt} className={imgClass} draggable={false} />
         {onOpen && (
           <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onOpen(); }} aria-label="Open image"
-            className="absolute right-1 top-1 z-40 flex h-8 items-center gap-1 rounded-md bg-white/90 px-2 text-[11px] font-extrabold text-[var(--navy)] shadow ring-1 ring-[var(--line)]" data-testid={`${testId}-open-image-btn`}>
+            className="absolute right-1 top-1 z-40 flex h-8 items-center gap-1 whitespace-nowrap rounded-md bg-white/90 px-2 text-[11px] font-extrabold text-[var(--navy)] shadow ring-1 ring-[var(--line)]" data-testid={`${testId}-open-image-btn`}>
             <Maximize2 className="h-3.5 w-3.5" /> Open image
           </button>
         )}

@@ -34,13 +34,16 @@ const keepForToast = (handler) => (e) => {
 };
 
 // Unsaved-changes guard: what's typed or picked in the window is compared with how it looked before the first tap or key press.
+// Inside [data-autosave] (e.g. cupboards that save as you tick) only typed text counts, noted just before it is first typed in.
 const skipField = (el) => el.type === "file" || el.type === "search" || el.readOnly || el.closest("[data-no-dirty]");
+const FIELDS = "input, textarea, select";
+const ROLES = "[role=checkbox][data-state], [role=switch][data-state], [role=radio][data-state], [role=combobox]";
+const mainOnly = (el) => !skipField(el) && !el.closest("[data-autosave]");
 const snapshot = (root) => [
-  ...[...root.querySelectorAll("input, textarea, select")].filter((el) => !skipField(el))
-    .map((el) => (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : el.value)),
-  ...[...root.querySelectorAll("[role=checkbox][data-state], [role=switch][data-state], [role=radio][data-state], [role=combobox]")].filter((el) => !el.closest("[data-no-dirty]"))
-    .map((el) => el.getAttribute("data-state") + (el.getAttribute("role") === "combobox" ? el.textContent : "")),
+  ...[...root.querySelectorAll(FIELDS)].filter(mainOnly).map((el) => (el.type === "checkbox" || el.type === "radio" ? String(el.checked) : el.value)),
+  ...[...root.querySelectorAll(ROLES)].filter(mainOnly).map((el) => el.getAttribute("data-state") + (el.getAttribute("role") === "combobox" ? el.textContent : "")),
 ];
+const autoTexts = (root) => [...root.querySelectorAll("[data-autosave] input:not([type=checkbox]):not([type=radio]), [data-autosave] textarea")].filter((el) => !skipField(el));
 const isCancel = (btn) => /^(cancel|close)$/i.test((btn.textContent || "").trim()) || /cancel-btn$/.test(btn.dataset.testid || "");
 
 const DiscardPrompt = ({ run, onKeep }) => (
@@ -63,15 +66,22 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
   const s = React.useRef({}).current;
   s.guard = guard; s.dirty = dirty; s.ask = ask; s.ref = ref;
   // A window with no fields left (e.g. a success screen) has nothing to lose.
-  const changed = () => { if (s.base == null) return false; const now = snapshot(s.box); return now.length > 0 && now.join("\u0001") !== s.base; };
+  const changed = () => {
+    if (s.base == null) return false;
+    const now = snapshot(s.box);
+    return (now.length > 0 && now.join("\u0001") !== s.base) || [...s.typed].some(([f, v]) => f.value !== v);
+  };
   const isDirty = () => s.guard && !s.pass && !!s.box && (!!s.dirty || changed());
   const again = (fn) => () => { s.pass = true; try { fn(); } finally { s.pass = false; } };
   const closeNow = again(() => s.close?.click());
   const setBox = React.useCallback((el) => {
     if (typeof s.ref === "function") s.ref(el); else if (s.ref) s.ref.current = el;
     if (!el || el === s.box) return;
-    s.off?.(); s.box = el; s.base = null;
-    const start = () => { if (s.base == null) s.base = snapshot(el).join("\u0001"); };
+    s.off?.(); s.box = el; s.base = null; s.typed = new Map();
+    const start = () => {
+      if (s.base == null) s.base = snapshot(el).join("\u0001");
+      autoTexts(el).forEach((f) => { if (!s.typed.has(f)) s.typed.set(f, f.value); });
+    };
     const click = (e) => {
       const btn = e.target.closest?.("button");
       if (!btn || btn === s.close || !el.contains(btn) || !isCancel(btn) || !isDirty()) return;
