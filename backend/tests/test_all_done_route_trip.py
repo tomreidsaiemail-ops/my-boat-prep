@@ -68,3 +68,14 @@ def test_shore_guards(s):
 
 def test_shore_unauth():
     assert requests.post(f"{BASE_URL}/api/boats/{BOAT}/shore/arrived").status_code == 401
+
+
+# route_trip_day (manual Route Plan pick day) persists; >10 chars rejected
+def test_route_trip_day_persist(s):
+    r = _put(s, {"vessel": "TEST_AllDone", "route_trip": "custom_1", "route_trip_day": "2026-01-10"})
+    assert r.status_code == 200, r.text
+    assert r.json()["boat"]["route_trip_day"] == "2026-01-10"
+    b = s.get(f"{BASE_URL}/api/me/boat", params={"boat_id": BOAT}).json()["boat"]
+    assert b["route_trip_day"] == "2026-01-10"
+    assert b["route_trip"] == "custom_1"
+    assert _put(s, {"vessel": "TEST_AllDone", "route_trip_day": "2026-01-100"}).status_code == 422

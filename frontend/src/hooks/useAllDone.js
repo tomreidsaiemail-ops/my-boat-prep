@@ -7,7 +7,7 @@ import { logBlock } from "@/components/boat/departure/DepartureCheck";
 import { departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { arrivalSummary, arrivalUsage, departureSummary, passagePlan } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
-import { levelsBlock, pickTrip, routeTrips, tankSummary, tripIssue, tripLine } from "@/lib/allDone";
+import { levelsBlock, pickTrip, routeTrips, tankSummary, today, tripIssue, tripLine } from "@/lib/allDone";
 
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const tracked = (boatId, t) => window.dispatchEvent(new CustomEvent("mbp:tracking", { detail: { boat_id: boatId, tracking: t } }));
@@ -89,7 +89,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       const entry = { ...departureDecision(tripBoat(b, trip.id)), id: Date.now() + 1, label: `Departed, all checks done - ${line} - ${stamp()}` };
       const weather = trip.id === DEFAULT_TRIP ? { weather: markLogged(b.weather) }
         : { trips: { ...(b.trips || {}), [trip.id]: { ...(b.trips?.[trip.id] || {}), weather: markLogged(b.trips?.[trip.id]?.weather) } } };
-      const boat = { ...b, ...weather, depart: { ...dep, trip_id: trip.id }, route_trip: trip.id, underway: { trip_id: trip.id, name: trip.name, line, at: new Date().toISOString() } };
+      const boat = { ...b, ...weather, depart: { ...dep, trip_id: trip.id }, route_trip: trip.id, route_trip_day: today(), underway: { trip_id: trip.id, name: trip.name, line, at: new Date().toISOString() } };
       return { ...s, boat, data: { ...s.data, leavingDock: tickAll(s.data.leavingDock || [], tickedBy), shipsLog: [...log, entry] } };
     });
     toast.success(`Underway on ${trip.name}. Departure logged in the Ship's Log`);

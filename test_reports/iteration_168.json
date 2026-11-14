@@ -1,0 +1,27 @@
+{
+  "summary": "Retested the Route Plan default/pick logic on the Leaving Dock card as admin test-admin-1/main at mobile 390px, browser date 2026-11-14 UTC. Backend: 6/6 pytest passed, including a new route_trip_day test (persists via PUT/GET; 11 chars gives 422). Frontend: everything requested passed. (A) With 3 plans and only the copy TESTa starting today: title 'Route Plan: Route Planning TESTa', select=custom_TESTa, no warning. (B) With all 3 starting today (depart 09:00/08:00/07:30): the earliest, TESTb 07:30, is the default. (C) With none today: the warning and the all-done-blocked text both read 'No Route Plan starts today. Set today's Start date in Route Planning before you depart.' and there is no confirm button. (D) Manual pick of TESTb (starts tomorrow): warning 'Route Planning TESTb starts 15/11/2026, not today. Pick Route Planning TESTa or change its Start date before you depart.' and DEPART is blocked with the same text. Picking the default plan (no Start) gives 'Route Planning has no Start date, not today. Pick ...'. The pick persists to the DB (route_trip_day=2026-11-14) and survives a reload. Picking TESTa again clears the warning; DEPART end to end ticks 16/16, logs the status and 'Departed, all checks done - Route Planning TESTa TEST Mana-TEST Picton, 14/11/2026 - ...', and shows the underway bubble and DB underway. (E/F) A stale pick (route_trip=custom_TESTa, route_trip_day=yesterday) is ignored, and TESTb is chosen through the depart_at fallback (no event_at). Regression: the status-check collapse summary shows; ARRIVED on Arriving at Destination ticks 5/5 and clears underway; no horizontal overflow at 390px.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Route Plan warning", "issues": ["Copy reads awkwardly for a plan with no Start: 'Route Planning has no Start date, not today. Pick ...'. Consider dropping ', not today' in that case."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_all_done_route_trip.py", "/app/tests/route_plan_scenario.py", "/app/test_reports/pytest/pytest_results_168.xml"],
+  "action_items": [
+    "Optional: reword the 'has no Start date, not today' warning",
+    "Confirm the intended behaviour for skippers with only one Route Plan (no select shown). tripIssue now blocks DEPART whenever that single plan doesn't start today, which is a behaviour change from iteration_167."
+  ],
+  "critical_code_review_comments": [
+    "tripIssue also applies when trips.length === 1, so single-plan users who haven't set today's Start can never DEPART. The request only described this for 2+ plans, so check it matches intent.",
+    "useAllDone.depart() writes route_trip: trip.id without route_trip_day. This is harmless because a pick without a day is ignored on later days, but writing route_trip_day: today() would keep the two fields consistent.",
+    "pickTrip/tripIssue call today() several times per render; there is an edge case right at midnight, which is negligible."
+  ],
+  "updated_files": ["/app/backend/tests/test_all_done_route_trip.py", "/app/tests/route_plan_scenario.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "test-admin-1/main was backed up (mongoexport /tmp/admin_main_bak_168.json), then temporarily changed through /app/tests/route_plan_scenario.py: vessel/callsign, weather event_at/depart_at, registry copies custom_TESTa/custom_TESTb, boat.trips, depart/route_trip. The whole doc was restored from the backup afterwards (verified: 23 registry lists, no trips, no TEST lists). The TESTalldone pytest boat is deleted by the fixture. No shore contacts created.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use /app/tests/route_plan_scenario.py <A|B|C|D|F> [route_trip] [route_trip_day] to set up Route Plan scenarios on test-admin-1/main by direct DB edit (it bumps updated_at so a fresh browser loads it); 'show' prints route_trip/day/underway. Always back up the doc first and restore it afterwards. Level testids are level-<fuel|gas|water|bat-engine|bat-house>-full and level-arrive-... for arrival."
+}

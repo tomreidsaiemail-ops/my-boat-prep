@@ -35,7 +35,7 @@ export const tripIssue = (trips, trip) => {
   if (!trip || trip.startDay === today()) return "";
   const first = todays(trips)[0];
   if (!first) return "No Route Plan starts today. Set today's Start date in Route Planning before you depart.";
-  return `${trip.name} ${trip.startOn ? `starts ${trip.startOn}` : "has no Start date"}, not today. Pick ${first.name} or change its Start date before you depart.`;
+  return `${trip.name} ${trip.startOn ? `starts ${trip.startOn}, not today` : "has no Start date"}. Pick ${first.name} or change its Start date before you depart.`;
 };
 
 // "Trip Name Mana-Picton, 1/1/2027 - 10/1/2027"
