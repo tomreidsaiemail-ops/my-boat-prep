@@ -7,7 +7,7 @@ import { logBlock } from "@/components/boat/departure/DepartureCheck";
 import { departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { arrivalSummary, arrivalUsage, departureSummary, passagePlan } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
-import { levelsBlock, pickTrip, routeTrips, tankSummary, tripLine } from "@/lib/allDone";
+import { levelsBlock, pickTrip, routeTrips, tankSummary, tripIssue, tripLine } from "@/lib/allDone";
 
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const tracked = (boatId, t) => window.dispatchEvent(new CustomEvent("mbp:tracking", { detail: { boat_id: boatId, tracking: t } }));
@@ -34,7 +34,8 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
   const openDepart = () => {
     const b = state.boat || {};
     const d = b.depart || {};
-    const trip = pickTrip(routeTrips(state.registry, b), b.route_trip);
+    const trips = routeTrips(state.registry, b);
+    const trip = pickTrip(trips, b.route_trip, b.route_trip_day);
     if (!trip) return;
     const list = state.data.leavingDock || [];
     const w = tripBoat(b, trip.id).weather || {};
@@ -50,7 +51,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         : !online ? { tone: "warn", text: "No signal, so position sharing with shore contacts can't be turned on now" }
           : { tone: "info", text: "Checking your shore contacts..." }) },
     ];
-    const blocked = levelsBlock(b, d.levels) || logBlock(b, d);
+    const blocked = tripIssue(trips, trip) || levelsBlock(b, d.levels) || logBlock(b, d);
     setPlan({ kind: "depart", trip, blocked, steps, contacts: 0, checking: !blocked && askShore });
     if (!blocked && askShore) {
       api.get(`/boats/${boatId}/shore`, { timeout: 10000 }).then(({ data }) => {

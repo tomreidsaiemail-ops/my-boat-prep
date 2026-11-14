@@ -107,7 +107,7 @@ export const listRows = (list, items, ctx) => {
   return checklistRows(items, ctx.labelFor, ctx.areaName, ctx.photo, ctx.itemPhotoUrl);
 };
 
-const SKIP = new Set(["weather", "depart", "arrive", "pob_manual", "underway", "route_trip"]);
+const SKIP = new Set(["weather", "depart", "arrive", "pob_manual", "underway", "route_trip", "route_trip_day"]);
 const LABELS = { pob: "Persons on board (POB)", mmsi: "MMSI", loa: "LOA", lwl: "LWL", cruise_kn: "Cruising speed (kn)", log_email: "Skipper email", shore_email: "Shore contact email",
   shore_enabled: "Shore contact on", units: "Measurement units", tank_units: "Tank units", year_built: "Year of manufacture", budget_currency: "Currency", trip_days: "Trip duration (days)",
   skipper_phone: "Skipper phone", gas_bottles: "LPG bottles", gas_kg: "LPG bottle size (kg)", gas_extra: "Extra LPG bottles" };

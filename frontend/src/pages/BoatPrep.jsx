@@ -31,12 +31,12 @@ import { api, apiError } from "@/lib/api";
 import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, resetLists, resetOptions, templateIds, templateItems } from "@/lib/defaults";
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
-import { RoutePlanCard } from "@/components/boat/departure/RoutePlanCard";
+import { DepartRoute } from "@/components/boat/departure/RoutePlanCard";
 import { ArrivedCard } from "@/components/boat/departure/ArrivedCard";
 import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
-import { pickTrip, routeTrips } from "@/lib/allDone";
+import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";
 
@@ -1091,8 +1091,8 @@ export default function BoatPrep({ boatId, boats }) {
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
       {!crew && active.id === "leavingDock" && (
-        <RoutePlanCard trips={routeTrips(state.registry, boat)} trip={pickTrip(routeTrips(state.registry, boat), boat.route_trip)} underway={boat.underway}
-          onPick={(id) => updateBoat("route_trip", id)} onDepart={() => doneGuard() && allDone.openDepart()} />
+        <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
+          onDepart={() => doneGuard() && allDone.openDepart()} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={boat} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}

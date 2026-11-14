@@ -171,6 +171,7 @@ class BoatDetails(BaseModel):
     weather: Dict[str, Any] = Field(default_factory=dict)
     trips: Dict[str, Any] = Field(default_factory=dict)
     route_trip: str = Field(default="", max_length=80)
+    route_trip_day: str = Field(default="", max_length=10)
     underway: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("trips", mode="before")
