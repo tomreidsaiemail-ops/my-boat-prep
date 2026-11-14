@@ -51,3 +51,9 @@ export const foldTrip = (log, legs, tripName, when) => {
       detail, ...(photos.length ? { weather_photos: photos } : {}) },
   };
 };
+
+// A status check counts as logged only while its Ship's Log entry is still there.
+export const liveLog = (b, log = []) => {
+  const keep = (d = {}) => (d.log_id && !log.some((i) => i.id === d.log_id) ? { ...d, log_id: null, log_sig: "" } : d);
+  return { ...b, depart: keep(b.depart), arrive: keep(b.arrive) };
+};

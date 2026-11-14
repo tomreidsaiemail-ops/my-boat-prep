@@ -1,0 +1,25 @@
+{
+  "summary": "Focused retest of the 2 failures from iteration 176, at 390px as test-admin-1 / main. The boat was backed up to /tmp/bk177/boat.json, seeded with /tmp/seed175.py, checked with /tmp/chk175b.py, and restored with mongoimport --mode=upsert (checked: legs None, arrive {}, underway {}). PASSED: (A) DEPART, then ARRIVED (Mooring), then New departure Tawa Bay to Picton Marina (Leave Mooring, 23:45) and ARRIVED (Berth), then Leave Berth Picton Marina to Anatohia Bay and ARRIVED (Drop Anchor). After every ARRIVED, arrival-collapsed-summary says 'Adequate Fuel, LPG, Water. Arrival status logged.' with no 'Changed since it was copied.'. This was still true after a page reload. The log entries say 'Used on the passage Mana Marina to Tawa Bay', 'Tawa Bay to Picton Marina' and 'Picton Marina to Anatohia Bay'. boat.arrive.leg = {start: 'Picton Marina', dest: 'Anatohia Bay'} and log_sig matches. (B) After the arrival status entry was deleted (checklist-item-delete-<id> + Delete), the ARRIVED window's all-done-step-status says 'Copy the arrival levels and what was used into the Ship's Log: ...'. (C) Regression: Weigh Anchor Anatohia Bay to Mana Marina, then Returning to Dock ARRIVED. The window shows 'Fold this trip's 4 legs'. The result is one Trip entry 'Trip - Route Plan: Route Planning - Mana Marina to Mana Marina, 14/11/2026 - 4 legs' with legs 1-4, the right kinds and the right arrivals. Only the 2 unrelated entries stay in the log. Afterwards depart={}, arrive={}, legs.routeHazards=[] and underway={}. Leaving Dock is no longer collapsed. One LOW cosmetic issue is left: the optional part of the iteration 176 B finding was not done.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ArrivalCheck collapsed card after its Ship's Log entry is deleted", "issue": "arrival-collapsed-summary still says 'Arrival status logged.' (collapsed and ticked) after the copied entry was deleted from the Ship's Log, because ArrivalCheck only checks arrive.log_id and not whether the id is still in shipsLog. The ARRIVED window now correctly says 'Copy', so this is only cosmetic. DepartureCheck very likely has the same issue.", "selector": "arrival-collapsed-summary", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "LOW (optional): pass shipsLog to ArrivalCheck/DepartureCheck, so the collapsed 'logged' state needs arrive.log_id / depart.log_id to still be in the Ship's Log."
+  ],
+  "critical_code_review_comments": [
+    "The ArrivalCheck 'New arrival' button (arrival-reset-btn) sets arrive={}, which also drops arrive.leg. After an interim leg's ARRIVED, a 'New arrival' then re-copy, before the next departure, would use the overall route_start/route_dest in 'Used on the passage ...'. This is an edge case. Consider keeping leg when resetting: onBoatChange('arrive', arrive.leg ? { leg: arrive.leg } : {}).",
+    "arrive(): `lb !== b` decides whether to save the leg. It works because legBoat returns b itself only when there is no interim leg and no arrive.leg, but this relies on object identity. An explicit flag would be clearer."
+  ],
+  "updated_files": ["/app/test_reports/iteration_177.json"],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% of the requested repros (A legs 2 and 3, B, fold regression)"},
+  "seed_data_creation": "Temporary seed with /tmp/seed175.py on test-admin-1/main. Restored from /tmp/bk177/boat.json with mongoimport --mode=upsert. /tmp/reset177.sh does restore + seed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The list picker (Radix Select) misses clicks while a sonner toast is showing. Wait for document.querySelectorAll('[data-sonner-toast]').length===0, then click list-selector and list-option-<id> without force. List ids: leavingDock, arrivingDest, returningDock, shipsLog. The app is at '/'. Restore + seed with /tmp/reset177.sh (backup at /tmp/bk177/boat.json)."
+}
