@@ -1,8 +1,10 @@
-import { Flag, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Flag, RotateCcw } from "lucide-react";
 import { SetupPrompt } from "@/components/boat/departure/DepartureCheck";
 import { TankLevels, allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { LogCopy, stamp } from "@/components/boat/departure/LogCopy";
 import { TankChange } from "@/components/boat/departure/TankChange";
+import { tankSummary } from "@/lib/allDone";
 import { arrivalSummary, arrivalUsage, num, usedText } from "@/lib/telemetry";
 
 const r = (n) => Math.round(n * 10) / 10;
@@ -30,12 +32,25 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
   const summary = (when) => arrivalSummary(boat, depart, arrive, use, when, arrive.log_list || listName);
   const sig = summary("");
   const blocked = allLevelsPicked(boat, levels) ? "" : "Pick a level for every tank and battery first.";
+  const [open, setOpen] = useState(false);
+  const collapsed = !!arrive.log_id && !open;
   return (
     <section className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="arrival-check">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><Flag className="h-4 w-4" /> Arrival status check</h3>
-        <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("arrive", {})} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
+        <div className="flex items-center gap-1">
+          {arrive.log_id && (
+            <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" aria-expanded={!collapsed} onClick={() => setOpen(collapsed)} data-testid="arrival-collapse-toggle">
+              {collapsed ? <>Show <ChevronDown className="h-3.5 w-3.5" /></> : <>Hide <ChevronUp className="h-3.5 w-3.5" /></>}
+            </button>
+          )}
+          <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("arrive", {})} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
+        </div>
       </div>
+      {collapsed ? (
+        <p className="text-sm font-semibold" data-testid="arrival-collapsed-summary">{`${tankSummary(levels)} Arrival status logged.`.trim()}{arrive.log_sig !== sig ? " Changed since it was copied." : ""}</p>
+      ) : (
+      <>
       {!depart.levels && <p className="rounded-md bg-sky-50 px-2 py-1.5 text-sm text-sky-900" data-testid="arrival-no-departure">No Leaving the Dock check recorded, so only the arrival levels can be logged.</p>}
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="arrival-setup-btn" />
       <TankLevels boat={boat} prefix="arrive-" arrival levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
@@ -59,8 +74,10 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
       )}
       <LogCopy prefix="arrival" label="Copy this arrival's levels and what was used into the Ship's Log" logged={!!arrive.log_id} blocked={blocked}
         outdated={!!arrive.log_id && arrive.log_sig !== sig}
-        onToggle={(on) => (on ? setArrive({ log_id: onLog(arrivalSummary(boat, depart, arrive, use, stamp(), listName), "Arrival"), log_sig: arrivalSummary(boat, depart, arrive, use, "", listName), log_list: listName }) : (onUnlog(arrive.log_id), setArrive({ log_id: null, log_sig: "", log_list: "" })))}
+        onToggle={(on) => (on ? (setOpen(false), setArrive({ log_id: onLog(arrivalSummary(boat, depart, arrive, use, stamp(), listName), "Arrival"), log_sig: arrivalSummary(boat, depart, arrive, use, "", listName), log_list: listName })) : (onUnlog(arrive.log_id), setArrive({ log_id: null, log_sig: "", log_list: "" })))}
         onRelog={() => { onRelog(arrive.log_id, summary(stamp()), "Arrival"); setArrive({ log_sig: sig }); }} />
+      </>
+      )}
     </section>
   );
 };

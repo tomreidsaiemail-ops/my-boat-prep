@@ -935,3 +935,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Backlog: passage calculation on Leaving Dock still uses the main Route Planning route, not the chosen trip copy.
 - 2026-06: Route Plan card titled "Route Plan: <name>"; default = plan whose Start (event_at, else depart_at) is today, earliest Departure time first; manual pick kept for that day only (boat.route_trip_day). DEPART blocked with a warning if the chosen plan does not start today or none does. Tested iteration_168.
 - 2026-06: "Starts today" now uses the Departure date (weather.depart_at) only; warnings say DEPARTURE DATE / Departure date, with a link that opens the chosen Route Plan and focuses its Departure date field.
+- 2026-06: Arrival status check collapses like Leaving Dock once logged (Show/Hide, summary "Adequate Fuel, LPG, Water. Arrival status logged.").
