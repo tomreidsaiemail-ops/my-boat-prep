@@ -928,3 +928,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 ## Admin Role Briefing updates reach skippers + skipper sees filled tags (2026-06)
 - BUG FIX: templates.push_role_briefings now also updates boat roles still holding an earlier default (template_versions + old items + seeds, compared ignoring bullets/whitespace); skipper-written/blanked untouched. Startup migration role_briefing_resync_v1 re-pushed current admin defaults (preview: 9 boats). Verified iteration_165.
 - Tags are admin-only: hint removed from skipper Edit Item + Invite prompt; skipper editors show fillDetails() text (boat details filled, blank details/YOUTUBE kept); unchanged save keeps tagged text (still follows defaults). Verified iteration_166.
+
+- 2026-06: Synced Production admin master "Arriving at Destination" (arrivingDest, 72 items, updated_at 2026-11-04T22:59:42Z) into Preview list_templates via read-only deployer export.
