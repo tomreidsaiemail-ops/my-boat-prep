@@ -1,6 +1,6 @@
 import re
 from datetime import datetime, timezone
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from db import db
@@ -87,6 +87,8 @@ class Swatch(BaseModel):
     y: float = Field(ge=0, le=1)
     colour: str = Field(max_length=20)
     label: str = Field(default="", max_length=40)
+    lx: Optional[float] = Field(default=None, ge=0, le=1)
+    band: Optional[Literal["top", "bottom"]] = None
 
 
 class SwatchesIn(BaseModel):
@@ -107,7 +109,7 @@ async def save_swatches(boat_id: BoatPath, map_id: MapPath, payload: SwatchesIn,
         if tag in seen:
             raise HTTPException(status_code=400, detail=f"{s.label.strip() or colour} is already on this plan. Each colour goes on once.")
         seen.add(tag)
-        out.append({**s.model_dump(), "colour": colour, "label": s.label.strip()})
+        out.append({**s.model_dump(exclude_none=True), "colour": colour, "label": s.label.strip()})
     res = await db.user_boats.update_one({**key, "zone_maps": {"$elemMatch": {"id": map_id, "kind": "overview"}}}, {"$set": {"zone_maps.$.swatches": out}})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Zone Map Overview not found")

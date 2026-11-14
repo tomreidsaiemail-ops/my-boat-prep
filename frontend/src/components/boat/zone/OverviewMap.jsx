@@ -1,31 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Loader2, Palette, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Loader2, Palette, Sparkles, Trash2 } from "lucide-react";
 import { api, apiError } from "@/lib/api";
-import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
+import { ZONE_COLOURS } from "@/lib/zoneColours";
+import { CalloutPlan, ink } from "@/components/boat/zone/Callouts";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 
-const Square = ({ s, style, selected, onPointerDown, onRemove, testId }) => (
-  <span className={`absolute -translate-x-1/2 -translate-y-1/2 touch-none select-none ${selected ? "z-30" : "z-10"}`} style={style} onClick={(e) => e.stopPropagation()} data-testid={testId}>
-    <span onPointerDown={onPointerDown} className={`flex cursor-grab items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-1 text-[10px] font-extrabold shadow-md ring-2 ${selected ? "ring-[var(--navy)]" : "ring-white"}`}
-      style={{ background: ZONE_COLOURS[s.colour], color: ink(s.colour) }}>{s.label || s.colour}</span>
-    {selected && onRemove && (
-      <button type="button" onClick={onRemove} aria-label={`Remove ${s.label || s.colour}`} className="absolute -right-3 -top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--red)] shadow" data-testid={`${testId}-remove`}>
-        <X className="h-3.5 w-3.5" />
-      </button>
-    )}
-  </span>
-);
-
-// Read-only full-size plan with its colour squares.
+// Read-only full-size plan with its zone dots and names.
 export const OverviewView = ({ src, swatches = [] }) => (
-  <div className="relative mx-auto w-fit max-w-full" data-testid="zone-overview-full">
-    <img src={src} alt="Zone Map Overview" className="block max-h-[80vh] max-w-full" draggable={false} />
-    {swatches.map((s) => <Square key={s.id} s={s} style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%` }} testId={`zone-overview-full-swatch-${s.id}`} />)}
-  </div>
+  <CalloutPlan src={src} alt="Zone Map Overview" imgClass="block max-h-[80vh] max-w-full" swatches={swatches} testId="zone-overview-full" />
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
@@ -135,6 +120,26 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
+  // Drag a zone name along the top or bottom of the plan; a tap opens the zone like its dot.
+  const dragLabel = (e, s) => {
+    e.preventDefault(); e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY;
+    let moved = false, last = s;
+    const move = (ev) => {
+      if (!canEdit || (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6)) return;
+      moved = true;
+      const r = box.current?.getBoundingClientRect();
+      if (!r) return;
+      last = { ...s, lx: clamp((ev.clientX - r.left) / r.width), band: ev.clientY < r.top + r.height / 2 ? "top" : "bottom" };
+      setSwatches((all) => all.map((x) => (x.id === s.id ? last : x)));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+      if (moved) save(swatches.map((x) => (x.id === s.id ? last : x)));
+      else { setSelected(null); onColour?.(s); }
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
   const tapPlan = (e) => {
     if (armed) { const pos = at(e.clientX, e.clientY); if (pos) place(armed, pos); return; }
     if (selected) { setSelected(null); return; }
@@ -144,13 +149,9 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
       <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</p>
       {map.source_url && <a href={map.source_url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-semibold text-[var(--muted)] underline" data-testid={`${t}-source`}>Source: {map.source_title || "web"}</a>}
-      <div ref={box} className={`relative mx-auto w-fit max-w-full ${armed ? "cursor-crosshair" : ""}`} onClick={tapPlan} data-testid={`${t}-plan`}>
-        <img src={src} alt={`${map.name || "Zone Map"} overview`} className="block max-h-72 max-w-full rounded-md" draggable={false} />
-        {swatches.map((s) => (
-          <Square key={s.id} s={s} style={{ left: `${s.x * 100}%`, top: `${s.y * 100}%` }} selected={selected === s.id} testId={`${t}-swatch-${s.id}`}
-            onPointerDown={(e) => dragOld(e, s)} onRemove={canEdit ? (e) => { e.stopPropagation(); setSelected(null); save(swatches.filter((x) => x.id !== s.id)); } : null} />
-        ))}
-      </div>
+      <CalloutPlan src={src} alt={`${map.name || "Zone Map"} overview`} imgClass="block max-h-72 max-w-full rounded-md" swatches={swatches} boxRef={box}
+        selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} className={armed ? "cursor-crosshair" : ""} testId={t} planTestId={`${t}-plan`}
+        onRemove={canEdit ? (e, s) => { e.stopPropagation(); setSelected(null); save(swatches.filter((x) => x.id !== s.id)); } : null} />
       {canEdit && (
         <>
           <button type="button" onClick={swatches.length ? toggleTools : undefined} aria-expanded={!shut} aria-disabled={!swatches.length}
@@ -168,7 +169,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             Include deck zones
             <span className="basis-full pl-7 text-xs font-semibold text-[var(--muted)]">{withDeck ? "decks, anchor locker and lazarettes too" : "below deck, cockpit and transom only"}</span>
           </label>
-          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed colour to add photos of that zone and scan its cupboards; press and hold it to remove it."}</p>
+          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name to move it along the top or bottom."}</p>
           <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"
