@@ -9,6 +9,7 @@ import { LIGHT, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { zoneChecklist } from "@/lib/zoneChecklist";
 import { SkipperComment } from "@/components/boat/zone/SkipperComment";
 import { QuickCupboards } from "@/components/boat/zone/QuickCupboards";
+import { ZoneCupboards } from "@/components/boat/zone/ZoneCupboards";
 
 export const slug = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -49,7 +50,7 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 };
 
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
-export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, onClose, onQuickAdd, onQuickDone }) => {
+export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -78,6 +79,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, onMaps, onScan, 
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><ZoneChip zone={zone} className="text-sm" testId={`${t}-chip`} /> zone</DialogTitle>
           <DialogDescription>{zone.colour} zone. Photos of {zone.label} take {zone.colour}, and every cupboard you scan here is filed under {zone.label}.</DialogDescription>
         </DialogHeader>
+        {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} />}
         {big ? (
           <div className="flex flex-col gap-2" data-testid={`${t}-big`}>
             <div className="relative">

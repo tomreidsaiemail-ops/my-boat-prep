@@ -25,7 +25,7 @@ export const ZoneBanner = ({ zone, boat, testId }) => {
         <div className="flex flex-col gap-2 rounded-b-md bg-white p-2 text-[var(--navy)]" data-testid={`${t}-body`}>
           <div className="flex gap-2 overflow-x-auto">
             {plans.map((m) => (
-              <div key={m.id} className="w-56 shrink-0 [&_img]:max-h-40"><OverviewView src={boatMapUrl(boat, m)} swatches={m.swatches.filter((s) => (s.label || s.colour).toLowerCase() === l)} /></div>
+              <div key={m.id} className="w-56 shrink-0 [&_img]:max-h-40"><OverviewView src={boatMapUrl(boat, m)} swatches={m.swatches.filter((s) => (s.label || s.colour).toLowerCase() === l)} testId={`zone-overview-full-${m.id}`} /></div>
             ))}
             {photos.map((m) => <img key={m.id} src={boatMapUrl(boat, m)} alt={m.name || zone.label} className="h-40 shrink-0 rounded-md object-cover" data-testid={`${t}-photo-${m.id}`} />)}
           </div>

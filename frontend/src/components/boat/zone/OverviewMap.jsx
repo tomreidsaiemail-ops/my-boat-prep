@@ -9,8 +9,8 @@ const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 // Read-only full-size plan with its zone dots and names.
-export const OverviewView = ({ src, swatches = [] }) => (
-  <CalloutPlan src={src} alt="Zone Map Overview" imgClass="block max-h-[80vh] max-w-full" swatches={swatches} testId="zone-overview-full" />
+export const OverviewView = ({ src, swatches = [], testId = "zone-overview-full" }) => (
+  <CalloutPlan src={src} alt="Zone Map Overview" imgClass="block max-h-[80vh] max-w-full" swatches={swatches} testId={testId} />
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
@@ -126,8 +126,9 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     const sx = e.clientX, sy = e.clientY;
     let moved = false, last = s;
     const move = (ev) => {
-      if (!canEdit || (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6)) return;
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < (canEdit ? 6 : 10)) return;
       moved = true;
+      if (!canEdit) return;
       const r = box.current?.getBoundingClientRect();
       if (!r) return;
       last = { ...s, lx: clamp((ev.clientX - r.left) / r.width), band: ev.clientY < r.top + r.height / 2 ? "top" : "bottom" };
@@ -135,7 +136,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     };
     const up = () => {
       window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
-      if (moved) save(swatches.map((x) => (x.id === s.id ? last : x)));
+      if (moved) { if (canEdit) save(swatches.map((x) => (x.id === s.id ? last : x))); }
       else { setSelected(null); onColour?.(s); }
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);

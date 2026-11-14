@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the Zone Map Overview callouts (dot + coloured line + zone name above/below the plan). Backend: 10/10 pytest pass. Saving lx/band works and is still there after reload; lx>1, lx<0, band='left' and band='' return 422 and change nothing; lx/band left out (or sent as null) are not stored. Frontend (desktop 1920 and mobile 390): every swatch draws a dot inside the image, a label outside it (never over it) and a line in the zone colour. The default band follows y (top half -> above, bottom half -> below). No labels overlap with 9 or 11 swatches. Working: dragging a dot (saves x/y), dragging a name to the other band (saves lx and band, still there after reload), tapping a dot or name opens the Zone dialog, tap-a-colour-then-tap-the-plan placement, dragging a colour onto the plan, one Magic run (200, 9 placed, 9 dots, lines and labels), the full-screen OverviewView for owner and crew (9/9/9), and crew read-only (no auto button, can't drag a name, no PUT). Two bugs: (1) CRITICAL: the remove (X) button on a held dot can't be clicked; it opens the Zone dialog instead. (2) Labels are not kept inside the plan width, so at 390px a label pushed to the edge or past 3 rows makes the page scroll sideways (scrollWidth 433 vs 390).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Callouts.jsx CalloutPlan, dot remove button", "issue": "Pressing and holding a dot shows the X, but clicking the X never removes the colour. The button sits inside the dot span, whose onPointerDown is dragOld, so the X's pointerdown reaches dragOld. On release dragOld sees no move and no hold, so it calls setSelected(null) and onColour(s). The X unmounts before 'click' fires and the Zone dialog opens instead. Reproduced 2/2 times with mouse events; no PUT was sent. Fix: add onPointerDown={(e) => e.stopPropagation()} to the remove button.", "selector": "[data-testid=zone-overview-<mapId>-swatch-<id>-remove]", "priority": "HIGH"},
+      {"component": "Callouts.jsx layoutLabels", "issue": "Label centre cx is not limited to [w/2, W - w/2]. With lx=0 or 1, or once 3 rows are full (the fallback cx = ends[row] + 4 + w/2 pushes labels right without limit), labels spill past the plan and the card. On 390px: 'Port Forward cabin' right edge 433, Cockpit left 14 with card left 29, page scrollWidth 433 > 390, so the page scrolls sideways. Default data is fine (scrollWidth 390); this shows up after a user drags a name to the edge or when many zones share one band. Fix: limit cx to [w/2, W - w/2]; in the full-rows case fall back to another band or to overlapping, not overflowing.", "selector": "[data-testid^=zone-overview-<mapId>-label-]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Zone Map Overview (crew / read-only)", "issues": ["In dragLabel, when canEdit=false the move handler returns early, so 'moved' never becomes true and any drag of any length ends in onColour (the Zone opens). The dot handler only treats a press as a tap when it moves less than 10px. Minor inconsistency."]},
+      {"screen": "ZoneBanner", "issues": ["With several overview plans, every OverviewView uses the same testId 'zone-overview-full', so test ids are duplicated. Not tested live (needs zone photos to reach Batch Scan); checked by code review only."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_callouts.py", "/app/test_reports/pytest/pytest_zone_callouts.xml"],
+  "action_items": [
+    "Make the held-dot remove button work: stop pointerdown propagation on the …-swatch-<id>-remove button (Callouts.jsx line ~81)",
+    "Keep label centres within the plan width in layoutLabels (and handle the >3 rows fallback) so the page never scrolls sideways at 390px",
+    "Optional: for crew, only treat a label press as a tap when it moves less than 10px (same as the dot)"
+  ],
+  "critical_code_review_comments": [
+    "Callouts.jsx: the remove button is nested inside an element that has an onPointerDown drag handler, and it does not stop propagation (root cause of bug 1).",
+    "layoutLabels: no limit on cx; the 'all rows full' fallback can push labels past W without limit.",
+    "OverviewView testId is fixed as 'zone-overview-full', so it is duplicated when ZoneBanner shows several plans."
+  ],
+  "updated_files": ["/app/backend/tests/test_zone_callouts.py"],
+  "success_rate": {"backend": "100%", "frontend": "~85% (remove-from-dot broken; overflow at the edges)"},
+  "seed_data_creation": "None kept. Backed up test-user-pro/main zone_maps and areas before editing and restored them after (Magic added 15 cupboards and 2 test swatches were placed; all reverted). Also unset boat.route_trip_day/route_trip/underway, which a frontend sync had added as empty defaults, and reset sec_ts.areas.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Map cba66e09-3511-4d45-bf60-17224c73d58d on test-user-pro/main (cookie session_token=test_session_pro_1). Boat Inventory is already the selected list; click zone-map-toggle. Crew test: test_session_free_1; close the crew-reg-dialog with Escape first; the boat is already the shared 'TEST_Kia Ora'. Run pytest with '-n 0'. To retest remove: hold the dot for 800ms, then mouse down/up on …-swatch-<id>-remove. To retest overflow: PUT swatches with lx=0/1 and band=top on all, then check document.documentElement.scrollWidth at 390px."
+}

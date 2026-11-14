@@ -14,10 +14,12 @@ export const layoutLabels = (swatches, W) => {
     const ends = [];
     swatches.map((s) => ({ s, w: textW(s), cx: (s.lx ?? s.x) * W })).filter(({ s }) => (s.band || (s.y < 0.5 ? "top" : "bottom")) === band)
       .sort((a, b) => a.cx - b.cx)
-      .forEach(({ s, w, cx }) => {
+      .forEach(({ s, w, cx: want }) => {
+        const fit = (c) => (w >= W ? W / 2 : Math.min(Math.max(c, w / 2), W - w / 2));
+        let cx = fit(want);
         let row = ends.findIndex((e) => cx - w / 2 >= e + 4);
         if (row < 0 && ends.length < MAX_ROWS) row = ends.length;
-        if (row < 0) { row = ends.indexOf(Math.min(...ends)); cx = ends[row] + 4 + w / 2; }
+        if (row < 0) { row = ends.indexOf(Math.min(...ends)); cx = fit(ends[row] + 4 + w / 2); }
         ends[row] = cx + w / 2;
         out[s.id] = { band, row, cx, w };
       });
@@ -78,7 +80,7 @@ export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, on
               style={{ left: s.x * W, top: top + s.y * H }} onPointerDown={onDotDown ? (e) => onDotDown(e, s) : undefined} data-testid={`${testId}-swatch-${s.id}`}>
               <span className={`block h-3.5 w-3.5 rounded-full shadow-md ring-2 ${sel ? "ring-[var(--navy)]" : "ring-white"}`} style={{ background: ZONE_COLOURS[s.colour] }} />
               {sel && onRemove && (
-                <button type="button" onClick={(e) => onRemove(e, s)} aria-label={`Remove ${s.label || s.colour}`} className="absolute -right-3 -top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--red)] shadow" data-testid={`${testId}-swatch-${s.id}-remove`}>
+                <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => onRemove(e, s)} aria-label={`Remove ${s.label || s.colour}`} className="absolute -right-3 -top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[var(--red)] shadow" data-testid={`${testId}-swatch-${s.id}-remove`}>
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
