@@ -24,7 +24,7 @@ const Body = ({ trip, boat, items, online, locked, onUpgrade, boatId, onDepart }
   };
   return (
     <>
-      <NavigatorAsk boat={legBoat} items={items} online={online} locked={locked} onUpgrade={onUpgrade} boatId={boatId}
+      <NavigatorAsk interim boat={legBoat} items={items} online={online} locked={locked} onUpgrade={onUpgrade} boatId={boatId}
         onChange={(k, v) => { setLeg((l) => ({ ...l, [k]: v })); setError(""); }}
         onWeather={(patch) => { setLeg((l) => ({ ...l, weather: { ...l.weather, ...patch } })); setError(""); }} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="interim-departure-error">{error}</p>}

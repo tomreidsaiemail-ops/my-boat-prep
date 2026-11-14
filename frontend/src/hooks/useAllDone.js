@@ -11,7 +11,8 @@ import { LEG_KINDS, headingItems, legIds, legTrip, levelsBlock, pickTrip, routeT
 
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const tracked = (boatId, t) => window.dispatchEvent(new CustomEvent("mbp:tracking", { detail: { boat_id: boatId, tracking: t } }));
-const tickAll = (list, by, skip = new Set()) => stampTicks(list, list.map((i) => (skip.has(i.id) ? i : { ...i, checked: true })), by);
+// Skipped items are unticked, ready for the next departure.
+const tickAll = (list, by, skip = new Set()) => stampTicks(list, list.map((i) => ({ ...i, checked: !skip.has(i.id) })), by);
 // Arriving at Destination keeps its interim departure items (When leaving berth...) for the next leg.
 const arriveSkip = (listId, list) => (listId === "arrivingDest" ? legIds(list) : new Set());
 const markLogged = (w = {}) => ({ ...w, photos: (w.photos || []).map((p) => ({ ...p, logged: true })) });
@@ -72,7 +73,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     const sig = arrivalSummary(b, b.depart || {}, a, arrivalUsage(b, b.depart || {}, a), "", listName);
     const skip = arriveSkip(listId, list);
     const steps = [
-      { id: "tick", text: skip.size ? `Tick ${plural(list.length - skip.size, `${listName} item`)} (not the When leaving berth, When weighing anchor or When leaving mooring items)` : `Tick all ${plural(list.length, `${listName} item`)}` },
+      { id: "tick", text: skip.size ? `Tick ${plural(list.length - skip.size, `${listName} item`)}, and untick the When leaving berth, When weighing anchor and When leaving mooring items ready for the next departure` : `Tick all ${plural(list.length, `${listName} item`)}` },
       statusStep(a, sig, "Arrival levels and what was used", tankSummary(a.levels)),
       { id: "route", text: `Log your arrival${u.line ? `: ${u.line}` : ""}` },
       ...(u.trip_id ? [{ id: "underway", text: `Clear Underway from ${u.name}` }] : []),
@@ -166,18 +167,22 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         photos: (w.photos || []).map((p) => ({ id: p.id, note: p.note || "", at: p.at })), at: new Date().toISOString() };
       const legs = { ...(b.legs || {}), [trip.id]: [...(b.legs?.[trip.id] || []), rec] };
       const underway = { trip_id: trip.id, name: trip.name, line: tripLine(lt), at: new Date().toISOString(), leg: kind };
-      return { ...s, boat: { ...b, legs, underway }, data: { ...s.data, arrivingDest: stampTicks(list, list.map((i) => (ids.has(i.id) ? { ...i, checked: true } : i)), tickedBy), shipsLog: [...(s.data.shipsLog || []), entry] } };
+      // A fresh Arrival status check for the next anchorage, berth or mooring.
+      return { ...s, boat: { ...b, legs, underway, arrive: {} }, data: { ...s.data, arrivingDest: stampTicks(list, list.map((i) => (ids.has(i.id) ? { ...i, checked: true } : i)), tickedBy), shipsLog: [...(s.data.shipsLog || []), entry] } };
     });
     toast.success(`${k.label}: ${plural(ticked, "item")} ticked. Underway on ${trip.name}, logged in the Ship's Log`);
     if (online) {
       try {
-        if (!trackingOn) {
-          const { data } = await api.put(`/boats/${boatId}/shore/tracking`, { on: true });
-          tracked(boatId, { on: data.on, trip_id: data.trip_id });
+        const { data: shore } = await api.get(`/boats/${boatId}/shore`, { timeout: 10000 });
+        if ((shore.contacts || []).length) {
+          if (!trackingOn) {
+            const { data } = await api.put(`/boats/${boatId}/shore/tracking`, { on: true });
+            tracked(boatId, { on: data.on, trip_id: data.trip_id });
+          }
+          await api.put(`/boats/${boatId}/shore/plan`, { text: shorePlan(lt).slice(0, 1500) });
+          toast.success("Sharing your position and today's plan with shore contacts");
         }
-        await api.put(`/boats/${boatId}/shore/plan`, { text: shorePlan(lt).slice(0, 1500) });
-        toast.success("Sharing your position and today's plan with shore contacts");
-      } catch (e) { if (e?.response?.status !== 400) toast.error(apiError(e, "Couldn't share with your shore contacts")); }
+      } catch (e) { toast.error(apiError(e, "Couldn't share with your shore contacts")); }
     }
     return true;
   };

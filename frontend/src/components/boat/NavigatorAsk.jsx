@@ -28,7 +28,8 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId }) => {
+// interim: the New departure window on Arriving at Destination (today's leg of the trip).
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -82,11 +83,11 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {state.result && <AnswerCard result={state.result} boat={boat} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
       <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} />
       <NavigatorReminders />
-      <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} />
-      <TripTiming weather={boat.weather || {}} onChange={onWeather} />
-      <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
+      <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
+      <TripTiming weather={boat.weather || {}} onChange={onWeather} finishRequired={interim} />
+      {!interim && <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
         <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status
-      </button>
+      </button>}
     </div>
   );
 };

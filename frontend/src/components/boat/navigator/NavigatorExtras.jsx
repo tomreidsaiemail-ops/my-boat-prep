@@ -49,7 +49,7 @@ const timingAnomaly = (w) => {
 };
 
 // Departure, optional race/event and where crew meet, kept with the passage plan.
-export const TripTiming = ({ weather = {}, onChange }) => {
+export const TripTiming = ({ weather = {}, onChange, finishRequired }) => {
   const warn = timingAnomaly(weather);
   // Start follows Departure until the skipper sets a different Start.
   const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
@@ -63,7 +63,7 @@ export const TripTiming = ({ weather = {}, onChange }) => {
     </label>
     <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
-    <When id="navigator-finish-at" label="Estimated Finish date and time (optional)" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} />
+    <When id="navigator-finish-at" label={`Estimated Finish date and time${finishRequired ? "" : " (optional)"}`} value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} />
     <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
       <span className="field-label">Meet up details</span>
       <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}
@@ -73,12 +73,12 @@ export const TripTiming = ({ weather = {}, onChange }) => {
   );
 };
 
-export const WhyGoing = ({ value, onChange }) => (
+export const WhyGoing = ({ value, onChange, hint = "Logged in the Ship's Log with the photos when Departure is ticked on the Leaving Dock list." }) => (
   <label className="flex flex-col gap-1.5">
     <span className="field-label">Why we're going</span>
     <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={1000} rows={3}
       placeholder="e.g. Window Tue 0600-1800: SW 15-20 kn easing, 1.5 m swell. Leave before the next front on Wed."
       className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-why-input" />
-    <span className="text-xs text-[var(--muted)]">Logged in the Ship's Log with the photos when Departure is ticked on the Leaving Dock list.</span>
+    <span className="text-xs text-[var(--muted)]">{hint}</span>
   </label>
 );

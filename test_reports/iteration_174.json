@@ -1,0 +1,38 @@
+{
+  "summary": "Tested the Arriving at Destination interim departure feature as test-admin-1 / main, mostly at 390px plus a 1920px check. The boat was backed up first and restored afterwards. Seed: arrivingDest set to 11 items (headings 'When leaving berth', 'When weighing anchor' and 'When leaving mooring', each with indented and level-2 children), vessel and callsign, and a Route Planning departure today 08:00 with finish tomorrow 18:00. The finish was moved to tomorrow because a finish earlier today triggers the 'Route Planning has finished' archive prompt. Results: (1) The button reads 'ARRIVED, ALL ARRIVAL CHECKS DONE' on Arriving at Destination. Returning to Dock still reads 'ARRIVED, ALL CHECKS DONE' and has no New departure button. (2) arrival-new-departure-btn sits to the right of New arrival, and the page width stays 390px. When the Show toggle is present the button wraps to a second line. (3) The dialog title is 'New departure · Route Plan: Route Planning'. Start, Destination, Event name, Start date/time, Why and Meet up are empty. Departure is today with the current HH:mm. Finish is today with an empty time. The weather photos section, the Ask panel and the three icon buttons (sailboat, anchor, lifebuoy) are all present. (4) Pressing a button without a finish time shows 'Enter the Estimated Finish (arrival) date and time first.' and does nothing. A finish of 00:01 shows the 'before the Departure' error. Either error clears when a field is edited. (5) Leave Berth ticked exactly 101-103 and nothing else. It added the log entry 'Interim departure, Leave Berth - Route Plan: Route Planning - ... Departure: 14/11/2026 21:35, Estimated arrival: 14/11/2026 23:30 - <stamp>' with the why/route detail. It appended legs.routeHazards[0] (kind berth with all fields), set underway {trip_id, leg:'berth'} and showed the arrived-underway bubble. With no shore contact, PUT tracking returned 400 and no error toast appeared. (6) The ARRIVED window said 'Tick 3 Arriving at Destination items (not the When leaving berth...)'. After confirming, items 24, 27 and 28 were ticked, the weighing anchor and mooring groups stayed unticked, the leg got arrived_at and arrived_list 'Arriving at Destination', and underway was cleared. (7) With an example.com invite (send_email false), Weigh Anchor ticked exactly 201-203, turned tracking on (200) and sent PUT shore/plan (200) with today's leg text. Leave Mooring ticked 301-302 and sent PUT plan only, because tracking was already on. ARRIVED then posted shore/arrived and turned tracking off. All 3 legs were closed. (8) Returning to Dock ARRIVED says 'Tick all 7 Returning to Dock items'. (9) Discard guard: no change then X closes with no prompt. Typing then X or Escape shows the prompt, and Keep editing keeps the value. (10) Leaving Dock still shows depart-all-done-btn. Backend: the new test_interim_legs.py passes 4/4, and the regression files test_all_done_route_trip.py and test_shore_plan_iter169.py pass, 19/19 in total.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "useAllDone.interimDepart / ArrivalCheck", "issue": "An interim departure does not reset boat.arrive. On the next ARRIVED at Arriving at Destination the window says 'Arrival levels and what was used is already in the Ship's Log', so the new arrival's levels are not logged and the Arrival status check stays collapsed with the earlier arrival's levels. This is unless the skipper first taps New arrival. Consider clearing arrive (as New arrival does) inside interimDepart.", "selector": "[data-testid=all-done-step-status]", "priority": "MEDIUM"},
+      {"component": "useAllDone.arrive", "issue": "Interim departure ticks stay set after ARRIVED. ARRIVED leaves the three leg groups as they are, so on the next leg (for example a second Weigh Anchor) those items are already ticked from the previous leg. Confirm with the user whether ARRIVED (or New departure) should untick the leg groups so they are ready for the next departure.", "selector": "arrivingDest list", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "New departure dialog", "issues": [
+        "The finish field is labelled 'Estimated finish date and time (optional)', but it is required in this dialog.",
+        "The helper under Why we're going says 'Logged in the Ship's Log with the photos when Departure is ticked on the Leaving Dock list.' That is wrong in this context, because the interim departure button logs it.",
+        "'Open Crew Registration and Trip Acceptance Status' shows inside the dialog. It is probably irrelevant for an interim leg.",
+        "The arrival check log after an interim leg still says 'Used on the passage TEST Mana to TEST Picton', which is the overall route, not the leg.",
+        "The arrival log entry label is still 'Arrived, all checks done (Arriving at Destination)'. That may be fine, but it doesn't match the renamed button.",
+        "Possible confusion: Leaving Dock has a 'New departure' button that resets the status check, and Arriving at Destination now has 'New departure...', which starts a leg."
+      ]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_interim_legs.py", "/app/test_reports/pytest/pytest_it174.xml"],
+  "action_items": [
+    "Reset boat.arrive (log_id/log_sig/levels) when an interim departure is made, so the next ARRIVED logs fresh arrival levels",
+    "Decide whether leg-group ticks should be cleared for the next leg",
+    "Optional: in the New departure dialog, drop '(optional)' from the finish label and change the Why helper text"
+  ],
+  "critical_code_review_comments": [
+    "interimDepart always calls PUT shore/tracking when online and relies on the 400 for 'no contact'. That works, but it costs an extra request every time and sends no plan. depart() checks contacts first, so the two paths behave differently.",
+    "arrive() closes only the last leg, and interimDepart doesn't close an earlier open leg. Two departures in a row without ARRIVED leave the first leg open forever.",
+    "headingItems uses label.includes('leaving berth'), so any top-level item whose label contains that phrase (for example 'Notes on leaving berth') would be treated as the heading. This is acceptable."
+  ],
+  "updated_files": ["/app/backend/tests/test_interim_legs.py"],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% of requested checks (1 medium follow-up issue)"},
+  "seed_data_creation": "Temporary only: test-admin-1/main arrivingDest list, vessel/callsign, weather and route. Invited test_shore174@example.com, then deleted it. The admin boat doc was restored from /tmp/admin_main_bak_174.json with mongoimport --mode=upsert (no tracking, shore_plan, legs or invites remain). The TESTlegs174 boat was removed by the fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Seed script /tmp/seed174.py: arrivingDest with headings 101/201/301. The Route Plan finish must be in the future, otherwise the 'Route Planning has finished' archive modal blocks the page. Browser TZ is UTC. Use time-input .fill('HH:MM') for navigator-finish-at-time-input. Run pytest with -n 0."
+}
