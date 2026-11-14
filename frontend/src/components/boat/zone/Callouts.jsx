@@ -3,11 +3,10 @@ import { X } from "lucide-react";
 import { LIGHT, ZONE_COLOURS } from "@/lib/zoneColours";
 
 const ROW = 24;
-const MAX_ROWS = 3;
 export const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 const textW = (s) => (s.label || s.colour).length * 6.4 + 14;
 
-// Zone names sit above or below the plan, never on it; overlapping names step out to a further row.
+// Zone names sit above or below the plan, never on it; a name that would overlap steps out to a further row.
 export const layoutLabels = (swatches, W) => {
   const out = {};
   ["top", "bottom"].forEach((band) => {
@@ -16,10 +15,9 @@ export const layoutLabels = (swatches, W) => {
       .sort((a, b) => a.cx - b.cx)
       .forEach(({ s, w, cx: want }) => {
         const fit = (c) => (w >= W ? W / 2 : Math.min(Math.max(c, w / 2), W - w / 2));
-        let cx = fit(want);
+        const cx = fit(want);
         let row = ends.findIndex((e) => cx - w / 2 >= e + 4);
-        if (row < 0 && ends.length < MAX_ROWS) row = ends.length;
-        if (row < 0) { row = ends.indexOf(Math.min(...ends)); cx = fit(ends[row] + 4 + w / 2); }
+        if (row < 0) row = ends.length;
         ends[row] = cx + w / 2;
         out[s.id] = { band, row, cx, w };
       });

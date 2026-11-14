@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend retest of (A) the ZoneDialog cupboard group (ZoneCupboards) and (B) the two bugs from iteration_170. Signed in as test-user-pro, boat 'main'. To get colour groups I set a zone in the DB for Fridge, Pantry and Dry Goods (Galley/Orange) and for Bilge (Saloon/Green). Every requested feature passes. (A) Opening a zone from zone-picker-galley: zone-dialog-galley-cupboards is the first block under the DialogHeader. Its toggle has aria-expanded=false. Its label reads 'GALLEY - 3', the same as inventory-colour-group-orange-label, and the colour square is the same (rgb 242,140,40). There is no 'Show only this zone' button. Expanding shows Fridge, Dry Goods and Pantry. From inside the dialog I opened Pantry and added TEST_Rice. Editing it to TEST_Rice2 x3 opened InventoryItemDialog on top of the zone window (checked with elementFromPoint). I renamed Pantry to TEST_Pantry2 and the zone window stayed open each time. The changes showed in the main list and were still there after a reload. The Saloon dialog showed 'SALOON - 1', the same as the main list. Heads Aft (0 cupboards) showed zone-dialog-heads-aft-cupboards-empty. Closing and reopening (same zone and other zones, by Escape or the close button) always started collapsed. Tapping the Galley label and the Saloon dot on the schematic opened the same collapsed group with the right counts. Regression: photos, empty state, checklist (open when there are no photos), Take photos / Choose from gallery, Scan Galley cupboards (only when photos exist), QuickCupboards and the area count all still show. (B) Bug 1 is fixed: after holding a dot for 800ms the X appeared; clicking it sent PUT swatches 200 (9 to 8, then 8 to 7 on a second dot), no dialog opened, and the change was still there after a reload. Bug 2 is fixed: with lx 0/1 and band top on all 9 swatches, scrollWidth is 390 at 390px (1920 at 1920px), and every label stays inside the plan bounds. Backend regression test_zone_callouts.py: 10/10 pass. All data restored: zone_maps and areas from the backup; 9 swatches with no lx; no area has a zone; Pantry has 1 item.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Callouts.jsx layoutLabels (fallback when all 3 rows are full)", "issue": "With 9 labels in one band (lx 0/1, band top), the fallback cx = fit(ends[row]+4+w/2) gets clamped to W - w/2, so it stacks on top of another label. At both 390px and 1920px, 'Lazarett' fully covers 'Saloon' (1 overlapping pair). Saloon's line ends under the Lazarett label, so the Saloon name can't be seen or tapped. There is no overflow any more, but a label is lost. Suggestion: when the band is full, try the other band's rows, or allow a 4th row.", "selector": "[data-testid^=zone-overview-<mapId>-label-]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_callouts.py"],
+  "action_items": [
+    "Optional (LOW): in layoutLabels, avoid stacking a label on top of another when all 3 rows of a band are full (spill to the other band or add a row).",
+    "Optional: rows inside ZoneDialog reuse the same data-testids as the main list (inventory-area-<id>, inventory-item-edit-<id>, ...), so each testid appears twice in the DOM while the dialog is open. Tests have to scope to [data-testid=zone-dialog-<slug>-cupboards-list]. Consider a prefix, or accept as is."
+  ],
+  "critical_code_review_comments": [
+    "InventoryList passes rows from groups built from `results` (search-filtered). If a search is active and the skipper taps a zone on the map, the dialog header shows the filtered count (e.g. 'Galley - 1') while the footer area-count shows the real total (3). The ZonePicker is hidden while searching, but the map dot/label path is not. Consider building the dialog rows from the unfiltered areas.",
+    "After a nested dialog (edit item / rename) closes, focus goes to BODY, not back into the zone window. Escape still closes the zone window, so this is only a small accessibility point.",
+    "Duplicate data-testids between the main list and the dialog's InventoryArea rows (see action items).",
+    "dragLabel for crew (canEdit=false): moves under 10px now count as taps. Checked by code review only; not tested live with a crew account."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (10/10 regression)", "frontend": "100% of requested checks (7/7); 1 low-priority label overlap seen"},
+  "seed_data_creation": "Temporarily set areas[].zone for Fridge, Pantry and Dry Goods (Galley/Orange) and Bilge (Saloon/Green) on test-user-pro/main. Added item TEST_Rice2 to Pantry and renamed Pantry to TEST_Pantry2 and back. Removed 2 swatches, then PUT lx/band. Everything was restored from a backup of zone_maps and areas (/tmp/bk/boat.json).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test-user-pro/main has no zoned areas by default, so colour groups don't render. Set areas[].zone {label, colour} in db.user_boats (owner_id test-user-pro, boat_id main) to test them, then restore. Overview map cba66e09-... has 9 swatches (Galley=ad2a3f9b0b9, Saloon=a57da25b544, Transom=a5ef1493af5, Lazarett=a8d338cb166). Galley has 2 zone photos, so its Scan button shows. Scope InventoryArea selectors to the dialog list because the testids are duplicated."
+}

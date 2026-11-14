@@ -482,7 +482,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
-        rows={zone ? groups.find((g) => g.zone?.colour === zone.colour)?.rows || [] : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
+        rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
         onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
