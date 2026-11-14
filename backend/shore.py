@@ -174,13 +174,13 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
 @router.put("/boats/{boat_id}/shore/plan")
 async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(get_current_user)):
     """DEPART shares the route plan on the shore contact page (no email)."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id})
     if not n:
         raise HTTPException(status_code=400, detail="Invite a shore contact before you share your route plan")
-    plan = {"text": payload.text.strip(), "at": _now().isoformat()}
+    plan = {"text": payload.text.strip(), "at": _now().isoformat(), "trip_id": (doc.get("tracking") or {}).get("trip_id")}
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"shore_plan": plan}})
     return {**plan, "contacts": n}
 
@@ -376,7 +376,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     if t.get("trip_id"):
         pts = await db.track_points.find({"trip_id": t["trip_id"]}, {"_id": 0, "lat": 1, "lon": 1, "at": 1, "kind": 1}).sort("at", 1).to_list(5000)
     return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
-            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"), "plan": doc.get("shore_plan"),
+            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"), "plan": plan if (plan := doc.get("shore_plan")) and t.get("trip_id") and plan.get("trip_id") == t["trip_id"] else None,
             "skipper": (doc.get("boat") or {}).get("skipper", ""), "skipper_phone": (doc.get("boat") or {}).get("skipper_phone", "")}
 
 

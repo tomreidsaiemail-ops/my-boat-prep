@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the DEPART route-plan sharing follow-up as test-admin-1/main at mobile 390px, browser date 14/11/2026. Backend: 9/9 new pytest tests passed (test_shore_plan_iter169.py) and the 6/6 regression tests in test_all_done_route_trip.py passed. Frontend: every requested item passed. The Route Plan card shows Departure '14/11/2026 10:00' and Estimated arrival '16/11/2026 17:45' with Change links. With no times it shows 'Not set' and Set. The Change/Set links open the plan's list and focus #navigator-depart-at or #navigator-finish-at. DEPART dialog: the underway step reads 'Show Underway on Route Plan: Route Planning TESTa'. The route step includes Departure, Estimated arrival and Why we're going. All three shore texts are correct: no contacts, 1 invited contact with tracking off, and tracking already on. Confirm is disabled while 'Checking your shore contacts...' (tested with a 2.5s delayed request). Confirming with an invited-only contact calls PUT shore/tracking {on:true}, then PUT shore/plan. user_boats.shore_plan.text = 'Route Plan: Route Planning TESTa\\n<trip line>\\nDeparture: ...\\nEstimated arrival: ...\\nWhy we're going: ...'. The plan route sends no email (the code has none). The Ship's Log label matches the spec. /shore shows shore-watch-plan with multi-line text for the owner and for a joined shore contact (test-shore-only). Regression: the C-scenario warning and its link (focus depart-at) work and DEPART is blocked. ARRIVED on arrivingDest ticks, clears underway and tells shore contacts.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/boats/{id}/shore/plan + POST /shore/arrived", "issue": "shore_plan is never cleared or ended. After ARRIVED (status 'arrived'), /shore still shows the old route plan under 'Route plan · shared <time>'. A later DEPART without contacts, or a failed share, leaves the old plan visible. Consider $unset shore_plan on arrived or tracking off, or show it only for the current trip by storing trip_id with the plan."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Route Plan list (navigator-depart-at / finish-at)", "issues": ["The date/time fields use the browser's own date and time pickers, which show mm/dd/yyyy on an en-US browser while the app displays d/m/yyyy. This is not new in this iteration."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_shore_plan_iter169.py", "/app/backend/tests/test_all_done_route_trip.py", "/app/test_reports/pytest/pytest_iter169.xml"],
+  "action_items": ["Optional: clear or scope shore_plan when the trip ends (ARRIVED or tracking off) so shore contacts don't see a stale plan"],
+  "critical_code_review_comments": [
+    "shore.py share_plan counts len(doc.shore) plus invites. That is fine, but the plan is not tied to tracking.trip_id, so it can outlive its trip.",
+    "useAllDone.depart: if PUT shore/tracking succeeds and PUT shore/plan fails, the user only sees a generic error toast and position sharing stays on. That is acceptable, but there is no retry for the plan.",
+    "RoutePlanCard goTo relies on a 400ms setTimeout before focusing, which may miss on slow devices. It works in this test."
+  ],
+  "updated_files": ["/app/backend/tests/test_shore_plan_iter169.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary only: invited test_invitee_169@example.com and shore.only.test@example.com (joined) on test-admin-1/main. Both removed. Admin boat doc restored from /tmp/admin_main_bak_169.json (no shore_plan, no tracking, no invites). The ARRIVED test sent an arrived email to shore.only.test@example.com (existing behaviour).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0 (pytest.ini forces xdist). test_shore_plan_iter169.py invites then joins test-shore-only on test-admin-1/main and cleans up in a module fixture. In the browser, scenario A plus finish_at/why/event_name set via mongosh on boat.trips.custom_TESTa.weather gives full times. Back up the admin doc with mongoexport and restore it with mongoimport --mode=upsert."
+}
