@@ -22,7 +22,10 @@ const CAME = { dock: "Returning to Dock", ...Object.fromEntries(ARRIVE_KINDS.map
 export const legBoat = (b = {}) => {
   const legs = b.legs?.[b.underway?.trip_id] || [];
   const last = legs[legs.length - 1];
-  return last && last.kind !== "dock" && (last.start || last.dest) ? { ...b, route_start: last.start, route_dest: last.dest } : b;
+  if (last && last.kind !== "dock" && (last.start || last.dest)) return { ...b, route_start: last.start, route_dest: last.dest };
+  // After ARRIVED (no longer underway) the logged arrival keeps the leg it ended.
+  const leg = b.arrive?.leg;
+  return leg ? { ...b, route_start: leg.start, route_dest: leg.dest } : b;
 };
 
 const legLine = (l, n) => {

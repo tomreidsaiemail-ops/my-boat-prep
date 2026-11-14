@@ -25,8 +25,9 @@ const putLog = (log, d, text, sig, extra = {}) => {
   return [log.map((i) => (i.id === d.log_id ? { ...i, label: text.slice(0, 2000) } : i)), { ...d, log_sig: sig, ...extra }];
 };
 const statusStep = (d, sig, what, summary, log = []) => {
-  const done = d.log_id && d.log_sig === sig && log.some((i) => i.id === d.log_id);
-  return { id: "status", text: `${done ? `${what} is already in the Ship's Log` : `${d.log_id ? "Update" : "Copy"} the ${what.toLowerCase()} into the Ship's Log`}${summary ? `: ${summary}` : ""}` };
+  const there = !!d.log_id && log.some((i) => i.id === d.log_id);
+  const done = there && d.log_sig === sig;
+  return { id: "status", text: `${done ? `${what} is already in the Ship's Log` : `${there ? "Update" : "Copy"} the ${what.toLowerCase()} into the Ship's Log`}${summary ? `: ${summary}` : ""}` };
 };
 
 // DEPART, ALL CHECKS DONE and ARRIVED, ALL CHECKS DONE: one confirm window, then ticks, logs, Underway and shore contacts.
@@ -135,7 +136,8 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       const a = b.arrive || {};
       const lb = legBoat(b);
       const use = arrivalUsage(lb, d, a);
-      const [log, arr] = putLog(s.data.shipsLog || [], a, arrivalSummary(lb, d, a, use, stamp(), listName), arrivalSummary(lb, d, a, use, "", listName), { log_list: listName });
+      const [log, logged] = putLog(s.data.shipsLog || [], a, arrivalSummary(lb, d, a, use, stamp(), listName), arrivalSummary(lb, d, a, use, "", listName), { log_list: listName });
+      const arr = lb !== b ? { ...logged, leg: { start: lb.route_start, dest: lb.route_dest } } : logged;
       const u = b.underway || {};
       const entry = { id: Date.now() + 1, checked: false, label: `Arrived, all ${kind ? "arrival " : ""}checks done${kind ? `, ${kind.done}` : ""} (${listName})${u.line ? ` - ${u.line}` : ""} - ${stamp()}` };
       // The arrival closes the trip's latest leg, so each voyage and arrival is kept with the overall trip.
