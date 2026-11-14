@@ -1,7 +1,24 @@
-import { AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, Anchor, CheckCircle2, Info, LifeBuoy, Loader2, Sailboat } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ICON = { ok: <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />, info: <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />, warn: <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /> };
+
+const CHOICE_ICON = { berth: Sailboat, anchor: Anchor, mooring: LifeBuoy };
+
+// Arriving at Destination: how you arrived decides which If... group is ticked, and logs it.
+const Choices = ({ choices, busy, onPick }) => (
+  <div className="flex flex-col gap-2" data-testid="all-done-choices">
+    {choices.map((c) => {
+      const Icon = CHOICE_ICON[c.key];
+      return (
+        <button key={c.key} type="button" className="btn-solid flex h-auto min-h-14 items-center justify-start gap-3 px-3 py-2 text-left" onClick={() => onPick(c.key)} disabled={busy} data-testid={`all-done-choice-${c.key}`}>
+          {busy ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Icon className="h-5 w-5 shrink-0" />}
+          <span className="flex flex-col"><span className="text-sm font-extrabold uppercase tracking-wide">{c.label}</span><span className="text-xs font-semibold normal-case opacity-85" data-testid={`all-done-choice-${c.key}-text`}>{c.text}</span></span>
+        </button>
+      );
+    })}
+  </div>
+);
 
 // What DEPART or ARRIVED is about to tick and log, shown before anything changes.
 export const AllDoneDialog = ({ plan, busy, onConfirm, onClose }) => {
@@ -22,9 +39,10 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose }) => {
                   {plan.steps.map((s) => <li key={s.id} className="flex items-start gap-2 text-sm" data-testid={`all-done-step-${s.id}`}>{ICON[s.tone || "ok"]}<span className="whitespace-pre-line">{s.text}</span></li>)}
                 </ul>
               )}
+            {!plan.blocked && plan.choices && <Choices choices={plan.choices} busy={busy} onPick={onConfirm} />}
             <div className="flex gap-2">
-              {!plan.blocked && (
-                <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={onConfirm} disabled={busy || plan.checking} data-testid="all-done-confirm-btn">
+              {!plan.blocked && !plan.choices && (
+                <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={() => onConfirm()} disabled={busy || plan.checking} data-testid="all-done-confirm-btn">
                   {(busy || plan.checking) && <Loader2 className="h-4 w-4 animate-spin" />}{depart ? "Depart now" : "Log arrival"}
                 </button>
               )}
