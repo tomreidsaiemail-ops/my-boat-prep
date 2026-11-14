@@ -1,0 +1,27 @@
+{
+  "summary": "Retested the fixes from iteration 172 as test-user-pro / boat 'main' at 390px, plus a label check at 1920px. Fridge and Pantry were set to Galley/Orange for the test and then restored. (1) Discard guard in ZoneDialog. Expanding the cupboard group and Fridge, ticking and unticking an item, opening and cancelling the item edit, toggling the Food flag on and off, and collapsing again: closing by X, Escape or an outside click never showed a prompt (3/3 methods plus the Food toggle). Typing in Fridge's Add item field (click plus keyboard.type, scoped to the cupboards list) and closing by X, Escape or an outside click always showed discard-changes-dialog. Keep editing left 'TEST_abc' in the field; Discard changes closed the window. It also prompted after collapsing the cupboard, and after collapsing both the cupboard and the group. Typing then deleting the text: no prompt. Typing in the Qty field: prompt. Typing and then adding the item (field cleared): no prompt. Quick add: typing in quick-name prompted on X and Escape; typing then deleting did not. (2) The guard in other dialogs. Item edit with no change, then Cancel or Escape: no prompt. Changing the qty, then X or Cancel: prompt, and Keep editing kept the value. Item edit opened inside ZoneDialog, name changed, Cancel: prompt; after Discard the zone window stayed open and then closed without a prompt. Rename cupboard: no change then Cancel closes without a prompt; a change then Cancel prompts, and the name was not changed. (3) Label layout. Dragging Galley to bottom row 2 over Starboard Aft cabin (which was on bottom row 2) saved lrow 2 (PUT sent, no dialog opened). Galley now sits on row 2 and Starboard Aft cabin moved to row 3. No labels overlap, page width stays 390, and the layout is the same after a reload. At 1920px there is no overlap and page width is 1920. (4) The Open image button is one line: white-space nowrap, height 32px. Backend regression test_zone_callouts.py: 18/18 pass. areas and zone_maps restored from the backup and checked identical; the boat's data field hash is the same as before the test.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "dialog.jsx guard / ZoneCupboards", "issue": "Edge case, a false prompt. Type in a cupboard's Add item field, collapse the cupboard, expand it again (the field is now empty because AddContent state is lost when it unmounts), add an item or just close: the window still prompts. s.typed keeps the old, detached input element, whose value still holds the old text. Separately, collapsing a cupboard silently throws away the text typed in its Add item field.", "selector": "[data-testid=zone-dialog-galley-cupboards-list] [data-testid^=inventory-add-name-]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Zone Map Overview (bottom band)", "issues": ["When a dragged label takes a row, the stepped-out label's leader line can run straight behind it. Example: Starboard Aft cabin's purple line at x≈123 passes under the Galley label on row 2, so it looks as if the line ends at Galley. This is cosmetic only."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_zone_callouts.py", "/app/test_reports/pytest/pytest_it173.xml"],
+  "action_items": [
+    "Optional: in changed(), skip s.typed entries for elements that are no longer connected (f.isConnected) when the same field has been mounted again, or keep the Add item text in ZoneCupboards state so collapsing doesn't lose it."
+  ],
+  "critical_code_review_comments": [
+    "dialog.jsx: s.typed holds references to removed DOM nodes. That is intended for the 'typed then collapsed' case, but it causes the stale-prompt edge case above. It is also a small leak for the life of the dialog.",
+    "layoutLabels: labels with an explicit lrow are placed first, sorted by cx, and can still be pushed out by an earlier explicit label. Labels with lrow 0 (from a side-to-side drag) also count as explicit. Both are reasonable."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (18/18 regression)", "frontend": "100% of requested checks (1 low-priority edge case)"},
+  "seed_data_creation": "Temporarily set areas[].zone Galley/Orange on Fridge and Pantry, and added TEST_ItemGuard and TEST_ItemGuard2 items. The Galley swatch was changed by the drag. All of this was restored from a mongo backup of areas and zone_maps (checked identical). Ticks and Food toggles were put back and the data field hash is unchanged.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use click plus keyboard.type for guard tests. To restore, back up user_boats {owner_id:test-user-pro, boat_id:main} areas and zone_maps with mongosh EJSON (use require('fs') to read the file). The overview appears after clicking zone-map-toggle; the label box is [data-testid=<T>-plan] > div. The helper /tmp/it173/labels.js measures label rows and overlaps."
+}

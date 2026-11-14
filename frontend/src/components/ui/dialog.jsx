@@ -69,7 +69,7 @@ const DialogContent = React.forwardRef(({ className, children, onPointerDownOuts
   const changed = () => {
     if (s.base == null) return false;
     const now = snapshot(s.box);
-    return (now.length > 0 && now.join("\u0001") !== s.base) || [...s.typed].some(([f, v]) => f.value !== v);
+    return (now.length > 0 && now.join("\u0001") !== s.base) || [...s.typed].some(([f, v]) => f.isConnected && f.value !== v);
   };
   const isDirty = () => s.guard && !s.pass && !!s.box && (!!s.dirty || changed());
   const again = (fn) => () => { s.pass = true; try { fn(); } finally { s.pass = false; } };

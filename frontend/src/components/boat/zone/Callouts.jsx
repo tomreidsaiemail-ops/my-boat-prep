@@ -8,13 +8,13 @@ export const ink = (c) => (LIGHT.has(c) ? "#0f172a" : "#fff");
 const textW = (s) => (s.label || s.colour).length * 6.4 + 14;
 
 // Zone names sit above or below the plan, never on it; a name that would overlap steps out to a further row.
-// Names the skipper moved up or down keep their row; the rest step out around them.
+// Names the skipper dragged (ly set) sit exactly where they were dropped; the rest line up above or below the plan.
 export const layoutLabels = (swatches, W) => {
   const out = {};
   ["top", "bottom"].forEach((band) => {
     const used = [];
     const free = (row, l, r) => !(used[row] || []).some(([a, b]) => l < b + 4 && r > a - 4);
-    swatches.filter((s) => (s.band || (s.y < 0.5 ? "top" : "bottom")) === band)
+    swatches.filter((s) => s.ly == null && (s.band || (s.y < 0.5 ? "top" : "bottom")) === band)
       .map((s) => { const w = textW(s); return { s, w, cx: w >= W ? W / 2 : Math.min(Math.max((s.lx ?? s.x) * W, w / 2), W - w / 2) }; })
       .sort((a, b) => (a.s.lrow == null) - (b.s.lrow == null) || a.cx - b.cx)
       .forEach(({ s, w, cx }) => {
@@ -48,9 +48,11 @@ export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, on
   const { w: W, h: H } = useSize(box);
   const pos = layoutLabels(swatches, W);
   const rows = (band) => Math.max(0, ...Object.values(pos).filter((p) => p.band === band).map((p) => p.row + 1));
-  const top = rows("top") * ROW + (rows("top") ? 6 : 0);
-  const bottom = rows("bottom") * ROW + (rows("bottom") ? 6 : 0);
-  const labelY = (p) => (p.band === "top" ? top - 6 - (p.row + 0.5) * ROW : top + H + 6 + (p.row + 0.5) * ROW);
+  const free = swatches.filter((s) => s.ly != null);
+  const top = Math.max(rows("top") * ROW + (rows("top") ? 6 : 0), ...free.map((s) => -s.ly * H + ROW / 2));
+  const bottom = Math.max(rows("bottom") * ROW + (rows("bottom") ? 6 : 0), ...free.map((s) => (s.ly - 1) * H + ROW / 2));
+  free.forEach((s) => { const w = textW(s); pos[s.id] = { free: true, w, cx: w >= W ? W / 2 : Math.min(Math.max(s.lx * W, w / 2), W - w / 2), y: s.ly * H }; });
+  const labelY = (p) => (p.free ? top + p.y : p.band === "top" ? top - 6 - (p.row + 0.5) * ROW : top + H + 6 + (p.row + 0.5) * ROW);
   return (
     <div className={`relative mx-auto w-fit max-w-full ${className}`} style={{ paddingTop: top, paddingBottom: bottom }} onClick={onClick} data-testid={planTestId || testId}>
       <div ref={box} className="relative">
@@ -66,8 +68,8 @@ export const CalloutPlan = ({ src, alt, imgClass, swatches, boxRef, selected, on
         <svg className="pointer-events-none absolute left-0 top-0 overflow-visible" width={W} height={top + H + bottom} aria-hidden="true">
           {swatches.map((s) => {
             const p = pos[s.id];
-            const y2 = labelY(p) + (p.band === "top" ? ROW * 0.36 : -ROW * 0.36);
-            const line = { x1: s.x * W, y1: top + s.y * H, x2: p.cx, y2 };
+            const y1 = top + s.y * H, ly = labelY(p), dy = ly - y1;
+            const line = { x1: s.x * W, y1, x2: p.cx, y2: ly - Math.sign(dy) * Math.min(ROW * 0.36, Math.abs(dy)) };
             return (
               <g key={s.id} data-testid={`${testId}-line-${s.id}`}>
                 <line {...line} stroke="#fff" strokeWidth="3.5" strokeLinecap="round" />

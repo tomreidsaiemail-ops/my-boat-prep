@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { ChevronDown, Loader2, Palette, Sparkles, Trash2 } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
-import { CalloutPlan, MAX_ROW, ink } from "@/components/boat/zone/Callouts";
+import { CalloutPlan, ink } from "@/components/boat/zone/Callouts";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -131,9 +131,8 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < (canEdit ? 6 : 10)) return;
       moved = true;
       if (!canEdit || !r) return;
-      const band = ev.clientY < r.top + r.height / 2 ? "top" : "bottom";
-      const out = band === "top" ? r.top - ev.clientY : ev.clientY - r.bottom;
-      last = { ...s, lx: clamp((ev.clientX - r.left) / r.width), band, lrow: Math.min(MAX_ROW, Math.max(0, Math.floor(out / 24))) };
+      const { band, lrow, ...rest } = s;
+      last = { ...rest, lx: clamp((ev.clientX - r.left) / r.width), ly: Math.min(2.5, Math.max(-1.5, (ev.clientY - r.top) / r.height)) };
       setSwatches((all) => all.map((x) => (x.id === s.id ? last : x)));
     };
     const up = () => {
@@ -171,7 +170,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             Include deck zones
             <span className="basis-full pl-7 text-xs font-semibold text-[var(--muted)]">{withDeck ? "decks, anchor locker and lazarettes too" : "below deck, cockpit and transom only"}</span>
           </label>
-          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name to move it left, right, up or down. Open image shows the plan full size."}</p>
+          <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name anywhere, even over the drawing; it stays where you drop it. Open image shows the plan full size."}</p>
           <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
               <span key={p.label} title="Already on this plan" aria-disabled="true" className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-extrabold line-through opacity-35"
