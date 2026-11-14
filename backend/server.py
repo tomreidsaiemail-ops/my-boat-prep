@@ -173,6 +173,7 @@ class BoatDetails(BaseModel):
     route_trip: str = Field(default="", max_length=80)
     route_trip_day: str = Field(default="", max_length=10)
     underway: Dict[str, Any] = Field(default_factory=dict)
+    legs: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("trips", mode="before")
     @classmethod
@@ -195,6 +196,18 @@ class BoatDetails(BaseModel):
     @classmethod
     def depart_size(cls, v):
         return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 12000 else {}
+
+    @field_validator("legs", mode="before")
+    @classmethod
+    def legs_size(cls, v):
+        # Interim departures per Route Plan; the oldest legs go first if it grows too big, never the lot.
+        if not isinstance(v, dict):
+            return {}
+        v = {k: list(x)[-30:] for k, x in v.items() if isinstance(x, list)}
+        while len(json.dumps(v, default=str)) > 80000 and any(v.values()):
+            k = max(v, key=lambda key: len(v[key]))
+            v[k] = v[k][1:]
+        return v
 
     @field_validator("weather", mode="before")
     @classmethod

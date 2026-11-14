@@ -37,7 +37,7 @@ DEFAULT_TERMS = [
     "I will report any damage, breakage or loss to the owner as soon as possible, and add anything that needs fixing to the My To Do List.",
     "I will return the boat on the agreed date, clean, with the agreed fuel, water and gas levels.",
 ]
-EMPTY_BOAT = ("route_start", "route_dest", "depart", "arrive", "weather", "skipper_phone", "shore_email", "underway", "route_trip", "route_trip_day")
+EMPTY_BOAT = ("route_start", "route_dest", "depart", "arrive", "weather", "skipper_phone", "shore_email", "underway", "route_trip", "route_trip_day", "legs")
 DEFAULT_IDS = ("leavingDock", "returningDock", "arrivingDest", "safety", "riggingChecks", "routeHazards", "crewPrep", "provisions", "mealPlan",
                "head", "engineService", "electricalService", "myTodo", "shipsLog", "grabBag", "mayDay", "panPan", "boatBudget")
 

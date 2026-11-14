@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Flag, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, Flag, Navigation, RotateCcw } from "lucide-react";
 import { SetupPrompt } from "@/components/boat/departure/DepartureCheck";
 import { TankLevels, allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { LogCopy, stamp } from "@/components/boat/departure/LogCopy";
@@ -22,7 +22,7 @@ const Used = ({ label, value, testId }) => (
 );
 
 // Matches the Leaving the Dock check: levels on arrival, then fuel, water and gas used since the last departure.
-export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog }) => {
+export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog, onNewDeparture }) => {
   const depart = boat.depart || {};
   const arrive = boat.arrive || {};
   const setArrive = (patch) => onBoatChange("arrive", { ...arrive, ...patch });
@@ -38,13 +38,14 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
     <section className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="arrival-check">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 font-display text-base font-extrabold"><Flag className="h-4 w-4" /> Arrival status check</h3>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
           {arrive.log_id && (
             <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" aria-expanded={!collapsed} onClick={() => setOpen(collapsed)} data-testid="arrival-collapse-toggle">
               {collapsed ? <>Show <ChevronDown className="h-3.5 w-3.5" /></> : <>Hide <ChevronUp className="h-3.5 w-3.5" /></>}
             </button>
           )}
           <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("arrive", {})} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
+          {onNewDeparture && <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={onNewDeparture} data-testid="arrival-new-departure-btn"><Navigation className="h-3.5 w-3.5" /> New departure...</button>}
         </div>
       </div>
       {collapsed ? (

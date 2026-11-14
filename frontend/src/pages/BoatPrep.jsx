@@ -34,6 +34,7 @@ import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { DepartRoute } from "@/components/boat/departure/RoutePlanCard";
 import { ArrivedCard } from "@/components/boat/departure/ArrivedCard";
 import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
+import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
 import { routeTrips, today } from "@/lib/allDone";
@@ -246,6 +247,7 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const [warn, showWarn] = useWarn();
   const [dialog, setDialog] = useState(null);
+  const [interim, setInterim] = useState(false);
   const [printMode, setPrintMode] = useState(null);
   const [tripDate, setTripDate] = useState(todayISO);
   const VERBOSE_DATE = verbose(tripDate);
@@ -1099,9 +1101,10 @@ export default function BoatPrep({ boatId, boats }) {
           onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
-        <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
+        <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
+          onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && setInterim(true) : undefined} />
       )}
-      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
+      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {isTripList(active) && boat.underway?.trip_id === active.id && <UnderwayBubble underway={boat.underway} testId="trip-underway-bubble" />}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
@@ -1247,6 +1250,9 @@ export default function BoatPrep({ boatId, boats }) {
           help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
+      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} boat={boat} boatId={boats.current.boat_id}
+        items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
+        onDepart={async (kind, leg) => { setInterim(false); await allDone.interimDepart(kind, leg); }} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onConfirm={allDone.confirm} onClose={allDone.close} />
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}

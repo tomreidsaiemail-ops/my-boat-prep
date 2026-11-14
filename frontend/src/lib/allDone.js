@@ -49,3 +49,28 @@ export const tripTimes = (t) => [`Departure: ${dmyt(t.departAt) || "not set"}`, 
 
 // What the shore contact page shows after DEPART.
 export const shorePlan = (t) => [`Route Plan: ${t.name}`, tripLine(t), ...tripTimes(t), t.why && `Why we're going: ${t.why}`].filter(Boolean).join("\n");
+
+// Arriving at Destination holds interim departures under these headings; ARRIVED leaves them unticked.
+export const LEG_KINDS = [
+  { key: "berth", label: "Leave Berth", heading: "leaving berth" },
+  { key: "anchor", label: "Weigh Anchor", heading: "weighing anchor" },
+  { key: "mooring", label: "Leave Mooring", heading: "leaving mooring" },
+];
+const nested = (i) => i.indent || (i.level || 0) > 1;
+// The heading item whose name matches, and every indented item under it.
+export const headingItems = (list, phrase) => {
+  const at = list.findIndex((i) => !nested(i) && String(i.label || "").toLowerCase().includes(phrase));
+  if (at < 0) return [];
+  const end = list.findIndex((i, n) => n > at && !nested(i));
+  return list.slice(at, end < 0 ? list.length : end).map((i) => i.id);
+};
+export const legIds = (list) => new Set(LEG_KINDS.flatMap((k) => headingItems(list, k.heading)));
+
+const pad = (n) => String(n).padStart(2, "0");
+export const nowLocal = () => { const d = new Date(); return `${today()}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+// Today's leg shown like a Route Plan, under the plan it belongs to.
+export const legTrip = (trip, leg) => {
+  const w = leg.weather || {};
+  return { id: trip.id, name: trip.name, event: String(w.event_name || "").trim(), start: String(leg.route_start || "").trim(), dest: String(leg.route_dest || "").trim(),
+    from: dmy(w.depart_at), to: dmy(w.finish_at), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim() };
+};
