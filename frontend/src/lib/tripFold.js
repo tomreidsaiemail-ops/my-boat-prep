@@ -18,9 +18,16 @@ const local = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime(
 const LEFT = { dock: "Leaving Dock", ...Object.fromEntries(LEG_KINDS.map((k) => [k.key, k.label])) };
 const CAME = { dock: "Returning to Dock", ...Object.fromEntries(ARRIVE_KINDS.map((k) => [k.key, k.done])) };
 
+// The current leg's START and DESTINATION, for arrival checks part way through a trip.
+export const legBoat = (b = {}) => {
+  const legs = b.legs?.[b.underway?.trip_id] || [];
+  const last = legs[legs.length - 1];
+  return last && last.kind !== "dock" && (last.start || last.dest) ? { ...b, route_start: last.start, route_dest: last.dest } : b;
+};
+
 const legLine = (l, n) => {
   const route = [l.start, l.dest].filter(Boolean).join(" to ") || "Route not set";
-  const left = `departed ${dmyt(l.depart_at) || local(l.at) || "?"}${LEFT[l.kind] ? ` (${LEFT[l.kind]})` : ""}`;
+  const left = `departed ${local(l.at) || dmyt(l.depart_at) || "?"}${LEFT[l.kind] ? ` (${LEFT[l.kind]})` : ""}`;
   const came = l.arrived_at ? `, arrived ${local(l.arrived_at)} (${CAME[l.arrival] || l.arrived_list || "arrived"})` : "";
   return `Leg ${n + 1}: ${route}, ${left}${came}.${l.why ? ` Why: ${l.why}` : ""}`;
 };
@@ -32,7 +39,7 @@ export const foldTrip = (log, legs, tripName, when) => {
   if (!folded.length) return null;
   const first = legs[0] || {}, last = legs[legs.length - 1] || {};
   const route = [first.start, last.dest].filter(Boolean).join(" to ");
-  const dates = [(dmyt(first.depart_at) || local(first.at)).split(" ")[0], local(last.arrived_at || "").split(" ")[0]].filter(Boolean).join(" - ");
+  const dates = [...new Set([(local(first.at) || dmyt(first.depart_at)).split(" ")[0], local(last.arrived_at || "").split(" ")[0]].filter(Boolean))].join(" - ");
   const photos = folded.flatMap((i) => i.weather_photos || []);
   const detail = [...legs.map(legLine), "", "Ship's Log entries folded into this trip:", ...folded.map((i) => `- ${i.label}${i.detail ? `\n${i.detail}` : ""}`)].join("\n");
   return {

@@ -11,9 +11,9 @@ const Choices = ({ choices, busy, onPick }) => (
     {choices.map((c) => {
       const Icon = CHOICE_ICON[c.key];
       return (
-        <button key={c.key} type="button" className="btn-solid flex h-auto min-h-14 items-center justify-start gap-3 px-3 py-2 text-left" onClick={() => onPick(c.key)} disabled={busy} data-testid={`all-done-choice-${c.key}`}>
+        <button key={c.key} type="button" className="btn-solid flex h-auto min-h-14 items-center !justify-start gap-3 px-3 py-2 !text-left" onClick={() => onPick(c.key)} disabled={busy} data-testid={`all-done-choice-${c.key}`}>
           {busy ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Icon className="h-5 w-5 shrink-0" />}
-          <span className="flex flex-col"><span className="text-sm font-extrabold uppercase tracking-wide">{c.label}</span><span className="text-xs font-semibold normal-case opacity-85" data-testid={`all-done-choice-${c.key}-text`}>{c.text}</span></span>
+          <span className="flex flex-col items-start text-left"><span className="text-sm font-extrabold uppercase tracking-wide">{c.label}</span><span className="text-xs font-semibold normal-case opacity-85" data-testid={`all-done-choice-${c.key}-text`}>{c.text}</span></span>
         </button>
       );
     })}

@@ -37,6 +37,7 @@ import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
 import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
+import { legBoat } from "@/lib/tripFold";
 import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";
@@ -1101,7 +1102,7 @@ export default function BoatPrep({ boatId, boats }) {
           onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
-        <ArrivalCheck boat={boat} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
+        <ArrivalCheck boat={legBoat(boat)} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
           onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && setInterim(true) : undefined} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
