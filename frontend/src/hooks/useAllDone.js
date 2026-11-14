@@ -7,7 +7,7 @@ import { logBlock } from "@/components/boat/departure/DepartureCheck";
 import { departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { arrivalSummary, arrivalUsage, departureSummary, passagePlan } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
-import { levelsBlock, pickTrip, routeTrips, tankSummary, today, tripIssue, tripLine } from "@/lib/allDone";
+import { levelsBlock, pickTrip, routeTrips, shorePlan, tankSummary, today, tripIssue, tripLine, tripTimes } from "@/lib/allDone";
 
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const tracked = (boatId, t) => window.dispatchEvent(new CustomEvent("mbp:tracking", { detail: { boat_id: boatId, tracking: t } }));
@@ -41,22 +41,23 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     const w = tripBoat(b, trip.id).weather || {};
     const photos = (w.photos || []).length;
     const ticked = list.filter((i) => i.checked).length;
-    const askShore = online && !trackingOn;
+    const askShore = online;
     const steps = [
       { id: "tick", text: `Tick all ${plural(list.length, "Leaving the Dock item")}${ticked ? ` (${ticked} already ticked)` : ""}` },
       statusStep(d, departureSummary(b, d, passagePlan(b, d), ""), "Tank and battery status", tankSummary(d.levels)),
-      { id: "route", text: `Log the route plan: ${tripLine(trip)}${w.why?.trim() ? `\nWhy we're going: ${w.why.trim()}` : ""}${photos ? `\nWith ${plural(photos, "weather and routing photo")}` : ""}` },
-      { id: "underway", text: `Show Underway on ${trip.name}` },
-      { id: "shore", ...(trackingOn ? { tone: "info", text: "Position sharing with shore contacts is already on" }
-        : !online ? { tone: "warn", text: "No signal, so position sharing with shore contacts can't be turned on now" }
-          : { tone: "info", text: "Checking your shore contacts..." }) },
+      { id: "route", text: `Log the route plan: ${tripLine(trip)}\n${tripTimes(trip).join("\n")}${w.why?.trim() ? `\nWhy we're going: ${w.why.trim()}` : ""}${photos ? `\nWith ${plural(photos, "weather and routing photo")}` : ""}` },
+      { id: "underway", text: `Show Underway on Route Plan: ${trip.name}` },
+      { id: "shore", ...(!online ? { tone: "warn", text: "No signal, so position sharing and the route plan can't be shared with shore contacts now" }
+        : { tone: "info", text: "Checking your shore contacts..." }) },
     ];
     const blocked = tripIssue(trips, trip) || levelsBlock(b, d.levels) || logBlock(b, d);
     setPlan({ kind: "depart", trip, blocked, steps, contacts: 0, checking: !blocked && askShore });
     if (!blocked && askShore) {
       api.get(`/boats/${boatId}/shore`, { timeout: 10000 }).then(({ data }) => {
         const n = (data.contacts || []).length;
-        setShore(n ? { text: `Turn on position sharing with your ${plural(n, "shore contact")}` } : { tone: "info", text: "No shore contact set up, so position sharing stays off" }, n);
+        const who = plural(n, "shore contact");
+        setShore(!n ? { tone: "info", text: "No shore contact set up, so position sharing stays off" }
+          : { text: `${trackingOn ? "Position sharing is already on. Show" : "Turn on position sharing and show"} the route plan on the page of your ${who}` }, n);
       }).catch(() => setShore({ tone: "warn", text: "Couldn't check your shore contacts, so position sharing stays as it is" }, 0));
     }
   };
@@ -86,20 +87,23 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       const b = s.boat;
       const d = b.depart || {};
       const [log, dep] = putLog(s.data.shipsLog || [], d, departureSummary(b, d, passagePlan(b, d), stamp()), departureSummary(b, d, passagePlan(b, d), ""));
-      const entry = { ...departureDecision(tripBoat(b, trip.id)), id: Date.now() + 1, label: `Departed, all checks done - ${line} - ${stamp()}` };
+      const entry = { ...departureDecision(tripBoat(b, trip.id)), id: Date.now() + 1, label: `Departed, all checks done - Route Plan: ${trip.name} - ${line}. ${tripTimes(trip).join(", ")} - ${stamp()}` };
       const weather = trip.id === DEFAULT_TRIP ? { weather: markLogged(b.weather) }
         : { trips: { ...(b.trips || {}), [trip.id]: { ...(b.trips?.[trip.id] || {}), weather: markLogged(b.trips?.[trip.id]?.weather) } } };
       const boat = { ...b, ...weather, depart: { ...dep, trip_id: trip.id }, route_trip: trip.id, route_trip_day: today(), underway: { trip_id: trip.id, name: trip.name, line, at: new Date().toISOString() } };
       return { ...s, boat, data: { ...s.data, leavingDock: tickAll(s.data.leavingDock || [], tickedBy), shipsLog: [...log, entry] } };
     });
     toast.success(`Underway on ${trip.name}. Departure logged in the Ship's Log`);
-    if (contacts && online && !trackingOn) {
+    if (contacts && online) {
       setBusy(true);
       try {
-        const { data } = await api.put(`/boats/${boatId}/shore/tracking`, { on: true });
-        tracked(boatId, { on: data.on, trip_id: data.trip_id });
-        toast.success("Sharing your position with shore contacts");
-      } catch (e) { toast.error(apiError(e, "Couldn't turn on position sharing")); }
+        if (!trackingOn) {
+          const { data } = await api.put(`/boats/${boatId}/shore/tracking`, { on: true });
+          tracked(boatId, { on: data.on, trip_id: data.trip_id });
+        }
+        await api.put(`/boats/${boatId}/shore/plan`, { text: shorePlan(trip).slice(0, 1500) });
+        toast.success("Sharing your position and route plan with shore contacts");
+      } catch (e) { toast.error(apiError(e, "Couldn't share with your shore contacts")); }
       setBusy(false);
     }
     setPlan(null);

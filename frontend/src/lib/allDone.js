@@ -3,6 +3,7 @@ import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
 
 const TANKS = [["fuel", "Fuel"], ["gas", "LPG"], ["water", "Water"]];
 const dmy = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ""); return m ? `${+m[3]}/${+m[2]}/${m[1]}` : ""; };
+export const dmyt = (v) => [dmy(v), (v || "").slice(11, 16)].filter(Boolean).join(" ");
 
 export const missingLevels = (boat, levels = {}) => [...TANKS, ...batteriesOf(boat).map((b) => [`bat_${b.id}`, batteryName(b)])]
   .filter(([k]) => !levels[k]).map(([, n]) => n);
@@ -20,7 +21,7 @@ export const routeTrips = (registry, boat) => tripLists(registry).map((t) => {
   const w = b.weather || {};
   const startAt = w.depart_at || "";
   return { id: t.id, name: t.name, event: String(w.event_name || "").trim(), start: String(b.route_start || "").trim(), dest: String(b.route_dest || "").trim(),
-    from: dmy(w.depart_at), to: dmy(w.finish_at), startDay: startAt.slice(0, 10), startOn: dmy(startAt), departAt: w.depart_at || "" };
+    from: dmy(w.depart_at), to: dmy(w.finish_at), startDay: startAt.slice(0, 10), startOn: dmy(startAt), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim() };
 });
 
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -43,3 +44,8 @@ export const tripLine = (t) => {
   const head = [t.event || t.name, [t.start, t.dest].filter(Boolean).join("-")].filter(Boolean).join(" ");
   return [head, [t.from, t.to].filter(Boolean).join(" - ")].filter(Boolean).join(", ");
 };
+
+export const tripTimes = (t) => [`Departure: ${dmyt(t.departAt) || "not set"}`, `Estimated arrival: ${dmyt(t.finishAt) || "not set"}`];
+
+// What the shore contact page shows after DEPART.
+export const shorePlan = (t) => [`Route Plan: ${t.name}`, tripLine(t), ...tripTimes(t), t.why && `Why we're going: ${t.why}`].filter(Boolean).join("\n");

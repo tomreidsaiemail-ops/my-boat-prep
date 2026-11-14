@@ -85,6 +85,10 @@ class TrackingIn(BaseModel):
     on: bool
 
 
+class PlanIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1500)
+
+
 def _contacts(doc: dict) -> list:
     return [{"key": uid, "name": c.get("name", ""), "email": c.get("email", ""), "status": "joined", "joined_at": c.get("joined_at")}
             for uid, c in (doc.get("shore") or {}).items()]
@@ -165,6 +169,20 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
         t = {**t, "on": False, "ended_at": _now().isoformat()}
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"tracking": t}})
     return {**t, **status_of(t)}
+
+
+@router.put("/boats/{boat_id}/shore/plan")
+async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(get_current_user)):
+    """DEPART shares the route plan on the shore contact page (no email)."""
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id})
+    if not n:
+        raise HTTPException(status_code=400, detail="Invite a shore contact before you share your route plan")
+    plan = {"text": payload.text.strip(), "at": _now().isoformat()}
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"shore_plan": plan}})
+    return {**plan, "contacts": n}
 
 
 def _nz(iso: str) -> str:
@@ -350,7 +368,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     q = {"owner_id": owner_id, "boat_id": boat_id}
     if owner_id != user["user_id"] or user.get("shore_only"):
         q["shore_ids"] = user["user_id"]
-    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "boat.skipper": 1, "boat.skipper_phone": 1, "tracking": 1, "distress": 1})
+    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "boat.vessel": 1, "boat.skipper": 1, "boat.skipper_phone": 1, "tracking": 1, "distress": 1, "shore_plan": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer a shore contact for this boat")
     t = doc.get("tracking") or {}
@@ -358,7 +376,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     if t.get("trip_id"):
         pts = await db.track_points.find({"trip_id": t["trip_id"]}, {"_id": 0, "lat": 1, "lon": 1, "at": 1, "kind": 1}).sort("at", 1).to_list(5000)
     return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
-            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"),
+            "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"), "plan": doc.get("shore_plan"),
             "skipper": (doc.get("boat") or {}).get("skipper", ""), "skipper_phone": (doc.get("boat") or {}).get("skipper_phone", "")}
 
 

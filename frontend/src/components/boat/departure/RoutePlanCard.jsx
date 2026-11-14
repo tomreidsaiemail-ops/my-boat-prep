@@ -1,15 +1,22 @@
 import { AlertTriangle, ArrowRight, Map as MapIcon, Navigation } from "lucide-react";
-import { pickTrip, tripIssue, tripLine } from "@/lib/allDone";
+import { dmyt, pickTrip, tripIssue, tripLine } from "@/lib/allDone";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 
-// Opens the Route Plan list and lands on its Departure date.
-const goToDeparture = (id) => {
+// Opens the Route Plan list and lands on its Departure or Estimated Finish date.
+const goTo = (id, field = "navigator-depart-at") => {
   window.dispatchEvent(new CustomEvent("mbp:open-list", { detail: id }));
   setTimeout(() => {
-    document.querySelector('[data-testid="navigator-depart-at-field"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
-    document.getElementById("navigator-depart-at")?.focus({ preventScroll: true });
+    document.querySelector(`[data-testid="${field}-field"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById(field)?.focus({ preventScroll: true });
   }, 400);
 };
+
+const TimeRow = ({ label, value, onGo, testId }) => (
+  <div className="flex items-center justify-between gap-2 text-sm" data-testid={testId}>
+    <span><span className="text-[var(--muted)]">{label}: </span><b data-testid={`${testId}-value`}>{dmyt(value) || "Not set"}</b></span>
+    <button type="button" className="shrink-0 font-bold text-[var(--navy)] underline underline-offset-2" onClick={onGo} data-testid={`${testId}-change`}>{value ? "Change" : "Set"}</button>
+  </div>
+);
 
 // Leaving the Dock: which Route Planning trip this departure uses, its summary and the one-tap DEPART.
 export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart }) => {
@@ -30,10 +37,16 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart }
           {!trip.start && !trip.dest && <span className="block text-xs font-normal text-[var(--muted)]" data-testid="route-plan-empty">Add the start and destination on the {trip.name} list.</span>}
         </p>
       )}
+      {trip && (
+        <div className="flex flex-col gap-1.5 px-1" data-testid="route-plan-times">
+          <TimeRow label="Departure" value={trip.departAt} onGo={() => goTo(trip.id)} testId="route-plan-departure" />
+          <TimeRow label="Estimated arrival" value={trip.finishAt} onGo={() => goTo(trip.id, "navigator-finish-at")} testId="route-plan-arrival" />
+        </div>
+      )}
       {issue && (
         <div className="flex flex-col gap-2 rounded-md border-l-4 border-amber-500 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900" data-testid="route-plan-warning">
           <p className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><span data-testid="route-plan-warning-text">{issue}</span></p>
-          <button type="button" className="flex items-center gap-1 self-start font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => goToDeparture(trip.id)} data-testid="route-plan-goto-departure">
+          <button type="button" className="flex items-center gap-1 self-start font-bold text-[var(--navy)] underline underline-offset-2" onClick={() => goTo(trip.id)} data-testid="route-plan-goto-departure">
             Set the Departure date in {trip.name} <ArrowRight className="h-4 w-4" />
           </button>
         </div>

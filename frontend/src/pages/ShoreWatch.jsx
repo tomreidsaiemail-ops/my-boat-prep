@@ -87,6 +87,12 @@ export default function ShoreWatch() {
             </div>
             <button type="button" className="btn-ghost min-h-10 gap-2 px-3 text-sm" onClick={load} data-testid="shore-watch-refresh"><RefreshCw className="h-4 w-4" /> Refresh</button>
           </div>
+          {track?.plan?.text && (
+            <section className="rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="shore-watch-plan">
+              <p className="field-label">Route plan · shared {when(track.plan.at)}</p>
+              <p className="mt-1 whitespace-pre-line text-sm font-semibold" data-testid="shore-watch-plan-text">{track.plan.text}</p>
+            </section>
+          )}
           {track && (track.points.length > 0 || alertOn) ? <ShoreMap points={track.points} alert={track.alert} /> : (
             <p className="rounded-lg bg-slate-100 p-4 text-sm" data-testid="shore-watch-no-points">No positions yet for this trip. They appear when the skipper turns on sharing and the app is open on a phone aboard.</p>
           )}
