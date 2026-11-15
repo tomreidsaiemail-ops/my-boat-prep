@@ -53,6 +53,7 @@ class UserOut(BaseModel):
     shore_only: bool = False
     shore_contact: bool = False
     ignore_300: bool = False
+    show_sundowners: bool = False
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -67,6 +68,7 @@ def to_user_out(u: dict) -> UserOut:
         first5000=bool(u.get("first5000")), renew_price=u.get("renew_price"),
         created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "", shore_only=bool(u.get("shore_only")),
         shore_contact=bool(u.get("shore_contact")), ignore_300=bool((u.get("privacy") or {}).get("ignore_300")),
+        show_sundowners=bool((u.get("features") or {}).get("show_sundowners")),
     )
 
 

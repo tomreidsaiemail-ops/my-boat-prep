@@ -170,6 +170,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const out = rows.reduce((n, r) => n + (r.visible || []).filter((i) => i.removed).length, 0);
   const suggestions = shared.area_defaults.filter((n) => !areas.some((a) => same(a.name, n)));
   const setArea = (id, fn) => onChange((list) => list.map((a) => (a.id === id ? fn(a) : a)));
+  const toggleItem = (id, i) => setArea(id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }));
   const moveItem = (area, item, edits, targetId) => {
     const dest = areas.find((a) => a.id === targetId);
     const match = (dest.items || []).find((i) => same(i.name, edits.name));
@@ -452,11 +453,11 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
         focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0}
         onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
-        onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
+        onToggle={(i) => toggleItem(a.id, i)}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
         onDeleteItem={(i) => setDialog({ type: "deleteItem", area: a, item: i })}
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })}
-        photoButton={boat ? <CupboardPhotoButton boat={boat} area={a} placeholder={!ro} /> : null}
+        photoButton={boat ? <CupboardPhotoButton boat={boat} area={a} subs={kids} placeholder={!ro} locked={locked} onToggle={toggleItem} onEdit={(x, i) => setDialog({ type: "item", area: x, item: i })} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
         zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => {

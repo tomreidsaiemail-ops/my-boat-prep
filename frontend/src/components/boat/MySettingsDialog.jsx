@@ -32,15 +32,17 @@ export const MySettingsDialog = ({ open, onClose }) => {
     window.addEventListener("online", up); window.addEventListener("offline", up);
     return () => { window.removeEventListener("online", up); window.removeEventListener("offline", up); };
   }, []);
-  const toggle = async (on) => {
+  const save = async (path, body, done) => {
     setBusy(true);
     try {
-      const { data } = await api.put("/me/privacy", { ignore_300: on });
+      const { data } = await api.put(path, body);
       setUser(data);
-      toast.success(on ? "Broadcasting to your shore contact on or near land too" : "Positions on or near land are kept private again");
+      toast.success(done);
     } catch (e) { toast.error(apiError(e, "Couldn't save that setting, please try again")); }
     setBusy(false);
   };
+  const toggle = (on) => save("/me/privacy", { ignore_300: on }, on ? "Broadcasting to your shore contact on or near land too" : "Positions on or near land are kept private again");
+  const sundowners = (on) => save("/me/features", { show_sundowners: on }, on ? "Sundowner time will show from sunset" : "Sundowner time is hidden");
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent guard={false} className="max-h-[90vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)] bg-white" data-testid="my-settings-dialog">
@@ -57,6 +59,14 @@ export const MySettingsDialog = ({ open, onClose }) => {
           </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
           <Ignore300Warning online={online} />
+        </section>
+        <section className="flex flex-col gap-3" data-testid="feature-settings">
+          <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">Feature Settings</h3>
+          <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-sundowners-label">
+            <input type="checkbox" checked={!!user?.show_sundowners} disabled={busy || !online} onChange={(e) => sundowners(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-sundowners-checkbox" />
+            <span><b>Show Sundowners.</b> From sunset, show the SUNDOWNER TIME cocktail pick from the Magic Bartender.</span>
+          </label>
+          {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
       </DialogContent>
     </Dialog>

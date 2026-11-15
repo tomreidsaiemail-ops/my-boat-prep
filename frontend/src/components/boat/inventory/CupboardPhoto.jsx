@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
+import { PhotoSwipe } from "@/components/boat/inventory/PhotoSwipe";
 
 export const areaPhotoUrl = (b, photo) => (b && photo?.id
   ? `${API}/boats/${b.boat_id}/area-photos/${photo.id}?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(photo.v || "")}` : "");
@@ -74,21 +74,15 @@ export const CupboardPhoto = ({ boat, area, testId, all }) => {
   return <div className="flex flex-col gap-2">{list.map((p, n) => <img key={p.id} src={areaPhotoUrl(boat, p)} alt={`${area.name} photo ${n + 1}`} className="max-h-[40vh] w-full rounded-md border-[1.5px] border-[var(--line)] object-contain" data-testid={n ? `${testId}-${n}` : testId} />)}</div>;
 };
 
-// Boat Inventory: an icon on the cupboard row shows it has a photo; tap to see it.
-export const CupboardPhotoButton = ({ boat, area, placeholder }) => {
+// Boat Inventory: an icon on the cupboard row shows it has a photo; tap to swipe through them full screen.
+export const CupboardPhotoButton = ({ boat, area, placeholder, ...swipe }) => {
   const [open, setOpen] = useState(false);
   const n = areaPhotos(area).length;
   if (!n) return placeholder ? <span className="icon-btn invisible" aria-hidden="true" /> : null;
   return (
     <>
       <button type="button" className="icon-btn" aria-label={`See the photo of ${area.name}`} title="Cupboard photo" onClick={() => setOpen(true)} data-testid={`inventory-area-photo-${area.id}`}><ImageIcon className="h-[18px] w-[18px]" /></button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl rounded-lg border-2 border-[var(--navy)] p-4" data-testid={`inventory-area-photo-dialog-${area.id}`}>
-          <DialogHeader><DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight">{area.name}</DialogTitle>
-            <DialogDescription>{area.comment || (n > 1 ? `${n} photos` : "Cupboard photo")}</DialogDescription></DialogHeader>
-          <div className="max-h-[70vh] overflow-y-auto"><CupboardPhoto boat={boat} area={area} all testId={`inventory-area-photo-img-${area.id}`} /></div>
-        </DialogContent>
-      </Dialog>
+      {open && <PhotoSwipe open onClose={() => setOpen(false)} boat={boat} area={area} {...swipe} />}
     </>
   );
 };

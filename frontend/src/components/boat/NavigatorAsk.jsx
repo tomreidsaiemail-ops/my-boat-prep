@@ -5,6 +5,7 @@ import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuard
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
 import { NavigatorIntro, NavigatorReminders, TripTiming, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
 import { stamp } from "@/components/boat/departure/LogCopy";
+import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -85,6 +86,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <NavigatorReminders />
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} finishRequired={interim} />
+      {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} />}
       {!interim && <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
         <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status
       </button>}

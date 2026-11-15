@@ -26,6 +26,17 @@ async def set_privacy(p: PrivacyIn, user: dict = Depends(get_current_user)):
     return await signed_in_user(user["user_id"])
 
 
+class FeaturesIn(BaseModel):
+    show_sundowners: bool
+
+
+@router.put("/me/features")
+async def set_features(f: FeaturesIn, user: dict = Depends(get_current_user)):
+    """My Settings > Feature Settings, for this person on every boat."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"features.show_sundowners": f.show_sundowners}})
+    return await signed_in_user(user["user_id"])
+
+
 async def seed_exclusions():
     """Runs once: the admin exclusion list is replaced by each person's own privacy setting."""
     if await db.migrations.find_one({"_id": "gps_exclusion_list_removed"}):

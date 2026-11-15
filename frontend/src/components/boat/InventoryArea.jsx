@@ -83,9 +83,10 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             {path && <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-path-${area.id}`}>{path}</span>}
             <span className="flex items-center gap-1.5 break-words font-bold text-[var(--navy)] [overflow-wrap:anywhere]" data-testid={`inventory-area-name-${area.id}`}>
               <Highlight text={area.name} query={query} />
+              {subCount > 0 && <span className="shrink-0 rounded-full bg-[var(--navy)] px-2 py-0.5 text-[11px] font-extrabold leading-tight text-white" data-testid={`inventory-area-box-badge-${area.id}`}>{subCount} {subCount === 1 ? "box" : "boxes"}</span>}
             </span>
             {area.where && <span className="break-words text-xs font-semibold text-[var(--muted)] [overflow-wrap:anywhere]" data-testid={`inventory-area-where-${area.id}`}>{area.where}</span>}
-            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{subCount ? ` · ${subCount} ${subCount === 1 ? "folder or box" : "folders or boxes"}` : ""}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
+            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {readOnly && photoButton && <div className="shrink-0 pr-1">{photoButton}</div>}
