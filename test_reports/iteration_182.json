@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend-only test at 390x844 of the new Prepare to... checklist pop-up (ChecklistPeek) from trip-view-dialog Stops/Map tabs and trip-confirm-dialog, plus the StopsMap tidy-ups, on the admin boat (seeded temporary If anchoring/If berthing/If mooring/When leaving berth groups plus vessel/callsign) and the pro boat (toast path). Found 1 bug: the Map tab .stop-prepare box showed the toast 'This boat has no undefined list yet' instead of opening the pop-up. I fixed it (one token in StopsMap) and retested. Everything else passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StopsMap .stop-prepare marker", "issue": "FIXED by testing agent: the click handler called live.current.onPrepare(t.list) with a string, but onPrepare is TripConfirm.openList, which expects the arriveType object (reads t.list/t.key/t.prep). The event had id=undefined, so the user got the toast 'This boat has no undefined list yet' and no pop-up, even on the admin boat. Changed it to onPrepare(t).", "selector": "[data-testid=stops-map-canvas] .stop-prepare", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Planned route > Map", "issues": ["A Prepare box for a pin near the map edge gets clipped by the map container (e.g. 'Prepare to pick up buoy' cut off on the left after moving pin 4 to the left edge). Minor."]}
+    ]
+  },
+  "passed_tests": [
+    "Stops tab trip-confirm-prepare-0..3 (anchor/berth/mooring/dock) each open checklist-peek-dialog on top; 2 role=dialog present; trip-view-dialog stays visible",
+    "Titles 'Prepare to anchor'/'Prepare to berth'/'Prepare to pick up buoy'/'Prepare to return to Dock'; summaries 'Arriving at Destination · 0 of 5/4/4 ticked', 'Returning to Dock · 0 of 7 ticked'",
+    "Filtering matches arrivalTicks: anchor shows general items 101,111 + If anchoring group 102-104; berth 101,105,106,111; mooring 101,107,108,111; 'When leaving berth' group (109,110) and the other If groups excluded; dock shows the whole Returning to Dock list (7 items)",
+    "Ticking 103 then 101 sets aria-checked=true and the summary to 1/5 then 2/5; berth peek shows 1/4 (shared general item); the real Arriving at Destination list shows checklist-item-toggle-101/103 checked; persisted in Mongo and after reload; unticking restored 0/5",
+    "checklist-peek-done-btn and Escape close only the pop-up; trip-view-dialog stays open on the same tab (Stops or Map, map canvas still mounted); trip-confirm-dialog stays open",
+    "trip-confirm-dialog (after saving the dock leg): prepare-3 opens the Returning to Dock pop-up; tick/untick of 17 works; Looks good dialog stays open",
+    "Map: opens fitted to the 5 pins (fitBounds), all visible; with all pinned no stops-map-stop-* is aria-pressed, the hint reads 'Tap a stop below...' and a stray map click moves nothing; picking stop 3 sets aria-pressed, shows the clear button and the pin gets .route-pin-picked; a map click moves pin 4 and the selection clears; tapping the picked row again unpicks it, and the next map click does nothing",
+    "Prepare boxes sit just above their pins (e.g. anchor box y 227-254 and pin 2 at y 257), so they no longer cover them",
+    "After the fix, Map .stop-prepare 'Prepare to anchor' and 'Prepare to return to Dock' open the right pop-up over the map",
+    "Admin boat with an empty callsign: ticking in the pop-up shows the toast 'Fill in the vessel, skipper and callsign at the top first' and does not tick",
+    "Pro boat: Prepare to anchor / Prepare to return to Dock show the toast 'This boat has no Arriving at Destination / Returning to Dock list yet...' with no pop-up, and trip-view stays open"
+  ],
+  "test_report_links": ["/app/tests/backup/seed_182.js", "/app/tests/backup/restore_182.js"],
+  "action_items": [
+    "Review and keep the StopsMap fix (onPrepare(t) instead of onPrepare(t.list))",
+    "Optional: keep Prepare boxes inside the map bounds near the edges"
+  ],
+  "critical_code_review_comments": [
+    "StopsMap/TripConfirm: the onPrepare contract was implicit (an object vs a string), which is how this bug got in. Consider openList taking the arrive key and looking up arriveType itself.",
+    "headingItems(list, '') matches the first non-nested item if arrivalTicks gets an unknown key. Not reachable today because dock skips the filter, but a guard would be safer.",
+    "BoatPrep mbp:open-arrival effect has no deps array, so the listener is re-added on every render. It works, but [registry] would do."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/navigator/StopsMap.jsx"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% after fix (1 bug found and fixed)"},
+  "seed_data_creation": "Temporarily seeded on admin main: data.arrivingDest with TEST_ items and If anchoring/If berthing/If mooring/When leaving berth groups, weather with 4 legs and pins, vessel TEST_Vessel and callsign TEST_CS. On pro main: arrive_type anchor plus 1 dock leg. All restored from /app/tests/backup/admin_backup_182.json and pro_backup_182.json via restore_182.js (admin weather={}, vessel/callsign '', arrivingDest ids 24-28 unticked; pro legs=[], route_start='').",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mongo helper: mongosh using backend/.env MONGO_URL/DB_NAME. The admin arrivingDest list has no If... groups by default, so seed them (seed_182.js) to test the filtering. Restore with restore_182.js. Go to Route Planning via list-selector > list-option-routeHazards > view-planned-route-btn. Edit and save the last dock leg (planned-leg-edit-*) to get trip-confirm-dialog."
+}

@@ -66,7 +66,7 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
         L.polyline([[a.lat, a.lon], [s.pos.lat, s.pos.lon]], { color: "#0f172a", weight: 3, dashArray: "8 6", interactive: false }).addTo(g);
         L.marker(toward(a, s.pos, 0.5), { icon: tag("stop-miles", milesText(miles[i - 1])), interactive: false }).addTo(g);
         const t = arriveType(s.type);
-        if (t) L.marker([s.pos.lat, s.pos.lon], { icon: tag("stop-prepare", t.prep), title: t.prep, zIndexOffset: 500 }).on("click", () => live.current.onPrepare(t.list)).addTo(g);
+        if (t) L.marker([s.pos.lat, s.pos.lon], { icon: tag("stop-prepare", t.prep), title: t.prep, zIndexOffset: 500 }).on("click", () => live.current.onPrepare(t)).addTo(g);
       }
       if (s.pos) L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : ""), title: s.name })
         .bindTooltip(`${i + 1}. ${s.name}`).on("click", () => setPick(i)).addTo(g);
