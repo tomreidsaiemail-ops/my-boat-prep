@@ -58,7 +58,7 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
           </DialogDescription>
         </DialogHeader>
         <ScanRows rows={rows} setRows={setRows} />
-        {scan?.blob && <StorePhotoTick checked={keepPhoto} onChange={setKeepPhoto} testId="scan-review-store-photo" />}
+        {scan?.blob && <StorePhotoTick checked={keepPhoto} onChange={setKeepPhoto} what={scan.area?.parent_id ? "box or folder" : "cupboard"} testId="scan-review-store-photo" />}
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="scan-review-error">{error}</p>}
         {existing > 0 ? (
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">

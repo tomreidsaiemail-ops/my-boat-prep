@@ -11,7 +11,7 @@ from auth import get_current_user, require_premium
 from email_service import send_email
 from urls import public_base
 from crew import email_key, owned_boat, BoatPath, tick
-from crew_photo import photo_versions
+from crew_photo import photo_versions, photo_versions_by_email
 
 router = APIRouter(prefix="/api/crew-register")
 DAILY_SEND_LIMIT = 60
@@ -111,8 +111,13 @@ async def list_register(user: dict = Depends(get_current_user)):
     keys = [r["email_key"] for r in rows if r["kind"] == "crew" and r.get("email_key")]
     jcs = {u["joincrew"]["email_key"]: u["joincrew"] async for u in db.users.find({"joincrew.email_key": {"$in": keys}}, {"_id": 0, "joincrew": 1})}
     pics = await photo_versions([r.get("user_id") for r in rows])
+    by_email = await photo_versions_by_email([r.get("email") for r in rows if r["kind"] == "crew" and not r.get("user_id")])
+    ids = {u["email"].lower(): u["user_id"] async for u in db.users.find({"email": {"$in": list(by_email)}}, {"_id": 0, "email": 1, "user_id": 1})}
     for r in rows:
-        r["photo_v"] = pics.get(r.get("user_id"))
+        # Entries the skipper made have no user_id until the crew member fills them in; match their account by email.
+        if not r.get("user_id") and (r.get("email") or "").lower() in ids:
+            r["photo_user_id"] = ids[r["email"].lower()]
+        r["photo_v"] = pics.get(r.get("user_id")) or by_email.get((r.get("email") or "").lower())
         r["joincrew"] = tick(jcs.get(r.get("email_key")), user["user_id"]) if r["kind"] == "crew" else None
         r["shopper"] = r.get("shopper", True) if r["kind"] == "crew" else False
         r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"], "full_at": w.get("full_at") or w["at"], "quick": bool(w.get("quick"))}

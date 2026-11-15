@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Loader2, Trash2, UserRound } from "lucide-react";
 import { api, API, apiError } from "@/lib/api";
@@ -20,7 +20,14 @@ export const CrewPhotoField = () => {
   const { user } = useAuth();
   const input = useRef(null);
   const [v, setV] = useState("start");
-  const [shown, setShown] = useState(true);
+  const [shown, setShown] = useState(false);
+  // Only show a photo once it has loaded, so someone with no photo never sees a broken one.
+  useEffect(() => {
+    if (!user?.user_id) return;
+    const img = new Image();
+    img.onload = () => setShown(true);
+    img.src = crewPhotoUrl(user.user_id, "start");
+  }, [user?.user_id]);
   const [busy, setBusy] = useState(false);
   const pick = async (e) => {
     const file = e.target.files?.[0];

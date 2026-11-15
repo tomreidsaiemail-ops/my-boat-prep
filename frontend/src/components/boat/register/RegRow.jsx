@@ -13,7 +13,7 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onC
   const crewAdded = entry.kind === "crew" && entry.status === "registered" && !quick && (entry.crew_added_at || entry.user_id);
   return (
     <li className="flex items-center gap-1.5 px-3 py-2.5" data-testid={t}>
-      <CrewAvatar userId={entry.user_id} v={entry.photo_v} name={entry.name} testId={`${t}-photo`} />
+      <CrewAvatar userId={entry.user_id || entry.photo_user_id} v={entry.photo_v} name={entry.name} testId={`${t}-photo`} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold" data-testid={`${t}-name`}>{entry.name}</p>
         <p className="truncate text-xs text-[var(--muted)]">{[entry.email, entry.phone].filter(Boolean).join(" · ")}</p>

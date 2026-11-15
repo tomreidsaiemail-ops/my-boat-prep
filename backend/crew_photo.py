@@ -56,3 +56,8 @@ async def get_photo(user_id: UserPath, user: dict = Depends(get_current_user)):
 
 async def photo_versions(user_ids: list) -> dict:
     return {u["user_id"]: u["photo"]["v"] async for u in db.users.find({"user_id": {"$in": [i for i in user_ids if i]}, "photo.v": {"$exists": True}}, {"_id": 0, "user_id": 1, "photo.v": 1})}
+
+
+async def photo_versions_by_email(emails: list) -> dict:
+    keys = [e.lower() for e in emails if e]
+    return {u["email"].lower(): u["photo"]["v"] async for u in db.users.find({"email": {"$in": keys}, "photo.v": {"$exists": True}}, {"_id": 0, "email": 1, "photo.v": 1})}

@@ -1,0 +1,42 @@
+{
+  "summary": "Tested all 8 items of the batch request, both backend and UI, as test-user-pro on boat 'main', with test-user-free as crew. All data was restored afterwards. Backend: the new test_crew_photo_cupboard_photos.py has 11 tests and all 11 pass (run with -n 0). It covers crew photo upload, viewing by self, skipper and co-crew, 404 for an unrelated user, 400 for a wrong file type, 401 with no login, and delete. It also checks photo_v in /boats/main/crew and /crew-register, the 'Please add a photo of yourself' line in request_html (normal and quick), that the area-photos prune keeps ids in areas[].photos and drops unused old ones, and that a scan with an extra file of the wrong type gets 400. One real scan with 2 extra photos returned 200, not 422. UI: (1) Overview hide toggle: Hide/Show works, the plan and tools are hidden, localStorage mbp_overview_hidden_<id> is set, the state is still there after a reload, and a second test overview was hidden on its own without affecting the first. (2) Delete Zone for Galley (Fridge and Pantry set to Galley for the test): the summary said '2 zone photos, 2 spots on the schematic, 2 cupboards and their 18 items stay'. Keep it closed the prompt and left the window open. Confirming deleted both Galley zone photo maps and removed the Galley swatch from BOTH overviews. Fridge and Pantry lost area.zone but kept their 17 and 1 items. The window closed and the toast showed. (3) Cupboard photos: the field reads 'Photos (optional, up to 3)'. 3 uploads gave 3 previews, and the Add button was disabled with '3 photos added'. Removing #2 re-enabled it. Save stored photos with 2 entries and photo = the first. The photo icon dialog showed both images ('2 photos'). (4) 'Magic Scan its 2 photos' (scan route mocked so no AI credit was used) sent ONE /scan request with 1 file and 1 extra and opened scan review. There is correctly no store tick for stored photos. (5) Add folder or box with a photo (real AI, the 2nd and last AI call): 'Photo picked: locker1.jpg', Add made TEST_Red box under Pantry and the toast said 'Magic Scanning its photo...'. The review showed 8 items with the store tick on, and Save gave the box 8 items plus photo/photos. The box row then showed the photo icon, 'Magic Scan its photo' and the photo field in its edit dialog. (6) Crew registration as free (entry set to pending for the test): crew-photo-field and its hint show. Upload gave a preview and the button changed to 'Change photo'. Remove cleared it, and the form still submitted without a photo (crew-reg-done). (7) Skipper Crew dialog: crew-member-test-user-free-photo and reg-row-<entry>-photo show and load (naturalWidth 400). Beta, with no photo, shows no avatar. (8) Crockery Cupboard is in ZONE_CUPBOARDS.galley with no flags, and zoneDefaultAreas makes it empty. This was checked in the code only.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/crew-register photo_v", "issue": "photo_v is matched only by entry.user_id, which submit_mine sets. Entries made by the skipper or by a walkthrough (record_walkthrough inserts no user_id) never show a photo, even when the crew member is a linked user with a photo, until they fill in the form themselves. A fallback match by email_key to users.email would cover these. The seeded TEST Free Crew and Beta Crew entries have no user_id."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CrewPhotoField", "issue": "It starts with v='start' and shown=true, so a user with no photo briefly sees the img, 'Change photo' and the remove button, and gets a 404 request, before onError hides them. Playwright saw preview count 1 and 'Change photo' as the dialog opened, with no photo stored. Pass a known photo_v (e.g. from /auth/me) or start hidden.", "selector": "[data-testid=crew-photo-preview], [data-testid=crew-photo-add-btn]", "priority": "LOW"},
+      {"component": "CrewDialog", "issue": "crew-member-<uid>-photo appears twice when the member is in more than one trip group (one per group). The testid is duplicated, which is OK but worth knowing.", "selector": "[data-testid=crew-member-test-user-free-photo]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Add a folder or box dialog (inventory-sub)", "issues": ["The description still says 'Only the list is kept, not the photo.', but the photo can now be stored with the box. Update the copy."]},
+      {"screen": "Scan review (store tick) and Edit dialog for a box or folder", "issues": ["The tick label is 'Store the cupboard magic scan picture' and the edit dialog title is 'EDIT CUPBOARD', even for a box or folder. Consider 'box/folder' wording when area.parent_id is set."]},
+      {"screen": "Crew dialog at 390px", "issues": ["The 48px avatar plus the action icons squeeze the crew name to 'TES...' on the card."]},
+      {"screen": "Crew registration form", "issues": ["Date of birth uses the browser's native date input, not a shadcn calendar (existing, not new)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_photo_cupboard_photos.py", "/app/test_reports/pytest/pytest_crew_photo.xml"],
+  "action_items": [
+    "Optional: in list_register, fall back to email_key -> users for photo_v when an entry has no user_id",
+    "Fix the CrewPhotoField flash of a broken preview, 'Change photo' and remove for users with no photo",
+    "Update the inventory-sub dialog description ('Only the list is kept, not the photo') to match the new store-photo behaviour",
+    "Optional wording: box/folder instead of cupboard in the store tick and the edit title for sub-areas"
+  ],
+  "critical_code_review_comments": [
+    "crew_photo.shares_boat allows any shared boat (owner/crew or crew/crew), as specified. Unrelated users get 404, not 403, so whether a photo exists isn't revealed. Good.",
+    "ai_scan reads at most 2 extra files and validates the type and size of each, but does not run PIL verify on the extras the way it does on the main file. A non-image with an image content_type would reach the LLM, though only after quota.consume. On an LLM error the credit is refunded.",
+    "crew-photo storage objects are never deleted on DELETE or replace (orphan objects), the same as other photo modules.",
+    "InventoryList.deleteZone runs zone-map deletes and swatch PUTs one after another. If one fails partway, earlier deletions stay and the cupboards keep their zone. That is acceptable but leaves the zone partly deleted.",
+    "InventoryList.jsx is 558 lines, getting close to the 700-line limit."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_photo_cupboard_photos.py"],
+  "success_rate": {"backend": "100% (11/11)", "frontend": "100% of the requested flows work; 2 low-priority UI issues and copy issues"},
+  "seed_data_creation": "Temporary only, all restored: Fridge and Pantry set to the Galley zone, a 2nd overview map 11111111-1111-4111-8111-111111111111, Pantry photos, TEST_Red box, the free crew_register entry set to pending and then registered, and users.photo for test-user-free. Restored from /tmp/bk/backup.json (user_boats for pro/free/beta, users.photo) and /tmp/bk/reg.json (crew_register) using /tmp/bk/restore.js and reg_restore.js. 2 real AI scan credits used on test-user-pro.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run test_crew_photo_cupboard_photos.py with -n 0, because its module-level restore fixture would race under xdist. Boat Inventory is list-option-boatInventory. Open the overview with zone-map-toggle. Pantry id amw1pvdq8s919, Fridge amw1pvdq802hq (it has 1 photo). The free crew register entry is 8d45f646-e0ce-4d7f-9fa8-fca60ff6a26e. Set status 'pending' to make the crew-reg-dialog appear for test_session_free_1. The sub dialog input is inventory-sub-input and the confirm is inventory-sub-confirm-btn. Mock **/api/boats/main/scan* with page.route to avoid AI credits. Test image with real items: /app/test_assets/locker1.jpg."
+}

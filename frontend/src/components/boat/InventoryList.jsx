@@ -533,7 +533,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <AreaEditDialog area={dialog?.type === "rename" ? dialog.area : null} zoneName={dialog?.type === "rename" ? zones[dialog.area.id]?.map : ""} onSave={renameArea} onClose={() => setDialog(null)}
         boat={boat} online={online} onMove={readOnly || dialog?.type !== "rename" ? undefined : () => startMove(dialog.area)} />
       <TextDialog open={dialog?.type === "sub"} title={dialog?.type === "sub" ? `Add a folder or box to ${dialog.area.name}` : ""} confirmLabel="Add" testId="inventory-sub"
-        description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. Only the list is kept, not the photo."
+        description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. You can keep the photo with the folder or box."
         placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => { setDialog(null); setSubPic(null); }}>
         {boat && !boat.owner_id && (
           <label className="btn-ghost h-11 cursor-pointer justify-center gap-2 px-3 text-sm" data-testid="inventory-sub-scan-label">

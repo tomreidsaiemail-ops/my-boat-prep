@@ -172,7 +172,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
           <TripGroup key={g.id} group={g} n={n} onOpen={onClose}
             onClear={n === 0 && info.crew.some((m) => Object.values(m.trip_rsvp || {}).some(Boolean)) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null}>
           {g.crew.map((m) => (
-            <Row key={m.user_id} avatar={<CrewAvatar userId={m.user_id} v={m.photo_v} name={m.name} size="h-12 w-12" testId={`crew-member-${m.user_id}-photo`} />} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
+            <Row key={m.user_id} avatar={<CrewAvatar userId={m.user_id} v={m.photo_v} name={m.name} testId={`crew-member-${m.user_id}-photo`} />} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-member-${m.user_id}-trip-${g.id}`} />}
               badge={<>
                 {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}

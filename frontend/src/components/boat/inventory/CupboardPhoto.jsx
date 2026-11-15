@@ -23,10 +23,10 @@ export const uploadAreaPhoto = async (boat, blob) => {
   return (await api.post(`/boats/${boat.boat_id}/area-photos`, form, { timeout: 60000 })).data.photo;
 };
 
-export const StorePhotoTick = ({ checked, onChange, testId }) => (
+export const StorePhotoTick = ({ checked, onChange, testId, what = "cupboard" }) => (
   <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-semibold text-[var(--navy)]" data-testid={testId}>
     <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`${testId}-input`} />
-    Store the cupboard magic scan picture
+    Store the {what} magic scan picture
   </label>
 );
 
