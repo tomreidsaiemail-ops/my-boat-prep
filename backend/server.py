@@ -213,7 +213,15 @@ class BoatDetails(BaseModel):
     @field_validator("weather", mode="before")
     @classmethod
     def weather_size(cls, v):
-        return v if isinstance(v, dict) and len(json.dumps(v, default=str)) <= 24000 else {}
+        if not isinstance(v, dict):
+            return {}
+        size = lambda w: len(json.dumps(w, default=str))
+        # Too big: the Navigator advice goes first, then the oldest planned legs, before the plan is dropped.
+        if size(v) > 24000:
+            v = {k: x for k, x in v.items() if k != "advice"}
+        while size(v) > 24000 and isinstance(v.get("legs"), list) and v["legs"]:
+            v = {**v, "legs": v["legs"][1:]}
+        return v if size(v) <= 24000 else {}
 
     @field_validator("year_built", mode="before")
     @classmethod

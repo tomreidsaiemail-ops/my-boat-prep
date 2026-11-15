@@ -1,0 +1,32 @@
+{
+  "summary": "Tested the 4 requested features. Backend: PUT /api/me/features and GET /api/auth/me show_sundowners (4/4 pytest pass). UI at 390x844 (plus a desktop check of the photo dialog): Feature Settings checkbox (off by default, saves, persists after reload); SundownerCard only renders when user.show_sundowners is true (checked in the code, BoatPrep.jsx:1053; card not reproducible because it also needs sunset and a cocktail list); box badge ('2 boxes', the old folders text is gone from the count); full-screen PhotoSwipe (1 and 2 photos, prev/next/counter, scroll swipe, sub-box sections, tick marks the row removed in red and shows in the inventory count after reload, edit opens Edit Item and qty updates live); Route Planning (no '(optional)' on Finish, red navigator-finish-required clears once the time is set, arrive-type bubbles select/unselect and persist, Start folded with the 'Same as DEPARTURE DATE AND TIME' text and stays expanded after reload, Add Leg dialog with all 4 validation errors in order, START and Departure default to the previous leg's destination and finish, planned-leg rows, edit, delete with Undo, trip-confirm only on dock legs with the correct Leave/Arrive labels and Prepare texts, Prepare anchor opens Arriving at Destination and Prepare dock opens Returning to Dock (on the admin boat)). All features work. One data-dependent defect is listed below.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TripConfirm Prepare boxes", "issue": "The Pro test boat (test-user-pro/main) has no arrivingDest or returningDock list in its registry (they are not in the list selector either). Tapping 'Prepare to berth' there quietly lands on registry[0] ('Rigging Checks'), because pickList sets an unknown id and `active` falls back. Fix: only dispatch when the list exists, or show a toast or restore the system list. It works on the admin boat, which has the lists.", "selector": "[data-testid^=trip-confirm-prepare-]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Planned legs", "issues": ["Editing Leg N's DESTINATION or finish does not flow on to Leg N+1's START or departure, and there is no warning when they no longer match (seen: Leg 2 dest changed to Endeavour Inlet, Leg 3 still starts at Ship Cove). Deleting a middle leg also leaves a gap."]},
+      {"screen": "Route Planning", "issues": ["Estimated Finish is 'mandatory' only as a red message; nothing blocks the user without it (fine if that is what was meant)."]},
+      {"screen": "Photo swipe dialog", "issues": ["Sonner toasts at the bottom cover the item rows briefly on mobile (minor)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_feature_settings.py", "/app/test_reports/pytest/pytest_iter180.xml"],
+  "action_items": [
+    "TripConfirm/openList: handle a missing arrivingDest/returningDock list (do not fall back to the first list); also check why test-user-pro/main has no Arriving at Destination/Returning to Dock/Leaving Dock lists",
+    "Optional: when a leg's destination or finish changes, offer to update the next leg's START and departure"
+  ],
+  "critical_code_review_comments": [
+    "Boat.weather validator (server.py weather_size) replaces the WHOLE weather dict with {} if it goes over 24000 chars. With legs, advice (up to 6000) and photos now all inside weather, a long plan could quietly wipe the Route Plan. Better to reject with a 413 or trim the oldest legs.",
+    "Cupboard photos: uploading then Cancel, or removing a photo in Edit Cupboard, leaves orphan entries in user_boats.area_photos (2 were created and cleaned up during this test). This was already the case before these changes.",
+    "TripTiming prop is called finishRequired but is true only for the interim dialog, where the required message is hidden. The inverted name is confusing; rename it to interim.",
+    "The interim New departure dialog could not be opened in the UI: the admin boat has no vessel/callsign, and the pro boat has no Arriving list. The code shows NavigatorAsk interim hides ArriveType, PlannedLegs and the finish-required message."
+  ],
+  "updated_files": ["/app/backend/tests/test_feature_settings.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "seed_data_creation": "None kept. Temporary TEST_Box A/B subs on the pro Fridge were deleted; the extra Fridge photo was removed and the orphan area_photos were pulled by id; the Red lettuce qty and removed flag were restored. Pro boat weather/route_start/route_dest were restored from a backup taken before testing. Admin boat weather/route were reset to the original {} and ''. show_sundowners for the pro user was set back to false.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Route Planning list id = routeHazards (list-option-routeHazards). The pro boat lacks the arrivingDest/returningDock lists, so test the Prepare navigation on the admin boat (test_session_admin_1), which has them; restore admin boat.weather={} afterwards. The admin boat has no vessel/skipper/callsign, so 'New departure...' toasts instead of opening interim-departure-dialog. Fridge amw1pvdq802hq has 1 photo; the sub dialog is inventory-add-sub-{id} > inventory-sub-input > inventory-sub-confirm-btn; the item edit dialog is inventory-item-qty-input / inventory-item-confirm-btn; sub delete confirm is media-delete-confirm-btn. Run pytest with the default xdist (-p no:xdist fails because of pytest.ini)."
+}

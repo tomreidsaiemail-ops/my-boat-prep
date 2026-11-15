@@ -61,8 +61,11 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
   const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "" };
   const last = legs[legs.length - 1] || first;
   const add = () => setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } });
+  // An edited leg's DESTINATION and finish carry on to the next leg's START and departure, where they still matched.
   const save = (leg) => {
-    onChange({ legs: edit.at < legs.length ? legs.map((x, n) => (n === edit.at ? leg : x)) : [...legs, leg] });
+    const old = legs[edit.at];
+    const follow = (x) => (!old ? x : { ...x, ...(x.route_start === old.route_dest ? { route_start: leg.route_dest } : {}), ...(x.depart_at === old.finish_at ? { depart_at: leg.finish_at } : {}) });
+    onChange({ legs: old ? legs.map((x, n) => (n === edit.at ? leg : n === edit.at + 1 ? follow(x) : x)) : [...legs, leg] });
     setEdit(null);
     if (leg.arrive_type === "dock") setConfirm(true);
   };

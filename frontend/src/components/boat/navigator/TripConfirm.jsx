@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { dmyt } from "@/lib/allDone";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
 
-const openList = (id, onClose) => { onClose(); window.dispatchEvent(new CustomEvent("mbp:open-list", { detail: id })); };
+const LIST_NAMES = { arrivingDest: "Arriving at Destination", returningDock: "Returning to Dock" };
+const openList = (id, onClose) => { onClose(); window.dispatchEvent(new CustomEvent("mbp:open-arrival", { detail: { id, name: LIST_NAMES[id] } })); };
 
 const Leg = ({ leg, n, prev, onClose }) => {
   const t = arriveType(leg.arrive_type);

@@ -49,8 +49,8 @@ const timingAnomaly = (w) => {
   return "";
 };
 
-// Departure, optional race/event and where crew meet, kept with the passage plan. finishRequired: the New departure window (today's leg).
-export const TripTiming = ({ weather = {}, onChange, finishRequired }) => {
+// Departure, optional race/event and where crew meet, kept with the passage plan. interim: the New departure window (today's leg).
+export const TripTiming = ({ weather = {}, onChange, interim }) => {
   const warn = timingAnomaly(weather);
   // Start follows Departure until the skipper sets a different Start.
   const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
@@ -71,10 +71,10 @@ export const TripTiming = ({ weather = {}, onChange, finishRequired }) => {
         <span><b className="text-[var(--navy)]">Start date and time (optional)</b><span className="block text-xs text-[var(--muted)]">Same as DEPARTURE DATE AND TIME. Only for racing, tap to set a different Start.</span></span>
       </button>}
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
-    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!finishRequired && noFinish} />
-    {!finishRequired && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
-    {!finishRequired && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
-    {!finishRequired && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
+    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
+    {!interim && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
+    {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
+    {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
       <span className="field-label">Meet up details</span>
       <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}

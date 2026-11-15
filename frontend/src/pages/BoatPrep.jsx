@@ -387,6 +387,12 @@ export default function BoatPrep({ boatId, boats }) {
   }); // eslint-disable-line react-hooks/exhaustive-deps
   // Trip names on crew cards open their Route Planning list.
   useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Trip plan Prepare to... boxes: only open an arrival list this boat has.
+  useEffect(() => {
+    const f = (e) => (registry.some((l) => l.id === e.detail.id) ? pickList(e.detail.id) : toast.error(`This boat has no ${e.detail.name} list yet. Add it from the lists first.`));
+    window.addEventListener("mbp:open-arrival", f);
+    return () => window.removeEventListener("mbp:open-arrival", f);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
