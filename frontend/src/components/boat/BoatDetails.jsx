@@ -52,7 +52,7 @@ const Summary = ({ boat, onExpand }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onFish, onBartender, speak, onMakeKit, onDetailsClosed, onMaintSetup, zone }) => {
+export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onFish, onBartender, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -91,7 +91,7 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
   const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
   const dialog = <>
     <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={closeMore} returnFocus={moreRef} onMakeKit={onMakeKit}
-      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} zoneDone={!!zone?.coloured} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
+      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} maintDone={maintDone} zoneDone={!!zone?.coloured} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
     {zone && <ZoneSchematicsDialog open={plans} boat={boat} boatId={zone.boatId} online={zone.online} onDone={plansDone} onClose={() => setPlans(false)} />}
     <ConfirmDelete item={ask ? [1] : null} danger={false} title="Create a zone map?" confirmLabel="Create zone map" cancelLabel="Not now" testId="zone-map-ask"
       note={`Your boat doesn't have a zone map yet. We can search the web for a schematic of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}

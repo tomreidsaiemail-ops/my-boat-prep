@@ -95,7 +95,7 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, onZoneMap, zoneDone }) => {
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, maintDone, onZoneMap, zoneDone }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -126,7 +126,14 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
                 className="field-input" data-testid="boat-year-input" />
             </label>
             {(onMaintSetup || onZoneMap) && <p className="col-span-2 self-end pb-2 text-xs text-[var(--muted)]" data-testid="boat-year-hint">Make, model and year of manufacture are needed for the buttons below.</p>}
-            {onMaintSetup && (
+            {/* All the maintenance lists are on the boat; deleting any brings the Create button back. */}
+            {onMaintSetup && maintDone && (
+              <label className="col-span-3 flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md border-[1.5px] border-[var(--green)] bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900"
+                onClick={() => toast.message("All the Boat Maintenance lists are on your boat. Delete one to create it again.")} data-testid="maint-setup-done">
+                <input type="checkbox" checked readOnly disabled className="h-5 w-5 accent-[var(--green)]" data-testid="maint-setup-done-checkbox" /> Boat Maintenance lists Done
+              </label>
+            )}
+            {onMaintSetup && !maintDone && (
               <button type="button" onClick={() => (identityReady(boat) ? onMaintSetup() : toast.error(IDENTITY_NEEDED))}
                 className="btn-ghost col-span-3 h-10 min-h-0 justify-start gap-1.5 px-3 text-sm" data-testid="maint-setup-open-btn">
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
