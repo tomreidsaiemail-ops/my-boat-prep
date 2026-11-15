@@ -79,22 +79,11 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
     : { ...acc, ls: acc.ls.map((l, n) => (n === k - 1 ? { ...l, path: null } : l)) }), { ls, patch });
   const place = (i, pos) => {
     const ls = i > 1 ? latest.current.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l)) : latest.current;
-    // A moved pin redraws the legs either side of it.
-    const out = clearPaths(ls, i === 0 ? { start_pos: pos } : i === 1 ? { dest_pos: pos } : {}, [i - 1, i]);
+    // The skipper's waypoints stay put when a pin moves (a cleared pin also clears its legs' waypoints).
+    const out = clearPaths(ls, i === 0 ? { start_pos: pos } : i === 1 ? { dest_pos: pos } : {}, pos ? [] : [i - 1, i]);
     if (out.ls !== latest.current) putLegs(out.patch, out.ls); else onChange(out.patch);
   };
-  // A drawn leg can bring its pins onto the water (moved.a / moved.b); the leg on the other side of a moved pin is drawn again.
-  const setPath = (k, pts, moved = {}) => {
-    let patch = k === 0 ? { path: pts } : {};
-    let ls = k === 0 ? latest.current : latest.current.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l));
-    [[moved.a, k, k - 1], [moved.b, k + 1, k + 1]].forEach(([pos, i, other]) => {
-      if (!pos) return;
-      if (i === 0) patch = { ...patch, start_pos: pos }; else if (i === 1) patch = { ...patch, dest_pos: pos }; else ls = ls.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l));
-      const out = clearPaths(ls, patch, [other]);
-      ({ ls, patch } = out);
-    });
-    if (ls !== latest.current) putLegs(patch, ls); else onChange(patch);
-  };
+  const setPath = (k, pts) => (k === 0 ? onChange({ path: pts }) : putLegs({}, latest.current.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l))));
   const redraw = () => onChange({ path: null, legs: legs.map((l) => ({ ...l, path: null })) });
   const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos, path: weather.path };
   const last = legs[legs.length - 1] || first;
