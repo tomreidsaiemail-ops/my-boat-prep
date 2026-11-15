@@ -433,6 +433,13 @@ export default function BoatPrep({ boatId, boats }) {
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
+  // The house button opens the boat's chosen home list (Boat Inventory until the skipper picks another).
+  const homeList = allLists.find((l) => l.id === boat.home_list) || allLists.find((l) => l.id === "boatInventory") || { id: "boatInventory", name: "Boat Inventory" };
+  const setHome = () => {
+    if (homeList.id === active.id) { toast.info(`${active.name} is already your home list`); return; }
+    changeBoatField("home_list", active.id);
+    toast.success(`${active.name} is now your home list`);
+  };
   const ownerOnly = (fn) => (...args) => (crew ? toast.info("On a shared boat, crew can tick items only") : fn(...args));
   const guard = (zone = "top") => {
     if (ready) return true;
@@ -1068,7 +1075,7 @@ export default function BoatPrep({ boatId, boats }) {
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} onChange={changeBoatField} onBatchScan={startBatchScan} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList("boatInventory")} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
             onDetailsClosed={offerMaint} onMaintSetup={crew || haveMaint.length === MAINT_LISTS.length ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
@@ -1076,7 +1083,7 @@ export default function BoatPrep({ boatId, boats }) {
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
-      <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
+      <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} homeId={homeList.id} onSetHome={crew ? undefined : setHome} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
       {!crew && SERVICE_LOGS[active.id] ? (

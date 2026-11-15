@@ -1,4 +1,4 @@
-import { Copy, Pencil, Plus, User } from "lucide-react";
+import { Check, Copy, Home, Pencil, Plus, User, X } from "lucide-react";
 import { CategoryIcon } from "@/components/boat/CategoryIcon";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -14,7 +14,18 @@ const Row = ({ row, updated }) => (
   </SelectItem>
 );
 
-export const ListSelector = ({ sections, activeId, activeColours, onChange, onCreate, onClone, onRename, updatedIds = [] }) => (
+// The house with a tick: this list is the boat's home list; with a cross: tap to make it home.
+const HomeToggle = ({ isHome, onSetHome }) => (
+  <button type="button" data-testid="set-home-list-btn" onClick={onSetHome} aria-pressed={isHome}
+    title={isHome ? "This is your home list" : "Make this your home list"} aria-label={isHome ? "This is your home list" : "Make this your home list"} className={`${BTN} relative`}>
+    <Home className="h-6 w-6" strokeWidth={2.5} />
+    <span className={`absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-white ${isHome ? "bg-emerald-600" : "bg-[var(--red)]"}`} data-testid={isHome ? "set-home-list-tick" : "set-home-list-cross"}>
+      {isHome ? <Check className="h-3 w-3" strokeWidth={4} /> : <X className="h-3 w-3" strokeWidth={4} />}
+    </span>
+  </button>
+);
+
+export const ListSelector = ({ sections, activeId, activeColours, onChange, onCreate, onClone, onRename, homeId, onSetHome, updatedIds = [] }) => (
   <div className="flex items-stretch gap-2">
     <div className="relative min-w-0 flex-1">
       <Select value={activeId} onValueChange={onChange}>
@@ -41,6 +52,7 @@ export const ListSelector = ({ sections, activeId, activeColours, onChange, onCr
     <button type="button" data-testid="clone-list-btn" onClick={onClone} title="Clone List" aria-label="Clone List" className={BTN}>
       <Copy className="h-6 w-6" strokeWidth={2.5} />
     </button>
+    {onSetHome && <HomeToggle isHome={homeId === activeId} onSetHome={onSetHome} />}
     <button type="button" data-testid="rename-list-btn" onClick={onRename} title="Edit List" aria-label="Edit List" className={BTN}>
       <Pencil className="h-5 w-5" strokeWidth={2.5} />
     </button>
