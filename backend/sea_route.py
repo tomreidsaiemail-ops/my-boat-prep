@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 import time
@@ -63,15 +64,21 @@ async def _crosses(pts: list, z_max: int = 16) -> list:
                 x0, x1, y0, y1 = int(min(ax, bx)) // 256, int(max(ax, bx)) // 256, int(min(ay, by)) // 256, int(max(ay, by)) // 256
                 if (x1 - x0 + 1) * (y1 - y0 + 1) <= 16:
                     break
-            grid = np.vstack([np.hstack([await _tile(client, z, x, y) for x in range(x0, x1 + 1)]) for y in range(y0, y1 + 1)])
+            row = list(range(x0, x1 + 1))
+            got = await asyncio.gather(*[_tile(client, z, x, y) for y in range(y0, y1 + 1) for x in row])
+            grid = np.vstack([np.hstack(got[k:k + len(row)]) for k in range(0, len(got), len(row))])
             mpp = 40_075_016.686 * math.cos(math.radians(a[0])) / (256 * 2 ** z)
-            r = int(LAND_M / 2 / mpp)
+            r = max(3, int(LAND_M / 2 / mpp))  # at least 3 pixels, so dashed boundary lines drawn over the sea close up too
             if r:
                 grid = ~_grow(~_grow(grid, r), r)
             n = int(max(abs(ax - bx), abs(ay - by))) + 1
             xs = np.clip(np.rint(np.linspace(ax, bx, n + 1) - x0 * 256).astype(int), 0, grid.shape[1] - 1)
             ys = np.clip(np.rint(np.linspace(ay, by, n + 1) - y0 * 256).astype(int), 0, grid.shape[0] - 1)
-            out.append(int((~grid[ys, xs]).sum()) >= max(2, math.ceil(GRAZE_M / mpp)))
+            run = worst = 0
+            for dry in ~grid[ys, xs]:
+                run = run + 1 if dry else 0
+                worst = max(worst, run)
+            out.append(worst >= max(2, math.ceil(GRAZE_M / mpp)))
     return out
 
 
@@ -91,4 +98,4 @@ async def sea_check(body: LineIn, user: dict = Depends(get_current_user)):
         return {"land": await _crosses(body.line, 16)}
     except Exception as e:  # noqa: BLE001
         log.warning("Sea check failed: %r", e)
-        return {"land": []}
+        raise HTTPException(status_code=503, detail="Couldn't read the map to check for land. Try again shortly.") from e

@@ -1,6 +1,5 @@
-# Sea route (A* over OSM water) + shore planned route map sharing (iteration 183)
+# Shore planned route map sharing; /api/sea-route removed (iteration 184)
 import os
-import time
 import pytest
 import requests
 
@@ -18,39 +17,11 @@ ROUTE = {
 }
 
 
-# Sea route endpoint
-class TestSeaRoute:
-    def test_mana_to_picton(self):
-        t = time.time()
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": MANA, "b": PICTON}, headers=PRO, timeout=60)
-        took = time.time() - t
-        print(f"sea-route took {took:.2f}s")
-        assert r.status_code == 200
-        d = r.json()
-        assert d["ok"] is True
-        assert isinstance(d["points"], list) and len(d["points"]) >= 2
-        for p in d["points"]:
-            assert len(p) == 2 and -42 < p[0] < -40 and 173 < p[1] < 176
-
-    def test_picton_to_ship_cove(self):
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": PICTON, "b": {"lat": -41.0955, "lon": 174.238}}, headers=PRO, timeout=60)
-        assert r.status_code == 200
-        d = r.json()
-        assert d["ok"] is True and len(d["points"]) >= 1
-
-    def test_invalid_lat(self):
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": {"lat": 95, "lon": 174}, "b": PICTON}, headers=PRO, timeout=30)
-        assert r.status_code == 422
-
-    def test_unauth(self):
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": MANA, "b": PICTON}, timeout=30)
-        assert r.status_code == 401
-
-    def test_inland_both_land(self):
-        # Middle of North Island land (Taupo-ish land area away from lake) -> ok false or graceful 200
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": {"lat": -39.3, "lon": 175.6}, "b": {"lat": -39.5, "lon": 176.2}}, headers=PRO, timeout=60)
-        assert r.status_code == 200
-        assert "ok" in r.json()
+# Removed auto sea-route endpoint
+class TestSeaRouteRemoved:
+    def test_sea_route_gone(self):
+        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": MANA, "b": PICTON}, headers=PRO, timeout=30)
+        assert r.status_code in (404, 405)
 
 
 # Shore route share + watched track

@@ -25,13 +25,13 @@ const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
   bends.forEach((p, j) => {
     if (gap(j + 1, lastAt) < 22 || gap(j + 1, ln.length - 1) < 22) return;
     lastAt = j + 1;
-    L.marker(p, { icon: HANDLE, draggable: true, zIndexOffset: 300, title: "Drag to shape the route" })
+    L.marker(p, { icon: HANDLE, draggable: true, zIndexOffset: 500, title: "Drag to shape the route" })
       .on("dragend", (e) => setBends(k, bends.map((x, n) => (n === j ? r5(e.target.getLatLng()) : x))))
       .on("dblclick", () => setBends(k, bends.filter((_, n) => n !== j))).addTo(g);
   });
   ln.slice(1).forEach((p, j) => {
-    if (gap(j, j + 1) < 44) return;
-    L.marker([(ln[j][0] + p[0]) / 2, (ln[j][1] + p[1]) / 2], { icon: GHOST, draggable: true, zIndexOffset: 200, title: "Drag to add a bend" })
+    if (gap(j, j + 1) < 44 || bends.length >= 78) return;
+    L.marker([(ln[j][0] + p[0]) / 2, (ln[j][1] + p[1]) / 2], { icon: GHOST, draggable: true, zIndexOffset: 450, title: "Drag to add a bend" })
       .on("dragend", (e) => { const next = [...bends]; next.splice(j, 0, r5(e.target.getLatLng())); setBends(k, next); }).addTo(g);
   });
 });
@@ -107,7 +107,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
       if (!ln || land[key] || pending.current.has(key)) return;
       pending.current.add(key);
       setDrawing((n) => n + 1);
-      api.post("/sea-check", { line: ln.slice(0, 80) }, { timeout: 45000 }).then(({ data }) => setLand((x) => ({ ...x, [key]: data.land })))
+      api.post("/sea-check", { line: ln }, { timeout: 45000 }).then(({ data }) => setLand((x) => ({ ...x, [key]: data.land })))
         .catch(() => {}).finally(() => { pending.current.delete(key); setDrawing((n) => n - 1); });
     });
   }, [legs]); // eslint-disable-line react-hooks/exhaustive-deps

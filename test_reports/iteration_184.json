@@ -1,0 +1,37 @@
+{
+  "summary": "Tested the rhumb-line route map with land check, backend and frontend, at 390x844 with geolocation granted. Backend: 16 of 17 pytest pass. /api/sea-check gives Mana->Picton [true], 422 for 1 point and for more than 80 points, 401 with no login. /api/sea-route is gone (404/405). The shore route PUT still works. One real bug: the line the review gave as open Cook Strait water, [-41.15,174.6]->[-41.2,174.5], returns [true]. The cause is the dashed Marlborough/Wellington region boundary drawn over the water on the OSM tiles. Frontend: every requested flow works. A straight dashed leg draws with no automatic bends. The 'Checking the route stays on the water...' badge shows, then the red overlay and the land warning. Dragging a ghost handle adds a waypoint (persists to weather.path and legs[0].path) and re-checks. Dragging a white handle moves it. Double-clicking a white handle removes it. Pins 1, 2 and 3 drag and persist start_pos, dest_pos and legs[i].dest_pos, keep the waypoints and re-check both legs next to the pin. 'Straighten all legs' sets all paths to null. Miles update as the line changes (41->49->45->41 nm). The boat dot shows at the GPS fix. Prepare boxes open checklist-peek-dialog on the admin boat (Stops and Map tabs) and a toast on the pro boat. The shore map draws the shared route (2 pins, Arrive tag, dashed line, pins not draggable). The admin open-water leg [-41.15,174.6]->[-41.18,174.45] also showed red with the warning in the UI, which confirms the false positive.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sea-check", "issue": "False land on open water. The dashed region boundary (Marlborough/Wellington) drawn over Cook Strait is about 3-4 px wide at z13 once anti-aliased, but the closing radius is int(45/2/14.4)=1 px, so it only closes about 2 px. A line running at a shallow angle to the boundary hits 5 or more 'land' pixels (threshold 2). Examples: [-41.15,174.6]->[-41.2,174.5] gives [true], and [-41.15,174.6]->[-41.18,174.45] showed red in the UI. Lines crossing the boundary square-on read correctly ([-41.18,174.45]->[-41.18,174.62] gives [false]). Possible fixes: count a long run of land pixels instead of the total; treat boundary purple/grey pixels as water; or use a larger close radius."},
+      {"endpoint": "POST /api/sea-check", "issue": "When a tile fetch fails it returns 200 {land: []}. The frontend saves [] under the line key, so that line is never checked again and silently shows no red. Better to return 5xx or 503 so the client does not cache it and can retry."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "StopsMap handles vs Prepare tags", "issue": "Prepare to... tags (zIndexOffset 400) sit on top of ghost (200) and white (300) handles. At the default fit zoom, the leg-2 (Picton->Ship Cove) ghost handle was fully covered by the 'Prepare to berth' tag (elementFromPoint returned .stop-prepare), so you can't add a waypoint without zooming in, and a tap opens Prepare instead. Put the handles above the tags, or move the tags away from the handles.", "selector": ".route-handle-ghost / .stop-prepare", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Planned route Map tab", "issues": ["The 'Prepare to anchor' and 'Prepare to berth' tags overlap pins 2 and 3 and hide the leg-2 miles label at the default zoom", "The leg-1 ghost handle sits next to the miles label (0.5 vs 0.35 along the line) and nearly touches it", "The boat dot overlaps pin 1 when the GPS fix is at the start, which is expected but hard to read"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_sea_route_land.py", "/app/backend/tests/test_sea_route_shore_route.py", "/app/test_reports/pytest/pytest_iter184.xml"],
+  "action_items": [
+    "Fix sea-check false positives from the region boundary line over water (see backend minor 1). The test test_open_water_shallow_boundary_crossing reproduces it",
+    "Do not return 200 {land: []} when the check fails, or the frontend should not cache an empty or short answer",
+    "Raise the route-handle zIndexOffset above the Prepare tags (or offset the tags) so ghost and white handles can always be dragged"
+  ],
+  "critical_code_review_comments": [
+    "StopsMap sends ln.slice(0,80): a line with more than 78 waypoints drops its end pin, and the flags no longer line up with the drawn segments",
+    "The land cache key is JSON.stringify(line) and is never trimmed or cleared. That's fine for a session, but a failed or empty answer is cached for good",
+    "sea_route.py builds a new httpx.AsyncClient per request and fetches tiles one by one (await in the comprehension). On a cold cache, a multi-segment line is slow. Use asyncio.gather and a shared client"
+  ],
+  "updated_files": ["/app/backend/tests/test_sea_route_land.py", "/app/backend/tests/test_sea_route_shore_route.py"],
+  "success_rate": {"backend": "94% (16/17)", "frontend": "100% of requested flows (1 handle-overlap usability bug)"},
+  "seed_data_creation": "Temporarily changed pro boat weather (removed a leftover path [[-40.91359,174.43542]], added a TEST_Ship Cove leg, dragged pins) and set admin boat weather to a 1-leg plan for the peek-dialog test. All restored: pro start_pos -41.14123/174.80621, dest_pos -41.05794/174.8941, legs [], arrive_type, path and shore_plan.route unset. Admin boat.weather back to {}. shore_plan.text 'TEST_plan text' (from the shore pytest, already there before) is left in place.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat data is at user_boats{owner_id:'test-user-pro',boat_id:'main'}.boat.weather. Map path: list-selector > list-option-routeHazards > view-planned-route-btn > trip-view-map-tab. Find handles by bounding box (leg-2 ghost = the one nearest the midpoint of pins 2 and 3). Check elementFromPoint, because Prepare tags can cover the handles. Zoom in twice (.leaflet-control-zoom-in) to free the leg-2 ghost. Red overlay = path[stroke='#dc2626'] inside stops-map-canvas. Run pytest without -p no:xdist (pytest.ini sets -n). Shore page: pick TEST_Kia Ora, then shore-map.",
+  "rca of the issue": "Open-water false land: OSM z13 tiles draw the admin boundary across Cook Strait as a purple dashed line about 3-4 px wide, plus anti-aliased pixels outside the WATER +/-12 tolerance. _crosses closes thin land with radius r=int(LAND_M/2/mpp)=1 at z13 (mpp 14.4 m), which only removes features up to about 2 px. Sampling a line at about 1 sample per px, a shallow-angle crossing lands about 5 samples on the boundary, which beats max(2, ceil(15/14.4))=2, so the part is flagged. Reproduce: POST /api/sea-check {line:[[-41.15,174.6],[-41.2,174.5]]} returns [true]. Mitigation: require a run of consecutive land samples at least LAND_M long, mask non-land line colours, or use r=ceil(...)+1."
+}
