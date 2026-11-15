@@ -27,12 +27,12 @@ export const TrainingMode = ({ uid, online }) => {
   const close = (v) => { setShut(v); localStorage.setItem(shutKey, JSON.stringify(v)); };
   return (
     <>
-      <div className="sticky top-0 z-[55] flex items-center justify-center gap-2 bg-emerald-700 px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden" role="status" data-testid="training-mode-strip">
+      <div data-training-window className="pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 bg-emerald-700 px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden" role="status" data-testid="training-mode-strip">
         <GraduationCap className="h-4 w-4 shrink-0" /> &ldquo;Model Vessel&rdquo; Training Mode
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
       {show && (
-        <section className="fixed inset-x-0 bottom-0 z-[70] flex h-[25vh] min-h-[170px] flex-col gap-2 border-t-4 border-emerald-600 bg-white px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)] print:hidden" role="dialog" aria-label="Model Vessel training" data-testid="training-window">
+        <section data-training-window className="pointer-events-auto fixed inset-x-0 bottom-0 z-[70] flex h-[25vh] min-h-[170px] flex-col gap-2 border-t-4 border-emerald-600 bg-white px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)] print:hidden" role="dialog" aria-label="Model Vessel training" data-testid="training-window">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
             <h2 className="flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid="training-step-count">Training · Step {at + 1} of {steps.length}</h2>

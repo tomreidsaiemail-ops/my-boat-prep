@@ -29,7 +29,8 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Clicks on a toast (e.g. its action button) must not close the dialog underneath.
 const keepForToast = (handler) => (e) => {
-  if (e.target?.closest?.("[data-sonner-toaster]")) e.preventDefault();
+  // Toasts and the Model Vessel training window sit beside an open window: tapping them mustn't close it.
+  if (e.target?.closest?.("[data-sonner-toaster], [data-training-window]")) e.preventDefault();
   handler?.(e);
 };
 
