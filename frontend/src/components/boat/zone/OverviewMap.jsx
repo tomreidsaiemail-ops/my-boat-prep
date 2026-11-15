@@ -149,7 +149,8 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     if (selected) setSelected(null);
   };
   return (
-    <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
+    // Dark grey panel: an overview of the whole boat, unlike a zone's own photo (e.g. the galley).
+    <div className="overview-dark flex flex-col gap-1.5 rounded-md border-[1.5px] border-zinc-600 bg-zinc-700 p-2 text-zinc-100" data-testid={t}>
       <button type="button" onClick={toggleHidden} aria-expanded={!hidden} className="flex items-center gap-2 text-left text-sm font-bold text-[var(--navy)]" data-testid={`${t}-hide-toggle`}>
         <span className="min-w-0 flex-1 truncate" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</span>
         <span className="flex shrink-0 items-center gap-1 text-xs font-extrabold">{hidden ? <>Show <ChevronDown className="h-4 w-4" /></> : <>Hide <ChevronDown className="h-4 w-4 rotate-180" /></>}</span>

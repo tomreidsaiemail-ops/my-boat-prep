@@ -136,3 +136,7 @@ body.admin-mode { background: #fecaca; }
 @keyframes shore-alert-pulse { 0%, 100% { opacity: 0.9; transform: scale(0.8); } 50% { opacity: 0.25; transform: scale(1.25); } }
 .shore-alert-tip { background: #dc2626; color: #fff; border-color: #dc2626; font-weight: 800; }
 .shore-alert-tip::before { border-top-color: #dc2626 !important; }
+
+/* Zone Map Overview panel: light text on dark grey (only its own rows, not the white buttons inside the plan). */
+.overview-dark { --muted: #d4d4d8; }
+.overview-dark > .text-\[var\(--navy\)\] { color: #fff; }
