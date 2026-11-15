@@ -23,11 +23,13 @@ const nearStop = (m, line, cls, text, interactive, taken) => {
 };
 
 // Planned route: dashed leg lines, miles, a label before each stop and numbered pins. stops: [{ name, pos, type }].
-export const drawRoute = (m, g, { stops, lines, miles = [], tagFor, onTag, pick = -1, onPin }) => {
+// land[k][j]: part j of leg k crosses land, drawn solid red. onPinDrag: pins can be dragged.
+export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, onTag, pick = -1, onPin, onPinDrag }) => {
   const taken = [];
   lines.forEach((ln, k) => {
     if (!ln) return;
     L.polyline(ln, { color: "#0f172a", weight: 3, dashArray: "8 6", interactive: false }).addTo(g);
+    ln.slice(1).forEach((p, j) => land[k]?.[j] && L.polyline([ln[j], p], { color: "#dc2626", weight: 5, interactive: false }).addTo(g));
     if (miles[k] != null) L.marker(alongLine(ln, 0.35).at, { icon: tag("stop-miles", milesText(miles[k])), interactive: false }).addTo(g);
     const t = tagFor(stops[k + 1]);
     const mk = t && nearStop(m, ln, t.cls, t.text, !!onTag, taken);
@@ -36,8 +38,9 @@ export const drawRoute = (m, g, { stops, lines, miles = [], tagFor, onTag, pick 
   stops.forEach((s, i) => {
     if (!s?.pos) return;
     const kind = i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : "";
-    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind), title: s.name, zIndexOffset: 600 }).bindTooltip(esc(`${i + 1}. ${s.name}`));
+    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
     if (onPin) mk.on("click", () => onPin(i));
+    if (onPinDrag) mk.on("dragend", (e) => { const ll = e.target.getLatLng(); onPinDrag(i, { lat: +ll.lat.toFixed(5), lon: +ll.lng.toFixed(5) }); });
     mk.addTo(g);
   });
 };

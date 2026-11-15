@@ -46,6 +46,9 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
   // No stop is picked once all are pinned, so a stray tap can't move one.
   const [pick, setPick] = useState(() => stops.findIndex((s) => !s.pos));
   const [drawing, setDrawing] = useState(0);
+  // Which parts of each leg cross land, keyed by the leg's line so an old answer never colours a changed line.
+  const [land, setLand] = useState({});
+  const landOf = lines.map((ln) => (ln ? land[JSON.stringify(ln)] : undefined));
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
@@ -56,7 +59,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
     const g = layer.current;
     if (!g) return;
     g.clearLayers();
-    drawRoute(map.current, g, { stops, lines, miles, pick, onPin: setPick, onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+    drawRoute(map.current, g, { stops, lines, miles, land: landOf, pick, onPin: setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
       tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
     drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
   };
@@ -97,31 +100,47 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
 
   useEffect(() => { draw(); }, [legs, pick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A leg with both pins and no drawn line yet is drawn over the water.
+  // A leg with both pins and no drawn line yet is drawn over the water (a pin on land moves onto it); a reshaped leg is checked for land.
   useEffect(() => {
     if (!navigator.onLine) return;
     legs.forEach((l, k) => {
       const [a, b] = [stops[k].pos, stops[k + 1].pos];
-      const key = `${k}:${a?.lat},${a?.lon}:${b?.lat},${b?.lon}`;
-      if (!a || !b || Array.isArray(l.path) || pending.current.has(key)) return;
+      if (!a || !b) return;
+      const routed = Array.isArray(l.path);
+      const key = routed ? `check:${JSON.stringify(lines[k])}` : `route:${k}:${a.lat},${a.lon}:${b.lat},${b.lon}`;
+      if (pending.current.has(key) || (routed && land[JSON.stringify(lines[k])])) return;
       pending.current.add(key);
       setDrawing((n) => n + 1);
-      api.post("/sea-route", { a, b }, { timeout: 45000 }).then(({ data }) => {
+      const done = () => { pending.current.delete(key); setDrawing((n) => n - 1); };
+      if (routed) {
+        api.post("/sea-check", { line: lines[k].slice(0, 80) }, { timeout: 45000 }).then(({ data }) => setLand((x) => ({ ...x, [JSON.stringify(lines[k])]: data.land }))).catch(() => {}).finally(done);
+        return;
+      }
+      api.post("/sea-route", { a, b }, { timeout: 60000 }).then(({ data }) => {
         const s = live.current.stops;
         if (!same(s[k]?.pos, a) || !same(s[k + 1]?.pos, b)) return;
-        live.current.onPath(k, data.points);
-        if (!data.ok) toast.message(`Couldn't find a way over the water for leg ${k + 1}. Drag the handles to shape it.`);
-      }).catch(() => {}).finally(() => { pending.current.delete(key); setDrawing((n) => n - 1); });
+        const wa = data.a_moved ? { lat: data.a_water[0], lon: data.a_water[1] } : a;
+        const wb = data.b_moved ? { lat: data.b_water[0], lon: data.b_water[1] } : b;
+        live.current.onPath(k, data.points, { a: data.a_moved ? wa : null, b: data.b_moved ? wb : null });
+        if (data.ok) setLand((x) => ({ ...x, [JSON.stringify([[wa.lat, wa.lon], ...data.points, [wb.lat, wb.lon]])]: data.land }));
+        const moved = [data.a_moved && k + 1, data.b_moved && k + 2].filter(Boolean);
+        if (moved.length) toast.message(`Pin ${moved.join(" and ")} ${moved.length > 1 ? "were" : "was"} on land, so ${moved.length > 1 ? "they've" : "it's"} moved to the nearest water. Drag to adjust.`);
+        if (!data.ok) toast.message(`Couldn't find a way over the water for leg ${k + 1}. Drag the pins and handles onto the water.`);
+      }).catch(() => {}).finally(done);
     });
   }, [legs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { draw(); }, [land]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onLand = landOf.some((f) => f?.some(Boolean));
 
   return (
     <div className="flex flex-col gap-2" data-testid="stops-map">
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
-        {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Drawing the route over water...</span>}
+        {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Keeping the route on the water...</span>}
       </div>
-      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag the white handles to shape the route, double-tap one to remove it. Not for navigation.</p>
+      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Drag the white handles to shape the route, double-tap one to remove it. Not for navigation.</p>
+      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Drag the pins or handles onto the water, or tap Redraw.</p>}
       <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Redraw the route over water</button>
       <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
