@@ -24,7 +24,7 @@ export const NavigatorReminders = () => (
 import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
 // Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
-const When = ({ id, label, value, onChange, warn }) => {
+export const When = ({ id, label, value, onChange, warn }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
   const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
@@ -64,6 +64,7 @@ export const TripTiming = ({ weather = {}, onChange, finishRequired }) => {
     <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
     <When id="navigator-finish-at" label={`Estimated Finish date and time${finishRequired ? "" : " (optional)"}`} value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} />
+    {!finishRequired && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
       <span className="field-label">Meet up details</span>
       <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}

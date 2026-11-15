@@ -31,7 +31,7 @@ export const legBoat = (b = {}) => {
 const legLine = (l, n) => {
   const route = [l.start, l.dest].filter(Boolean).join(" to ") || "Route not set";
   const left = `departed ${local(l.at) || dmyt(l.depart_at) || "?"}${LEFT[l.kind] ? ` (${LEFT[l.kind]})` : ""}`;
-  const came = l.arrived_at ? `, arrived ${local(l.arrived_at)} (${CAME[l.arrival] || l.arrived_list || "arrived"})` : "";
+  const came = l.arrived_at ? `, arrived ${dmyt(l.actual_finish_at) || local(l.arrived_at)} (${CAME[l.arrival] || l.arrived_list || "arrived"})` : "";
   return `Leg ${n + 1}: ${route}, ${left}${came}.${l.why ? ` Why: ${l.why}` : ""}`;
 };
 
@@ -42,7 +42,7 @@ export const foldTrip = (log, legs, tripName, when) => {
   if (!folded.length) return null;
   const first = legs[0] || {}, last = legs[legs.length - 1] || {};
   const route = [first.start, last.dest].filter(Boolean).join(" to ");
-  const dates = [...new Set([(local(first.at) || dmyt(first.depart_at)).split(" ")[0], local(last.arrived_at || "").split(" ")[0]].filter(Boolean))].join(" - ");
+  const dates = [...new Set([(local(first.at) || dmyt(first.depart_at)).split(" ")[0], (dmyt(last.actual_finish_at) || local(last.arrived_at || "")).split(" ")[0]].filter(Boolean))].join(" - ");
   const photos = folded.flatMap((i) => i.weather_photos || []);
   const detail = [...legs.map(legLine), "", "Ship's Log entries folded into this trip:", ...folded.map((i) => `- ${i.label}${i.detail ? `\n${i.detail}` : ""}`)].join("\n");
   return {

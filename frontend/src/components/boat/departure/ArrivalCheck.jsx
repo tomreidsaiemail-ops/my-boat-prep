@@ -5,6 +5,7 @@ import { TankLevels, allLevelsPicked } from "@/components/boat/departure/TankLev
 import { LogCopy, stamp } from "@/components/boat/departure/LogCopy";
 import { TankChange } from "@/components/boat/departure/TankChange";
 import { tankSummary } from "@/lib/allDone";
+import { useCollapsed } from "@/components/boat/departure/BatteryStatus";
 import { arrivalSummary, arrivalUsage, num, usedText } from "@/lib/telemetry";
 
 const r = (n) => Math.round(n * 10) / 10;
@@ -34,6 +35,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
   const blocked = allLevelsPicked(boat, levels) ? "" : "Pick a level for every tank and battery first.";
   const [open, setOpen] = useState(false);
   const collapsed = !!arrive.log_id && !open;
+  const [fold, toggleFold] = useCollapsed("mbp_tankchange_collapsed_arrive-");
   return (
     <section className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="arrival-check">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -56,7 +58,9 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
       <SetupPrompt boat={boat} onChange={onBoatChange} testId="arrival-setup-btn" />
       <TankLevels boat={boat} prefix="arrive-" arrival levels={levels} onLevel={(k, v) => setArrive({ levels: { ...levels, [k]: v } })}
         details={{ fuel: levels.fuel ? left(use.fuelNow, u) : "", gas: levels.gas ? left(use.gasNow, "kg") : "", water: levels.water ? left(use.waterNow, u) : "" }} />
-      <TankChange boat={boat} prefix="arrive-" engineType={engineType} levels={levels} amounts={arrive.amounts} onSet={setArrive} onBoatChange={onBoatChange} onLog={onTankLog} />
+      <TankChange boat={boat} prefix="arrive-" engineType={engineType} levels={levels} amounts={arrive.amounts} onSet={setArrive} onBoatChange={onBoatChange} onLog={onTankLog}
+        collapsed={fold} onToggle={toggleFold} summary={`Fuel, water and LPG changes, cans still full, Used on the passage and the Ship's Log copy${arrive.log_id ? " (copied)" : ""}.`} />
+      {!fold && (<>
       {(num(boat.fuel_jerry) > 0 || num(boat.water_jerry) > 0 || num(boat.gas_extra) > 0) && (
         <div className="grid grid-cols-3 gap-2" data-testid="arrival-spares">
           {num(boat.fuel_jerry) > 0 && <Count id="arrival-fuel-jerry" label="Fuel cans still full" value={arrive.fuel_jerry_left} max={num(boat.fuel_jerry)} onChange={(v) => setArrive({ fuel_jerry_left: v })} />}
@@ -77,6 +81,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
         outdated={!!arrive.log_id && arrive.log_sig !== sig}
         onToggle={(on) => (on ? (setOpen(false), setArrive({ log_id: onLog(arrivalSummary(boat, depart, arrive, use, stamp(), listName), "Arrival"), log_sig: arrivalSummary(boat, depart, arrive, use, "", listName), log_list: listName })) : (onUnlog(arrive.log_id), setArrive({ log_id: null, log_sig: "", log_list: "" })))}
         onRelog={() => { onRelog(arrive.log_id, summary(stamp()), "Arrival"); setArrive({ log_sig: sig }); }} />
+      </>)}
       </>
       )}
     </section>
