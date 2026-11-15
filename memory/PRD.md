@@ -956,3 +956,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Zone Map Overview cards (OverviewMap.jsx) on a dark grey panel (bg-zinc-700, .overview-dark in App.css lightens its own navy/muted text) so overviews stand apart from zone photos. Self-tested by screenshot.
 - 2026-06: Zone Maps upload button relabelled 'Add high level zone photo (n/100)' with help 'e.g. The cockpit, galley, saloon, or heads' (boat-zone-map-upload-help). First-upload label unchanged.
 - 2026-06: Overview panel lightened to mid grey (bg-zinc-500, border-zinc-400, white text, --muted #f4f4f5) so it doesn't look like the navy buttons; upload help now 'e.g. The cockpit, galley, saloon, or heads. You can label them.'
+- 2026-06: Folders/boxes inside cupboards: darker blue (bg-blue-300, border-blue-400, slate-700 sub text) and a Folder icon before the name (inventory-area-folder-icon-<id>). Self-tested by screenshot.

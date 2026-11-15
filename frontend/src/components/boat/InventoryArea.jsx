@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
-import { Check, ChevronDown, Link2, Loader2, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Folder, Link2, Loader2, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
   <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
@@ -74,7 +74,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
   const shownTotal = total + subItems;
   return (
     // An opened cupboard is light blue; its folders and boxes (and their items) a deeper blue, so they stand apart.
-    <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] [transition:background-color_.15s] ${sub ? "mx-3 mb-2 bg-blue-200" : open ? "bg-sky-100" : "bg-white"}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
+    <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] [transition:background-color_.15s] ${sub ? "mx-3 mb-2 border-blue-400 bg-blue-300" : open ? "bg-sky-100" : "bg-white"}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
       data-testid={`inventory-area-${area.id}`} data-sub={sub ? "true" : "false"}>
       <div className="flex items-center">
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] min-w-0 flex-1 items-center gap-2 px-2 text-left sm:gap-3 sm:px-3" data-testid={`inventory-area-toggle-${area.id}`}>
@@ -82,11 +82,12 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
           <span className="flex min-w-0 flex-1 flex-col py-2">
             {path && <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-path-${area.id}`}>{path}</span>}
             <span className="flex items-center gap-1.5 break-words font-bold text-[var(--navy)] [overflow-wrap:anywhere]" data-testid={`inventory-area-name-${area.id}`}>
+              {sub && <Folder className="h-4 w-4 shrink-0 fill-blue-100 text-[var(--navy)]" aria-label="Folder or box" data-testid={`inventory-area-folder-icon-${area.id}`} />}
               <Highlight text={area.name} query={query} />
               {subCount > 0 && <span className="shrink-0 rounded-full bg-[var(--navy)] px-2 py-0.5 text-[11px] font-extrabold leading-tight text-white" data-testid={`inventory-area-box-badge-${area.id}`}>{subCount} {subCount === 1 ? "box" : "boxes"}</span>}
             </span>
-            {area.where && <span className="break-words text-xs font-semibold text-[var(--muted)] [overflow-wrap:anywhere]" data-testid={`inventory-area-where-${area.id}`}>{area.where}</span>}
-            <span className="text-xs font-bold text-[var(--muted)]" data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
+            {area.where && <span className={`break-words text-xs font-semibold [overflow-wrap:anywhere] ${sub ? "text-slate-700" : "text-[var(--muted)]"}`} data-testid={`inventory-area-where-${area.id}`}>{area.where}</span>}
+            <span className={`text-xs font-bold ${sub ? "text-slate-700" : "text-[var(--muted)]"}`} data-testid={`inventory-area-count-${area.id}`}>{shownTotal} {shownTotal === 1 ? "item" : "items"}{removed ? <span className="text-[var(--red)]"> · {removed} removed for now</span> : ""}</span>
           </span>
         </button>
         {readOnly && photoButton && <div className="shrink-0 pr-1">{photoButton}</div>}
