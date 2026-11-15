@@ -123,6 +123,9 @@ body.admin-mode { background: #fecaca; }
 .route-pin { display: flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 9999px; border: 2px solid #fff; background: var(--navy); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 1px 4px rgba(15, 23, 42, .4); }
 .route-pin-start { background: var(--green); }
 .route-pin-end { background: var(--red); }
+.route-pin-picked { outline: 3px solid #f59e0b; outline-offset: 1px; }
+.stop-miles { display: inline-block; white-space: nowrap; border-radius: 9999px; background: #fff; color: var(--navy); font-size: 11px; font-weight: 800; padding: 1px 7px; box-shadow: 0 1px 3px rgba(15, 23, 42, .35); transform: translate(-50%, -50%); }
+.stop-prepare { display: inline-block; white-space: nowrap; border: 2px dashed #047857; border-radius: 6px; background: #ecfdf5; color: #064e3b; font-size: 11px; font-weight: 800; padding: 3px 7px; cursor: pointer; transform: translate(-50%, -50%); }
 .boat-dot { display: block; width: 18px; height: 18px; border-radius: 9999px; border: 3px solid #fff; background: #0ea5e9; box-shadow: 0 0 0 0 rgba(14, 165, 233, .6); animation: boat-pulse 2s ease-out infinite; }
 @keyframes boat-pulse { 0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, .6); } 100% { box-shadow: 0 0 0 14px rgba(14, 165, 233, 0); } }
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Map as MapIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dmyt } from "@/lib/allDone";
 import { When } from "@/components/boat/navigator/NavigatorExtras";
@@ -69,7 +69,14 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
   const legs = weather.legs || [];
   const [edit, setEdit] = useState(null);
   const [confirm, setConfirm] = useState(false);
-  const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "" };
+  const [view, setView] = useState(false);
+  // Stop 1 is the Route Plan START, stop 2 its DESTINATION, then each planned leg's DESTINATION.
+  const place = (i, pos) => {
+    if (i === 0) onChange({ start_pos: pos });
+    else if (i === 1) onChange({ dest_pos: pos });
+    else onChange({ legs: legs.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l)) });
+  };
+  const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos };
   const last = legs[legs.length - 1] || first;
   const add = () => setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } });
   // An edited leg's DESTINATION and finish carry on to the next leg's START and departure, where they still matched.
@@ -90,6 +97,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
       {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onDelete={() => remove(n)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
+      <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="leg-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
@@ -100,6 +108,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
         </DialogContent>
       </Dialog>
       <TripConfirm open={confirm} legs={[first, ...legs]} name={name} onClose={() => setConfirm(false)} />
+      {view && <TripConfirm open legs={[first, ...legs]} name={name} onClose={() => setView(false)} onPlace={place} />}
     </div>
   );
 };
