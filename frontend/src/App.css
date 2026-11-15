@@ -17,6 +17,8 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 body.admin-mode { background: #fecaca; }
+body.training-mode { background: #bbf7d0; }
+body.training-open { padding-bottom: max(25vh, 170px); }
 
 ::selection { background: var(--blue); color: #fff; }
 

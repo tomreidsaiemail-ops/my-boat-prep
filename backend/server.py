@@ -73,6 +73,7 @@ from quick_invite import router as quick_invite_router, claim_quick  # noqa: E40
 from area_photos import router as area_photos_router  # noqa: E402
 from crew_photo import router as crew_photo_router  # noqa: E402
 from sea_route import router as sea_route_router  # noqa: E402
+from model_vessel import MODEL_BOAT_ID, ensure_model_vessel, seed_wizard_list  # noqa: E402
 from app_version import router as app_version_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
@@ -415,7 +416,7 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         merged, crew_log = merge_crew(prev, payload.model_dump(), galley_crew((prev.get("crew_roles") or {}).get(user["user_id"])), str(by).strip())
         have = []
     else:
-        if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"]}) >= 1:
+        if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"], "model": {"$ne": True}}) >= 1 and boat_id != MODEL_BOAT_ID:
             raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
         inc = payload.model_dump()
         # A phone whose clock runs fast mustn't win every merge until real time catches up.
@@ -477,15 +478,17 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
         "owner_pro": bool(owner) and crew_role and to_user_out(owner).premium,
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
         "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None), "walk_stars": [] if crew_role else d.get("walk_stars") or [],
-        "charter_lock": d.get("charter_lock"), "charter": d.get("charter"), "tracking": tracking_brief(d),
+        "charter_lock": d.get("charter_lock"), "charter": d.get("charter"), "tracking": tracking_brief(d), "model": bool(d.get("model")),
     }
 
 
 @api_router.get("/me/boats")
-async def list_boats(user: dict = Depends(get_current_user)):
+async def list_boats(request: Request, user: dict = Depends(get_current_user)):
+    auth = request.headers.get("authorization", "")
+    await ensure_model_vessel(user, request.cookies.get("session_token") or (auth[7:] if auth.lower().startswith("bearer ") else None))
     await claim_charters(user)
     await claim_quick(user)
-    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "walk_stars": 1, "tracking": 1, "charter_lock": 1, "charter": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
+    proj = {"_id": 0, "boat_id": 1, "owner_id": 1, "boat.vessel": 1, "created_at": 1, "crew": 1, "photo": 1, "zone_maps": 1, "walk_skip": 1, "walk_skip_crew": 1, "walk_stars": 1, "tracking": 1, "charter_lock": 1, "charter": 1, "model": 1, f"crew_roles.{user['user_id']}": 1, f"crew_names.{user['user_id']}": 1}
     mine = await db.user_boats.find({"owner_id": user["user_id"]}, proj).to_list(200)
     mine.sort(key=lambda d: (d.get("boat_id") != "main", d.get("created_at") or ""))
     shared = await db.user_boats.find({"crew": user["user_id"]}, proj).to_list(200)
@@ -749,6 +752,7 @@ async def create_indexes():
     await seed_log_help()
     await quota.migrate_running_total()
     await seed_later_rows()
+    await seed_wizard_list()
     await seed_common_names()
     await seed_terms_template()
     await seed_colour_presets()
