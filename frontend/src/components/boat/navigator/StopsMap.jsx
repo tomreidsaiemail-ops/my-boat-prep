@@ -16,7 +16,8 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const miles = legMiles(legs);
-  const [pick, setPick] = useState(() => Math.max(0, stops.findIndex((s) => !s.pos)));
+  // No stop is picked once all are pinned, so a stray tap can't move one.
+  const [pick, setPick] = useState(() => stops.findIndex((s) => !s.pos));
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
@@ -30,12 +31,13 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenSeaMap" }).addTo(m);
     const fix = fixOf(gps);
     const placed = live.current.stops.filter((s) => s.pos).map((s) => [s.pos.lat, s.pos.lon]);
-    if (fix) m.setView(fix, 11); else if (placed.length) m.fitBounds(placed, { padding: [40, 40], maxZoom: 12 }); else m.setView([-41.2, 174.8], 6);
+    // Pins already down: open on them; otherwise on this phone's GPS.
+    if (placed.length > 1) m.fitBounds(placed, { padding: [48, 48], maxZoom: 13 }); else if (fix) m.setView(fix, 11); else if (placed.length) m.setView(placed[0], 11); else m.setView([-41.2, 174.8], 6);
     m.on("click", (e) => {
       const { pick: i, stops: s, onPlace: place } = live.current;
+      if (i < 0) return;
       place(i, { lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5) });
-      const next = s.findIndex((x, k) => k > i && !x.pos);
-      if (next >= 0) setPick(next);
+      setPick(s.findIndex((x, k) => k !== i && !x.pos));
     });
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
@@ -64,7 +66,7 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
         L.polyline([[a.lat, a.lon], [s.pos.lat, s.pos.lon]], { color: "#0f172a", weight: 3, dashArray: "8 6", interactive: false }).addTo(g);
         L.marker(toward(a, s.pos, 0.5), { icon: tag("stop-miles", milesText(miles[i - 1])), interactive: false }).addTo(g);
         const t = arriveType(s.type);
-        if (t) L.marker(toward(a, s.pos, 0.82), { icon: tag("stop-prepare", t.prep), title: t.prep }).on("click", () => live.current.onPrepare(t.list)).addTo(g);
+        if (t) L.marker([s.pos.lat, s.pos.lon], { icon: tag("stop-prepare", t.prep), title: t.prep, zIndexOffset: 500 }).on("click", () => live.current.onPrepare(t.list)).addTo(g);
       }
       if (s.pos) L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : ""), title: s.name })
         .bindTooltip(`${i + 1}. ${s.name}`).on("click", () => setPick(i)).addTo(g);
@@ -74,11 +76,11 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
   return (
     <div className="flex flex-col gap-2" data-testid="stops-map">
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]"><div ref={el} className="h-full w-full" data-testid="stops-map-canvas" /></div>
-      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">Tap a stop below, then tap the map to drop its pin. Miles are straight lines, not for navigation.</p>
+      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Miles are straight lines, not for navigation.</p>
       <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
           <li key={i} className="flex items-center gap-1">
-            <button type="button" onClick={() => setPick(i)} aria-pressed={pick === i}
+            <button type="button" onClick={() => setPick(pick === i ? -1 : i)} aria-pressed={pick === i}
               className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md border-2 px-2 py-1.5 text-left text-sm [transition:background-color_.15s] ${pick === i ? "border-amber-500 bg-amber-50" : "border-[var(--line)] bg-white"}`} data-testid={`stops-map-stop-${i}`}>
               <span className={`route-pin shrink-0 ${i === 0 ? "route-pin-start" : i === stops.length - 1 ? "route-pin-end" : ""}`}>{i + 1}</span>
               <span className="min-w-0 flex-1 break-words font-bold">{s.name}</span>

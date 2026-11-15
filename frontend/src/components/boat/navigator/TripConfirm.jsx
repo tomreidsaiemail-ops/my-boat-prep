@@ -7,9 +7,10 @@ import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { legMiles, milesText } from "@/lib/tripStops";
 
 const LIST_NAMES = { arrivingDest: "Arriving at Destination", returningDock: "Returning to Dock" };
-const openList = (id, onClose) => { onClose(); window.dispatchEvent(new CustomEvent("mbp:open-arrival", { detail: { id, name: LIST_NAMES[id] } })); };
+// The checklist pops up over the trip plan, so the skipper keeps their place.
+const openList = (t) => window.dispatchEvent(new CustomEvent("mbp:open-arrival", { detail: { id: t.list, name: LIST_NAMES[t.list], kind: t.key, prep: t.prep } }));
 
-const Leg = ({ leg, n, prev, miles, onClose }) => {
+const Leg = ({ leg, n, prev, miles }) => {
   const t = arriveType(leg.arrive_type);
   const Icon = t?.Icon;
   return (
@@ -28,7 +29,7 @@ const Leg = ({ leg, n, prev, miles, onClose }) => {
           {miles != null && <span className="text-xs font-bold text-white/85" data-testid={`trip-confirm-miles-${n}`}>{milesText(miles)}</span>}
         </div>
         {t && (
-          <button type="button" onClick={() => openList(t.list, onClose)} className="flex w-28 shrink-0 items-center justify-center rounded-md border-2 border-dashed border-emerald-700 bg-emerald-50 px-2 text-center text-sm font-bold leading-tight text-emerald-900 [transition:transform_.1s] hover:bg-emerald-100 active:scale-95"
+          <button type="button" onClick={() => openList(t)} className="flex w-28 shrink-0 items-center justify-center rounded-md border-2 border-dashed border-emerald-700 bg-emerald-50 px-2 text-center text-sm font-bold leading-tight text-emerald-900 [transition:transform_.1s] hover:bg-emerald-100 active:scale-95"
             data-testid={`trip-confirm-prepare-${n}`}>{t.prep}</button>
         )}
       </div>
@@ -36,9 +37,9 @@ const Leg = ({ leg, n, prev, miles, onClose }) => {
   );
 };
 
-const Stops = ({ legs, onClose }) => {
+const Stops = ({ legs }) => {
   const miles = legMiles(legs);
-  return <ol className="flex flex-col gap-4" data-testid="trip-stops">{legs.map((l, n) => <Leg key={l.id ?? n} leg={l} n={n} prev={legs[n - 1]} miles={miles[n]} onClose={onClose} />)}</ol>;
+  return <ol className="flex flex-col gap-4" data-testid="trip-stops">{legs.map((l, n) => <Leg key={l.id ?? n} leg={l} n={n} prev={legs[n - 1]} miles={miles[n]} />)}</ol>;
 };
 
 // Shown once a planned leg returns to the dock, or from View planned route... (onPlace: with the Stops and Map tabs).
@@ -57,10 +58,10 @@ export const TripConfirm = ({ open, legs, name, onClose, onPlace }) => {
               <TabsTrigger value="stops" className="h-9 font-bold" data-testid="trip-view-stops-tab">Stops</TabsTrigger>
               <TabsTrigger value="map" className="h-9 font-bold" data-testid="trip-view-map-tab">Map</TabsTrigger>
             </TabsList>
-            <TabsContent value="stops" className="mt-0"><Stops legs={legs} onClose={onClose} /></TabsContent>
-            <TabsContent value="map" className="mt-0"><StopsMap legs={legs} onPlace={onPlace} onPrepare={(list) => openList(list, onClose)} /></TabsContent>
+            <TabsContent value="stops" className="mt-0"><Stops legs={legs} /></TabsContent>
+            <TabsContent value="map" className="mt-0"><StopsMap legs={legs} onPlace={onPlace} onPrepare={openList} /></TabsContent>
           </Tabs>
-        ) : <Stops legs={legs} onClose={onClose} />}
+        ) : <Stops legs={legs} />}
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="trip-confirm-done-btn">{onPlace ? "Done" : "Looks good"}</button>
       </DialogContent>
     </Dialog>

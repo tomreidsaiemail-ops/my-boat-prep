@@ -151,6 +151,7 @@ import { BUDGET_ID, BUDGET_KIND, BUDGET_PREFIX, budgetCurrency, hasBudget, withB
 import { BartenderDialog } from "@/components/boat/bartender/BartenderDialog";
 import { CocktailList } from "@/components/boat/bartender/CocktailList";
 import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
+import { ChecklistPeek } from "@/components/boat/departure/ChecklistPeek";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
 import { queuedCatches } from "@/lib/fishQueue";
@@ -387,12 +388,17 @@ export default function BoatPrep({ boatId, boats }) {
   }); // eslint-disable-line react-hooks/exhaustive-deps
   // Trip names on crew cards open their Route Planning list.
   useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Trip plan Prepare to... boxes: only open an arrival list this boat has.
+  // Trip plan Prepare to... boxes: that arrival's checklist pops up over the plan, if this boat has the list.
+  const [peek, setPeek] = useState(null);
   useEffect(() => {
-    const f = (e) => (registry.some((l) => l.id === e.detail.id) ? pickList(e.detail.id) : toast.error(`This boat has no ${e.detail.name} list yet. Add it from the lists first.`));
+    const f = (e) => (registry.some((l) => l.id === e.detail.id) ? setPeek(e.detail) : toast.error(`This boat has no ${e.detail.name} list yet. Add it from the lists first.`));
     window.addEventListener("mbp:open-arrival", f);
     return () => window.removeEventListener("mbp:open-arrival", f);
   }); // eslint-disable-line react-hooks/exhaustive-deps
+  const peekToggle = (id) => {
+    if (!ready) { toast.error("Fill in the vessel, skipper and callsign at the top first"); return; }
+    mutate((s) => { const list = s.data[peek.id] || []; return { ...s, data: { ...s.data, [peek.id]: stampTicks(list, list.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)), tickedBy) } }; });
+  };
   const listDescription = active.description || templates?.[active.id]?.description || "";
   const [ordering, setOrdering] = useListOrdering(active.id);
   const [folded, setFold, setFoldAll] = useFolds(active.id);
@@ -1057,6 +1063,7 @@ export default function BoatPrep({ boatId, boats }) {
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
+      <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}

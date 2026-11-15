@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend-only test at 390x844 of Route Planning 'View planned route...' (Stops/Map tabs, StopsMap pins/lines/miles/Prepare boxes, persistence) and the Add Leg 'Set Now' buttons, on the pro boat (toast path) and admin boat (list navigation path). All 7 requested features pass. No functional bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Planned route > Map", "issues": [
+        "On short legs the .stop-prepare box (placed 82% along the leg) overlaps the stop pin, its tooltip and the next leg's .stop-miles label (e.g. 'Prepare to return to Dock' covered pin 4 and the '4.2 nm' label). Could offset it to one side of the line or hide it at low zoom.",
+        "The map always centres on GPS even when every pin is already placed, so pins away from the boat start off-screen (pro boat: stop 2 was off the map). Could fitBounds to the pins when they exist."
+      ]}
+    ]
+  },
+  "passed_tests": [
+    "view-planned-route-btn is the next sibling after add-leg-btn; opens trip-view-dialog titled 'Planned route', Stops tab active by default, Map tab inactive",
+    "Stops tab: trip-confirm-leg/depart/arrive-{n} for Route Plan + each leg; prepare-{n} only when the leg has an arrive type ('Prepare to anchor'); trip-confirm-miles-{n} shown only when both pins are set (6.4 nm, then 16 nm / 13 nm after re-pinning; 3.9/3.7/4.2 nm on admin)",
+    "Map tab: Leaflet canvas centred on granted GPS (-41.28,174.78) with a boat-dot; 12 tiles loaded from tile.openstreetmap.org + tiles.openseamap.org",
+    "Default selection is the first unpinned stop; tapping the map drops a pin and auto-selects the next unpinned stop (0->1->2->3 on admin); selected row has aria-pressed=true + amber border and the pin gets .route-pin-picked",
+    "stops-map-stop-{i}-status shows 'x.x nm'/'NN nm' + pin icon (stop 0 shows only the icon), 'Tap the map' for the selected unpinned stop, empty for others; stops-map-clear-{i} only shows for the selected pinned stop and clears the pin along with its line and miles",
+    "Dashed polylines (stroke-dasharray '8 6'), a .stop-miles label per leg, a .stop-prepare box only for legs with an arrive type (Berth/Anchor/Dock)",
+    "Map .stop-prepare closes the dialog: on the pro boat a toast 'This boat has no Arriving at Destination list yet...'; on the admin boat anchor opens 'Arriving at Destination', dock opens 'Returning to Dock'; Stops tab trip-confirm-prepare-1 opens Arriving at Destination",
+    "Pins persist in weather.start_pos/dest_pos/legs[i].dest_pos (checked in Mongo) and show again after closing, reopening and reloading the page",
+    "Regression: saving a Returning to Dock leg opens trip-confirm-dialog ('Trip plan', no tabs, 'Looks good', '3 legs, back at the dock'); saving an anchor leg does not open it",
+    "Add Leg: leg-depart-now-btn sets now-15 min (08:05 at 08:20) and focuses leg-depart-at-time-input; leg-finish-now-btn sets now+2h (10:20) and focuses leg-finish-at-time-input"
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "Optional polish: keep .stop-prepare from covering pins and miles labels on short legs",
+    "Optional: fitBounds to the placed pins when the map opens and all or most stops are pinned"
+  ],
+  "critical_code_review_comments": [
+    "StopsMap: once every stop is pinned the selection falls back to stop 0 (Math.max(0,-1)), so a stray tap on the map silently moves the START pin. Consider having no selection (pick=-1) when all stops are pinned and ignoring map taps until the user picks a stop.",
+    "PlannedLegs.place builds the new legs array from the closure's legs. This is fine with the current synchronous mutate, but two quick taps before a re-render could lose one leg pin; a functional updater would be safer.",
+    "Leg ids from Date.now() are stored as Int64 in Mongo; harmless, just noting it."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "Temporarily added TEST_ route names, legs and pins on the pro and admin 'main' boats. Restored afterwards from the backup /app/tests/backup/weather_backup_181.json (admin weather={}; pro weather back to its pre-test state, which still includes the main agent's smoke-test start_pos/dest_pos, legs=[]; route_start/route_dest='').",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Route Planning = list-option-routeHazards via list-selector. Grant geolocation in Playwright. Map clicks: page.mouse.click inside the stops-map-canvas bounding box. Leaflet layers are queried as .route-pin/.stop-miles/.stop-prepare/path[stroke-dasharray] inside the canvas. The admin boat has the arrivingDest/returningDock lists and the pro boat does not (toast). Back up user_boats.boat.weather (owner_id test-user-pro/test-admin-1, boat_id main) and restore it afterwards (restore script: /app/tests/backup/restore.js)."
+}
