@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronsUpDown, HelpCircle, Lightbulb, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, HelpCircle, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -503,6 +503,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         {groups.map((g) => {
           const k = g.key || "none";
           const shut = !q && coloured && isFolded(k);
+          const editZone = boatZoneList.find((z) => z.colour === k);
           return [
             coloured && (
               <li key={`group-${k}`} className="flex items-center gap-1" data-testid={`inventory-colour-group-${k.toLowerCase()}`}>
@@ -514,12 +515,20 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
                 {g.zone && boat && <ZonePhotosButton boat={boat} zone={{ label: g.zone.map, colour: g.zone.colour }} testId={`inventory-colour-group-${k.toLowerCase()}-photos`} />}
               </li>
             ),
-            coloured && !shut && g.rows.length > 0 && (
-              <li key={`group-tools-${k}`} className="-mt-1 flex" data-testid={`inventory-colour-group-${k.toLowerCase()}-tools`}>
-                <button type="button" onClick={() => expandGroup(k, g)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" aria-label={groupOpen[k] ? "Collapse all cupboards" : "Expand all cupboards"}
-                  data-testid={`inventory-colour-group-${k.toLowerCase()}-expand-btn`}>
-                  <ChevronsUpDown className="h-3.5 w-3.5" /> {groupOpen[k] ? "Collapse all" : "Expand all"}
-                </button>
+            coloured && !shut && (g.rows.length > 0 || editZone) && (
+              <li key={`group-tools-${k}`} className="-mt-1 flex flex-wrap gap-2" data-testid={`inventory-colour-group-${k.toLowerCase()}-tools`}>
+                {g.rows.length > 0 && (
+                  <button type="button" onClick={() => expandGroup(k, g)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" aria-label={groupOpen[k] ? "Collapse all cupboards" : "Expand all cupboards"}
+                    data-testid={`inventory-colour-group-${k.toLowerCase()}-expand-btn`}>
+                    <ChevronsUpDown className="h-3.5 w-3.5" /> {groupOpen[k] ? "Collapse all" : "Expand all"}
+                  </button>
+                )}
+                {/* Same window as tapping this zone's colour on the zone map: add and Magic Scan its cupboards. */}
+                {editZone && (
+                  <button type="button" onClick={() => setZone(editZone)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" data-testid={`inventory-colour-group-${k.toLowerCase()}-edit-zone-btn`}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit zone...
+                  </button>
+                )}
               </li>
             ),
             ...(shut ? [] : g.rows.map((r) => renderArea(r))),
