@@ -14,6 +14,15 @@ const Field = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
+const pad = (n) => String(n).padStart(2, "0");
+const nowPlus = (min) => { const d = new Date(Date.now() + min * 60000); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+// The skipper usually tweaks the time next, so the time box gets focus.
+const focusTime = (id) => setTimeout(() => document.querySelector(`[data-testid="${id}-time-input"]`)?.focus(), 0);
+
+const NowButton = ({ label, testId, onClick }) => (
+  <button type="button" className="btn-ghost -mt-1 h-9 min-h-0 self-end px-3 text-xs" onClick={onClick} data-testid={testId}>{label}</button>
+);
+
 const problem = (l) => {
   if (!l.route_dest.trim()) return "Add the DESTINATION for this leg.";
   if ((l.finish_at || "").length < 16) return "Enter the Estimated Finish date and time.";
@@ -34,7 +43,9 @@ const LegForm = ({ leg, n, onSave }) => {
         <Field id="leg-dest" label="DESTINATION" value={l.route_dest} onChange={(v) => set({ route_dest: v })} placeholder="e.g. Ship Cove" />
       </div>
       <When id="leg-depart-at" label="Departure date and time" value={l.depart_at} onChange={(v) => set({ depart_at: v })} />
+      <NowButton label="Set Now - 15 Minutes" testId="leg-depart-now-btn" onClick={() => { set({ depart_at: nowPlus(-15) }); focusTime("leg-depart-at"); }} />
       <When id="leg-finish-at" label="Estimated Finish date and time" value={l.finish_at} onChange={(v) => set({ finish_at: v })} warn={error.includes("Finish") ? error : ""} />
+      <NowButton label="Set Now + 2 hours" testId="leg-finish-now-btn" onClick={() => { set({ finish_at: nowPlus(120) }); focusTime("leg-finish-at"); }} />
       <ArriveType id="leg-arrive-type" value={l.arrive_type} onChange={(v) => set({ arrive_type: v })} warn={error.includes("Type")} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="leg-error">{error}</p>}
       <button type="button" className="btn-solid h-12 justify-center" onClick={save} data-testid="leg-save-btn">Save Leg {n + 1}</button>
