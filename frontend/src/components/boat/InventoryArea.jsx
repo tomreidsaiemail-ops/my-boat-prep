@@ -60,9 +60,11 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, expand, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
+  // Expand all / Collapse all on the zone row.
+  useEffect(() => { if (expand) setOpen(expand.open); }, [expand]);
   const open = openState || !!query;
   const items = area.items || [];
   const listed = visible || items;
@@ -71,7 +73,8 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
   const total = items.length + linked.length;
   const shownTotal = total + subItems;
   return (
-    <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white ${sub ? "mx-3 mb-2" : ""}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
+    // An opened cupboard is light blue; its folders and boxes (and their items) a deeper blue, so they stand apart.
+    <li className={`overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] [transition:background-color_.15s] ${sub ? "mx-3 mb-2 bg-blue-200" : open ? "bg-sky-100" : "bg-white"}`} style={colour ? { borderLeft: `6px solid ${colour}` } : undefined}
       data-testid={`inventory-area-${area.id}`} data-sub={sub ? "true" : "false"}>
       <div className="flex items-center">
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-[56px] min-w-0 flex-1 items-center gap-2 px-2 text-left sm:gap-3 sm:px-3" data-testid={`inventory-area-toggle-${area.id}`}>

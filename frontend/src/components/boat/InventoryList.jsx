@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Focus, HelpCircle, Layers, Lightbulb, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Focus, HelpCircle, Layers, Lightbulb, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -431,13 +431,22 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const open = groupKeys.filter((k) => !folds.includes(k));
   const focused = groupKeys.length > 1 && open.length === 1 ? open[0] : null;
   const coloured = Object.keys(zones).length > 0;
+  const [expand, setExpand] = useState({});
+  const [groupOpen, setGroupOpen] = useState({});
+  const expandGroup = (k, g, shut) => {
+    const open = !groupOpen[k];
+    if (shut && open) toggleFold(k);
+    const at = Date.now();
+    setExpand((e) => ({ ...e, ...Object.fromEntries(g.rows.map((r) => [r.area.id, { open, at }])) }));
+    setGroupOpen((o) => ({ ...o, [k]: open }));
+  };
   const renderArea = ({ area: a, visible, visibleLinked, subs = [] }, parent) => {
     const kids = parent ? [] : subsOf(a.id);
     const pin = pinFor[a.id] || (parent && pinFor[parent.id]);
     const ro = locked(a);
     const crewSub = readOnly && !!parent;
     return (
-      <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={ro} onAdd={addItem(a)} query={q} visible={visible}
+      <InventoryArea key={a.id} area={a} sub={!!parent} expand={parent ? undefined : expand[a.id]} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={ro} onAdd={addItem(a)} query={q} visible={visible}
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
         onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
@@ -501,6 +510,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
                   <span className="min-w-0" data-testid={`inventory-colour-group-${k.toLowerCase()}-label`}>{g.zone ? g.zone.map : "Not on a zone map"} - {g.rows.length}</span>
                 </button>
                 {g.zone && boat && <ZonePhotosButton boat={boat} zone={{ label: g.zone.map, colour: g.zone.colour }} testId={`inventory-colour-group-${k.toLowerCase()}-photos`} />}
+                {g.rows.length > 0 && (
+                  <button type="button" onClick={() => expandGroup(k, g, shut)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" aria-label={groupOpen[k] && !shut ? "Collapse all cupboards" : "Expand all cupboards"}
+                    data-testid={`inventory-colour-group-${k.toLowerCase()}-expand-btn`}>
+                    <ChevronsUpDown className="h-3.5 w-3.5" /> {groupOpen[k] && !shut ? "Collapse all" : "Expand all"}
+                  </button>
+                )}
                 {!q && groups.length > 1 && (focused === k
                   ? <button type="button" onClick={() => setFoldList([])} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" data-testid={`inventory-colour-group-${k.toLowerCase()}-all-btn`}><Layers className="h-3.5 w-3.5" /> Show all zones</button>
                   : <button type="button" onClick={() => setFoldList(groups.map((x) => x.key || "none").filter((x) => x !== k))} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" title="Fold every other zone"
