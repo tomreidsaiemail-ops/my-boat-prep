@@ -19,6 +19,7 @@ body {
 body.admin-mode { background: #fecaca; }
 body.training-mode { background: #bbf7d0; }
 body.training-open { padding-bottom: max(25vh, 170px); }
+body.training-mini { padding-bottom: 56px; }
 
 ::selection { background: var(--blue); color: #fff; }
 
