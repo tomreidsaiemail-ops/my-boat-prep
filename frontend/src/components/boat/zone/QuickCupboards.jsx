@@ -33,8 +33,8 @@ export const QuickCupboards = ({ zone, onAdd, onDone, t }) => {
           {added.map((a) => <li key={a.id} className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-900" data-testid={`${t}-quick-added-${a.id}`}><Check className="h-3 w-3" />{a.name}</li>)}
         </ul>
       )}
-      <input value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={`Cupboard name, e.g. ${zone.label} - fire extinguisher locker`} aria-label="Cupboard name" className="field-input" data-testid={`${t}-quick-name`} />
-      <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder="Where is it? e.g. Under the port bunk (optional)" aria-label="Where the cupboard is" className="field-input" data-testid={`${t}-quick-where`} />
+      <input value={name} maxLength={120} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="Cupboard name, e.g. Cutlery drawer" aria-label="Cupboard name" className="field-input" data-testid={`${t}-quick-name`} />
+      <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder="Where is it? e.g. To the right of the oven" aria-label="Where the cupboard is" className="field-input" data-testid={`${t}-quick-where`} />
       {error && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid={`${t}-quick-error`}>{error}</p>}
       <div className="flex gap-2">
         <button type="submit" className="btn-ghost h-11 flex-1 justify-center gap-1.5 text-sm" data-testid={`${t}-quick-add-btn`}><Plus className="h-4 w-4" /> {added.length ? "Add another" : "Add cupboard"}</button>
