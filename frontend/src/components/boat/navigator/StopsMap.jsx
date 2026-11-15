@@ -1,32 +1,69 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, X } from "lucide-react";
+import { toast } from "sonner";
+import { Loader2, MapPin, RefreshCw, X } from "lucide-react";
 import useGps from "@/hooks/useGps";
-import { legMiles, milesText, stopsOf, toward } from "@/lib/tripStops";
+import { api } from "@/lib/api";
+import { drawRoute } from "@/lib/routeDraw";
+import { legLines, legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
 
-const pin = (n, picked, kind) => L.divIcon({ className: "", html: `<span class="route-pin${kind}${picked ? " route-pin-picked" : ""}">${n}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] });
-const tag = (cls, text) => L.divIcon({ className: "", html: `<span class="${cls}">${text}</span>`, iconSize: [0, 0] });
 const BOAT = L.divIcon({ className: "", html: '<span class="boat-dot"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+const HANDLE = L.divIcon({ className: "", html: '<span class="route-handle"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
+const GHOST = L.divIcon({ className: "", html: '<span class="route-handle route-handle-ghost"></span>', iconSize: [14, 14], iconAnchor: [7, 7] });
 const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat != null ? [gps.last.lat, gps.last.lon] : null);
+const r5 = (ll) => [+ll.lat.toFixed(5), +ll.lng.toFixed(5)];
+const same = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
 
-// Map tab: pick a stop, tap the map to drop its pin; dashed line, miles and a Prepare to... box before each stop.
-export const StopsMap = ({ legs, onPlace, onPrepare }) => {
+// Drag a bend to move it, drag a faint middle handle to add one, double-tap a bend to remove it. Crowded handles wait for a closer zoom.
+const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
+  if (!ln) return;
+  const bends = ln.slice(1, -1);
+  const px = ln.map((p) => m.latLngToContainerPoint(p));
+  const gap = (i, j) => Math.hypot(px[i].x - px[j].x, px[i].y - px[j].y);
+  let lastAt = 0;
+  bends.forEach((p, j) => {
+    if (gap(j + 1, lastAt) < 22 || gap(j + 1, ln.length - 1) < 22) return;
+    lastAt = j + 1;
+    L.marker(p, { icon: HANDLE, draggable: true, zIndexOffset: 300, title: "Drag to shape the route" })
+      .on("dragend", (e) => setBends(k, bends.map((x, n) => (n === j ? r5(e.target.getLatLng()) : x))))
+      .on("dblclick", () => setBends(k, bends.filter((_, n) => n !== j))).addTo(g);
+  });
+  ln.slice(1).forEach((p, j) => {
+    if (gap(j, j + 1) < 70) return;
+    L.marker([(ln[j][0] + p[0]) / 2, (ln[j][1] + p[1]) / 2], { icon: GHOST, draggable: true, zIndexOffset: 200, title: "Drag to add a bend" })
+      .on("dragend", (e) => { const next = [...bends]; next.splice(j, 0, r5(e.target.getLatLng())); setBends(k, next); }).addTo(g);
+  });
+});
+
+// Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
+export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
+  const lines = legLines(legs);
   const miles = legMiles(legs);
   // No stop is picked once all are pinned, so a stray tap can't move one.
   const [pick, setPick] = useState(() => stops.findIndex((s) => !s.pos));
+  const [drawing, setDrawing] = useState(0);
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
   const boat = useRef(null);
+  const pending = useRef(new Set());
   const live = useRef({});
-  live.current = { pick, stops, onPlace, onPrepare };
+  const draw = () => {
+    const g = layer.current;
+    if (!g) return;
+    g.clearLayers();
+    drawRoute(map.current, g, { stops, lines, miles, pick, onPin: setPick, onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
+    drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
+  };
+  live.current = { pick, stops, onPlace, onPath, onPrepare, draw };
 
   useEffect(() => {
-    const m = L.map(el.current);
+    const m = L.map(el.current, { doubleClickZoom: false });
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(m);
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenSeaMap" }).addTo(m);
     const fix = fixOf(gps);
@@ -39,10 +76,12 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
       place(i, { lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5) });
       setPick(s.findIndex((x, k) => k !== i && !x.pos));
     });
+    m.on("zoomend", () => live.current.draw());
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
+    live.current.draw();
     const t = setTimeout(() => m.invalidateSize(), 250);
-    return () => { clearTimeout(t); m.remove(); map.current = null; boat.current = null; };
+    return () => { clearTimeout(t); m.remove(); map.current = null; layer.current = null; boat.current = null; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The first live fix centres the map, unless pins are already down.
@@ -56,27 +95,34 @@ export const StopsMap = ({ legs, onPlace, onPrepare }) => {
     if (boat.current) boat.current.setLatLng(ll); else boat.current = L.marker(ll, { icon: BOAT, title: "Your boat", interactive: false }).addTo(m);
   }, [gps]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => { draw(); }, [legs, pick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A leg with both pins and no drawn line yet is drawn over the water.
   useEffect(() => {
-    const g = layer.current;
-    if (!g) return;
-    g.clearLayers();
-    stops.forEach((s, i) => {
-      if (i > 0 && s.pos && stops[i - 1].pos) {
-        const a = stops[i - 1].pos;
-        L.polyline([[a.lat, a.lon], [s.pos.lat, s.pos.lon]], { color: "#0f172a", weight: 3, dashArray: "8 6", interactive: false }).addTo(g);
-        L.marker(toward(a, s.pos, 0.5), { icon: tag("stop-miles", milesText(miles[i - 1])), interactive: false }).addTo(g);
-        const t = arriveType(s.type);
-        if (t) L.marker([s.pos.lat, s.pos.lon], { icon: tag("stop-prepare", t.prep), title: t.prep, zIndexOffset: 500 }).on("click", () => live.current.onPrepare(t)).addTo(g);
-      }
-      if (s.pos) L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : ""), title: s.name })
-        .bindTooltip(`${i + 1}. ${s.name}`).on("click", () => setPick(i)).addTo(g);
+    if (!navigator.onLine) return;
+    legs.forEach((l, k) => {
+      const [a, b] = [stops[k].pos, stops[k + 1].pos];
+      const key = `${k}:${a?.lat},${a?.lon}:${b?.lat},${b?.lon}`;
+      if (!a || !b || Array.isArray(l.path) || pending.current.has(key)) return;
+      pending.current.add(key);
+      setDrawing((n) => n + 1);
+      api.post("/sea-route", { a, b }, { timeout: 45000 }).then(({ data }) => {
+        const s = live.current.stops;
+        if (!same(s[k]?.pos, a) || !same(s[k + 1]?.pos, b)) return;
+        live.current.onPath(k, data.points);
+        if (!data.ok) toast.message(`Couldn't find a way over the water for leg ${k + 1}. Drag the handles to shape it.`);
+      }).catch(() => {}).finally(() => { pending.current.delete(key); setDrawing((n) => n - 1); });
     });
-  }, [legs, pick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [legs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-2" data-testid="stops-map">
-      <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]"><div ref={el} className="h-full w-full" data-testid="stops-map-canvas" /></div>
-      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Miles are straight lines, not for navigation.</p>
+      <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
+        <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
+        {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Drawing the route over water...</span>}
+      </div>
+      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag the white handles to shape the route, double-tap one to remove it. Not for navigation.</p>
+      <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Redraw the route over water</button>
       <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
           <li key={i} className="flex items-center gap-1">

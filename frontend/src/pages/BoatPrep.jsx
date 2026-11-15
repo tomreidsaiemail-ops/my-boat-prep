@@ -109,6 +109,7 @@ import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
 import { routeNotes } from "@/lib/routeNotes";
 import { DEFAULT_TRIP, isTripList, tripBoat, tripsWithPlans } from "@/lib/trips";
+import { shoreRoute } from "@/lib/tripStops";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
@@ -474,6 +475,16 @@ export default function BoatPrep({ boatId, boats }) {
   const tickedBy = crew ? (boats.current.my_name || user.name || "Crew").trim() : "";
   const setTicks = (fn) => setItems((list) => stampTicks(list, fn(list), tickedBy));
   const doneGuard = () => guard() || (toast.error("Fill in the vessel, skipper and callsign at the top first"), false);
+  // Underway with shore tracking on: the planned route map goes to the shore contact page, and again after any change.
+  const routeSent = useRef("");
+  const uw = boat.underway;
+  const routeJson = !crew && uw?.trip_id && shoreTrack.on ? JSON.stringify(shoreRoute(tripBoat(boat, uw.trip_id))) : "null";
+  useEffect(() => {
+    const key = `${uw?.at}|${routeJson}`;
+    if (routeJson === "null" || !online || key === routeSent.current) return undefined;
+    const t = setTimeout(() => api.put(`/boats/${boats.current.boat_id}/shore/route`, JSON.parse(routeJson)).then(() => { routeSent.current = key; }).catch(() => {}), 4000);
+    return () => clearTimeout(t);
+  }, [routeJson, online, uw?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const allDone = useAllDone({ state, mutate, tickedBy, online, boatId: boats.current.boat_id, trackingOn: shoreTrack.on });
   const toggle = (id) => {
     if (!guard()) return;

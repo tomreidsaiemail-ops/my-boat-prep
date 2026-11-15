@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { drawRoute } from "@/lib/routeDraw";
+import { lineNm } from "@/lib/tripStops";
+import { arriveType } from "@/components/boat/navigator/ArriveType";
 
 const when = (iso) => new Date(iso).toLocaleString("en-NZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -33,8 +36,12 @@ const drawAlert = (g, a) => {
 };
 
 // The boat's path this trip (navy line), where it started (white dot) and where it is now (orange dot).
-export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh] min-h-[320px]" }) => {
+// route: the skipper's planned route (stops and leg lines), drawn under the boat's path with an arrival label before each stop.
+export const ShoreMap = ({ points, alert, route, endLabel = "Now", className = "h-[60vh] min-h-[320px]" }) => {
   const box = useRef(null);
+  const routeLayer = useRef(null);
+  const routeRef = useRef(route);
+  routeRef.current = route;
   const map = useRef(null);
   const layer = useRef(null);
   const alertLayer = useRef(null);
@@ -45,6 +52,8 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     const m = L.map(box.current, { zoomControl: true, attributionControl: true }).setView([-36.84, 174.76], 9);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(m);
     L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenSeaMap" }).addTo(m);
+    routeLayer.current = L.layerGroup().addTo(m);
+    m.on("zoomend", () => drawPlan());
     layer.current = L.layerGroup().addTo(m);
     alertLayer.current = L.layerGroup().addTo(m);
     map.current = m;
@@ -52,6 +61,23 @@ export const ShoreMap = ({ points, alert, endLabel = "Now", className = "h-[60vh
     fittedAlert.current = "";
     return () => m.remove();
   }, []);
+
+  const drawPlan = () => {
+    const g = routeLayer.current;
+    const r = routeRef.current;
+    if (!g || !map.current) return;
+    g.clearLayers();
+    if (!r?.stops?.length) return;
+    const stops = r.stops.map((s) => (s ? { name: s.name, type: s.type, pos: { lat: s.lat, lon: s.lon } } : { name: "" }));
+    const lines = r.lines || [];
+    drawRoute(map.current, g, { stops, lines, miles: lines.map((ln) => (ln ? lineNm(ln) : null)),
+      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-arrive", text: `Arrive · ${t.label}` }; } });
+  };
+  useEffect(() => {
+    drawPlan();
+    const pts = (route?.stops || []).filter(Boolean).map((s) => [s.lat, s.lon]);
+    if (!fitted.current && !points.length && pts.length) { fitted.current = true; map.current.fitBounds(pts, { padding: [40, 40], maxZoom: 13 }); }
+  }, [JSON.stringify(route)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const g = layer.current;

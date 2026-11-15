@@ -43,7 +43,7 @@ const Stops = ({ legs }) => {
 };
 
 // Shown once a planned leg returns to the dock, or from View planned route... (onPlace: with the Stops and Map tabs).
-export const TripConfirm = ({ open, legs, name, onClose, onPlace }) => {
+export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedraw }) => {
   const home = arriveType(legs[legs.length - 1]?.arrive_type)?.key === "dock";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -59,7 +59,7 @@ export const TripConfirm = ({ open, legs, name, onClose, onPlace }) => {
               <TabsTrigger value="map" className="h-9 font-bold" data-testid="trip-view-map-tab">Map</TabsTrigger>
             </TabsList>
             <TabsContent value="stops" className="mt-0"><Stops legs={legs} /></TabsContent>
-            <TabsContent value="map" className="mt-0"><StopsMap legs={legs} onPlace={onPlace} onPrepare={openList} /></TabsContent>
+            <TabsContent value="map" className="mt-0"><StopsMap legs={legs} onPlace={onPlace} onPath={onPath} onRedraw={onRedraw} onPrepare={openList} /></TabsContent>
           </Tabs>
         ) : <Stops legs={legs} />}
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="trip-confirm-done-btn">{onPlace ? "Done" : "Looks good"}</button>

@@ -7,10 +7,10 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from html import escape
-from typing import Annotated, List, Literal
+from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from auth import get_current_user
 from crew import email_key, owned_boat
@@ -87,6 +87,24 @@ class TrackingIn(BaseModel):
 
 class PlanIn(BaseModel):
     text: str = Field(min_length=1, max_length=1500)
+
+
+class RouteStop(BaseModel):
+    name: str = Field(default="", max_length=80)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    type: str = Field(default="", max_length=20)
+
+
+class RouteIn(BaseModel):
+    """The planned route map: pinned stops and the drawn line of each leg (null where a leg isn't pinned)."""
+    stops: List[Optional[RouteStop]] = Field(default_factory=list, max_length=31)
+    lines: List[Optional[List[List[float]]]] = Field(default_factory=list, max_length=30)
+
+    @field_validator("lines")
+    @classmethod
+    def short_lines(cls, v):
+        return [ln[:80] if ln else None for ln in v]
 
 
 def _contacts(doc: dict) -> list:
@@ -174,13 +192,15 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
 @router.put("/boats/{boat_id}/shore/plan")
 async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(get_current_user)):
     """DEPART shares the route plan on the shore contact page (no email)."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan.route": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id})
     if not n:
         raise HTTPException(status_code=400, detail="Invite a shore contact before you share your route plan")
     plan = {"text": payload.text.strip(), "at": _now().isoformat(), "trip_id": (doc.get("tracking") or {}).get("trip_id")}
+    if route := (doc.get("shore_plan") or {}).get("route"):
+        plan["route"] = route  # the app sends the route map again for each new trip
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"shore_plan": plan}})
     return {**plan, "contacts": n}
 
@@ -378,6 +398,21 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
     return {"vessel": (doc.get("boat") or {}).get("vessel") or "Boat", "status": status_of(t), "started_at": t.get("started_at") if t.get("on") else None, "arrived_at": t.get("arrived_at"),
             "ended_at": t.get("ended_at"), "points": pts, "alert": doc.get("distress"), "plan": plan if (plan := doc.get("shore_plan")) and t.get("trip_id") and plan.get("trip_id") == t["trip_id"] else None,
             "skipper": (doc.get("boat") or {}).get("skipper", ""), "skipper_phone": (doc.get("boat") or {}).get("skipper_phone", "")}
+
+
+@router.put("/boats/{boat_id}/shore/route")
+async def share_route(boat_id: BoatPath, payload: RouteIn, user: dict = Depends(get_current_user)):
+    """DEPART, and any change underway, keeps the planned route map up to date on the shore contact page."""
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore_plan": 1, "tracking.trip_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    trip = (doc.get("tracking") or {}).get("trip_id")
+    plan = doc.get("shore_plan") or {}
+    if plan.get("trip_id") != trip:
+        plan = {"text": "", "at": _now().isoformat(), "trip_id": trip}
+    plan["route"] = {**payload.model_dump(), "at": _now().isoformat()}
+    await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"shore_plan": plan}})
+    return {"ok": True}
 
 
 # ---------- Cron: email shore contacts after two missed hourly pings ----------

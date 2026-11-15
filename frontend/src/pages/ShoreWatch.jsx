@@ -93,7 +93,7 @@ export default function ShoreWatch() {
               <p className="mt-1 whitespace-pre-line text-sm font-semibold" data-testid="shore-watch-plan-text">{track.plan.text}</p>
             </section>
           )}
-          {track && (track.points.length > 0 || alertOn) ? <ShoreMap points={track.points} alert={track.alert} /> : (
+          {track && (track.points.length > 0 || alertOn || track.plan?.route) ? <ShoreMap points={track.points} alert={track.alert} route={track.plan?.route} /> : (
             <p className="rounded-lg bg-slate-100 p-4 text-sm" data-testid="shore-watch-no-points">No positions yet for this trip. They appear when the skipper turns on sharing and the app is open on a phone aboard.</p>
           )}
           <p className="text-xs text-[var(--muted)]">Updates every minute. Positions are sent every 1 km, or hourly when anchored, while My Boat Prep is open aboard. Offline means the hourly check-in was missed; you'll also get an email after two missed check-ins.</p>
