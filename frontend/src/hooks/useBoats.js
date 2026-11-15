@@ -38,7 +38,7 @@ export default function useBoats(userId) {
       const localOnly = local.filter((b) => !b.crew && !ids.has(b.key) && unsynced(b.key));
       // Only the Model Vessel so far: the skipper's own first boat still has its usual place.
       const firstBoat = server.some((b) => b.model) && !server.some((b) => !b.crew && !b.model) && !localOnly.length ? MAIN.map(withKey) : [];
-      const merged = [...firstBoat, ...server, ...localOnly].map((b) => ({ ...b, vessel: read(stateKey(b.key), null)?.boat?.vessel?.trim() || b.vessel }));
+      const merged = [...firstBoat, ...server.filter((b) => !b.model), ...localOnly, ...server.filter((b) => b.model)].map((b) => ({ ...b, vessel: read(stateKey(b.key), null)?.boat?.vessel?.trim() || b.vessel }));
       return merged.length ? merged : MAIN;
     });
     // Open the boat this skipper last used, on whichever phone that was.

@@ -1,0 +1,20 @@
+{
+  "summary": "Model Vessel 'clone on first login' tested end-to-end. Backend: 8/8 pytest pass (tests/test_model_vessel.py) - copy created once per session with model:true, not recreated in same session after DELETE, recreated on a fresh user_sessions doc; copy registry/data/areas/zone_maps/area_photos equal master, crew/shore/tracking/charter/crew_roles/log_sent dropped, shore_email blank; zone-map and area-photo GETs on the copy return images; deleting a zone map / removing an area photo reference on the copy leaves master intact; master doc byte-identical before/after; free (non-premium) user with only Model Vessel can PUT main, third boat 403, saving model_vessel OK; shore_only and crew-only users get no copy; master user has no copy; admin-lists prefix returns wizard list with 6 items. Frontend (390x844): switcher shows Model Vessel; strip, green body (#bbf7d0), training-window (~1/4 height 211px), Step 1 of 6, Back disabled on 1, Next/Back work, step persists across reload, close hides + Show steps reopens at same step, Next disabled on step 6, switching to own boat removes strip/window/green. Brand-new skipper sees both 'New boat (add a name)' (main) and Model Vessel, opens on main by default.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "DELETE /api/me/boats/model_vessel + /api/me/deleted-boats", "issue": "Deleted Model Vessel goes to the 7-day trash; after it is recreated at next sign-in, the trash still lists 'Model Vessel' and restoring it returns 409 'That boat is already back'. Consider skipping trash_boat for model:true boats (or hiding them from deleted-boats)."},
+    {"endpoint": "ensure_model_vessel (_skipper)", "issue": "Skipper check runs once per session on the first /me/boats call; a brand-new user who signs up via a crew invite gets a copy if /me/boats is called before the crew join completes (they are not crew yet). Edge case only."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": [
+    {"screen": "Boat switcher (brand-new skipper)", "issues": ["Model Vessel is listed ABOVE the user's own 'New boat (add a name)' because main is still local-only (unsynced) on first refresh, so firstBoat isn't prepended and main is appended via localOnly. Cosmetic: consider sorting model boats last."]},
+    {"screen": "Header date field", "issues": ["Date uses native browser date input instead of shadcn calendar (pre-existing, unrelated)."]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_model_vessel.py", "/app/test_reports/pytest/pytest_model_vessel.xml"],
+  "action_items": ["Optional: don't trash (or hide from deleted-boats) model:true boats on delete", "Optional: sort Model Vessel after own boats in switcher"],
+  "critical_code_review_comments": ["DELETE /me/boats needs >1 boats, so a new skipper whose only server boat is model_vessel cannot delete it (400) until main syncs - acceptable.", "Free-tier limit test required temporarily adding the throwaway email to app_settings.first200.exceptions (FIRST200 running makes everyone premium); removed in finally - verified exceptions back to []."],
+  "updated_files": ["/app/backend/tests/test_model_vessel.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Throwaway TEST_mv_* users/sessions/boats/copies created and deleted (verified 0 remaining). test-user-pro model_vessel left in place. Master user_91424b2ef989/main unchanged (asserted). app_settings first200.exceptions temporarily had one throwaway email, restored to [].",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_model_vessel.py -n 0 -v. It creates its own users/sessions directly in Mongo and cleans up. FIRST200 promo is running, so free-limit tests must put the email on first200 exceptions and wait >10s (cache TTL). UI: cookie session_token=test_session_pro_1, switcher [data-testid=boat-switcher] [role=combobox] -> boat-option-model_vessel. Training step stored in localStorage mbp_model_step:<uid>."
+}
