@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only test of the Boat Inventory zone header change (InventoryList.jsx). Used real preview boat user_6ec81f74cf02/main, which has 5 coloured zones (Galley/Orange 8, Cockpit/Gold 4, Forward cabin/Blue 1, Nav station/Navy 4, Saloon/Purple 2), through a temporary session TEST_inv_zone_sess (now deleted). Tested at 390x844 and 1920x1080. Every requested behaviour passed: (1) there are no inventory-colour-group-*-focus-btn or *-all-btn buttons. (2) Collapsed zone headers (aria-expanded=false) show no expand button. (3) Expanding a zone shows the -tools row with 'Expand all'. DOM order is header, tools, then that zone's 8 cupboards. All other zones fold (aria-expanded=false), and localStorage mbp_zone_folds_main holds the other 4 keys. (4) Expand all opens all 8 cupboards (inventory-area-toggle-* aria-expanded=true) and the label changes to 'Collapse all'. Collapse all closes them and the label goes back to 'Expand all'. (5) Expanding Gold folds Orange. Collapsing Gold leaves every zone shut and shows no expand button. (6) openArea via the QR deep link (?scan_area=<Nav Desk>) with Navy folded opens Navy, folds the other 4, opens the Magic Scan dialog and shows the cupboard. (7) scrollWidth is 390 at 390px, so nothing overflows. While searching, all matching groups show. Clearing the search brings back the saved folds.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InventoryList zone groups (first visit)", "issue": "With no mbp_zone_folds_<boat> in localStorage (first visit or a new device), every zone starts expanded and each shows its own Expand all row. That breaks the 'one zone open at a time' rule until the user collapses or expands a header. Consider making the default state 'all folded' or 'only the first zone open'.", "selector": "[data-testid^=inventory-colour-group-][data-testid$=-toggle]", "priority": "LOW"},
+      {"component": "openArea", "issue": "openArea only folds the other zones when the target zone is currently folded (line 289). If the target zone is already open and other zones are also open (for example on first visit), the others stay open.", "selector": "InventoryList.jsx:289", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: give folds a sensible default when localStorage is empty (fold all, or all but one zone) so only one zone is open at a time from the start",
+    "Optional: make openArea always fold the other zones (setFoldList(groupKeys without target)), not only when the target zone was folded"
+  ],
+  "critical_code_review_comments": [
+    "toggleFold and openArea use groupKeys from the search-filtered `results`. If they run while a search is active, zones that don't match the search are left out of the fold list and stay open after the search is cleared. This is an edge case: the toggle is still clickable during a search but has no visible effect because shut = !q && ...",
+    "expandGroup's `shut` parameter is now always false, because the tools row only renders when the zone is open. The `if (shut && open) toggleFold(k)` branch is dead code.",
+    "groupOpen[k] is kept after a zone is collapsed, so re-expanding the zone can show 'Collapse all' with the cupboards restored open. This is consistent but worth knowing.",
+    "InventoryList.jsx is about 570 lines, close to the 700-line limit."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% (7/7 requested checks)"},
+  "seed_data_creation": "Temporary user_sessions doc session_token TEST_inv_zone_sess for user_6ec81f74cf02. Deleted afterwards (deleted_count=1). Note: just opening the app made the client PUT /api/me/boat?boat_id=main (an automatic sync). The boat's updated_at moved from 2026-11-09T20:30:04Z to 2026-11-15T18:45:22Z. The areas were unchanged (still 19, same zones). The QR Magic Scan dialog was closed without saving.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Preview boat with coloured zones: owner user_6ec81f74cf02, boat main (5 zones, no zone-map pins). To test, insert a user_sessions doc and set the session_token cookie, then dispatch mbp:open-list boatInventory. The QR path can be triggered with /?scan_area=<area_id>&b=main&o=<owner>. Map-pin openArea could not be tested because the boat has no pins with area_id."
+}

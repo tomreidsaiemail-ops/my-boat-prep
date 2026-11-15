@@ -286,7 +286,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     // Unfolds the zone group the cupboard (or its parent cupboard) sits in, or there's nothing to scroll to.
     const top = areas.find((a) => a.id === id)?.parent_id || id;
     const g = rainbowGroups(areas.filter((a) => !a.parent_id).map((a) => ({ area: a })), zones).find((x) => x.rows.some((r) => r.area.id === top));
-    if (g && folds.includes(g.key || "none")) setFoldList(groupKeys.filter((k) => k !== (g.key || "none")));
+    if (g) setFoldList(allZoneKeys().filter((k) => k !== (g.key || "none")));
     setFocus({ id, at: Date.now() });
     // Waits for a closing dialog (e.g. the Crew Walkthrough) to hand focus back first, or the page jumps back up.
     setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
@@ -365,10 +365,13 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     openArea(a.parent_id || a.id);
   }, [boat?.key, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   const saveQr = (list, mode) => setArea(qrArea.id, (x) => ({ ...x, items: applyQr(x.items, list, mode) }));
-  const [folds, setFolds] = useState(() => { try { return JSON.parse(localStorage.getItem(`mbp_zone_folds_${boat?.key}`)) || []; } catch { return []; } });
+  // null (never chosen on this phone): every zone starts folded.
+  const [folds, setFolds] = useState(() => { try { return JSON.parse(localStorage.getItem(`mbp_zone_folds_${boat?.key}`)); } catch { return null; } });
   const setFoldList = (next) => { localStorage.setItem(`mbp_zone_folds_${boat?.key}`, JSON.stringify(next)); setFolds(next); };
+  const isFolded = (k) => !folds || folds.includes(k);
+  const allZoneKeys = () => [...new Set([...groupKeys, ...Object.values(zones).map((z) => z.colour), "none"])];
   // Opening a zone folds every other zone.
-  const toggleFold = (k) => setFoldList(folds.includes(k) ? groupKeys.filter((x) => x !== k) : [...folds, k]);
+  const toggleFold = (k) => setFoldList(isFolded(k) ? allZoneKeys().filter((x) => x !== k) : [...folds, k]);
   const applyBatch = (list) => {
     const toItems = (items) => items.map((i) => ({ id: newId(), name: i.name, qty: i.qty }));
     const tag = batchZone ? { zone: { label: batchZone.label, colour: batchZone.colour } } : {};
@@ -433,9 +436,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const coloured = Object.keys(zones).length > 0;
   const [expand, setExpand] = useState({});
   const [groupOpen, setGroupOpen] = useState({});
-  const expandGroup = (k, g, shut) => {
+  const expandGroup = (k, g) => {
     const open = !groupOpen[k];
-    if (shut && open) toggleFold(k);
     const at = Date.now();
     setExpand((e) => ({ ...e, ...Object.fromEntries(g.rows.map((r) => [r.area.id, { open, at }])) }));
     setGroupOpen((o) => ({ ...o, [k]: open }));
@@ -500,7 +502,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <ul className="flex flex-col gap-2" data-testid="inventory-areas">
         {groups.map((g) => {
           const k = g.key || "none";
-          const shut = !q && folds.includes(k);
+          const shut = !q && coloured && isFolded(k);
           return [
             coloured && (
               <li key={`group-${k}`} className="flex items-center gap-1" data-testid={`inventory-colour-group-${k.toLowerCase()}`}>
@@ -514,7 +516,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
             ),
             coloured && !shut && g.rows.length > 0 && (
               <li key={`group-tools-${k}`} className="-mt-1 flex" data-testid={`inventory-colour-group-${k.toLowerCase()}-tools`}>
-                <button type="button" onClick={() => expandGroup(k, g, shut)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" aria-label={groupOpen[k] ? "Collapse all cupboards" : "Expand all cupboards"}
+                <button type="button" onClick={() => expandGroup(k, g)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" aria-label={groupOpen[k] ? "Collapse all cupboards" : "Expand all cupboards"}
                   data-testid={`inventory-colour-group-${k.toLowerCase()}-expand-btn`}>
                   <ChevronsUpDown className="h-3.5 w-3.5" /> {groupOpen[k] ? "Collapse all" : "Expand all"}
                 </button>
