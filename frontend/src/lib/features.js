@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 
 // Features the admin has switched off for the signed-in user ("Admin - disabled features"); off until the server says otherwise.
 // Kept per user so signing in as someone else never shows the last person's switches.
-const DEFAULT = ["charter", "speak", "sync_stores"];
+const DEFAULT = ["charter", "speak", "sync_stores", "route_map"];
 const KEY = (uid) => `mbp_disabled_features:${uid}`;
 const read = (uid) => { try { return JSON.parse(localStorage.getItem(KEY(uid))) || DEFAULT; } catch { return DEFAULT; } };
 const cache = {};

@@ -1,7 +1,7 @@
 import { ArrowDown, Navigation } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dmyt } from "@/lib/allDone";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RouteTabs } from "@/components/boat/navigator/RouteTabs";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { legMiles, milesText } from "@/lib/tripStops";
@@ -53,14 +53,7 @@ export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedr
           <DialogDescription data-testid="trip-confirm-summary">{legs.length} {legs.length === 1 ? "leg" : "legs"}{home ? ", back at the dock" : ""}. Tap a Prepare to... box to open its arrival checklist.</DialogDescription>
         </DialogHeader>
         {onPlace ? (
-          <Tabs defaultValue="stops" className="flex flex-col gap-3">
-            <TabsList className="grid h-11 w-full grid-cols-2">
-              <TabsTrigger value="stops" className="h-9 font-bold" data-testid="trip-view-stops-tab">Stops</TabsTrigger>
-              <TabsTrigger value="map" className="h-9 font-bold" data-testid="trip-view-map-tab">Map</TabsTrigger>
-            </TabsList>
-            <TabsContent value="stops" className="mt-0"><Stops legs={legs} /></TabsContent>
-            <TabsContent value="map" className="mt-0"><StopsMap legs={legs} onPlace={onPlace} onPath={onPath} onRedraw={onRedraw} onPrepare={openList} /></TabsContent>
-          </Tabs>
+          <RouteTabs stops={<Stops legs={legs} />} map={<StopsMap legs={legs} onPlace={onPlace} onPath={onPath} onRedraw={onRedraw} onPrepare={openList} />} />
         ) : <Stops legs={legs} />}
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="trip-confirm-done-btn">{onPlace ? "Done" : "Looks good"}</button>
       </DialogContent>

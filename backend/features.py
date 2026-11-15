@@ -32,6 +32,8 @@ def feature_key(name: str):
         return "speak"
     if "sync" in n or ("cupboard" in n and "magic" in n):
         return "sync_stores"
+    if "route" in n and "map" in n:
+        return "route_map"
     return None
 
 
@@ -59,7 +61,8 @@ async def my_features(user: dict = Depends(get_current_user)):
 
 
 # Features added after the list was first seeded: each row is added once on deploy (the admin can then edit or delete it).
-LATER_ROWS = [("disabled_feature_charter", "charter", "Charter Registrations Feature; enabled for nobody")]
+LATER_ROWS = [("disabled_feature_charter", "charter", "Charter Registrations Feature; enabled for nobody"),
+              ("disabled_feature_route_map", "route_map", "Planned route map tab Feature; enabled for nobody")]
 
 
 async def seed_later_rows():
