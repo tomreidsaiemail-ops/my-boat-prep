@@ -58,8 +58,9 @@ const OwnerTools = ({ boat, count, online, onMaps }) => {
   return (
     <>
       <button type="button" className="btn-ghost h-10 self-start px-3 text-sm" disabled={busy} onClick={() => input.current?.click()} data-testid="boat-zone-map-upload-btn">
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />} {count ? `Add another map (${count}/${MAX_MAPS})` : "Upload my boat's zone map"}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />} {count ? `Add high level zone photo (${count}/${MAX_MAPS})` : "Upload my boat's zone map"}
       </button>
+      {count > 0 && <p className="-mt-1 text-xs text-[var(--muted)]" data-testid="boat-zone-map-upload-help">e.g. The cockpit, galley, saloon, or heads</p>}
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="boat-zone-map-input" />
     </>
   );
