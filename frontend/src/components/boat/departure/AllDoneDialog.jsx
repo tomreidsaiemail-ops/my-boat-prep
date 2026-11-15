@@ -29,7 +29,7 @@ const ActualFinish = ({ plan, onFinish }) => (
   <div className="flex flex-col gap-2 rounded-lg bg-[var(--panel)] p-3" data-testid="all-done-actual">
     <When id="all-done-actual-finish" label="Actual finish date and time" value={plan.finish} onChange={onFinish} warn={plan.finish?.length !== 16} />
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <span className="text-xs text-[var(--muted)]" data-testid="all-done-actual-estimate">{plan.estimate ? "Filled in from the Estimated Finish. Change it if you were early or late." : "No Estimated Finish was set, so enter when you arrived."}</span>
+      <span className="text-xs text-[var(--muted)]" data-testid="all-done-actual-estimate">{plan.estimate && plan.finish === plan.estimate ? "Filled in from the Estimated Finish. Change it if you were early or late." : plan.finish ? "This is logged as when you arrived." : "Enter when you arrived."}</span>
       <button type="button" className="btn-ghost h-9 min-h-0 px-3 text-xs" onClick={() => onFinish(minus15())} data-testid="all-done-actual-now15">Set to Now - 15 minutes</button>
     </div>
   </div>

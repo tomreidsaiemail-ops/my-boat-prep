@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend E2E (1920 and 390px) of the Arrival-check fold and ARRIVED 'Actual finish date and time'. All requested features PASS. Fold: arrive-tank-change-toggle hides amount, arrival-spares (fuel_jerry=2/water_jerry=1), arrival-used and arrival-log-checkbox together on arrivingDest and returningDock. The summary text is exact, with ' (copied)' added once logged, and the state survives a reload (localStorage mbp_tankchange_collapsed_arrive-, shared by both arrival lists). Leaving Dock's tank-change keeps its own state (still open while the arrival fold is shut). ARRIVED: pre-fill after a plain DEPART = Route Plan finish (16/11 18:00). After a New departure with 23:45 it = the leg's 2026-11-15 23:45, and after a later leg with 21:10 it = 21:10. Clearing the time shows all-done-actual-error and disables all 3 choices / all-done-confirm-btn. now15 set 01:08 when the browser's local time was 01:23 (UTC) and enabled the buttons again. Confirm: the log label ends '. Actual arrival: 15/11/2026 17:20 - <stamp>'. legs[].actual_finish_at is set. boat.weather.actual_finish_at is set and the Estimated Finish is unchanged. Route Planning shows '(Actual arrival date and time)' with the value, and an edit (22:05) persisted after reload. The New departure dialog has no actual field, and the DEPART window has no actual box or error. Returning to Dock fold: 3-leg trip legs read 'arrived 15/11/2026 17:20 / 23:45 / 21:40'. A 1-leg trip with actual 2026-11-20 gave the title '15/11/2026 - 20/11/2026'. Arrival types ticked the right groups, returningDock ticked all 7, and there was no horizontal overflow at 390px (scrollWidth 390). No console errors apart from one unrelated 401.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "ARRIVED window", "issues": ["all-done-actual-estimate still says 'Filled in from the Estimated Finish. Change it if you were early or late.' after the user taps 'Set to Now - 15 minutes' or clears/edits the value. It is based on plan.estimate, not on whether the value still matches. Cosmetic only."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": ["Optional: make the all-done-actual-estimate hint follow the current value (e.g. only show 'Filled in from the Estimated Finish' while plan.finish === plan.estimate)."],
+  "critical_code_review_comments": [
+    "useAllDone.arrive: weather.actual_finish_at is written to boat.weather for DEFAULT_TRIP and to boat.trips[id].weather for copies, per spec. The copy (non-default trip) path was reviewed in code only, not run in E2E.",
+    "TankChange still calls its own useCollapsed even when controlled; harmless, and it uses the same key as ArrivalCheck ('mbp_tankchange_collapsed_arrive-'), so the two stay consistent.",
+    "When.join drops the time if the date is cleared (the time input is then disabled), so the user has to re-enter both. This is acceptable because the error shows."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Backed up test-admin-1/main to /tmp/bk178/boat.json, ran /tmp/seed175.py and set boat.fuel_jerry=2, water_jerry=1. Restored afterwards with mongoimport --mode=upsert (fuel_jerry back to '', legs None, shipsLog back to original).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Route Planning list id is routeHazards (DEFAULT_TRIP). Fresh browser contexts have empty localStorage, so tank-change panels start open. Ticking arrival-log-checkbox collapses the whole arrival check; use arrival-collapse-toggle to reopen it. Backup is at /tmp/bk178/boat.json. Wait for sonner toasts to clear before clicking list-selector."
+}
