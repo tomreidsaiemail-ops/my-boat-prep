@@ -15,6 +15,7 @@ from email_service import send_email
 from urls import public_base
 import joincrew
 
+from crew_photo import photo_versions  # noqa: E402
 router = APIRouter(prefix="/api")
 INVITE_DAYS = 7
 DAILY_INVITE_LIMIT = 20
@@ -370,7 +371,8 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
              "trips": trips_of(doc, m["user_id"]), "trip_rsvp": trip_rsvps(doc, m["user_id"]), "trip_quick": trip_quick(doc, m["user_id"]),
              "joincrew": tick(m.get("joincrew") or ({"at": None} if (doc.get("joincrew_applied") or {}).get(m["user_id"]) else None), user["user_id"]),
              **(joined.get(m["user_id"]) or {})} for m in members]
-    return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower())} for m in crew], "invites": invites,
+    pics = await photo_versions([m.get("user_id") for m in crew])
+    return {"crew": [{**m, "prep": prep.get((m["name"] or "").strip().lower()), "photo_v": pics.get(m.get("user_id"))} for m in crew], "invites": invites,
             "role_options": await role_options(user["user_id"], boat_id, doc, invites), "voyage_notes": doc.get("voyage_notes", ""), "trip_notes": trip_notes(doc),
             "watch_rota": doc.get("watch_rota"), "boat_terms": doc.get("boat_terms", ""), "joincrew_live": await joincrew.live(),
             "shore_contacts": len(doc.get("shore") or {})}

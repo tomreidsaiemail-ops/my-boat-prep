@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Focus, HelpCircle, Layers, Lightbulb, Plus, Search, UploadCloud, X } from "lucide-react";
+import { ChevronDown, Focus, HelpCircle, Layers, Lightbulb, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -14,10 +14,10 @@ import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
-import { CupboardPhotoButton, uploadAreaPhoto } from "@/components/boat/inventory/CupboardPhoto";
+import { CupboardPhotoButton, areaPhotos, areaPhotoUrl, uploadAreaPhoto, withPhotos } from "@/components/boat/inventory/CupboardPhoto";
 import { ZonePhotosButton } from "@/components/boat/zone/ZonePhotosButton";
 import { zoneDefaultAreas } from "@/lib/zoneDefaults";
-import { areaZones, boatZones, rainbowGroups } from "@/lib/zoneColours";
+import { areaZones, boatZones, rainbowGroups, zonePhotos } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
 import { AreaZoneButton } from "@/components/boat/zone/AreaZoneButton";
@@ -103,25 +103,36 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [scanning, setScanning] = useState(null);
   const [scan, setScan] = useState(null);
   const [fresh, setFresh] = useState(null);
+  // One Magic Scan reads every photo given (a new one, or the cupboard's stored photos).
+  const runScan = async (a, blobs, stored) => {
+    if (!online) { toast.error("AI Auto-Scan needs a signal"); return; }
+    const form = new FormData();
+    form.append("file", blobs[0], "cupboard.jpg");
+    blobs.slice(1).forEach((b, n) => form.append("extra", b, `cupboard-${n + 2}.jpg`));
+    setScanning(a.id);
+    try {
+      const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
+      setScan({ area: a, items: data.items, blob: stored ? null : blobs[0] });
+      if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left`);
+    } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
+  };
   const startScan = (a) => async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (!online) { toast.error("AI Auto-Scan needs a signal"); return; }
     let blob;
     try { blob = await shrink(file, 1600); } catch { toast.error("That file doesn't look like a photo"); return; }
-    const form = new FormData();
-    form.append("file", blob, "cupboard.jpg");
+    runScan(a, [blob], false);
+  };
+  const scanStored = async (a) => {
+    if (!online) { toast.error("AI Auto-Scan needs a signal"); return; }
     setScanning(a.id);
-    try {
-      const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
-      setScan({ area: a, items: data.items, blob: a.parent_id ? null : blob });
-      if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left`);
-    } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
+    try { const blobs = await Promise.all(areaPhotos(a).map((p) => api.get(areaPhotoUrl(boat, p), { responseType: "blob", timeout: 30000 }).then((r) => r.data))); await runScan(a, blobs, true); }
+    catch (err) { setScanning(null); toast.error(apiError(err, "Couldn't load the photos")); }
   };
   const storePhotos = async (pairs) => {
     for (const [id, blob] of pairs) {
-      try { const photo = await uploadAreaPhoto(boat, blob); setArea(id, (x) => ({ ...x, photo })); }
+      try { const photo = await uploadAreaPhoto(boat, blob); setArea(id, (x) => withPhotos(x, [...areaPhotos(x), photo])); }
       catch (err) { toast.error(apiError(err, "Couldn't store the cupboard picture")); }
     }
   };
@@ -195,13 +206,17 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       return [...kept, ...list.filter((x) => !before.some((b) => b.id === x.id))];
     }));
   };
+  const [subPic, setSubPic] = useState(null);
   const addSub = (name) => {
     const parent = dialog.area;
     if (!name) return "Please enter a name, e.g. Red folder";
     if (subsOf(parent.id).some((s) => same(s.name, name))) return `${name} is already in ${parent.name}`;
-    onChange((list) => [...list, { id: newId(), name, items: [], parent_id: parent.id }]);
+    const sub = { id: newId(), name, items: [], parent_id: parent.id };
+    onChange((list) => [...list, sub]);
     setDialog(null);
-    toast.success(`${name} added to ${parent.name}. Open it to Magic Scan its contents.`);
+    // A photo picked here is Magic Scanned straight away, and kept with the box or folder if the skipper ticks Store.
+    if (subPic) { shrink(subPic, 1600).then((b) => runScan(sub, [b], false)).catch(() => toast.error("That file doesn't look like a photo")); setSubPic(null); }
+    toast.success(`${name} added to ${parent.name}.${subPic ? " Magic Scanning its photo..." : " Open it to Magic Scan its contents."}`);
     return true;
   };
   const mergeInto = (targetId) => {
@@ -281,6 +296,30 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [zonePrompt, setZonePrompt] = useState(false);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
   const pickZones = boat ? boatZones(boat) : [];
+  // Delete Zone: its photos and schematic spots go; its cupboards stay with their items, with no zone.
+  const sameZone = (z) => (sw) => String(sw.label || sw.colour).trim().toLowerCase() === String(z.label).trim().toLowerCase();
+  const zoneSummary = (z) => {
+    const cups = zoneTops(z.colour);
+    const subs = cups.flatMap((c) => subsOf(c.id));
+    return { cupboards: cups.length, boxes: subs.length, items: [...cups, ...subs].reduce((n, a) => n + (a.items || []).length, 0), photos: zonePhotos(boat, z).length,
+      spots: (boat?.zone_maps || []).filter((m) => m.kind === "overview").reduce((n, m) => n + (m.swatches || []).filter(sameZone(z)).length, 0) };
+  };
+  const deleteZone = async (z) => {
+    if (!online) { toast.error("Deleting a zone needs a signal"); return false; }
+    const cups = new Set(zoneTops(z.colour).map((c) => c.id));
+    let maps = boat.zone_maps || [];
+    try {
+      for (const m of zonePhotos(boat, z)) maps = (await api.delete(`/boats/${boat.boat_id}/zone-maps/${m.id}`)).data.zone_maps;
+      for (const m of maps.filter((x) => x.kind === "overview" && (x.swatches || []).some(sameZone(z)))) {
+        maps = (await api.put(`/boats/${boat.boat_id}/zone-maps/${m.id}/swatches`, { swatches: m.swatches.filter((sw) => !sameZone(z)(sw)) })).data.zone_maps;
+      }
+    } catch (err) { toast.error(apiError(err, "Couldn't delete the zone")); onBoatMaps(maps); return false; }
+    onBoatMaps(maps);
+    onChange((list) => list.map((a) => { if (!cups.has(a.id) || !a.zone) return a; const { zone: _z, ...rest } = a; return rest; }));
+    setZone(null);
+    toast.success(`${z.label} zone deleted. Its cupboards are still on your list.`);
+    return true;
+  };
   const zoneCounts = {};
   tops.forEach((a) => { const z = zones[a.id]; if (z) zoneCounts[z.colour] = (zoneCounts[z.colour] || 0) + 1; });
   useEffect(() => {
@@ -355,12 +394,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const parts = [added && `${added} ${added === 1 ? "cupboard" : "cupboards"} added`, filled && `${filled} filled`, merged && `${merged} added to`, replaced && `${replaced} replaced`].filter(Boolean).join(", ");
     toast.success(`${parts} with ${count} ${count === 1 ? "item" : "items"}`);
   };
-  const renameArea = (name, where, comment, photo) => {
+  const renameArea = (name, where, comment, photos) => {
     const { area } = dialog;
     if (!name) return "Please enter a name";
     const scope = area.parent_id ? subsOf(area.parent_id) : zoneTops(zoneKey(area));
     if (scope.some((a) => a.id !== area.id && same(a.name, name))) return `${name} is already ${!area.parent_id && zones[area.id] ? `in ${zones[area.id].map}` : "on your list"}`;
-    setArea(area.id, ({ where: _w, comment: _c, photo: _p, ...a }) => ({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}), ...(photo ? { photo } : {}) }));
+    setArea(area.id, ({ where: _w, comment: _c, ...a }) => withPhotos({ ...a, name, ...(where ? { where } : {}), ...(comment ? { comment } : {}) }, photos || []));
     setDialog(null);
     return true;
   };
@@ -401,14 +440,14 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <InventoryArea key={a.id} area={a} sub={!!parent} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={ro} onAdd={addItem(a)} query={q} visible={visible}
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
-        onScan={boat && !boat.owner_id ? startScan(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
+        onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
         focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0}
         onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
         onToggle={(i) => setArea(a.id, (x) => ({ ...x, items: x.items.map((y) => (y.id === i.id ? { ...y, removed: !y.removed } : y)) }))}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
         onDeleteItem={(i) => setDialog({ type: "deleteItem", area: a, item: i })}
         onRename={() => setDialog({ type: "rename", area: a })} onDelete={() => setDialog({ type: "delete", area: a })}
-        photoButton={boat && !parent ? <CupboardPhotoButton boat={boat} area={a} placeholder={!ro} /> : null}
+        photoButton={boat ? <CupboardPhotoButton boat={boat} area={a} placeholder={!ro} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
         zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => {
@@ -482,6 +521,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
+        onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
         onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} />
       {admin && !readOnly && areas.length > 0 && (
@@ -494,7 +534,14 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         boat={boat} online={online} onMove={readOnly || dialog?.type !== "rename" ? undefined : () => startMove(dialog.area)} />
       <TextDialog open={dialog?.type === "sub"} title={dialog?.type === "sub" ? `Add a folder or box to ${dialog.area.name}` : ""} confirmLabel="Add" testId="inventory-sub"
         description="Take the folder or box out, empty it, then Magic Scan a photo of its contents. Only the list is kept, not the photo."
-        placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => setDialog(null)} />
+        placeholder="e.g. Red folder" initial="" onConfirm={dialog?.type === "sub" ? addSub : () => true} onClose={() => { setDialog(null); setSubPic(null); }}>
+        {boat && !boat.owner_id && (
+          <label className="btn-ghost h-11 cursor-pointer justify-center gap-2 px-3 text-sm" data-testid="inventory-sub-scan-label">
+            <Sparkles className="h-4 w-4" /> {subPic ? `Photo picked: ${subPic.name}` : "Add a photo to Magic Scan it (optional)"}
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { setSubPic(e.target.files?.[0] || null); e.target.value = ""; }} data-testid="inventory-sub-scan-input" />
+          </label>
+        )}
+      </TextDialog>
       <MergeAreaDialog area={dialog?.type === "merge" ? dialog.area : null} onMerge={mergeInto} onClose={() => setDialog(null)} zones={zones}
         parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id) : []} />
       <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={readOnly ? labelled.filter(crewCan) : labelled} zones={zones} onConfirm={saveItem} onClose={() => setDialog(null)} />

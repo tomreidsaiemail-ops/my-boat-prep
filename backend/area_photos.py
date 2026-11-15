@@ -9,14 +9,15 @@ from photos import APP_NAME, MAX_BYTES, TYPES, get_object, put_object
 
 router = APIRouter(prefix="/api")
 
-MAX_AREA_PHOTOS = 80
+MAX_AREA_PHOTOS = 240
 BoatPath = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 PhotoPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 OwnerQ = Annotated[Optional[str], Query(max_length=80)]
 
 
 def _used(doc: dict) -> set:
-    return {(a.get("photo") or {}).get("id") for a in doc.get("areas") or [] if isinstance(a.get("photo"), dict)}
+    out = {(a.get("photo") or {}).get("id") for a in doc.get("areas") or [] if isinstance(a.get("photo"), dict)}
+    return out | {p.get("id") for a in doc.get("areas") or [] for p in (a.get("photos") or []) if isinstance(p, dict)}
 
 
 @router.post("/boats/{boat_id}/area-photos")

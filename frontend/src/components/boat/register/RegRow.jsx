@@ -2,6 +2,7 @@ import { CheckCircle2, Loader2, Mail, MessageCircle, Pencil, ShoppingBasket, Tra
 import { RegStatus } from "@/components/boat/register/RegStatus";
 import { JoinCrewBadge } from "@/components/boat/crew/JoinCrewBadge";
 import { localWhen, timeAgo } from "@/lib/timeAgo";
+import { CrewAvatar } from "@/components/boat/register/CrewPhoto";
 
 export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onClearWalk, onShopper }) => {
   const t = `reg-row-${entry.entry_id}`;
@@ -12,6 +13,7 @@ export const RegRow = ({ entry, busy, onEdit, onDelete, onEmail, onWhatsApp, onC
   const crewAdded = entry.kind === "crew" && entry.status === "registered" && !quick && (entry.crew_added_at || entry.user_id);
   return (
     <li className="flex items-center gap-1.5 px-3 py-2.5" data-testid={t}>
+      <CrewAvatar userId={entry.user_id} v={entry.photo_v} name={entry.name} testId={`${t}-photo`} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold" data-testid={`${t}-name`}>{entry.name}</p>
         <p className="truncate text-xs text-[var(--muted)]">{[entry.email, entry.phone].filter(Boolean).join(" · ")}</p>

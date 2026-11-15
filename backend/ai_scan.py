@@ -6,7 +6,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile
 from PIL import Image
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent, TextDelta, StreamDone
@@ -72,7 +72,7 @@ def parse_items(text: str) -> list:
 
 
 @router.post("/boats/{boat_id}/scan")
-async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: bool = Query(default=False), bartender: bool = Query(default=False),
+async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), extra: List[UploadFile] = File(default=[]), batch: bool = Query(default=False), bartender: bool = Query(default=False),
                        shopping: bool = Query(default=False), owner: Optional[str] = Query(default=None, pattern=r"^[A-Za-z0-9_-]{1,80}$"),
                        me: dict = Depends(get_current_user)):
     feature = "MBT" if bartender else "MPS" if shopping else "BMMS" if batch else "MMS"
@@ -90,6 +90,15 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
         Image.open(io.BytesIO(data)).verify()
     except Exception:
         raise HTTPException(status_code=400, detail="That file doesn't look like a photo")
+    # Up to 2 more photos of the same cupboard, box or folder, read in the same scan.
+    more = []
+    for f in extra[:2]:
+        if f.content_type not in TYPES:
+            raise HTTPException(status_code=400, detail="Please choose JPEG, PNG or WebP photos")
+        d = await f.read(MAX_BYTES + 1)
+        if len(d) > MAX_BYTES:
+            raise HTTPException(status_code=400, detail="That photo is too big (max 3 MB)")
+        more.append(d)
     source = await quota.consume(user["user_id"])
     scan_id = str(uuid.uuid4())
     await db.ai_scans.insert_one({"scan_id": scan_id, "user_id": user["user_id"], "boat_id": boat_id, "created_at": datetime.now(timezone.utc).isoformat()})
@@ -97,7 +106,7 @@ async def scan_cupboard(boat_id: BoatPath, file: UploadFile = File(...), batch: 
     text = ""
     usage = None
     try:
-        msg = UserMessage(text=BAR_PROMPT if bartender else SHOP_PROMPT if shopping else PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(data).decode())])
+        msg = UserMessage(text=BAR_PROMPT if bartender else SHOP_PROMPT if shopping else PROMPT, file_contents=[ImageContent(image_base64=base64.b64encode(x).decode()) for x in [data, *more]])
         async for ev in chat.stream_message(msg):
             if isinstance(ev, TextDelta):
                 text += ev.content

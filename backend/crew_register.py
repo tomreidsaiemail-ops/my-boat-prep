@@ -11,6 +11,7 @@ from auth import get_current_user, require_premium
 from email_service import send_email
 from urls import public_base
 from crew import email_key, owned_boat, BoatPath, tick
+from crew_photo import photo_versions
 
 router = APIRouter(prefix="/api/crew-register")
 DAILY_SEND_LIMIT = 60
@@ -109,7 +110,9 @@ async def list_register(user: dict = Depends(get_current_user)):
              async for b in db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
     keys = [r["email_key"] for r in rows if r["kind"] == "crew" and r.get("email_key")]
     jcs = {u["joincrew"]["email_key"]: u["joincrew"] async for u in db.users.find({"joincrew.email_key": {"$in": keys}}, {"_id": 0, "joincrew": 1})}
+    pics = await photo_versions([r.get("user_id") for r in rows])
     for r in rows:
+        r["photo_v"] = pics.get(r.get("user_id"))
         r["joincrew"] = tick(jcs.get(r.get("email_key")), user["user_id"]) if r["kind"] == "crew" else None
         r["shopper"] = r.get("shopper", True) if r["kind"] == "crew" else False
         r["walkthroughs"] = [{"boat_id": w["boat_id"], "vessel": boats[w["boat_id"]], "at": w["at"], "full_at": w.get("full_at") or w["at"], "quick": bool(w.get("quick"))}
@@ -243,6 +246,7 @@ def request_html(skipper: str, name: str, email: str, link: str, quick: bool = F
     return (
         '<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
         f'<h2 style="margin:0 0 12px">Hi {escape(name)}, please complete your crew registration</h2>{ask}'
+        '<p><b>Please add a photo of yourself</b> when you register, so the skipper and crew can recognise you on the dock.</p>'
         f'<p style="margin:24px 0"><a href="{escape(link)}" style="background:#0f172a;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Open My Boat Prep</a></p>'
         f'<p style="font-size:13px;color:#64748b">Sign up or log in with <b>{escape(email)}</b> and the app will show your registration form. '
         f'<b>When you are done, text {escape(skipper)} to say you have completed your registration.</b></p></div>'

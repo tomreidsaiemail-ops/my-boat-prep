@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Anchor, ClipboardList, Clock, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { CrewAvatar } from "@/components/boat/register/CrewPhoto";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
 import { InviteCrewDialog } from "@/components/boat/InviteCrewDialog";
@@ -32,8 +33,9 @@ import { openList } from "@/lib/trips";
 const bubblesFor = (p, joined, testId) => (p.briefings || (p.roles || []).map((role) => ({ role, has_briefing: false })))
   .map((b, k) => <RoleBubble key={b.role} b={b} who={p.name || p.email} joined={joined} testId={`${testId}-role-${k}`} />);
 
-const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId, top }) => (
+const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId, top, avatar }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
+    {avatar}
     <div className="min-w-0 flex-1">
       {top}
       <div className="flex min-w-0 items-center gap-1.5">
@@ -170,7 +172,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
           <TripGroup key={g.id} group={g} n={n} onOpen={onClose}
             onClear={n === 0 && info.crew.some((m) => Object.values(m.trip_rsvp || {}).some(Boolean)) ? () => run(() => api.delete(`/boats/${boat.boat_id}/rsvp`), "Replies cleared, ready for your next voyage") : null}>
           {g.crew.map((m) => (
-            <Row key={m.user_id} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
+            <Row key={m.user_id} avatar={<CrewAvatar userId={m.user_id} v={m.photo_v} name={m.name} size="h-12 w-12" testId={`crew-member-${m.user_id}-photo`} />} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-member-${m.user_id}-trip-${g.id}`} />}
               badge={<>
                 {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}

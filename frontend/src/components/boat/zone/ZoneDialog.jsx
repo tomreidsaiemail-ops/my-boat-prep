@@ -10,6 +10,7 @@ import { zoneChecklist } from "@/lib/zoneChecklist";
 import { SkipperComment } from "@/components/boat/zone/SkipperComment";
 import { QuickCupboards } from "@/components/boat/zone/QuickCupboards";
 import { ZoneCupboards } from "@/components/boat/zone/ZoneCupboards";
+import { DeleteZone } from "@/components/boat/zone/DeleteZone";
 
 export const slug = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
@@ -50,7 +51,7 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 };
 
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
-export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone }) => {
+export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -111,6 +112,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
         )}
         {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} />}
         {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} {areaCount === 1 ? "cupboard" : "cupboards"} already in {zone.label}</p>}
+        {onDeleteZone && <DeleteZone zone={zone} summary={deleteSummary} onDelete={onDeleteZone} t={t} />}
       </DialogContent>
     </Dialog>
   );

@@ -60,7 +60,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   const open = openState || !!query;
@@ -125,6 +125,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
                 {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "Upload image for magic scan..."}
                 <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
               </label>
+              {onScanPhotos && <button type="button" className="btn-ghost h-11 px-3 text-sm" disabled={scanning} onClick={onScanPhotos} data-testid={`inventory-scan-photos-btn-${area.id}`}><Sparkles className="h-4 w-4" /> Magic Scan its {(area.photos || [area.photo]).filter(Boolean).length > 1 ? `${(area.photos || []).length} photos` : "photo"}</button>}
             </div>
           )}
           {children}

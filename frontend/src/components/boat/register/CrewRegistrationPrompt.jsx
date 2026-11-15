@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { CREW_FIELDS, missing, toForm, toPayload } from "@/lib/crewRegister";
 import { RegFields } from "@/components/boat/register/RegFields";
+import { CrewPhotoField } from "@/components/boat/register/CrewPhoto";
 import { holdPrompt, usePromptsFree } from "@/lib/promptQueue";
 import { WaitingForInvite, stopWaiting, waitingOff } from "@/components/boat/register/WaitingForInvite";
 
@@ -81,6 +82,7 @@ export const CrewRegistrationPrompt = () => {
           </div>
         ) : (
           <>
+            <CrewPhotoField />
             <RegFields fields={CREW_FIELDS} values={values} required={ALL} errors={errors} testPrefix="crew-reg"
               onChange={(k, v) => { setValues((s) => ({ ...s, [k]: v })); setErrors((e) => e.filter((x) => x !== k)); }} />
             <div className="flex gap-2">

@@ -4,6 +4,7 @@ import { ChevronDown, Loader2, Palette, Sparkles, Trash2 } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
 import { CalloutPlan, ink } from "@/components/boat/zone/Callouts";
+import { useCollapsed } from "@/components/boat/departure/BatteryStatus";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -142,13 +143,18 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
+  const [hidden, toggleHidden] = useCollapsed(`mbp_overview_hidden_${map.id}`);
   const tapPlan = (e) => {
     if (armed) { const pos = at(e.clientX, e.clientY); if (pos) place(armed, pos); return; }
     if (selected) setSelected(null);
   };
   return (
     <div className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] p-2" data-testid={t}>
-      <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</p>
+      <button type="button" onClick={toggleHidden} aria-expanded={!hidden} className="flex items-center gap-2 text-left text-sm font-bold text-[var(--navy)]" data-testid={`${t}-hide-toggle`}>
+        <span className="min-w-0 flex-1 truncate" data-testid={`${t}-title`}>{map.name || "Zone Map Overview"}</span>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-extrabold">{hidden ? <>Show <ChevronDown className="h-4 w-4" /></> : <>Hide <ChevronDown className="h-4 w-4 rotate-180" /></>}</span>
+      </button>
+      {!hidden && (<>
       {map.source_url && <a href={map.source_url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-semibold text-[var(--muted)] underline" data-testid={`${t}-source`}>Source: {map.source_title || "web"}</a>}
       <CalloutPlan src={src} alt={`${map.name || "Zone Map"} overview`} imgClass="block max-h-72 max-w-full rounded-md" swatches={swatches} boxRef={box}
         selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} onOpen={onImage} className={armed ? "cursor-crosshair" : ""} testId={t} planTestId={`${t}-plan`}
@@ -199,6 +205,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
           </button>
         </>
       )}
+      </>)}
       {ghost && (
         <span className="pointer-events-none fixed z-[100] -translate-x-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-extrabold shadow-lg"
           style={{ left: ghost.x, top: ghost.y, background: ZONE_COLOURS[ghost.p.colour], color: ink(ghost.p.colour) }}>{ghost.p.label}</span>

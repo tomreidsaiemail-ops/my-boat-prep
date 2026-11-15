@@ -4,7 +4,7 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 const F = { food: true };
 const FD = { food: true, drinks: true };
 export const ZONE_CUPBOARDS = {
-  galley: [["Fridge", FD], ["Freezer", FD], ["Oven"], ["Pantry", F], ["Cutlery Drawer"], ["Dry Food Locker", F], ["Pots and Pans Locker"], ["Hanging Basket", F]],
+  galley: [["Fridge", FD], ["Freezer", FD], ["Oven"], ["Pantry", F], ["Cutlery Drawer"], ["Crockery Cupboard"], ["Dry Food Locker", F], ["Pots and Pans Locker"], ["Hanging Basket", F]],
   cockpit: [["Port lazarette"], ["Starboard lazarette"], ["Gas Locker"], ["Technical Locker"]],
   "nav station": [["Nav Desk"], ["Bookshelf"], ["Instrument Panel"], ["Nav Locker"]],
   saloon: [["Settee locker fore"], ["Settee locker aft"]],
