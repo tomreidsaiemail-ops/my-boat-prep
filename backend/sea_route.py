@@ -7,7 +7,9 @@ from io import BytesIO
 
 import httpx
 import numpy as np
-from fastapi import APIRouter, Depends
+import time
+
+from fastapi import APIRouter, Depends, HTTPException
 from PIL import Image
 from pydantic import BaseModel, Field
 
@@ -19,6 +21,8 @@ router = APIRouter(prefix="/api")
 MAX_SIDE = 6  # tiles across and down at most, so one route reads 36 OpenStreetMap tiles or fewer
 CELL = 3  # pixels per routing cell
 _tiles: OrderedDict = OrderedDict()
+_calls: dict = {}
+PER_10_MIN = 60  # each route may read up to 36 OpenStreetMap tiles, so keep it fair to their servers
 
 
 class Pos(BaseModel):
@@ -155,12 +159,17 @@ def _route(grid: np.ndarray, sa: tuple, sb: tuple):
 @router.post("/sea-route")
 async def sea_route(leg: LegIn, user: dict = Depends(get_current_user)):
     """Route Planning map: the bend points of a path over the water (OpenStreetMap's blue) between two stops."""
+    now = time.monotonic()
+    recent = [t for t in _calls.get(user["user_id"], []) if now - t < 600]
+    if len(recent) >= PER_10_MIN:
+        raise HTTPException(status_code=429, detail="That's a lot of routes in a short time. Wait a few minutes, then tap Redraw.")
+    _calls[user["user_id"]] = recent + [now]
     try:
         z, ox, oy, grid = await _area(leg.a, leg.b)
         (ax, ay), (bx, by) = _px(leg.a.lat, leg.a.lon, z), _px(leg.b.lat, leg.b.lon, z)
         bends = await asyncio.to_thread(_route, grid, (ax - ox, ay - oy), (bx - ox, by - oy))
     except Exception as e:  # noqa: BLE001
-        log.warning("Sea route failed: %s", e)
+        log.warning("Sea route failed for %s -> %s: %r", leg.a, leg.b, e)
         bends = None
     if bends is None:
         return {"ok": False, "points": []}

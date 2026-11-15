@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Map as MapIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -67,6 +67,10 @@ const LegRow = ({ leg, n, onEdit, onDelete }) => (
 // Route Planning: the Route Plan is Leg 1; further planned legs follow it in order.
 export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
   const legs = weather.legs || [];
+  // Routes drawn over water can land before the next render, so each builds on the latest legs.
+  const latest = useRef(legs);
+  latest.current = legs;
+  const putLegs = (patch, next) => { latest.current = next; onChange({ ...patch, legs: next }); };
   const [edit, setEdit] = useState(null);
   const [confirm, setConfirm] = useState(false);
   const [view, setView] = useState(false);
@@ -74,12 +78,12 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
   const clearPaths = (ls, patch, ks) => ks.reduce((acc, k) => (k < 0 || k > legs.length ? acc : k === 0 ? { ...acc, patch: { ...acc.patch, path: null } }
     : { ...acc, ls: acc.ls.map((l, n) => (n === k - 1 ? { ...l, path: null } : l)) }), { ls, patch });
   const place = (i, pos) => {
-    const ls = i > 1 ? legs.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l)) : legs;
+    const ls = i > 1 ? latest.current.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l)) : latest.current;
     // A moved pin redraws the legs either side of it.
     const out = clearPaths(ls, i === 0 ? { start_pos: pos } : i === 1 ? { dest_pos: pos } : {}, [i - 1, i]);
-    onChange(out.ls !== legs ? { ...out.patch, legs: out.ls } : out.patch);
+    if (out.ls !== latest.current) putLegs(out.patch, out.ls); else onChange(out.patch);
   };
-  const setPath = (k, pts) => onChange(k === 0 ? { path: pts } : { legs: legs.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l)) });
+  const setPath = (k, pts) => (k === 0 ? onChange({ path: pts }) : putLegs({}, latest.current.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l))));
   const redraw = () => onChange({ path: null, legs: legs.map((l) => ({ ...l, path: null })) });
   const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos, path: weather.path };
   const last = legs[legs.length - 1] || first;

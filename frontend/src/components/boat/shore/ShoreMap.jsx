@@ -94,7 +94,8 @@ export const ShoreMap = ({ points, alert, route, endLabel = "Now", className = "
     if (now.kind !== "stop") L.circleMarker([now.lat, now.lon], { radius: 10, color: "#fff", weight: 3, fillColor: "#f97316", fillOpacity: 1 }).bindTooltip(`${endLabel} · ${when(now.at)}`, { permanent: false }).addTo(g);
     if (!fitted.current) {
       fitted.current = true;
-      if (line.length > 1) map.current.fitBounds(line, { padding: [30, 30], maxZoom: 14 });
+      const all = [...line, ...(routeRef.current?.stops || []).filter(Boolean).map((x) => [x.lat, x.lon])];
+      if (all.length > 1) map.current.fitBounds(all, { padding: [30, 30], maxZoom: 14 });
       else map.current.setView(line[0], 13);
     }
   }, [points, endLabel]);

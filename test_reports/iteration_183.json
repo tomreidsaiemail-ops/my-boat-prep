@@ -1,0 +1,40 @@
+{
+  "summary": "Tested backend and frontend at 390x844 for the Sea Route (A* over OSM water), the skipper Planned route Map tab (auto-draw, handles, Prepare labels on the right line, pin move/redraw, miles), the Shore contact route map and auto-share. Backend: 12/12 pytest passed. Frontend: every requested flow worked. No functional bugs found. There are minor design and quality notes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sea-route", "issue": "The route mostly stays on water, but sampling the drawn lines against z13 OSM tiles found 21/320 (leg 1) and 26/600 (leg 2) samples off the water colour. Most sit at the pin ends (the Picton pin is on land in town, so the leg crosses land to reach water). A few are isolated points mid-route, probably map labels or corner cutting by the 3px cells / 0.25 fallback threshold. Leg Picton->Ship Cove also gets 14 bends, many in tiny steps near Picton, which crowds the handles."},
+      {"endpoint": "POST /api/sea-route", "issue": "No rate limit. Each call can fetch up to 36 tile.openstreetmap.org tiles from the server (OSM tile usage policy and abuse risk). The in-memory cache has no in-flight dedupe."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Auto-route with 3+ legs", "issue": "With 3 legs and no paths, opening the Map sent 4 POST /sea-route calls instead of 3. It settled on the right paths [3,4,10 bends]. Likely cause: PlannedLegs.setPath uses the legs array from an old render, so when two later-leg responses land before a re-render, one path is overwritten with undefined and that leg is requested again. Harmless today but wasteful. Use a functional update or merge against the latest legs.", "affected_selectors": ["[data-testid='stops-map-canvas']"]}
+    ],
+    "design_issues": [
+      {"screen": "Planned route > Map tab (opening fit zoom, 390px)", "issues": ["The 'Prepare to anchor' and 'Prepare to return to Dock' boxes overlap each other, pin 3 and the '18 nm' label at the first fit zoom (Mana->Picton->Ship Cove). They separate once zoomed in. Consider hiding or shortening labels when they collide, or a tighter fit."]},
+      {"screen": "Shore contact map", "issues": ["When GPS points exist, the map fits only the GPS track (here Auckland to Wellington), so the planned route stops sit small with 'Arrive · Returning to Dock' covering pin 3. Consider fitting to track plus route stops."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_sea_route_shore_route.py", "/app/test_reports/pytest/pytest_iter183.xml"],
+  "action_items": [
+    "Optional: stop the stale legs closure in PlannedLegs.setPath / StopsMap auto-route from re-requesting legs when there are 3+ legs",
+    "Optional: stop the Prepare/Arrive labels overlapping each other and the pins at low zoom",
+    "Optional: rate-limit /api/sea-route and dedupe in-flight tile fetches",
+    "Optional: ShoreMap fit bounds should include the route stops as well as the GPS track"
+  ],
+  "critical_code_review_comments": [
+    "sea_route.py: if one tile fetch fails, the whole route returns ok:false. That's acceptable, but log which tile failed.",
+    "StopsMap auto-route: when ok:false the path is set to [] (a straight line) and never retried. That's intended, but a network error leaves the path undefined, and it is only retried on the next legs change.",
+    "share_route: the route stops/lines are validated with Pydantic, lines are capped at 80 points, and the owner check uses the boat owner_id. Good.",
+    "BoatPrep routeJson effect: the 4 s debounce works. It PUT /shore/route once on load and again about 4 s after a handle drag (both seen in network logs)."
+  ],
+  "updated_files": ["/app/backend/tests/test_sea_route_shore_route.py"],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "Temporarily changed test-user-pro/main boat.weather (removed paths, moved pins, added a 3rd TEST_Bay leg), boat.underway (trip_id routeHazards) and shore_plan (TEST route, 'TEST_plan text'). All restored at the end as instructed: weather start_pos {-41.14123,174.80621}, dest_pos {-41.05794,174.8941}, legs [], arrive_type and path removed; underway {}; shore_plan restored to the original {text:'', trip_id 7f90a604...} without route. Note: weather.depart_at/finish_at/advice etc were kept from the original.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat data is at user_boats.boat.weather (not top-level). Reach the map via list-selector > list-option-routeHazards > view-planned-route-btn > trip-view-map-tab. The Leaflet map is not exposed on window; drag handles with page.mouse but filter to handles inside the stops-map-canvas rect (offscreen handles exist in the DOM, and clicking outside closes the dialog). Auto-share needs boat.underway.trip_id='routeHazards' plus tracking.on. The shore user must pick 'TEST_Kia Ora' on the /shore chooser to see ShoreWatch. Run pytest with -n 0.",
+  "test_credentials": "test_session_pro_1, test_session_shore_1 (cookie session_token or Bearer)"
+}
