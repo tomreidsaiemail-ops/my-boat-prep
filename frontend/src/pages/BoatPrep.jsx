@@ -279,10 +279,6 @@ export default function BoatPrep({ boatId, boats }) {
   const haveMaint = MAINT_LISTS.filter((m) => registry.some((l) => l.kind === MAINT_KIND && l.maint === m.key)).map((m) => m.key);
   const OFFERS = "mbp_maint_offers";
   const offered = () => { try { return JSON.parse(localStorage.getItem(OFFERS)) || []; } catch { return []; } };
-  const offerMaint = () => {
-    if (crew || haveMaint.length || !["make", "model", "boat_type"].every((k) => (boat[k] || "").trim()) || offered().includes(offerKey(boatId, boat))) return;
-    setTimeout(() => setDialog({ type: "maint", auto: true }), 250);
-  };
   const dismissMaint = () => { localStorage.setItem(OFFERS, JSON.stringify([...offered(), offerKey(boatId, boat)].slice(-50))); setDialog(null); };
   const importLists = (built) => {
     const now = Date.now();
@@ -1088,7 +1084,7 @@ export default function BoatPrep({ boatId, boats }) {
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
         : <BoatDetails key={boatId} boat={boat} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onFish={openFish} onBartender={crew ? undefined : openBartender} onMakeKit={makePetKit}
-            onDetailsClosed={offerMaint} onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
+            onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
