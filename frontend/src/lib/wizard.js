@@ -10,8 +10,15 @@ export const wizardKey = (name = "") => wizardTitle(name).toLowerCase();
 
 const kindOf = (l) => (/^\s*\$\$\$/.test(l) ? "link" : /^\s*\$\$/.test(l) ? "idea" : /^\s*---/.test(l) ? "tick" : "head");
 // Finish panel lines: "--" bold, "---" ticked, "$$" an idea, "$$$" a link that opens another walkthrough. Every other line is a step.
-// Steps that don't already end with "Press Next" (e.g. "... Press Next." or "Press Next to finish.") get it added.
-const withNext = (l) => (/press next/i.test(l.trim().slice(-25)) ? l.trim() : `${l.trim()}  Press Next`);
+// Every step ends the same way: ".  Press Next". Only the last 20 characters are looked at: any "Press Next" there
+// (any case) and whatever follows it is dropped, then a full stop is added if the line doesn't already end with one.
+export const withNext = (l) => {
+  let t = l.trim();
+  const at = t.slice(-20).search(/press next/i);
+  if (at >= 0) t = t.slice(0, Math.max(0, t.length - 20) + at);
+  t = t.replace(/[\s,;:]+$/, "");
+  return `${t}${/[.!?]$/.test(t) ? "" : "."}  Press Next`;
+};
 const isStep = (l) => l.trim() && !FINISH.test(l);
 export const parseWizard = (lines = []) => ({
   steps: lines.filter(isStep).map(withNext),
