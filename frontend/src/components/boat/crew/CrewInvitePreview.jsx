@@ -19,7 +19,7 @@ export const CrewInvitePreview = ({ invite, boat, vessel, skipper, areas, online
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent guard={false} className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="crew-invite-preview-dialog">
-        <p className="-mx-6 -mt-6 flex items-center gap-2 rounded-t-md bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900" data-testid="crew-invite-preview-banner">
+        <p className="-mx-6 -mt-6 flex items-center gap-2 rounded-t-md bg-amber-100 py-2 pl-4 pr-12 text-sm font-bold text-amber-900" data-testid="crew-invite-preview-banner">
           <Eye className="h-4 w-4 shrink-0" /> Preview: {who} will receive an invite to join {vessel}. When they press Join they get the screen that follows.
         </p>
         <DialogHeader>

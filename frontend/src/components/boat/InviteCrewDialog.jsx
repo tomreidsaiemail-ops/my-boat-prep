@@ -126,12 +126,12 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
     try {
       const { data: saved } = await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name, ...ownWalk }, { timeout: 30000 });
       const who = email.trim();
-      if (mode === "email" || mode === "message") setLastInvite({ name: crewName.trim(), email: who, roles, trip_name: cur.name });
+      if (mode === "email" || mode === "message") setLastInvite({ name: crewName.trim(), email: who, roles, trip_name: cur.name, ...ownWalk });
       sessionStorage.removeItem(INVITE_DRAFT);
       keepTrip();
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
       if (mode === "qr") setQrFor(who);
-      else if (mode === "email" && saved.email_blocked) toast.message(`Invite saved for ${who}, but no email was sent: emails are switched off on the Model Vessel while you're training.`);
+      else if (mode === "email" && saved.email_blocked) toast.message(`Invite saved for ${crewName.trim() || who}, but no email was sent: emails are switched off on the Model Vessel while you're training.`);
       else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
       else if (copied) toast.success(mode === "link" ? `Invite saved and link copied. ${who} logs in with that email to join.` : `Invite saved, no email sent. Message copied: paste it into WhatsApp and send it to ${crewName.trim() || who}.`);
       else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.");
@@ -249,7 +249,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
             <Eye className="h-4 w-4" /> Preview Crew Member Invite
           </button>
         </div>
-        {previewing && lastInvite && <CrewInvitePreview invite={lastInvite} boat={{ ...details, ...boat }} vessel={name} skipper={user?.name || user?.email || "Your skipper"} areas={areas} online={online} onClose={() => setPreviewing(false)} />}
+        {previewing && lastInvite && <CrewInvitePreview invite={lastInvite} boat={{ ...details, ...boat, ...(lastInvite.walk_skip ? { walk_skip: lastInvite.walk_skip } : {}) }} vessel={name} skipper={user?.name || user?.email || "Your skipper"} areas={areas} online={online} onClose={() => setPreviewing(false)} />}
         <div className="flex flex-col gap-1.5">
           <span className="field-label">WhatsApp message preview</span>
           <pre className="whitespace-pre-wrap break-words rounded-md border-[1.5px] border-dashed border-[var(--line)] bg-slate-50 p-3 font-sans text-sm" data-testid="crew-message-preview">{message}</pre>

@@ -142,7 +142,7 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
     <Dialog open onOpenChange={(o) => !o && save(false)}>
       <DialogContent guard={false} className="flex max-h-[92vh] max-w-lg flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-agreement-dialog"
         onOpenAutoFocus={(e) => e.preventDefault()}>
-        {preview && <p className="-mx-6 -mt-6 rounded-t-md bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900" data-testid="crew-agreement-preview-banner">Preview: exactly what {preview} sees. Your own ticks are ignored and nothing is saved.</p>}
+        {preview && <p className="-mx-6 -mt-6 rounded-t-md bg-amber-100 py-2 pl-4 pr-12 text-sm font-bold text-amber-900" data-testid="crew-agreement-preview-banner">Preview: exactly what {preview} sees. Your own ticks are ignored and nothing is saved.</p>}
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat Terms and Conditions Agreement</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-agreement-intro">

@@ -1,0 +1,30 @@
+{
+  "summary": "Tested the Preview Crew Member Invite feature and the email block on the Model Vessel (backend and frontend, 390x844, test_session_pro_1). Backend: 8 of 8 pytest pass. GET /crew-preview returns roles with read_at null and agreement, walkthrough and joincrew_offer empty. It returns 404 for a boat you don't own and 401 without a session. On the Model Vessel, an email invite returns email_blocked true and the log shows 'Email not sent (Model Vessel training)'. On main it returns email_blocked false. Frontend: the preview button sits under the Quick Invite hint. Before any invite it shows the warning toast. After Copy WhatsApp message or Send email invite, the preview dialog opens with a banner naming TEST_Tom and a Join button. Join opens the agreement with its own preview banner, Standard terms, Your role briefing and Boat Walk Through (0 of 7). Ticking a briefing and walking all 7 stops works locally. Accept and Later both show the 'Nothing was saved' toast. No POST/PUT/DELETE was sent while previewing. Reopening resets to 0 of 7 and unread. The Model Vessel email toast text is correct. One real bug: the preview ignores the stops the skipper picked for this crew member.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CrewInvitePreview / CrewAgreementDialog", "issue": "If the skipper sets 'Walkthrough stops for this crew member' (e.g. 'Own stops, 4 of 7'), the invite is saved with walk_skip and the real crew member sees 4 stops. The preview still shows 'BOAT WALK THROUGH (0 OF 7 TICKED)' because it uses the boat's default walk_skip. So the preview is not 'exactly what Tom sees'.", "selector": "[data-testid='agreement-walkthrough-section']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "crew-invite-preview-dialog (390px)", "issues": ["The dialog's close X sits on the amber crew-invite-preview-banner and overlaps the end of the banner's first line ('...to join'). Add right padding (e.g. pr-10) to the banner, as is also needed for crew-agreement-preview-banner."]},
+      {"screen": "Model Vessel training mode (390x844)", "issues": ["When expanded, the training window covers the bottom of tall dialogs (agreement Accept/Later, invite buttons). Playwright clicks were intercepted by training-step-text until training-shrink-btn was pressed. This was here before this change, but it hurts this flow."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_invite_preview.py"],
+  "action_items": [
+    "Pass the invite's walk_skip into the preview: store walkSkip in lastInvite and use boat={...boat, walk_skip: lastInvite.walk_skip ?? boat.walk_skip} for CrewAgreementDialog, or have /crew-preview accept walk_skip. Then the stop count matches what the crew member gets.",
+    "Add right padding to the preview banners so the dialog's close X does not overlap the text."
+  ],
+  "critical_code_review_comments": [
+    "InviteCrewDialog sets lastInvite before the toast and clears the draft. lastInvite keeps roles and trip_name but not walk_skip (see the bug above).",
+    "The model_vessel_no_email middleware only matches '/boats/model_vessel/' in the path or ?boat_id=model_vessel. Any Model Vessel email route that sends boat_id in a JSON body would still send email. Check routes such as /crew/* that take owner_id/boat_id in the body.",
+    "The Model Vessel toast says 'Invite saved for <email>'. That is fine, but the WhatsApp toast uses the name, so consider the crew name for consistency."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_invite_preview.py"],
+  "success_rate": {"backend": "100%", "frontend": "90% (1 functional mismatch with own walk stops)"},
+  "seed_data_creation": "None kept. TEST_Tom invites (test_tom_prev187@example.com, test_preview_*@example.com) on model_vessel and main were created and deleted. 0 remain.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_session_pro_1's current boat is Model Vessel (training mode). Press training-shrink-btn first or the training window intercepts clicks at the bottom of the screen. The role 'Primary Navigator' opens a Role Briefing prompt; press 'Keep it as it is'. Grant clipboard permissions so Copy WhatsApp message succeeds. Ticking an agreement stop checkbox opens CrewWalkthrough; use walkthrough-seen-checkbox, walkthrough-next-btn and walkthrough-done-btn. Re-test the preview with own walk stops (crew-walk-stops-btn, untick 3): the preview should show 0 of 4."
+}
