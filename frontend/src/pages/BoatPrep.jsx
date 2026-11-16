@@ -156,6 +156,7 @@ import { ChecklistPeek } from "@/components/boat/departure/ChecklistPeek";
 import { TrainingMode, restartWalkthrough } from "@/components/boat/TrainingMode";
 import { ModelWalkthroughConfirm } from "@/components/boat/ModelWalkthroughConfirm";
 import { WIZARD_PREFIX, wizardsFrom } from "@/lib/wizard";
+import useWizardsDone from "@/hooks/useWizardsDone";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
 import { queuedCatches } from "@/lib/fishQueue";
@@ -361,7 +362,8 @@ export default function BoatPrep({ boatId, boats }) {
   const org = organiseLists(menuLists, listCats);
   const [crewHidden, showCrewLists] = useCrewHidden(boatId);
   const helpPanels = useAdminLists("Admin - Help Panel - ", online);
-  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
+  const wizardsDone = useWizardsDone(user.user_id, online);
+  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online)).map((w) => ({ ...w, done: wizardsDone.includes(w.key) }));
   const [modelAsk, setModelAsk] = useState(null);
   const modelBoat = boats.boats.find((b) => b.model && !b.crew);
   const startWalkthrough = (w) => {

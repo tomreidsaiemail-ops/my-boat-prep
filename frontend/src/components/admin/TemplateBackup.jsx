@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Loader2, Upload } from "lucide-react";
+import { ClipboardPaste, Download, Loader2, Upload } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+export const BACKUP_KIND = "my-boat-prep-template-lists";
 const GROUPS = [["overwrite", "Will be overwritten"], ["add", "Will be added"], ["unchanged", "Already the same"], ["skip", "Skipped"]];
 
 const download = (data) => {
@@ -60,15 +61,25 @@ export const TemplateBackup = ({ onRestored }) => {
     try { const { data } = await api.get("/admin/template-lists/export", { timeout: 30000 }); download(data); toast.success(`${data.lists.length} template lists exported`); }
     catch (e) { toast.error(apiError(e, "Couldn't export the template lists")); } finally { setBusy(""); }
   };
+  const [pasting, setPasting] = useState(null);
+  const check = async (text, what = "That file isn't a template lists backup") => {
+    let data;
+    try { data = JSON.parse(text); } catch { toast.error(what); return; }
+    setBusy("import");
+    try { const { data: p } = await api.post("/admin/template-lists/import", { kind: data.kind, lists: data.lists || [], dry_run: true }, { timeout: 30000 }); setBackup(data); setPlan(p); setPasting(null); }
+    catch (err) { toast.error(apiError(err, what)); } finally { setBusy(""); }
+  };
   const pick = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    let data;
-    try { data = JSON.parse(await file.text()); } catch { toast.error("That file isn't a template lists backup"); return; }
-    setBusy("import");
-    try { const { data: p } = await api.post("/admin/template-lists/import", { kind: data.kind, lists: data.lists || [], dry_run: true }, { timeout: 30000 }); setBackup(data); setPlan(p); }
-    catch (err) { toast.error(apiError(err, "That file isn't a template lists backup")); } finally { setBusy(""); }
+    if (file) check(await file.text());
+  };
+  // Paste list: what Copy list put on the clipboard (on the live app or preview). If the browser won't share the clipboard, paste it in a box.
+  const paste = async () => {
+    let text = "";
+    try { text = await navigator.clipboard.readText(); } catch { text = ""; }
+    if (text.includes(BACKUP_KIND)) check(text, "That isn't a copied template list");
+    else setPasting("");
   };
   const restore = async () => {
     setBusy("restore");
@@ -87,8 +98,25 @@ export const TemplateBackup = ({ onRestored }) => {
       <button type="button" className="btn-ghost h-11 justify-center gap-2 text-sm" disabled={!!busy} onClick={() => input.current?.click()} data-testid="template-import-btn">
         {busy === "import" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Restore from backup
       </button>
+      <button type="button" className="btn-ghost col-span-2 h-11 justify-center gap-2 text-sm" disabled={!!busy} onClick={paste} data-testid="template-paste-btn">
+        <ClipboardPaste className="h-4 w-4" /> Paste list (from Copy list on another app)
+      </button>
       <input ref={input} type="file" accept="application/json,.json" className="hidden" onChange={pick} data-testid="template-import-input" />
       <p className="col-span-2 text-xs text-[var(--muted)]" data-testid="template-backup-note">Saves every admin list and every built-in master you have edited. Built-in lists you never edited come with the app, so they don't need a backup.</p>
+      {pasting !== null && (
+        <Dialog open onOpenChange={(o) => !o && setPasting(null)}>
+          <DialogContent className="flex max-w-md flex-col gap-3 rounded-lg border-2 border-[var(--navy)]" data-testid="template-paste-dialog">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl font-extrabold">Paste list</DialogTitle>
+              <DialogDescription>Tap Copy list next to a list in the other app&apos;s Admin, then paste it here.</DialogDescription>
+            </DialogHeader>
+            <textarea value={pasting} onChange={(e) => setPasting(e.target.value)} rows={6} className="field-input min-h-[140px] py-2 font-mono text-xs" placeholder="Paste here" data-testid="template-paste-text" />
+            <button type="button" className="btn-solid h-11 justify-center gap-2" disabled={!pasting.trim() || !!busy} onClick={() => check(pasting, "That isn't a copied template list")} data-testid="template-paste-check-btn">
+              {busy === "import" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPaste className="h-4 w-4" />} Check pasted list
+            </button>
+          </DialogContent>
+        </Dialog>
+      )}
       {plan && <Preview plan={plan} busy={busy === "restore"} onConfirm={restore} onClose={() => { setPlan(null); setBackup(null); }} />}
     </div>
   );

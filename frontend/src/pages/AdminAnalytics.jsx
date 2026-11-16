@@ -104,6 +104,12 @@ export default function AdminAnalytics() {
             ))}
           </Section>
           <p className="text-xs text-[var(--muted)]">Uses before token tracking started are counted, with 0 tokens.</p>
+          <Section title="Model Vessel Tutorials" testId="analytics-tutorials">
+            {(data.tutorials || []).map((t, n) => (
+              <Tile key={t.title} label={t.title} value={t.users} testId={`tile-tutorial-${n}`}
+                sub={`${plural(t.users, "person")} opened · ${plural(t.opens, "open")} · ${t.finished} finished · ${t.first_at ? `first opened ${new Date(t.first_at).toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "not opened yet"}`} />
+            ))}
+          </Section>
           <PricingForm pricing={data.pricing} onSaved={load} />
           <UsersTodayDialog open={!!today} day={today || "today"} onClose={() => setToday(null)} />
         </>

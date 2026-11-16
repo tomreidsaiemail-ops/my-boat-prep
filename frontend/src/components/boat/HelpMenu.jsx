@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronDown, GraduationCap, HelpCircle, Package, Route, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronDown, GraduationCap, HelpCircle, Package, Route, Sparkles } from "lucide-react";
 import { LinkedText } from "@/components/boat/LinkedText";
 
 const PREFIX = /^\s*admin\s*-\s*help panel\s*-\s*/i;
@@ -62,7 +62,11 @@ export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, on
           {rest.map((h) => <Pick key={h.title} h={h} onPick={onPick} />)}
           {onModelWalkthrough && wizards.length > 0 && (
             <Cascade title="Model Vessel" icon={GraduationCap} testId="app-menu-help-model-vessel" tone="border-emerald-200">
-              {wizards.map((w) => <DropdownMenuItem key={w.key} onSelect={() => onModelWalkthrough(w)} className="pl-3" data-testid={`app-menu-help-model-wizard-${slug(w.title)}`}>{w.title}...</DropdownMenuItem>)}
+              {wizards.map((w) => (
+                <DropdownMenuItem key={w.key} onSelect={() => onModelWalkthrough(w)} className="pl-3" data-testid={`app-menu-help-model-wizard-${slug(w.title)}`}>
+                  {w.title}...{w.done && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-[var(--green)]" aria-label="Finished" data-testid={`app-menu-help-model-wizard-${slug(w.title)}-done`} />}
+                </DropdownMenuItem>
+              ))}
             </Cascade>
           )}
         </div>

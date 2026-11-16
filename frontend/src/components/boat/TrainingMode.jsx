@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import useAdminLists from "@/hooks/useAdminLists";
 import { BASIC, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
+import { wizardEvent } from "@/hooks/useWizardsDone";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const RESTART = "mbp-model-walkthrough";
@@ -26,8 +27,9 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
   const [shut, setShut] = useState(() => read(k.shut, false));
   // Shrunk to one line so the screen behind (e.g. Delete Zone) can be reached; tap the line to bring it back.
   const [mini, setMini] = useState(() => read(k.mini, false));
+  const opened = useRef("");
   useEffect(() => {
-    const again = () => { setWhich(read(k.which, BASIC)); setStep(0); setShut(false); setMini(false); };
+    const again = () => { opened.current = ""; setWhich(read(k.which, BASIC)); setStep(0); setShut(false); setMini(false); };
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
@@ -36,6 +38,8 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
   const show = !shut && steps.length > 0;
   const at = Math.min(step, steps.length);
   const done = at === steps.length;
+  // Counted once each time a walkthrough is shown (sign-in, Help menu or Show steps).
+  useEffect(() => { if (show && wizard && opened.current !== wizard.key) { opened.current = wizard.key; wizardEvent(uid, wizard.key, "open"); } }, [show, wizard, uid]);
   useEffect(() => {
     document.body.classList.add("training-mode");
     return () => document.body.classList.remove("training-mode");
@@ -56,7 +60,7 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
       {show && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} steps={steps} finish={finish} at={at} mini={mini}
-        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { go(0); close(true); }} />}
+        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; }} />}
     </>
   );
 };

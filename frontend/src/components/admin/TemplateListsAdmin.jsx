@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDownUp, Check, ListPlus, Loader2, Pencil, Search, Trash2 } from "lucide-react";
+import { ArrowDownUp, Check, Copy, ListPlus, Loader2, Pencil, Search, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { TemplateListEditor } from "@/components/admin/TemplateListEditor";
-import { TemplateBackup } from "@/components/admin/TemplateBackup";
+import { BACKUP_KIND, TemplateBackup } from "@/components/admin/TemplateBackup";
 import { Highlight, matches } from "@/components/boat/Highlight";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
@@ -12,7 +12,7 @@ import {
 
 const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-const Row = ({ t, q, hits = [], onEdit, onDelete }) => (
+const Row = ({ t, q, hits = [], onEdit, onDelete, onCopy }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`template-list-row-${t.id}`}>
     <div className="min-w-0">
       <div className="flex min-w-0 items-center gap-2">
@@ -28,6 +28,7 @@ const Row = ({ t, q, hits = [], onEdit, onDelete }) => (
       )}
     </div>
     <div className="flex shrink-0 gap-1">
+      <button type="button" className="icon-btn" onClick={onCopy} aria-label={`Copy list ${t.name}`} title="Copy list, to paste into the live app or preview" data-testid={`template-list-copy-${t.id}`}><Copy className="h-4 w-4" /></button>
       <button type="button" className="icon-btn" onClick={onEdit} aria-label={`Edit ${t.name}`} data-testid={`template-list-edit-${t.id}`}><Pencil className="h-4 w-4" /></button>
       <button type="button" className="icon-btn" onClick={onDelete} aria-label={`Delete ${t.name}`} data-testid={`template-list-delete-${t.id}`}><Trash2 className="h-4 w-4" /></button>
     </div>
@@ -99,6 +100,12 @@ export const TemplateListsAdmin = () => {
     }
     setEditing(null);
   };
+  // Copy list: the whole list (lines and role briefings) as text, for Paste list on the live app or preview.
+  const copyList = async (t) => {
+    const text = JSON.stringify({ kind: BACKUP_KIND, version: 1, lists: [{ list_id: t.id, name: t.name, custom: true, description: t.description || "", private: !!t.private, note: "", items: t.items, created_at: t.created_at || "" }] });
+    try { await navigator.clipboard.writeText(text); toast.success(`${t.name} copied. In the other app's Admin, tap Paste list.`); }
+    catch { toast.error("This browser wouldn't copy. Use Export all lists and Restore from backup instead."); }
+  };
   const remove = async () => {
     const t = removing;
     setRemoving(null);
@@ -124,7 +131,7 @@ export const TemplateListsAdmin = () => {
         <ul className="overflow-hidden rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="template-lists">
           {lists.length === 0 && <li className="p-4 text-center text-sm text-[var(--muted)]" data-testid="template-lists-empty">No template lists yet</li>}
           {lists.length > 0 && !visible.length && <li className="p-4 text-center text-sm text-[var(--muted)]" data-testid="template-lists-no-match">No lists match. Clear the search or pick All.</li>}
-          {visible.map((t) => <Row key={t.id} t={t} q={query} hits={hitsOf(t)} onEdit={() => setEditing(t)} onDelete={() => setRemoving(t)} />)}
+          {visible.map((t) => <Row key={t.id} t={t} q={query} hits={hitsOf(t)} onEdit={() => setEditing(t)} onDelete={() => setRemoving(t)} onCopy={() => copyList(t)} />)}
         </ul>
         </>
       )}

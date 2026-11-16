@@ -50,6 +50,7 @@ from folder_cards import router as folder_cards_router  # noqa: E402
 from bartender import router as bartender_router  # noqa: E402
 from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
+from wizard_progress import router as wizard_progress_router  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
 from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
@@ -667,6 +668,7 @@ async def model_vessel_no_email(request: Request, call_next):
     finally:
         no_email.reset(token)
 app.include_router(app_version_router)
+app.include_router(wizard_progress_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
 
