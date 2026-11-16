@@ -21,10 +21,10 @@ body.training-mode { background: #bbf7d0; }
 body.training-open { padding-bottom: max(25vh, 170px); }
 body.training-mini { padding-bottom: 56px; }
 body.training-finish { padding-bottom: max(50vh, 260px); }
-/* Windows sit above the training window, so their buttons stay reachable. */
-body.training-open .mbp-dialog { top: calc((100vh - max(25vh, 170px)) / 2) !important; max-height: calc(100vh - max(25vh, 170px) - 1rem) !important; overflow-y: auto; }
-body.training-mini .mbp-dialog { top: calc((100vh - 56px) / 2) !important; max-height: calc(100vh - 56px - 1rem) !important; overflow-y: auto; }
-body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px)) / 2) !important; max-height: calc(100vh - max(50vh, 260px) - 1rem) !important; overflow-y: auto; }
+/* Windows sit between the Training Mode banner (28px) and the training window, so their buttons stay reachable. */
+body.training-open .mbp-dialog { top: calc((100vh - max(25vh, 170px) + 28px) / 2) !important; max-height: calc(100vh - max(25vh, 170px) - 28px - 1rem) !important; overflow-y: auto; }
+body.training-mini .mbp-dialog { top: calc((100vh - 56px + 28px) / 2) !important; max-height: calc(100vh - 56px - 28px - 1rem) !important; overflow-y: auto; }
+body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + 28px) / 2) !important; max-height: calc(100vh - max(50vh, 260px) - 28px - 1rem) !important; overflow-y: auto; }
 
 ::selection { background: var(--blue); color: #fff; }
 

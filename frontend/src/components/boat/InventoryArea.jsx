@@ -110,6 +110,16 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
       </div>
       {open && (
         <>
+          {!readOnly && !query && onScan && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--line)] px-3 py-3" data-testid={`inventory-scan-panel-${area.id}`}>
+              <span className="text-sm font-bold text-[var(--navy)]" data-testid={`inventory-scan-help-${area.id}`}>Save time adding items:</span>
+              <label className={`btn-ghost h-11 cursor-pointer px-3 text-sm ${scanning ? "pointer-events-none opacity-60" : ""}`} data-testid={`inventory-scan-btn-${area.id}`}>
+                {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "Upload image for Magic Scan..."}
+                <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
+              </label>
+              {onScanPhotos && <button type="button" className="btn-ghost h-11 px-3 text-sm" disabled={scanning} onClick={onScanPhotos} data-testid={`inventory-scan-photos-btn-${area.id}`}><Sparkles className="h-4 w-4" /> Magic Scan its {(area.photos || [area.photo]).filter(Boolean).length > 1 ? `${(area.photos || []).length} photos` : "photo"}</button>}
+            </div>
+          )}
           {total === 0 && !subCount && <p className="border-t border-[var(--line)] px-3 py-3 text-sm text-[var(--muted)]" data-testid={`inventory-area-empty-${area.id}`}>Nothing listed in here yet.</p>}
           {onShowOnMap && !query && (
             <button type="button" className="flex w-full items-center gap-2 border-t border-[var(--line)] px-3 py-2 text-left text-sm font-bold text-[var(--blue)] hover:bg-sky-50" onClick={onShowOnMap} data-testid={`inventory-area-show-map-${area.id}`}>
@@ -123,16 +133,6 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
             {shownLinks.map((l) => <LinkedRow key={l.key} link={l} query={query} onToggle={onToggleLinked && (() => onToggleLinked(l))} />)}
           </ul>
           {!readOnly && !query && <AddContent areaId={area.id} onAdd={onAdd} />}
-          {!readOnly && !query && onScan && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-3" data-testid={`inventory-scan-panel-${area.id}`}>
-              <span className="text-sm font-bold text-[var(--navy)]" data-testid={`inventory-scan-help-${area.id}`}>Save time adding items:</span>
-              <label className={`btn-ghost h-11 cursor-pointer px-3 text-sm ${scanning ? "pointer-events-none opacity-60" : ""}`} data-testid={`inventory-scan-btn-${area.id}`}>
-                {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "Upload image for magic scan..."}
-                <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
-              </label>
-              {onScanPhotos && <button type="button" className="btn-ghost h-11 px-3 text-sm" disabled={scanning} onClick={onScanPhotos} data-testid={`inventory-scan-photos-btn-${area.id}`}><Sparkles className="h-4 w-4" /> Magic Scan its {(area.photos || [area.photo]).filter(Boolean).length > 1 ? `${(area.photos || []).length} photos` : "photo"}</button>}
-            </div>
-          )}
           {children}
         </>
       )}

@@ -110,7 +110,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       // Leaving Dock starts the trip's legs afresh; each later stop and departure is added to them.
       const leg = { id: entry.id, kind: "dock", start: trip.start, dest: trip.dest, depart_at: trip.departAt, finish_at: trip.finishAt, why: trip.why, at: new Date().toISOString(), logs: [dep.log_id, entry.id] };
       const boat = { ...b, ...weather, arrive: {}, depart: { ...dep, trip_id: trip.id }, route_trip: trip.id, route_trip_day: today(), legs: { ...(b.legs || {}), [trip.id]: [leg] },
-        underway: { trip_id: trip.id, name: trip.name, line, at: new Date().toISOString() } };
+        underway: { trip_id: trip.id, name: trip.name, event: trip.event || "", line, at: new Date().toISOString() } };
       return { ...s, boat, data: { ...s.data, leavingDock: tickAll(s.data.leavingDock || [], tickedBy), shipsLog: [...log, entry] } };
     });
     toast.success(`Underway on ${trip.name}. Departure logged in the Ship's Log`);
@@ -152,7 +152,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       }
       let shipsLog = [...log, entry];
       let keep = legs;
-      const trip = listId === "returningDock" && legs.length ? foldTrip(shipsLog, legs, u.name || "Route Plan", stamp()) : null;
+      const trip = listId === "returningDock" && legs.length ? foldTrip(shipsLog, legs, [u.name || "Route Plan", u.event].filter(Boolean).join(" - "), stamp()) : null;
       // Once folded the status checks start fresh for the next trip.
       const fresh = trip ? { depart: {}, arrive: {} } : { arrive: arr };
       if (trip) { shipsLog = [...shipsLog.filter((i) => !trip.ids.has(i.id)), trip.entry]; keep = []; }
@@ -199,7 +199,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         finish_at: w.finish_at || "", meetup: w.meetup || "", why: w.why || "", advice: String(w.advice || "").slice(0, 2000),
         photos: (w.photos || []).map((p) => ({ id: p.id, note: p.note || "", at: p.at })), at: new Date().toISOString(), logs: [entry.id] };
       const legs = { ...(b.legs || {}), [trip.id]: [...(b.legs?.[trip.id] || []), rec] };
-      const underway = { trip_id: trip.id, name: trip.name, line: tripLine(lt), at: new Date().toISOString(), leg: kind };
+      const underway = { trip_id: trip.id, name: trip.name, event: lt.event, line: tripLine(lt), at: new Date().toISOString(), leg: kind };
       // A fresh Arrival status check for the next anchorage, berth or mooring.
       return { ...s, boat: { ...b, legs, underway, arrive: {} }, data: { ...s.data, arrivingDest: stampTicks(list, list.map((i) => (ids.has(i.id) ? { ...i, checked: true } : i)), tickedBy), shipsLog: [...(s.data.shipsLog || []), entry] } };
     });

@@ -37,7 +37,7 @@ import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
 import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
-import { legBoat, liveLog } from "@/lib/tripFold";
+import { legBoat, liveLog, withTripLog } from "@/lib/tripFold";
 import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";

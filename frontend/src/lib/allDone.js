@@ -71,6 +71,7 @@ export const nowLocal = () => { const d = new Date(); return `${today()}T${pad(d
 // Today's leg shown like a Route Plan, under the plan it belongs to.
 export const legTrip = (trip, leg) => {
   const w = leg.weather || {};
-  return { id: trip.id, name: trip.name, event: String(w.event_name || "").trim(), start: String(leg.route_start || "").trim(), dest: String(leg.route_dest || "").trim(),
+  // A leg with no name of its own carries the trip's Event or Trip name.
+  return { id: trip.id, name: trip.name, event: String(w.event_name || "").trim() || trip.event || "", start: String(leg.route_start || "").trim(), dest: String(leg.route_dest || "").trim(),
     from: dmy(w.depart_at), to: dmy(w.finish_at), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim() };
 };
