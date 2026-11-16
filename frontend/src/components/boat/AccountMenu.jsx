@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, Crown, ListChecks, LogOut, MapPinned, Settings, ShieldCheck, TicketPercent, UserRound } from "lucide-react";
+import { BarChart3, Crown, KeyRound, ListChecks, LogOut, MapPinned, Settings, ShieldCheck, TicketPercent, UserRound } from "lucide-react";
 import { MySettingsDialog } from "@/components/boat/MySettingsDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -13,6 +13,7 @@ import { pendingAgreement, pendingPhone, pendingRsvp } from "@/lib/pendingAgreem
 import { PhoneReminderDialog } from "@/components/boat/PhoneReminderDialog";
 import { SignOutRsvpDialog } from "@/components/boat/crew/SignOutRsvpDialog";
 import { MagicBalance } from "@/components/boat/MagicBalance";
+import { ChangePasswordDialog } from "@/components/boat/ChangePasswordDialog";
 
 const unsyncedCount = () => Number(localStorage.getItem("mbp_outbox_v3") || 0);
 
@@ -26,7 +27,7 @@ export const TierBadge = ({ role, launchFree }) => (
 );
 
 export const AccountMenu = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const { openPlan } = useUpgrade();
   const navigate = useNavigate();
   const [warnCount, setWarnCount] = useState(0);
@@ -35,6 +36,7 @@ export const AccountMenu = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [askPhone, setAskPhone] = useState(null);
   const [settings, setSettings] = useState(false);
+  const [pw, setPw] = useState(false);
   useEffect(() => {
     const open = () => setSettings(true);
     window.addEventListener("mbp:open-settings", open);
@@ -66,6 +68,7 @@ export const AccountMenu = () => {
         <MagicBalance open={menuOpen} /><DropdownMenuSeparator />
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setSettings(true)} data-testid="account-settings-item"><Settings className="mr-2 h-4 w-4" />My settings</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setPw(true)} data-testid="account-change-password-item"><KeyRound className="mr-2 h-4 w-4" />{user.has_password ? "Change password..." : "Set a password..."}</DropdownMenuItem>
         {user.shore_contact && <DropdownMenuItem onSelect={() => navigate("/shore")} data-testid="account-shore-map-item"><MapPinned className="mr-2 h-4 w-4" />Shore contact map</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin/analytics")} data-testid="account-analytics-item"><BarChart3 className="mr-2 h-4 w-4" />Analytics dashboard</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}
@@ -79,6 +82,7 @@ export const AccountMenu = () => {
       note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Boat Walk Through.`}
       confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); afterTerms(); }} onClose={() => setTermsFor("")} />
     <MySettingsDialog open={settings} onClose={() => setSettings(false)} />
+    <ChangePasswordDialog open={pw} hasPassword={user.has_password} onClose={() => setPw(false)} onDone={refresh} />
     <PhoneReminderDialog save={askPhone} unsynced={unsyncedCount} onLeave={() => { setAskPhone(null); leave(); }} onClose={() => setAskPhone(null)} />
     <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
     </>

@@ -5,12 +5,13 @@ from datetime import datetime, timezone, timedelta
 from html import escape
 import logging
 import bcrypt
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
-from auth import UserOut, create_session, signed_in_user
+from auth import create_session, get_current_user, signed_in_user
+from twofa import CODE_TRIES, CODES_PER_HOUR, RESEND_SECONDS, code_hash, expiry, is_special, new_code
 from email_service import send_email, EMAIL_FROM_NAME
 from urls import public_base
 
@@ -34,6 +35,16 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+
+
+class CodeIn(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\s*\d{6}\s*$")
+
+
+class ChangeIn(BaseModel):
+    current: str = Field(default="", max_length=128)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class ForgotIn(BaseModel):
@@ -62,7 +73,41 @@ def _ident(email: str) -> str:
     return f"email:{email}"
 
 
-@router.post("/register", response_model=UserOut)
+async def send_code(email: str) -> None:
+    """2FA: a 6-digit code to prove the email, at most one a minute and five an hour."""
+    now = datetime.now(timezone.utc)
+    last = await db.email_codes.find_one({"email": email}, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
+    if last and last["created_at"].replace(tzinfo=timezone.utc) > now - timedelta(seconds=RESEND_SECONDS):
+        return
+    if await db.email_codes.count_documents({"email": email, "created_at": {"$gte": now - timedelta(hours=1)}}) >= CODES_PER_HOUR:
+        return
+    code = new_code()
+    await db.email_codes.update_many({"email": email, "used": False}, {"$set": {"used": True}})
+    await db.email_codes.insert_one({"email": email, "code_hash": code_hash(email, code), "tries": 0, "used": False, "created_at": now, "expires_at": expiry(now)})
+    html = (
+        '<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:560px">'
+        '<h1 style="font-size:20px">Your My Boat Prep code</h1><p>Hi skipper,</p>'
+        '<p>Type this code into My Boat Prep to confirm your email. It works once and expires in 15 minutes.</p>'
+        f'<p style="font-size:32px;font-weight:bold;letter-spacing:6px">{code}</p>'
+        "<p style=\"font-size:13px;color:#475569\">If you didn't create an account, ignore this email.</p>"
+        f'<p style="font-size:12px;color:#64748b">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password or card details by email.</p></div>'
+    )
+    try:
+        await send_email(to=[email], subject=f"{code} is your My Boat Prep code", html=html)
+    except (HTTPException, ValueError):
+        logger.error("Email code failed to send")
+
+
+async def needs_code(user: dict) -> bool:
+    if user.get("email_verified"):
+        return False
+    if await is_special(user["email"]):
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"email_verified": True}})
+        return False
+    return True
+
+
+@router.post("/register")
 async def register(payload: RegisterIn, response: Response):
     email = payload.email.strip().lower()
     existing = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1, "password_hash": 1})
@@ -77,11 +122,14 @@ async def register(payload: RegisterIn, response: Response):
         await db.users.insert_one(dict(user))
     except DuplicateKeyError:
         raise HTTPException(status_code=400, detail="An account with this email already exists. Sign in instead.")
+    if await needs_code(user):
+        await send_code(email)
+        return {"verify": True, "email": email}
     await create_session(response, user["user_id"])
     return await signed_in_user(user["user_id"])
 
 
-@router.post("/login", response_model=UserOut)
+@router.post("/login")
 async def login(payload: LoginIn, request: Request, response: Response):
     email = payload.email.strip().lower()
     ident = _ident(email)
@@ -97,8 +145,49 @@ async def login(payload: LoginIn, request: Request, response: Response):
         await db.login_attempts.update_one({"identifier": ident}, {"$set": {"count": 0 if lock else count, "locked_until": lock, "updated_at": now}}, upsert=True)
         raise HTTPException(status_code=401, detail=LOGIN_ERROR)
     await db.login_attempts.delete_one({"identifier": ident})
+    if await needs_code(user):
+        await send_code(email)
+        return {"verify": True, "email": email}
     await create_session(response, user["user_id"])
     return await signed_in_user(user["user_id"])
+
+
+@router.post("/verify-email")
+async def verify_email(payload: CodeIn, response: Response):
+    email = payload.email.strip().lower()
+    now = datetime.now(timezone.utc)
+    rec = await db.email_codes.find_one({"email": email, "used": False, "expires_at": {"$gt": now}}, {"_id": 1, "code_hash": 1, "tries": 1}, sort=[("created_at", -1)])
+    if not rec or rec["tries"] >= CODE_TRIES:
+        raise HTTPException(status_code=400, detail="That code has expired. Tap Send a new code.")
+    if not secrets.compare_digest(rec["code_hash"], code_hash(email, payload.code.strip())):
+        await db.email_codes.update_one({"_id": rec["_id"]}, {"$inc": {"tries": 1}})
+        raise HTTPException(status_code=400, detail="That code isn't right. Check the email and try again.")
+    await db.email_codes.update_many({"email": email}, {"$set": {"used": True}})
+    user = await db.users.find_one_and_update({"email": email}, {"$set": {"email_verified": True}}, projection={"_id": 0, "user_id": 1})
+    if not user:
+        raise HTTPException(status_code=400, detail="That code has expired. Tap Send a new code.")
+    await create_session(response, user["user_id"])
+    return await signed_in_user(user["user_id"])
+
+
+@router.post("/resend-code")
+async def resend_code(payload: ForgotIn):
+    email = payload.email.strip().lower()
+    user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1, "email": 1, "email_verified": 1, "password_hash": 1})
+    if user and user.get("password_hash") and await needs_code(user):
+        await send_code(email)
+    return {"ok": True}
+
+
+@router.post("/change-password")
+async def change_password(payload: ChangeIn, request: Request, user: dict = Depends(get_current_user)):
+    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 1})
+    if doc.get("password_hash") and not verify_password(payload.current, doc["password_hash"]):
+        raise HTTPException(status_code=400, detail="Your current password isn't right")
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": hash_password(payload.password)}})
+    token = request.cookies.get("session_token") or request.headers.get("authorization", "")[7:]
+    await db.user_sessions.delete_many({"user_id": user["user_id"], "session_token": {"$ne": token}})
+    return {"ok": True}
 
 
 @router.post("/forgot-password")

@@ -51,6 +51,7 @@ from bartender import router as bartender_router  # noqa: E402
 from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 from wizard_progress import router as wizard_progress_router  # noqa: E402
+from twofa import seed_special_users  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
 from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
@@ -729,6 +730,8 @@ async def create_indexes():
     await db.wizard_progress.create_index([("user_id", 1), ("wizard", 1)], unique=True)
     await db.crew_register.create_index([("owner_id", 1), ("kind", 1)])
     await db.crew_register.create_index("email_key")
+    await db.email_codes.create_index([("email", 1), ("created_at", -1)])
+    await db.email_codes.create_index("expires_at", expireAfterSeconds=86400)
     await db.user_activity.create_index([("user_id", 1), ("hour", 1)], unique=True)
     await db.user_activity.create_index([("last", 1), ("first", 1)])
     await db.user_activity.create_index("expires", expireAfterSeconds=0)
@@ -770,6 +773,7 @@ async def create_indexes():
     await seed_later_rows()
     await seed_wizard_list()
     await seed_wizards()
+    await seed_special_users()
     await cover_copies()
     await seed_common_names()
     await seed_terms_template()

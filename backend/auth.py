@@ -54,6 +54,7 @@ class UserOut(BaseModel):
     shore_contact: bool = False
     ignore_300: bool = False
     show_sundowners: bool = False
+    has_password: bool = False
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -62,6 +63,7 @@ def to_user_out(u: dict) -> UserOut:
     role = u.get("role", "free")
     return UserOut(
         user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", ""),
+        has_password=bool(u.get("password_hash")),
         role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro") or first200_cached(email), launch_free=first200_cached(email),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
