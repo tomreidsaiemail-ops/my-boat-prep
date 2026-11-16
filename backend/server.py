@@ -480,6 +480,7 @@ def boat_summary(d: dict, crew_role: bool, owners: dict, uid: str | None = None)
         "crew_count": len(d.get("crew") or []), "photo_v": photo.get("updated_at") if not photo.get("is_deleted") else None,
         "zone_maps": boat_maps(d), "walk_skip": crew_skip(d, uid if crew_role else None), "walk_stars": [] if crew_role else d.get("walk_stars") or [],
         "charter_lock": d.get("charter_lock"), "charter": d.get("charter"), "tracking": tracking_brief(d), "model": bool(d.get("model")),
+        **({"model_copy": d.get("created_at") or ""} if d.get("model") else {}),
     }
 
 

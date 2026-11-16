@@ -13,7 +13,8 @@ from db import db
 MASTER_EMAIL = "modelskipper@myboatprep.com"
 MASTER_VESSEL = "Model Vessel"
 MODEL_BOAT_ID = "model_vessel"
-WIZARD_LIST = "Admin - Model Vessel - wizard instructions"
+WIZARD_LIST = "Admin - Model Vessel - Basic Introduction Walkthrough"
+OLD_WIZARD_LIST = "Admin - Model Vessel - wizard instructions"
 WIZARD_STEPS = [
     'Click on Vessel, and then click on Additional Boat Details, you will notice that it says "Zone Map Schematic Done" in green, and then press Next',
     "Close Additional Boat Details, and click the Home Boat Inventory button, and then press Next",
@@ -65,11 +66,19 @@ async def ensure_model_vessel(user: dict, token: str | None):
             await db[coll].insert_many([{**d, "owner_id": uid, "boat_id": MODEL_BOAT_ID, "created_at": now} for d in docs])
 
 
+def _named(name: str) -> dict:
+    return {"custom": True, "name": {"$regex": rf"^\s*{re.escape(name)}\s*$", "$options": "i"}}
+
+
 async def seed_wizard_list():
+    now = datetime.now(timezone.utc).isoformat()
+    if not await db.migrations.find_one({"_id": "model_vessel_wizard_rename"}):
+        if not await db.list_templates.find_one(_named(WIZARD_LIST), {"_id": 1}):
+            await db.list_templates.update_many(_named(OLD_WIZARD_LIST), {"$set": {"name": WIZARD_LIST, "updated_at": now}})
+        await db.migrations.insert_one({"_id": "model_vessel_wizard_rename", "at": now})
     if await db.migrations.find_one({"_id": "model_vessel_wizard_list"}):
         return
-    now = datetime.now(timezone.utc).isoformat()
-    if not await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(WIZARD_LIST)}\s*$", "$options": "i"}}, {"_id": 1}):
+    if not await db.list_templates.find_one(_named(WIZARD_LIST), {"_id": 1}):
         await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": WIZARD_LIST, "private": True,
                                             "description": "Model Vessel training window: one step per line, shown in order with Back and Next.",
                                             "items": [{"id": n + 1, "label": t} for n, t in enumerate(WIZARD_STEPS)], "created_at": now, "updated_at": now, "updated_by": "system"})

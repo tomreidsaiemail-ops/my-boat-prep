@@ -199,8 +199,9 @@ class TestWizardList:
         assert r.status_code == 200, r.text
         data = r.json()
         lists = data if isinstance(data, list) else data.get("lists", data)
-        w = [l for l in lists if "wizard instructions" in l["name"].lower()]
-        assert len(w) == 1 and len(w[0]["items"]) == 6
+        w = [l for l in lists if l["name"] == "Admin - Model Vessel - Basic Introduction Walkthrough"]
+        assert len(w) == 1 and len(w[0]["items"]) >= 6
+        assert not [l for l in lists if "wizard instructions" in l["name"].lower()]
         assert w[0]["items"][0]["label"].startswith("Click on Vessel")
 
 

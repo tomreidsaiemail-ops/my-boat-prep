@@ -5,17 +5,32 @@ import useAdminLists from "@/hooks/useAdminLists";
 const PREFIX = "Admin - Model Vessel";
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 
+const RESTART = "mbp-model-walkthrough";
+const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, copy: `mbp_model_copy:${uid}` });
+const reset = (k) => { localStorage.setItem(k.step, "0"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false"); };
+
+// Help > Model Vessel > Basic Introduction Walkthrough: back to step 1, open.
+export const restartWalkthrough = (uid) => { reset(keys(uid)); window.dispatchEvent(new Event(RESTART)); };
+
 // Model Vessel: a green page with a Training Mode strip, and a floating window (a quarter of the screen) stepping through
-// the "Admin - Model Vessel - wizard instructions" list. The step is remembered; X hides it until Show steps.
-export const TrainingMode = ({ uid, online }) => {
-  const steps = (useAdminLists(PREFIX, online).find((l) => /wizard instructions/i.test(l.name))?.items || []).map((i) => i.label);
-  const stepKey = `mbp_model_step:${uid}`;
-  const shutKey = `mbp_model_wizard_closed:${uid}`;
+// the "Admin - Model Vessel - Basic Introduction Walkthrough" list. The step is remembered; X hides it until Show steps.
+export const TrainingMode = ({ uid, online, copy = "" }) => {
+  const steps = (useAdminLists(PREFIX, online).find((l) => /basic introduction walkthrough/i.test(l.name))?.items || []).map((i) => i.label);
+  const k = keys(uid);
+  const stepKey = k.step;
+  const shutKey = k.shut;
+  const miniKey = k.mini;
+  // A freshly made copy of the Model Vessel starts again at step 1.
+  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
   const [step, setStep] = useState(() => read(stepKey, 0));
   const [shut, setShut] = useState(() => read(shutKey, false));
   // Shrunk to one line so the screen behind (e.g. Delete Zone) can be reached; tap the line to bring it back.
-  const miniKey = `mbp_model_wizard_mini:${uid}`;
   const [mini, setMini] = useState(() => read(miniKey, false));
+  useEffect(() => {
+    const again = () => { setStep(0); setShut(false); setMini(false); };
+    window.addEventListener(RESTART, again);
+    return () => window.removeEventListener(RESTART, again);
+  }, []);
   const shrink = (v) => { setMini(v); localStorage.setItem(miniKey, JSON.stringify(v)); };
   const show = !shut && steps.length > 0;
   const at = Math.min(step, Math.max(steps.length - 1, 0));

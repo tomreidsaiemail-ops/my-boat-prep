@@ -81,6 +81,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
     try {
       await boats.remove(cur); boats.select(next.key);
       if (cur.crew) toast.success(`You've left ${currentName}`);
+      else if (cur.model) toast.success(`${currentName} deleted permanently. A fresh copy comes back next time you sign in.`);
       else toast.success(`${currentName} deleted. You can bring it back for 7 days from Add a boat (+).`, {
         duration: 10000, action: { label: "Undo", onClick: () => bringBack(gone) },
       });
@@ -129,7 +130,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display text-xl font-extrabold">{cur.crew ? `Leave ${currentName}?` : `Delete ${currentName}?`}</AlertDialogTitle>
             <AlertDialogDescription className="text-left text-sm text-[var(--navy)]">
-              {cur.crew ? "The boat disappears from your phone. The skipper can invite you again." : "All of this boat's lists, Ship's Log, engine hours, photo and crew are removed from this phone and the cloud. You can bring it back within 7 days from Add a boat (+). Your other boats are not changed."}
+              {cur.crew ? "The boat disappears from your phone. The skipper can invite you again." : cur.model ? "The Model Vessel practice boat is deleted permanently, with all its lists and changes. It can't be brought back, but a fresh copy is added next time you sign in. Your other boats are not changed." : "All of this boat's lists, Ship's Log, engine hours, photo and crew are removed from this phone and the cloud. You can bring it back within 7 days from Add a boat (+). Your other boats are not changed."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {guarded && (
