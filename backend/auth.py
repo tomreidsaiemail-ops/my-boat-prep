@@ -143,7 +143,8 @@ async def start_session(response: Response, email: str, name: str, picture: str)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if user:
         update = {"$set": {"name": name or user.get("name", ""), "picture": picture, "email_verified": True}}
-        if user.get("password_hash") and not user.get("email_verified"):
+        from twofa import is_special
+        if user.get("password_hash") and not user.get("email_verified") and not await is_special(email):
             # Google proves the real owner; drop a password someone set without proving this email.
             update["$unset"] = {"password_hash": ""}
             await db.user_sessions.delete_many({"user_id": user["user_id"]})

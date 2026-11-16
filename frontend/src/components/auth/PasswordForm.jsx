@@ -80,18 +80,20 @@ const EmailCodeForm = ({ email, onBack }) => {
   const { setUser } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [busy, setBusy] = useState("");
   const check = async (e) => {
     e.preventDefault();
     setBusy("check");
     setError("");
+    setInfo("");
     try { const { data } = await api.post("/auth/verify-email", { email, code }); setUser(data); }
     catch (err) { setError(apiError(err)); } finally { setBusy(""); }
   };
   const resend = async () => {
     setBusy("resend");
     setError("");
-    try { await api.post("/auth/resend-code", { email }); setError("A new code is on its way (it can take a minute)."); }
+    try { await api.post("/auth/resend-code", { email }); setInfo("A new code is on its way (it can take a minute)."); }
     catch (err) { setError(apiError(err)); } finally { setBusy(""); }
   };
   return (
@@ -100,7 +102,8 @@ const EmailCodeForm = ({ email, onBack }) => {
       <p className="text-sm text-[var(--muted)]">We sent a 6-digit code to <b className="text-[var(--navy)]" data-testid="email-code-address">{email}</b>. Type it here to confirm it&apos;s you. You only do this once.</p>
       <Input id="email-code" label="Code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" required
         value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="field-input text-center text-2xl font-bold tracking-[0.4em]" />
-      {error && <p className="text-sm font-bold text-[var(--navy)]" role="alert" data-testid="email-code-message">{error}</p>}
+      {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid="email-code-message">{error}</p>}
+      {info && !error && <p className="text-sm font-bold text-[var(--navy)]" role="status" data-testid="email-code-info">{info}</p>}
       <button type="submit" disabled={!!busy || code.length !== 6} className="btn-solid min-h-[52px] disabled:opacity-60" data-testid="email-code-submit-btn">
         {busy === "check" && <Loader2 className="h-4 w-4 animate-spin" />}Confirm and continue
       </button>

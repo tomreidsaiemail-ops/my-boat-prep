@@ -1,0 +1,32 @@
+{
+  "summary": "Tested 2FA email code at account creation, the 'ADMIN - 2FA Special Users' list and change password, on both backend and frontend. Backend: 13/13 pytest pass (tests/test_twofa_email_code.py). Seed list has 33 unique items, is custom and private, and matches every user that existed before the change. GET /api/admin-lists rejects the prefix (400), /api/templates does not include it, and /api/admin/template-lists is admin only. Register returns {verify,email} with no cookie and /me gives 401. Wrong code gives 400 'isn't right'. After 5 wrong tries the code gives 400 expired, even when the right code is then entered. The right code signs in, sets email_verified=true and marks codes used, and reusing it fails. Login while unverified returns verify and respects the 60s cooldown (no new code doc). After verifying, login works normally. resend-code always returns ok, stays inside the cooldown and stops at 5 codes an hour (only 1 unused at a time), and makes no code for verified or Google-only users. An email added to the special list (with spaces and upper case) signs in straight away with no code. Existing password and session users sign in as before. Change password: wrong current gives 400, a short new password gives 422, and a correct change keeps the current session, signs out the other session, makes the old password fail and the new one work. A Google-only user can set a password with Bearer auth, and has_password then flips. Frontend (390px): Create account shows the email-code-form with every testid. A wrong code shows an error, resend shows a message, and the right code (set in the DB) signs in to the app (TOS screen). Sign in tab with an unverified account shows the code form, and Back returns to the password form. Account menu 'Change password...' opens the dialog: wrong current shows an error, the right one shows a success toast and the user stays signed in after reload. A Google-only user sees 'Set a password...' with no current-password field.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "Google sign-in (auth.start_session) + special list", "issue": "All 26 existing password users except test.user.password@example.com have email_verified=false in the DB, even though they are on the special list. They only get email_verified=true when they next sign in with a password (needs_code sets it). If one of them signs in with Google first, start_session sees password_hash plus email_verified false, drops their password and deletes all their sessions. This logic already existed, but it clashes with 'treated as already 2FA verified'. Fix: in seed_special_users (and/or start_session), set email_verified=true for users whose email is on the list, or check is_special() in start_session before unsetting the password."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "EmailCodeForm", "issues": ["Error messages (wrong code / expired) and the info message (new code sent) share one element, email-code-message, styled navy. Errors are not visually different from info. Consider red for errors."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_twofa_email_code.py", "/app/test_reports/pytest/pytest_twofa.xml"],
+  "action_items": [
+    "Mark existing special-list password users email_verified=true (or check is_special in start_session) so a first Google sign-in doesn't drop their password and sessions.",
+    "Optional: style EmailCodeForm error messages differently from info messages."
+  ],
+  "critical_code_review_comments": [
+    "seed_special_users runs once per DB (migrations twofa_special_users_v1). In production, users who sign up between deploy and startup are not an issue because it runs at startup. Admin removal of an email later doesn't un-verify users who already have email_verified=true (fine, but worth documenting).",
+    "change-password for a Google-only user needs no current password, so a stolen session can set a password. That is acceptable by design, but sending a notification email would help.",
+    "verify-email brute force is limited to 5 tries per code and 5 codes an hour (25 guesses an hour out of 1e6). OK."
+  ],
+  "updated_files": ["/app/backend/tests/test_twofa_email_code.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. All test_2fa_* users, sessions, email_codes and login_attempts were deleted, plus the main agent's test.twofa.one@example.com. Temporary special-list items (ids 9998/9999) were pulled, and the list is back to 33 items.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/test_twofa_email_code.py -n 0. The tests use pymongo directly to set code hashes (sha256(email:123456)) and to push/pull temporary special-list items. Real emails go out through Resend to @example.com addresses."
+}
