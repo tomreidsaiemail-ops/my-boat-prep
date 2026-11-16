@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only retest of the Preview Crew Member Invite fixes (390x844, test_session_pro_1, Model Vessel, training window shrunk). All 4 items pass. (1) Own stops: I unticked 3 of 7 so the summary read 'Own stops, 4 of 7', then pressed Copy WhatsApp message, Preview and Join. The preview showed 'BOAT WALK THROUGH (0 OF 4 TICKED)' with 4 stops. The saved invite in the DB has 3 walk_skip keys, so it matches what the crew member gets. (2) Default stops (no own stops): the preview showed 0 of 7 with 7 stops. (3) At 390px neither crew-invite-preview-banner nor crew-agreement-preview-banner overlaps the close X. The text ends at 333px and 339px, and the X starts at 353px and 356px. (4) Send email invite on the Model Vessel showed the toast 'Invite saved for TEST_Ann, but no email was sent: emails are switched off on the Model Vessel while you're training.'",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "InviteCrewDialog (390px)", "issues": ["Minor: after Send email invite, the toast at the bottom of the screen covers crew-invite-preview-btn for a few seconds. The user has to wait or scroll before they can tap Preview."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "InviteCrewDialog line 252 merges lastInvite.walk_skip into the boat prop, and lastInvite gets ...ownWalk. This is correct. When own stops are reset to default, walkSkip is null, so the preview correctly falls back to the boat's default."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% (4/4)"},
+  "seed_data_creation": "Created and then deleted 3 crew_invites on model_vessel: test_tom_prev188, test_ann_prev188 and test_ann2_prev188 @example.com. 0 remain.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Press training-shrink-btn first. Stop checkboxes are 'input[type=checkbox]' inside crew-walk-stops-dialog. After a send, the toast can cover crew-invite-preview-btn, so scroll it into view and click it with a JS click."
+}
