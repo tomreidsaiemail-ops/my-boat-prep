@@ -26,8 +26,14 @@ const FinishPanel = ({ title, finish, onBack, onClose, onFinish, wizards, onOpen
       <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-finish-close-btn`}><X className="h-5 w-5" /></button>
     </div>
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-finish-list`}>
-      {finish.length ? finish.map((f, n) => <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={t} />)
+      {finish.some((f) => f.kind !== "para") ? finish.map((f, n) => f.kind !== "para" && <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={t} />)
         : <p className="font-extrabold" data-testid={`${t}-finish-heading-0`}>You have finished the walkthrough.</p>}
+      {/* "%%" lines: closing paragraphs, always at the bottom after the links. */}
+      {finish.some((f) => f.kind === "para") && (
+        <div className="mt-2 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 italic text-emerald-950" data-testid={`${t}-finish-paras`}>
+          {finish.map((f, n) => f.kind === "para" && <p key={n} data-testid={`${t}-finish-para-${n}`}>{f.text}</p>)}
+        </div>
+      )}
     </div>
     <div className="flex gap-2">
       <button type="button" onClick={onBack} className="btn-ghost h-11 flex-1 justify-center gap-1" data-testid={`${t}-finish-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>

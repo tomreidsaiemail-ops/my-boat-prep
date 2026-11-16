@@ -51,7 +51,7 @@ async def tutorial_stats() -> list:
 
 
 PLACEHOLDER = "New step: write the instructions for this step here."
-NOT_STEP = re.compile(r"^\s*(--|\$\$)")
+NOT_STEP = re.compile(r"^\s*(--|\$\$|%%)")
 
 
 async def _wizard_doc(wizard: str) -> dict:
@@ -102,9 +102,9 @@ class FinishEdit(BaseModel):
 async def edit_wizard_finish(p: FinishEdit, admin: dict = Depends(require_admin)):
     """Edit Final on a Model Vessel wizard: the Finish panel lines (--, ---, $$, $$$) replace the old ones at the end of the list."""
     lines = [" ".join(t.split()) for t in p.lines if t.strip()]
-    bad = [n + 1 for n, t in enumerate(lines) if not NOT_STEP.match(t) or not re.sub(r"^(-+|\$+)", "", t).strip()]
+    bad = [n + 1 for n, t in enumerate(lines) if not NOT_STEP.match(t) or not re.sub(r"^(-+|\$+|%+)", "", t).strip()]
     if bad:
-        raise HTTPException(status_code=400, detail=f"Every Finish panel line must start with --, ---, $$ or $$$ and have some text. Check line {', '.join(map(str, bad[:5]))}.")
+        raise HTTPException(status_code=400, detail=f"Every Finish panel line must start with --, ---, $$, $$$ or %% and have some text. Check line {', '.join(map(str, bad[:5]))}.")
     if any(len(t) > 4000 for t in lines):
         raise HTTPException(status_code=400, detail="A line can be up to 4000 characters")
     doc = await _wizard_doc(p.wizard)
