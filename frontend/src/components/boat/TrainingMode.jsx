@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
-import useAdminLists from "@/hooks/useAdminLists";
+import useAdminLists, { refreshAdminLists } from "@/hooks/useAdminLists";
+import { EditStepDialog } from "@/components/boat/training/EditStepDialog";
 import { BASIC, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
 import { wizardEvent } from "@/hooks/useWizardsDone";
@@ -18,7 +19,8 @@ export const restartWalkthrough = (uid, which = BASIC) => { reset(keys(uid), whi
 
 // Model Vessel: a green page with a Training Mode strip and the chosen "Admin - Model Vessel - *" wizard.
 // The wizard and step are remembered; X hides it until Show steps.
-export const TrainingMode = ({ uid, online, copy = "" }) => {
+export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
+  const [editing, setEditing] = useState(false);
   const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
   // A freshly made copy of the Model Vessel starts the Basic Introduction again at step 1.
@@ -35,7 +37,7 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
   const wizard = wizards.find((w) => w.key === which) || wizards.find((w) => w.key === BASIC) || wizards[0];
-  const { steps, finish } = parseWizard(wizard?.lines);
+  const { steps, finish, raw } = parseWizard(wizard?.lines);
   const show = !shut && steps.length > 0;
   const at = Math.min(step, steps.length);
   const done = at === steps.length;
@@ -68,7 +70,9 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
       </div>
       {show && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} steps={steps} finish={finish} at={at} mini={mini}
         onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }}
-        wizards={wizards} onOpen={(w) => { wizardEvent(uid, wizard.key, "finish"); restartWalkthrough(uid, w.key); }} />}
+        wizards={wizards} onOpen={(w) => { wizardEvent(uid, wizard.key, "finish"); restartWalkthrough(uid, w.key); }} onEdit={admin && online ? () => setEditing(true) : undefined} />}
+      {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={at} raw={raw[at] || ""} onClose={() => setEditing(false)}
+        onSaved={(before) => { setEditing(false); go(at + before); refreshAdminLists(); }} />}
     </>
   );
 };

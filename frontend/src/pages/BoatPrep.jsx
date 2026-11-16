@@ -1070,7 +1070,7 @@ export default function BoatPrep({ boatId, boats }) {
   return (
     <WeightsContext.Provider value={weights}>
     <CrewDietContext.Provider value={diet}>
-    {boats.current.model && !crew && <TrainingMode key={boats.current.model_copy || ""} uid={user.user_id} online={online} copy={boats.current.model_copy || ""} />}
+    {boats.current.model && !crew && <TrainingMode key={boats.current.model_copy || ""} uid={user.user_id} online={online} copy={boats.current.model_copy || ""} admin={user.is_admin} />}
     <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}

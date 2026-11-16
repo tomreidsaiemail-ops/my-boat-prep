@@ -1,4 +1,4 @@
-import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Trophy, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { linkedWizard } from "@/lib/wizard";
 
@@ -49,7 +49,7 @@ const MiniBar = ({ steps, at, onGo, onShrink, t }) => (
 );
 
 // One wizard on screen: a quarter-screen step window (20% taller when a step's text needs a scroll bar) (or a one-line bar), then the Finish panel after the last step.
-export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, t = "training" }) => {
+export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, t = "training" }) => {
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
   const key = `${at}|${steps[at] || ""}`;
@@ -71,6 +71,7 @@ export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
+        {onEdit && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /> Edit Step</button>}
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
       </div>
