@@ -65,6 +65,7 @@ export const TemplateBackup = ({ onRestored }) => {
   const check = async (text, what = "That file isn't a template lists backup") => {
     let data;
     try { data = JSON.parse(text); } catch { toast.error(what); return; }
+    (data.lists || []).forEach((l) => { l.items = (l.items || []).map((i, n) => ({ id: n + 1, ...i })); });
     setBusy("import");
     try { const { data: p } = await api.post("/admin/template-lists/import", { kind: data.kind, lists: data.lists || [], dry_run: true }, { timeout: 30000 }); setBackup(data); setPlan(p); setPasting(null); }
     catch (err) { toast.error(apiError(err, what)); } finally { setBusy(""); }

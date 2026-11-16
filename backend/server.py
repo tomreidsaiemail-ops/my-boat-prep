@@ -726,6 +726,7 @@ async def create_indexes():
     await db.crew_invites.create_index("token_hash", unique=True)
     await db.crew_invites.create_index("email_key")
     await db.crew_register.create_index("entry_id", unique=True)
+    await db.wizard_progress.create_index([("user_id", 1), ("wizard", 1)], unique=True)
     await db.crew_register.create_index([("owner_id", 1), ("kind", 1)])
     await db.crew_register.create_index("email_key")
     await db.user_activity.create_index([("user_id", 1), ("hour", 1)], unique=True)

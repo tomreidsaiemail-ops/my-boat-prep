@@ -24,9 +24,8 @@ export default function useWizardsDone(uid, online) {
   useEffect(() => {
     if (!online) return;
     api.get("/wizards/mine").then(({ data }) => {
-      const all = [...new Set([...read(uid), ...data.finished])];
-      localStorage.setItem(doneKey(uid), JSON.stringify(all));
-      setDone(all);
+      localStorage.setItem(doneKey(uid), JSON.stringify(data.finished));
+      setDone(data.finished);
     }).catch(() => {});
   }, [uid, online]);
   return done;

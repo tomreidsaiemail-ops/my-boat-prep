@@ -1,0 +1,35 @@
+{
+  "summary": "Tested Model Vessel walkthrough progress (open/finish events, Help green tick, analytics 'Model Vessel Tutorials') and Admin Copy list / Paste list. Backend: 8/8 new pytest pass (test_wizards_copy_paste.py). Frontend: every requested flow passes. Pro at 390x844: loading the Model Vessel posts open for Basic. Help > Model Vessel > Crew Registration and Invites posts open, shows 'Step 1 of 14', and 14 Nexts reach the Finish panel. Finish posts finish, and the green tick shows on Crew only, not Basic. The tick stays after a reload with localStorage cleared, so it comes from /wizards/mine. Admin analytics: the 'Model Vessel Tutorials' section is below The Magic Suite with 2 tiles, Basic first. Crew shows '1 person opened · 1 open · 1 finished · first opened 16 Nov 2026, 04:13 am'. Admin templates: Copy list writes the backup JSON to the clipboard and shows the 'copied' toast. Paste with the same content gives 'Already the same' and a disabled 'Nothing to restore' button. An edited list gives 'Will be overwritten' and Restore saves it (3 items, confirmed with GET). A renamed list gives 'Will be added' and the new row appears. An empty or blocked clipboard opens the Paste list dialog (Check is disabled while empty). Garbage text toasts 'That isn't a copied template list'. Valid pasted text closes the dialog and opens the preview. Crew Roles copied unchanged gives 'unchanged' (API check). Its content was not modified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/wizards/event", "issue": "Any signed-in user can post any wizard string (up to 120 chars) and each one makes a doc. Analytics only shows matching titles, so this is only a small risk of junk records."},
+      {"endpoint": "POST /api/admin/template-lists/import", "issue": "If an admin hand-edits pasted JSON and adds an item without an 'id', the import returns 422 'Field required'. The UI shows this as a generic error toast."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Tutorial 'opens' count", "issue": "TrainingMode's opened ref resets every time the component mounts. Every page load or reload with the training window showing posts another 'open', so 'opens' counts page views, not walkthrough starts. Basic showed 3 opens for 1 person after 3 loads. Users/first_at/finished are correct.", "affected_selectors": ["tile-tutorial-0"]},
+      {"flow": "Finished ticks", "issue": "useWizardsDone merges localStorage with the server list and never removes entries. If wizard_progress is cleared on the server, the tick stays on any device that already has it in localStorage.", "affected_selectors": ["app-menu-help-model-wizard-*-done"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_wizards_copy_paste.py", "/app/test_reports/pytest/pytest_wizards.xml"],
+  "action_items": [
+    "Optional: count an 'open' only when a walkthrough actually starts (restartWalkthrough, or first show per session), not on every mount/reload",
+    "Optional: let /wizards/mine replace the localStorage list rather than merge, so server resets clear ticks",
+    "Optional: make item id optional in the import model (BackupList items), or give a clearer error for hand-edited paste"
+  ],
+  "critical_code_review_comments": [
+    "wizard_progress.py: $setOnInsert first_at plus $min finished_at work correctly. A 'finish' with no earlier open sets first_at at finish time, which is acceptable.",
+    "tutorial_stats: titles come from names split on '-' (split('-',2)[2]). A title that itself contains ' - ' is kept whole, because the split is limited to 2.",
+    "copyList hardcodes custom:true. That is fine because the admin list only shows custom lists."
+  ],
+  "updated_files": ["/app/backend/tests/test_wizards_copy_paste.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_Paste UI and TEST_Paste UI B template lists plus TEST_Copy lists from pytest; all deleted by id. wizard_progress docs for test-user-pro/test-user-free deleted by user_id filter (collection now 0 docs).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Help cascade testids: app-menu-btn -> app-menu-help-item -> app-menu-help-model-vessel-item -> app-menu-help-model-wizard-<slug>. Pro user already sits on the Model Vessel. Training window testids: training-next-btn, training-finish-panel, training-finish-btn. Paste testing: grant clipboard-read/write with origin; without permission readText throws, so the paste dialog opens. Import items need {id,label}. test_wizards_copy_paste.py clears only test-user-free's wizard_progress."
+}

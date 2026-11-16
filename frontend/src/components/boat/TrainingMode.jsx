@@ -7,6 +7,7 @@ import { wizardEvent } from "@/hooks/useWizardsDone";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const RESTART = "mbp-model-walkthrough";
+const openKey = (w) => `mbp_wizard_opened:${w}`;
 const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, copy: `mbp_model_copy:${uid}`, which: `mbp_model_wizard:${uid}` });
 const reset = (k, which = BASIC) => {
   localStorage.setItem(k.step, "0"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false"); localStorage.setItem(k.which, JSON.stringify(which));
@@ -29,7 +30,7 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
   const [mini, setMini] = useState(() => read(k.mini, false));
   const opened = useRef("");
   useEffect(() => {
-    const again = () => { opened.current = ""; setWhich(read(k.which, BASIC)); setStep(0); setShut(false); setMini(false); };
+    const again = () => { opened.current = ""; sessionStorage.removeItem(openKey(read(k.which, BASIC))); setWhich(read(k.which, BASIC)); setStep(0); setShut(false); setMini(false); };
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
@@ -38,8 +39,14 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
   const show = !shut && steps.length > 0;
   const at = Math.min(step, steps.length);
   const done = at === steps.length;
-  // Counted once each time a walkthrough is shown (sign-in, Help menu or Show steps).
-  useEffect(() => { if (show && wizard && opened.current !== wizard.key) { opened.current = wizard.key; wizardEvent(uid, wizard.key, "open"); } }, [show, wizard, uid]);
+  // Counted once per app session, and again each time it's restarted from the Help menu or after Finish.
+  useEffect(() => {
+    if (!show || !wizard || opened.current === wizard.key) return;
+    opened.current = wizard.key;
+    if (sessionStorage.getItem(openKey(wizard.key))) return;
+    sessionStorage.setItem(openKey(wizard.key), "1");
+    wizardEvent(uid, wizard.key, "open");
+  }, [show, wizard, uid]);
   useEffect(() => {
     document.body.classList.add("training-mode");
     return () => document.body.classList.remove("training-mode");
@@ -60,7 +67,7 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
       {show && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} steps={steps} finish={finish} at={at} mini={mini}
-        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; }} />}
+        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }} />}
     </>
   );
 };
