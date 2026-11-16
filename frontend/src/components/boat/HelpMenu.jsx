@@ -42,9 +42,9 @@ const Cascade = ({ title, icon: Icon, testId, tone = "border-[var(--line)]", chi
 
 const Pick = ({ h, onPick }) => <DropdownMenuItem onSelect={() => onPick(h)} className="pl-3" data-testid={`app-menu-help-${slug(h.title)}`}>{h.title}</DropdownMenuItem>;
 
-export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, onModelWalkthrough }) => {
+export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, onModelWalkthrough, wizards = [] }) => {
   const [open, setOpen] = useState(false);
-  if (!groups.length && !rest.length && !onModelWalkthrough) return null;
+  if (!groups.length && !rest.length && !(onModelWalkthrough && wizards.length)) return null;
   // Opens downwards inside the menu, so the cascade fits on a phone screen.
   return (
     <>
@@ -59,9 +59,9 @@ export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, on
             </Cascade>
           ))}
           {rest.map((h) => <Pick key={h.title} h={h} onPick={onPick} />)}
-          {onModelWalkthrough && (
+          {onModelWalkthrough && wizards.length > 0 && (
             <Cascade title="Model Vessel" icon={GraduationCap} testId="app-menu-help-model-vessel" tone="border-emerald-200">
-              <DropdownMenuItem onSelect={onModelWalkthrough} className="pl-3" data-testid="app-menu-help-model-walkthrough-item">Basic Introduction Walkthrough...</DropdownMenuItem>
+              {wizards.map((w) => <DropdownMenuItem key={w.key} onSelect={() => onModelWalkthrough(w)} className="pl-3" data-testid={`app-menu-help-model-wizard-${slug(w.title)}`}>{w.title}...</DropdownMenuItem>)}
             </Cascade>
           )}
         </div>

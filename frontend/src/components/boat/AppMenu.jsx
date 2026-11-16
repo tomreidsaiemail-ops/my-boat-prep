@@ -6,7 +6,7 @@ import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
 import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 import { HelpDialog, HelpSubMenu, helpMenuItems } from "@/components/boat/HelpMenu";
 
-export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough }) => {
+export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -30,7 +30,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             {onImport && <DropdownMenuItem onSelect={onImport} data-testid="app-menu-import-item"><FileUp className="mr-2 h-4 w-4" />Import Spreadsheet...</DropdownMenuItem>}
             <DropdownMenuSeparator data-testid="app-menu-bartender-separator" />
           </>}
-          <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} onModelWalkthrough={onModelWalkthrough} />
+          <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} onModelWalkthrough={onModelWalkthrough} wizards={wizards} />
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setFeedback(true)} data-testid="app-menu-feedback-item"><MessageSquarePlus className="mr-2 h-4 w-4" />Submit feedback...</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setSharing(true)} data-testid="app-menu-share-item"><QrCode className="mr-2 h-4 w-4" />Share the app</DropdownMenuItem>

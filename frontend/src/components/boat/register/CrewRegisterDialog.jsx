@@ -32,7 +32,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
   const [deleting, setDeleting] = useState(null);
   const [clearing, setClearing] = useState(null);
   const [busy, setBusy] = useState({});
-  const load = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(data)).catch(() => {}), []);
+  const load = useCallback(() => api.get("/crew-register", { params: { boat_id: boatId } }).then(({ data }) => setReg(data)).catch(() => {}), [boatId]);
   useEffect(() => { if (open && online) load(); }, [open, online, load]);
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
@@ -117,8 +117,8 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
           <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => add("party")} data-testid="reg-add-party-btn"><UserPlus className="h-4 w-4" /> Add interested party</button>
           {reg.parties.length > 0 && <EmailPartiesButton boatId={boatId} online={online} premium={premium} onUpgrade={onUpgrade} testId="reg-email-parties-btn" />}
         </div>
-        <RegEntryDialog entry={editing} onSaved={load} onClose={() => setEditing(null)} />
-        <BulkQuickReg open={bulk} onDone={load} onClose={() => setBulk(false)} />
+        <RegEntryDialog boatId={boatId} entry={editing} onSaved={load} onClose={() => setEditing(null)} />
+        <BulkQuickReg boatId={boatId} open={bulk} onDone={load} onClose={() => setBulk(false)} />
         <ConfirmDelete item={clearing ? { name: `${clearing.walk.vessel} walkthrough` } : null} title={`Remove ${clearing?.entry.name || ""}'s ${clearing?.walk.vessel || ""} walkthrough?`}
           note="They lose quick accept and must tick every stop of the walkthrough again. If they're on the boat now, their crew agreement reopens the next time they open the app." testId="reg-walk-clear" confirmLabel="Remove" onConfirm={clearWalk} onClose={() => setClearing(null)} />
         <ConfirmDelete item={deleting} title={`Remove ${deleting?.name || ""}?`} note="They're removed from your register. Crew already on a boat stay on it." testId="reg-delete" confirmLabel="Remove" onConfirm={remove} onClose={() => setDeleting(null)} />

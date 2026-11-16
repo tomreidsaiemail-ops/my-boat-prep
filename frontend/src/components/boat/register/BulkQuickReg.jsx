@@ -13,7 +13,7 @@ export const parsePeople = (text) => text.split(/\r?\n/).map((l) => l.trim()).fi
   return { name: name.slice(0, 60), email };
 });
 
-export const BulkQuickReg = ({ open, onDone, onClose }) => {
+export const BulkQuickReg = ({ open, onDone, onClose, boatId }) => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -25,7 +25,7 @@ export const BulkQuickReg = ({ open, onDone, onClose }) => {
     if (ready.length > 50) { toast.error("Up to 50 people at a time"); return; }
     setBusy(true);
     try {
-      const { data } = await api.post("/crew-register/quick-bulk", { people: ready });
+      const { data } = await api.post("/crew-register/quick-bulk", { people: ready }, { params: { boat_id: boatId } });
       const noEmail = people.filter((p) => !p.email).map((p) => ({ name: p.name || "A line", reason: "No email found" }));
       setResult({ ...data, skipped: [...noEmail, ...data.skipped] });
       if (data.added.length) { toast.success(`${data.added.length} crew registered with Quick Reg`); onDone(); }

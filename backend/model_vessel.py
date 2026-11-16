@@ -4,7 +4,9 @@ modelskipper@myboatprep.com keeps the master "Model Vessel". Every skipper gets 
 at sign-in when they don't have one. Photos aren't copied: the copy points at the master's stored images, and deleting
 one on the copy only removes the copy's reference (nothing in the app deletes stored images).
 """
+import json
 import re
+from pathlib import Path
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -83,3 +85,15 @@ async def seed_wizard_list():
                                             "description": "Model Vessel training window: one step per line, shown in order with Back and Next.",
                                             "items": [{"id": n + 1, "label": t} for n, t in enumerate(WIZARD_STEPS)], "created_at": now, "updated_at": now, "updated_by": "system"})
     await db.migrations.insert_one({"_id": "model_vessel_wizard_list", "at": now})
+
+
+async def seed_wizards():
+    """One time: every Model Vessel wizard as written in preview (replacing the live copy); admin edits after that are kept."""
+    if await db.migrations.find_one({"_id": "model_vessel_wizards_v2"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    for w in json.loads((Path(__file__).parent / "seed" / "model_vessel_wizards.json").read_text()):
+        items = [{"id": n + 1, "label": t} for n, t in enumerate(w["items"])]
+        await db.list_templates.update_one(_named(w["name"]), {"$set": {"name": w["name"], "description": w["description"], "items": items, "private": True, "updated_at": now, "updated_by": "system"},
+                                                               "$setOnInsert": {"list_id": f"tpl_{uuid4().hex[:10]}", "created_at": now}}, upsert=True)
+    await db.migrations.insert_one({"_id": "model_vessel_wizards_v2", "at": now})

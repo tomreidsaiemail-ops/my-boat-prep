@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from email_validator import validate_email, EmailNotValidError
 from db import db
 from auth import get_current_user, require_premium
-from email_service import send_email
+from email_service import no_email, send_email
 from urls import public_base
 from crew import email_key, owned_boat, BoatPath, tick
 from crew_photo import photo_versions, photo_versions_by_email
@@ -18,6 +18,8 @@ DAILY_SEND_LIMIT = 60
 EntryPath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 DATE = r"^\d{4}-\d{2}-\d{2}$"
 PHONE = r"^\+[1-9]\d{0,3}[ -]?\(?\d[\d ()-]{4,}$"  # must start with + and a country code
+MODEL = "model_vessel"
+BoatQ = Annotated[Optional[str], Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 TEXT = ("name", "phone", "email", "dob", "allergies", "food", "nok_name", "nok_email", "nok_phone", "comments")
 
 
@@ -97,14 +99,19 @@ async def mine(user: dict, entry_id: str) -> dict:
     return e
 
 
-async def no_duplicate(user: dict, kind: str, email: str, skip: str = ""):
-    if email and await db.crew_register.find_one({"owner_id": user["user_id"], "kind": kind, "email_key": email_key(email), "entry_id": {"$ne": skip}}, {"_id": 1}):
+def scope(boat_id: Optional[str]) -> dict:
+    """The Model Vessel has its own practice register: its crew aren't seen on live boats, and live crew aren't seen on it."""
+    return {"model": True} if boat_id == MODEL else {"model": {"$ne": True}}
+
+
+async def no_duplicate(user: dict, kind: str, email: str, skip: str = "", boat_id: Optional[str] = None):
+    if email and await db.crew_register.find_one({"owner_id": user["user_id"], "kind": kind, "email_key": email_key(email), "entry_id": {"$ne": skip}, **scope(boat_id)}, {"_id": 1}):
         raise HTTPException(status_code=400, detail="That email is already on your list")
 
 
 @router.get("")
-async def list_register(user: dict = Depends(get_current_user)):
-    rows = await db.crew_register.find({"owner_id": user["user_id"]}, {"_id": 0, "owner_id": 0}).sort("created_at", 1).to_list(500)
+async def list_register(boat_id: BoatQ = None, user: dict = Depends(get_current_user)):
+    rows = await db.crew_register.find({"owner_id": user["user_id"], **scope(boat_id)}, {"_id": 0, "owner_id": 0}).sort("created_at", 1).to_list(500)
     walks = await db.walkthroughs.find({"owner_id": user["user_id"]}, {"_id": 0}).sort("at", 1).to_list(1000)
     boats = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip() or "Your boat"
              async for b in db.user_boats.find({"owner_id": user["user_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}
@@ -133,17 +140,18 @@ async def record_walkthrough(owner_id: str, boat_id: str, user: dict, quick: boo
     full_at = ((prev or {}).get("full_at") or (prev or {}).get("at")) if quick else now
     await db.walkthroughs.update_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]},
                                      {"$set": {"email_key": key, "at": now, "full_at": full_at or now, "quick": quick}}, upsert=True)
-    if not await db.crew_register.find_one({"owner_id": owner_id, "kind": "crew", "email_key": key}, {"_id": 1}):
+    if not await db.crew_register.find_one({"owner_id": owner_id, "kind": "crew", "email_key": key, **scope(boat_id)}, {"_id": 1}):
         boat = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id}, {"_id": 0, f"crew_names.{user['user_id']}": 1})
         name = ((boat or {}).get("crew_names") or {}).get(user["user_id"]) or user.get("name") or user["email"].split("@")[0]
         await db.crew_register.insert_one({"entry_id": str(uuid.uuid4()), "owner_id": owner_id, "kind": "crew", **{k: "" for k in TEXT}, "height_cm": None, "weight_kg": None,
-                                           "name": str(name).strip()[:60], "email": user["email"].lower(), "email_key": key, "status": "unregistered", "created_at": now, "updated_at": now})
+                                           "name": str(name).strip()[:60], "email": user["email"].lower(), "email_key": key, "status": "unregistered", "created_at": now, "updated_at": now,
+                                           **({"model": True} if boat_id == MODEL else {})})
 
 
 @router.get("/my-phone")
 async def my_phone(user: dict = Depends(get_current_user)):
     """The phone number from the latest crew registration with this user's email, to fill the Skipper's Phone box."""
-    r = await db.crew_register.find_one({"email_key": email_key(user["email"]), "phone": {"$nin": ["", None]}}, {"_id": 0, "phone": 1}, sort=[("updated_at", -1)])
+    r = await db.crew_register.find_one({"email_key": email_key(user["email"]), "phone": {"$nin": ["", None]}, "model": {"$ne": True}}, {"_id": 0, "phone": 1}, sort=[("updated_at", -1)])
     return {"phone": (r or {}).get("phone", "")}
 
 
@@ -154,16 +162,16 @@ async def walkthrough_done(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_
 
 
 @router.post("")
-async def add_entry(payload: EntryIn, user: dict = Depends(get_current_user)):
+async def add_entry(payload: EntryIn, boat_id: BoatQ = None, user: dict = Depends(get_current_user)):
     data = clean(payload, ("name", "email") if payload.kind == "crew" else ("name", "phone", "email"))
-    await no_duplicate(user, payload.kind, data["email"])
+    await no_duplicate(user, payload.kind, data["email"], boat_id=boat_id)
     if await db.crew_register.count_documents({"owner_id": user["user_id"]}) >= 300:
         raise HTTPException(status_code=400, detail="Your register is full (300 people)")
     now = datetime.now(timezone.utc).isoformat()
     quick = payload.quick and payload.kind == "crew"
     e = {"entry_id": str(uuid.uuid4()), "owner_id": user["user_id"], "kind": payload.kind, **data, "email_key": email_key(data["email"]),
          "status": "registered" if payload.kind == "party" or quick else "unregistered", "created_at": now, "updated_at": now,
-         **({"quick_reg": True, "registered_at": now} if quick else {})}
+         **({"quick_reg": True, "registered_at": now} if quick else {}), **({"model": True} if boat_id == MODEL else {})}
     await db.crew_register.insert_one(e)
     return public(e)
 
@@ -178,7 +186,7 @@ class QuickBulkIn(BaseModel):
 
 
 @router.post("/quick-bulk")
-async def quick_bulk(payload: QuickBulkIn, user: dict = Depends(get_current_user)):
+async def quick_bulk(payload: QuickBulkIn, boat_id: BoatQ = None, user: dict = Depends(get_current_user)):
     """Bulk Quick Reg: a pasted list of names and emails, each registered straight away. Bad or repeated lines are skipped with a reason."""
     room = 300 - await db.crew_register.count_documents({"owner_id": user["user_id"]})
     added, skipped, now = [], [], datetime.now(timezone.utc).isoformat()
@@ -186,7 +194,7 @@ async def quick_bulk(payload: QuickBulkIn, user: dict = Depends(get_current_user
         label = p.name.strip() or p.email.strip() or "A line"
         try:
             data = clean(Details(name=p.name, email=p.email), ("name", "email"))
-            await no_duplicate(user, "crew", data["email"])
+            await no_duplicate(user, "crew", data["email"], boat_id=boat_id)
         except HTTPException as e:
             skipped.append({"name": label, "reason": e.detail})
             continue
@@ -194,7 +202,8 @@ async def quick_bulk(payload: QuickBulkIn, user: dict = Depends(get_current_user
             skipped.append({"name": label, "reason": "Your register is full (300 people)"})
             continue
         await db.crew_register.insert_one({"entry_id": str(uuid.uuid4()), "owner_id": user["user_id"], "kind": "crew", **data, "email_key": email_key(data["email"]),
-                                           "status": "registered", "quick_reg": True, "registered_at": now, "created_at": now, "updated_at": now})
+                                           "status": "registered", "quick_reg": True, "registered_at": now, "created_at": now, "updated_at": now,
+                                           **({"model": True} if boat_id == MODEL else {})})
         added.append(data["name"])
     return {"added": added, "skipped": skipped}
 
@@ -217,7 +226,7 @@ async def set_shopper(entry_id: EntryPath, payload: ShopperIn, user: dict = Depe
 async def edit_entry(entry_id: EntryPath, payload: Details, user: dict = Depends(get_current_user)):
     e = await mine(user, entry_id)
     data = clean(payload, ("name", "email") if e["kind"] == "crew" else ("name", "phone", "email"))
-    await no_duplicate(user, e["kind"], data["email"], entry_id)
+    await no_duplicate(user, e["kind"], data["email"], entry_id, MODEL if e.get("model") else None)
     upd = {**data, "email_key": email_key(data["email"]), "updated_at": datetime.now(timezone.utc).isoformat()}
     await db.crew_register.update_one({"owner_id": user["user_id"], "entry_id": entry_id}, {"$set": upd})
     return public({**e, **upd})
@@ -262,7 +271,9 @@ def request_html(skipper: str, name: str, email: str, link: str, quick: bool = F
 async def send_requests(payload: RequestIn, request: Request, user: dict = Depends(require_premium)):
     if payload.boat_id:
         await owned_boat(user, payload.boat_id)
-    q = {"owner_id": user["user_id"], "kind": "crew"}
+    q = {"owner_id": user["user_id"], "kind": "crew", **scope(payload.boat_id)}
+    if payload.boat_id == MODEL:  # practice only: nothing is emailed from the Model Vessel
+        no_email.set(True)
     if payload.entry_ids is not None:
         q["entry_id"] = {"$in": payload.entry_ids}
     rows = await db.crew_register.find(q, {"_id": 0}).sort("created_at", 1).to_list(300)
@@ -368,7 +379,7 @@ async def on_board(boat_id: BoatPath, user: dict = Depends(get_current_user)):
         ids = [i for i in ids if (rsvp.get(i) or {}).get("status") == "in"]
     members = await db.users.find({"user_id": {"$in": ids}}, {"_id": 0, "user_id": 1, "email": 1, "name": 1}).to_list(100)
     keys = {email_key(m.get("email", "")): m for m in members}
-    rows = await db.crew_register.find({"owner_id": user["user_id"], "kind": "crew", "email_key": {"$in": list(keys)}}, {"_id": 0}).to_list(100)
+    rows = await db.crew_register.find({"owner_id": user["user_id"], "kind": "crew", "email_key": {"$in": list(keys)}, **scope(boat_id)}, {"_id": 0}).to_list(100)
     names = doc.get("crew_names") or {}
     people = [{"name": r["name"], "allergies": r.get("allergies", ""), "food": r.get("food", ""), "weight_kg": r.get("weight_kg"), "status": r.get("status")} for r in rows]
     found = {r["email_key"] for r in rows}
@@ -396,7 +407,7 @@ async def asked(r: dict, user: dict) -> bool:
 
 @router.get("/mine")
 async def my_requests(user: dict = Depends(get_current_user)):
-    rows = await db.crew_register.find({"kind": "crew", "email_key": email_key(user["email"]), "owner_id": {"$ne": user["user_id"]},
+    rows = await db.crew_register.find({"kind": "crew", "email_key": email_key(user["email"]), "owner_id": {"$ne": user["user_id"]}, "model": {"$ne": True},
                                         "$or": [{"status": {"$ne": "registered"}}, {"quick_reg": True}]}, {"_id": 0}).to_list(20)
     out = []
     for r in rows:
@@ -412,7 +423,7 @@ async def my_requests(user: dict = Depends(get_current_user)):
 async def waiting_for(user: dict):
     """Registered with a skipper, no boat of their own and no invite yet: they're waiting for that skipper's crew invite."""
     key = email_key(user["email"])
-    r = await db.crew_register.find_one({"kind": "crew", "email_key": key, "status": "registered", "owner_id": {"$ne": user["user_id"]}}, {"_id": 0}, sort=[("registered_at", -1)])
+    r = await db.crew_register.find_one({"kind": "crew", "email_key": key, "status": "registered", "owner_id": {"$ne": user["user_id"]}, "model": {"$ne": True}}, {"_id": 0}, sort=[("registered_at", -1)])
     if not r or await db.crew_invites.find_one({"email_key": key, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 1}):
         return None
     owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}

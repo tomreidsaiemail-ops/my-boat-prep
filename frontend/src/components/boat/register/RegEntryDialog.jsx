@@ -8,7 +8,7 @@ import { CREW_FIELDS, PARTY_FIELDS, missing, toForm, toPayload } from "@/lib/cre
 import { RegFields } from "@/components/boat/register/RegFields";
 
 // Skipper adds or edits a crew member or an interested party. entry: { kind, ...existing } or null.
-export const RegEntryDialog = ({ entry, onSaved, onClose }) => {
+export const RegEntryDialog = ({ entry, onSaved, onClose, boatId }) => {
   const party = entry?.kind === "party";
   const fields = party ? PARTY_FIELDS : CREW_FIELDS;
   const need = party ? ["name", "phone", "email"] : ["name", "email"];
@@ -27,7 +27,7 @@ export const RegEntryDialog = ({ entry, onSaved, onClose }) => {
     try {
       const body = toPayload(values, fields);
       if (entry.entry_id) await api.put(`/crew-register/${entry.entry_id}`, body);
-      else await api.post("/crew-register", { ...body, kind: entry.kind, ...(quick ? { quick: true } : {}) });
+      else await api.post("/crew-register", { ...body, kind: entry.kind, ...(quick ? { quick: true } : {}) }, { params: { boat_id: boatId } });
       toast.success(quick ? `${body.name} is registered with Quick Reg` : `${body.name} saved`);
       onSaved();
       onClose();

@@ -14,7 +14,7 @@ export const EmailPartiesButton = ({ boatId, online, premium, onUpgrade, testId 
     if (!online) { toast.error("Go online to email crew details"); return; }
     setBusy(true);
     try {
-      const { data } = await api.get("/crew-register");
+      const { data } = await api.get("/crew-register", { params: { boat_id: boatId } });
       if (!data.parties.length) toast.error("Add an interested party in Crew Registration first");
       else if (!data.crew.length) toast.error("Add crew in Crew Registration first");
       else setReg(data);

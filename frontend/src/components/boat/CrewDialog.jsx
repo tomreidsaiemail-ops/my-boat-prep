@@ -84,7 +84,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
 
   const load = useCallback(() => api.get(`/boats/${boat.boat_id}/crew`).then(({ data }) => setInfo(data)).catch(() => {}), [boat.boat_id]);
   const [reg, setReg] = useState({});
-  const loadReg = useCallback(() => api.get("/crew-register").then(({ data }) => setReg(Object.fromEntries(data.crew.map((c) => [c.email.toLowerCase(), c])))).catch(() => {}), []);
+  const loadReg = useCallback(() => api.get("/crew-register", { params: { boat_id: boat.boat_id } }).then(({ data }) => setReg(Object.fromEntries(data.crew.map((c) => [c.email.toLowerCase(), c])))).catch(() => {}), [boat.boat_id]);
   useEffect(() => { if (open && online) { load(); loadReg(); } }, [open, online, load, loadReg]);
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {

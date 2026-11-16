@@ -175,7 +175,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
             </select>
           </label>
         )}
-        <RegisterPicker open={open} online={online} email={email} onPick={(c) => {
+        <RegisterPicker open={open} online={online} boatId={boat.boat_id} email={email} onPick={(c) => {
           const w = waitingOn(c.email || "");
           if (w) { toast.warning(`${c.name || c.email} has yet to respond to the first join request (${w.trip_name || "Route Planning"}). Once they join, you can ask them to join another trip.`, { duration: 7000 }); return; }
           setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); setPicked(c); }} />

@@ -3,6 +3,8 @@ import { Loader2 } from "lucide-react";
 import { isHeadingLine, linesToItems } from "@/lib/outline";
 import { AiDraftButton, AutoIndentToggle, ListDescriptionField, toLines } from "@/components/boat/ListDraftTools";
 import { PaletteTest } from "@/components/admin/PaletteTest";
+import { WizardPreview } from "@/components/admin/WizardPreview";
+import { isWizardName } from "@/lib/wizard";
 import { RoleBriefingDefaults, roleKey } from "@/components/admin/RoleBriefingDefaults";
 
 const errText = (e) => (typeof e.response?.data?.detail === "string" ? e.response.data.detail : "Couldn't save, please check your signal");
@@ -54,6 +56,7 @@ export const TemplateListEditor = ({ initial, onSave, onCancel }) => {
       </label>
       <p className="text-xs text-[var(--muted)]" data-testid="template-list-item-count">{lines.length} {lines.length === 1 ? "item" : "items"}{headings ? `, ${headings} ${headings === 1 ? "heading" : "headings"}` : ""}</p>
       {/zone map predetermined colours/i.test(name) && <PaletteTest lines={lines} />}
+      {isWizardName(name) && <WizardPreview name={name} lines={lines} />}
       {crewRoles && <RoleBriefingDefaults lines={lines} value={briefings} onChange={setBriefings} />}
       <AutoIndentToggle checked={autoIndent} onChange={setAutoIndent} headings={headings} hasLines={!!lines.length} testId="template-list" />
       {initial && !priv && (

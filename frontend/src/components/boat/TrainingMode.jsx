@@ -1,65 +1,41 @@
 import { useEffect, useState } from "react";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Trophy, X } from "lucide-react";
+import { GraduationCap } from "lucide-react";
 import useAdminLists from "@/hooks/useAdminLists";
+import { BASIC, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
+import { WizardWindow } from "@/components/boat/training/WizardWindow";
 
-const PREFIX = "Admin - Model Vessel";
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-
 const RESTART = "mbp-model-walkthrough";
-const FINISH = /^\s*--/;
+const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, copy: `mbp_model_copy:${uid}`, which: `mbp_model_wizard:${uid}` });
+const reset = (k, which = BASIC) => {
+  localStorage.setItem(k.step, "0"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false"); localStorage.setItem(k.which, JSON.stringify(which));
+};
 
-// The last panel, half the screen: "--" lines bold, "---" lines ticked, then Finish.
-const FinishPanel = ({ finish, onBack, onClose, onFinish }) => (
-  <section data-training-window className="pointer-events-auto fixed inset-x-0 bottom-0 z-[70] flex h-[50vh] min-h-[260px] flex-col gap-3 border-t-4 border-emerald-600 bg-white px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)] print:hidden" role="dialog" aria-label="Model Vessel training finished" data-testid="training-finish-panel">
-    <div className="flex items-center gap-2">
-      <Trophy className="h-5 w-5 shrink-0 text-emerald-700" />
-      <h2 className="flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid="training-finish-title">Training · Well done</h2>
-      <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid="training-finish-close-btn"><X className="h-5 w-5" /></button>
-    </div>
-    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid="training-finish-list">
-      {finish.length ? finish.map((f, n) => (f.tick
-        ? <p key={n} className="flex items-start gap-2 pl-1" data-testid={`training-finish-tick-${n}`}><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />{f.text}</p>
-        : <p key={n} className="font-extrabold" data-testid={`training-finish-heading-${n}`}>{f.text}</p>))
-        : <p className="font-extrabold" data-testid="training-finish-heading-0">You have finished the walkthrough.</p>}
-    </div>
-    <div className="flex gap-2">
-      <button type="button" onClick={onBack} className="btn-ghost h-11 flex-1 justify-center gap-1" data-testid="training-finish-back-btn"><ChevronLeft className="h-4 w-4" /> Back</button>
-      <button type="button" onClick={onFinish} className="btn-solid h-11 flex-1 justify-center gap-1 !bg-emerald-700" data-testid="training-finish-btn"><Check className="h-4 w-4" /> Finish</button>
-    </div>
-  </section>
-);
-const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, copy: `mbp_model_copy:${uid}` });
-const reset = (k) => { localStorage.setItem(k.step, "0"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false"); };
+// Help > Model Vessel > <walkthrough>: that wizard from step 1, open.
+export const restartWalkthrough = (uid, which = BASIC) => { reset(keys(uid), which); window.dispatchEvent(new Event(RESTART)); };
 
-// Help > Model Vessel > Basic Introduction Walkthrough: back to step 1, open.
-export const restartWalkthrough = (uid) => { reset(keys(uid)); window.dispatchEvent(new Event(RESTART)); };
-
-// Model Vessel: a green page with a Training Mode strip, and a floating window (a quarter of the screen) stepping through
-// the "Admin - Model Vessel - Basic Introduction Walkthrough" list. The step is remembered; X hides it until Show steps.
+// Model Vessel: a green page with a Training Mode strip and the chosen "Admin - Model Vessel - *" wizard.
+// The wizard and step are remembered; X hides it until Show steps.
 export const TrainingMode = ({ uid, online, copy = "" }) => {
-  const lines = (useAdminLists(PREFIX, online).find((l) => /basic introduction walkthrough/i.test(l.name))?.items || []).map((i) => i.label);
-  // Lines starting "--" (bold) and "---" (ticked) are for the Finish panel, not steps.
-  const steps = lines.filter((l) => !FINISH.test(l));
-  const finish = lines.filter((l) => FINISH.test(l)).map((l) => ({ tick: /^\s*---/.test(l), text: l.replace(/^\s*-+\s*/, "") }));
+  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
-  const stepKey = k.step;
-  const shutKey = k.shut;
-  const miniKey = k.mini;
-  // A freshly made copy of the Model Vessel starts again at step 1.
+  // A freshly made copy of the Model Vessel starts the Basic Introduction again at step 1.
   useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
-  const [step, setStep] = useState(() => read(stepKey, 0));
-  const [shut, setShut] = useState(() => read(shutKey, false));
+  const [which, setWhich] = useState(() => read(k.which, BASIC));
+  const [step, setStep] = useState(() => read(k.step, 0));
+  const [shut, setShut] = useState(() => read(k.shut, false));
   // Shrunk to one line so the screen behind (e.g. Delete Zone) can be reached; tap the line to bring it back.
-  const [mini, setMini] = useState(() => read(miniKey, false));
+  const [mini, setMini] = useState(() => read(k.mini, false));
   useEffect(() => {
-    const again = () => { setStep(0); setShut(false); setMini(false); };
+    const again = () => { setWhich(read(k.which, BASIC)); setStep(0); setShut(false); setMini(false); };
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
-  }, []);
-  const shrink = (v) => { setMini(v); localStorage.setItem(miniKey, JSON.stringify(v)); };
+  }, [k.which]);
+  const wizard = wizards.find((w) => w.key === which) || wizards.find((w) => w.key === BASIC) || wizards[0];
+  const { steps, finish } = parseWizard(wizard?.lines);
   const show = !shut && steps.length > 0;
   const at = Math.min(step, steps.length);
-  const done = steps.length > 0 && at === steps.length;
+  const done = at === steps.length;
   useEffect(() => {
     document.body.classList.add("training-mode");
     return () => document.body.classList.remove("training-mode");
@@ -70,43 +46,17 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
     document.body.classList.toggle("training-finish", show && done);
     return () => document.body.classList.remove("training-open", "training-mini", "training-finish");
   }, [show, mini, done]);
-  const go = (n) => { setStep(n); localStorage.setItem(stepKey, JSON.stringify(n)); };
-  const close = (v) => { setShut(v); localStorage.setItem(shutKey, JSON.stringify(v)); };
-  const finished = () => { go(0); close(true); };
+  const go = (n) => { setStep(n); localStorage.setItem(k.step, JSON.stringify(n)); };
+  const close = (v) => { setShut(v); localStorage.setItem(k.shut, JSON.stringify(v)); };
+  const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };
   return (
     <>
       <div data-training-window className="pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 bg-emerald-700 px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden" role="status" data-testid="training-mode-strip">
         <GraduationCap className="h-4 w-4 shrink-0" /> &ldquo;Model Vessel&rdquo; Training Mode
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
-      {show && mini && !done && (
-        <section data-training-window className="pointer-events-auto fixed inset-x-0 bottom-0 z-[70] flex h-12 items-center gap-1 border-t-4 border-emerald-600 bg-white pl-3 pr-1 shadow-[0_-6px_18px_rgba(6,78,59,0.25)] print:hidden" role="dialog" aria-label="Model Vessel training" data-testid="training-window-mini">
-          <button type="button" onClick={() => shrink(false)} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-label="Show the training steps" data-testid="training-expand-btn">
-            <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
-            <span className="shrink-0 text-xs font-extrabold uppercase text-emerald-800" data-testid="training-mini-count">{at + 1}/{steps.length}</span>
-            <span className="truncate text-sm text-[var(--navy)]" data-testid="training-mini-text">{steps[at]}</span>
-            <ChevronsUp className="h-5 w-5 shrink-0 text-emerald-700" />
-          </button>
-          <button type="button" onClick={() => go(at - 1)} disabled={at === 0} className="icon-btn disabled:opacity-30" aria-label="Back" data-testid="training-mini-back-btn"><ChevronLeft className="h-5 w-5" /></button>
-          <button type="button" onClick={() => go(at + 1)} className="icon-btn text-emerald-700 disabled:opacity-30" aria-label="Next" data-testid="training-mini-next-btn"><ChevronRight className="h-5 w-5" /></button>
-        </section>
-      )}
-      {show && done && <FinishPanel finish={finish} onBack={() => go(at - 1)} onClose={() => close(true)} onFinish={finished} />}
-      {show && !mini && !done && (
-        <section data-training-window className="pointer-events-auto fixed inset-x-0 bottom-0 z-[70] flex h-[25vh] min-h-[170px] flex-col gap-2 border-t-4 border-emerald-600 bg-white px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)] print:hidden" role="dialog" aria-label="Model Vessel training" data-testid="training-window">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
-            <h2 className="flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid="training-step-count">Training · Step {at + 1} of {steps.length}</h2>
-            <button type="button" onClick={() => shrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid="training-shrink-btn"><ChevronsDown className="h-5 w-5" /></button>
-            <button type="button" onClick={() => close(true)} className="icon-btn" aria-label="Close training" data-testid="training-close-btn"><X className="h-5 w-5" /></button>
-          </div>
-          <p className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid="training-step-text">{steps[at]}</p>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => go(at - 1)} disabled={at === 0} className="btn-ghost h-11 flex-1 justify-center gap-1 disabled:opacity-40" data-testid="training-back-btn"><ChevronLeft className="h-4 w-4" /> Back</button>
-            <button type="button" onClick={() => go(at + 1)} className="btn-solid h-11 flex-1 justify-center gap-1 !bg-emerald-700 disabled:opacity-40" data-testid="training-next-btn">Next <ChevronRight className="h-4 w-4" /></button>
-          </div>
-        </section>
-      )}
+      {show && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} steps={steps} finish={finish} at={at} mini={mini}
+        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { go(0); close(true); }} />}
     </>
   );
 };

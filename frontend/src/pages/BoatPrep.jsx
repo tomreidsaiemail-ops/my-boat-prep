@@ -155,6 +155,7 @@ import { SundownerCard } from "@/components/boat/bartender/SundownerCard";
 import { ChecklistPeek } from "@/components/boat/departure/ChecklistPeek";
 import { TrainingMode, restartWalkthrough } from "@/components/boat/TrainingMode";
 import { ModelWalkthroughConfirm } from "@/components/boat/ModelWalkthroughConfirm";
+import { WIZARD_PREFIX, wizardsFrom } from "@/lib/wizard";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
 import { queuedCatches } from "@/lib/fishQueue";
@@ -360,14 +361,15 @@ export default function BoatPrep({ boatId, boats }) {
   const org = organiseLists(menuLists, listCats);
   const [crewHidden, showCrewLists] = useCrewHidden(boatId);
   const helpPanels = useAdminLists("Admin - Help Panel - ", online);
-  const [modelAsk, setModelAsk] = useState(false);
+  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
+  const [modelAsk, setModelAsk] = useState(null);
   const modelBoat = boats.boats.find((b) => b.model && !b.crew);
-  const startWalkthrough = () => {
+  const startWalkthrough = (w) => {
     if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
-    if (boats.current.key === modelBoat.key) restartWalkthrough(user.user_id);
-    else setModelAsk(true);
+    if (boats.current.key === modelBoat.key) restartWalkthrough(user.user_id, w.key);
+    else setModelAsk(w);
   };
-  const switchToModel = () => { setModelAsk(false); restartWalkthrough(user.user_id); boats.select(modelBoat.key); };
+  const switchToModel = () => { restartWalkthrough(user.user_id, modelAsk.key); setModelAsk(null); boats.select(modelBoat.key); };
   const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
   const hiddenLists = crew ? crewHidden : state.list_hidden || [];
   const showOwnerLists = (ids, show) => mutate((s) => ({ ...s, list_hidden: show ? (s.list_hidden || []).filter((id) => !ids.includes(id)) : [...new Set([...(s.list_hidden || []), ...ids])] }));
@@ -793,7 +795,7 @@ export default function BoatPrep({ boatId, boats }) {
   const loadShoppers = async () => {
     if (crew) { loadCooks(); return; }
     const me = (user.name || "").trim() || "Skipper";
-    const reg = online ? await api.get("/crew-register", { timeout: 20000 }).then((r) => r.data.crew).catch(() => []) : [];
+    const reg = online ? await api.get("/crew-register", { params: { boat_id: boats.current.boat_id }, timeout: 20000 }).then((r) => r.data.crew).catch(() => []) : [];
     setCooks([...new Set([me, ...reg.filter((r) => r.shopper !== false).map((r) => (r.name || "").trim())].filter(Boolean).map((n) => n.replace(/[()]/g, "")))]);
   };
   const mealTarget = (target) => (target.id ? target.id : `custom_${Date.now()}`);
@@ -1065,10 +1067,10 @@ export default function BoatPrep({ boatId, boats }) {
     <WeightsContext.Provider value={weights}>
     <CrewDietContext.Provider value={diet}>
     {boats.current.model && !crew && <TrainingMode key={boats.current.model_copy || ""} uid={user.user_id} online={online} copy={boats.current.model_copy || ""} />}
-    <ModelWalkthroughConfirm open={modelAsk} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(false)} />
+    <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
+      <Header helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}

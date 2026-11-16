@@ -1,0 +1,46 @@
+[
+ {
+  "name": "Admin - Model Vessel - Basic Introduction Walkthrough",
+  "description": "Model Vessel training window: one step per line, shown in order with Back and Next.",
+  "items": [
+   "Click on Vessel, and then click on Additional Boat Details, you will notice that it says",
+   "\"Zone Map Schematic Done\" in green, and then press Next",
+   "Close Additional Boat Details, and click the Home Boat Inventory button, and then press Next",
+   "Boat Inventory is the main list where you manage what is on the boat. If you cannot see the Model Vessel schematic, expand the ZONE MAPS with the down arrow icon to the far right of the ZONE MAPS() count.  You may also have to press Show on \"My zone map overview\". When you can see the model vessel schematics press Next.",
+   "If you hide \"My zone map overview\", and collapse ZONE MAPS, you will see how to be economic with what you see when working in Boat Inventory.  Expand ZONE MAPS it again, and show \"My zone map overview\" and then press Next.",
+   "Scroll and make sure you can see the Model Vessel's yacht schematic, and scroll down to see all the coloured presets.  If COLOURS has a collapsed icon, you will need to expand it. If \"Show 25 other zones, and their colours, expand that to see what there are.  All areas of the boat are colour cordinated, where Port and Starboard are involved these have a red and green theme.  Scroll back up to the yacht schematic, and then press Next.",
+   "Try moving either the name of the zone, like Galley, or the dot which marks the spot of say the galley.  To move, it is a drag and dop - you can either drag the zone name, like Galley, or the dot, which represents where the Galley is.",
+   "--You have learnt how to",
+   "---See the zone map overview,",
+   "---See the colours of zones on Model Vessel",
+   "---Find other colours of other zones, like Forward Cabin",
+   "---Move the Galley point, and the Galley label around the Model Vessel"
+  ]
+ },
+ {
+  "name": "Admin - Model Vessel - Crew Registration and Invites",
+  "description": "Model Vessel training: register crew with Bulk Quick Reg, invite a registered crew member and preview what they see.",
+  "items": [
+   "This walkthrough shows you how to register crew and invite them. It is all practice on the Model Vessel: nothing is emailed or messaged to anyone, and crew you register here stay on the Model Vessel only, away from your real boats. Press Next.",
+   "Tap the Photo and crew button, the people icon just to the right of the boat name at the top. The \"Model Vessel: photo and crew\" window opens. Press Next.",
+   "Tap Crew Registration. Your crew register keeps each crew member's contact details, next of kin, allergies and food preferences, ready for every trip. Press Next.",
+   "There are two ways to register crew. Add crew member registers one person at a time. Bulk Quick Reg registers a whole crew at once with just a name and email each. Tap \"Bulk Quick Reg: paste names and emails\", then press Next.",
+   "Type one person per line, name then email. For practice use made-up crew, for example: Tom Smith, tom@example.com then on the next line Dick Jones, dick@example.com then Harry Brown, harry@example.com. Press Next.",
+   "Check that each name and email shows in the list below the box, then tap Quick Reg 3. They are registered straight away, and each gets a yellow Quick Reg badge. Tap Done, then press Next.",
+   "Quick Reg crew can add their own details later, like next of kin and allergies. On a real boat you would tap Email registration request to ask them, but nothing is sent from the Model Vessel. Close Crew Registration and press Next.",
+   "Now invite a registered crew member. In the photo and crew window, tap Invite crew. Press Next.",
+   "At the top of Invite crew, pick Tom Smith from your registered crew. His name and email fill in for you. Press Next.",
+   "Tap one or two roles for Tom, like Helm or Galley. Each role can have a briefing that Tom reads when he joins. Press Next.",
+   "Tap Copy WhatsApp message. This saves Tom's invite and copies a message you could paste into WhatsApp. Quick Invite is the other choice: it adds a registered crew member straight away without sending them anything. Press Next.",
+   "Tap Preview Crew Member Invite. This shows exactly what Tom sees when he logs in to My Boat Prep: an invite to join the Model Vessel. Press Next.",
+   "Tap Join Model Vessel in the preview, and step through what Tom goes through: the crew agreement, his role briefings and the boat walkthrough. It is only a preview, so nothing is saved. Close the preview when you are done, then press Next.",
+   "Tap Done to close Invite crew. On a real boat, Tom joins the moment he logs in to My Boat Prep with that email, with no link to click. Press Next to finish.",
+   "--You have learnt how to",
+   "---Open Crew Registration from Photo and crew",
+   "---Register a whole crew at once with Bulk Quick Reg",
+   "---Invite a registered crew member and choose their roles",
+   "---Save an invite with Copy WhatsApp message, without sending anything",
+   "---Preview exactly what a crew member sees when they join"
+  ]
+ }
+]

@@ -11,9 +11,9 @@ const Chip = ({ c, active, onPick }) => (
 );
 
 // Pick who to invite from the skipper's crew register, split into Registered and not yet registered.
-export const RegisterPicker = ({ open, online, email, onPick }) => {
+export const RegisterPicker = ({ open, online, email, onPick, boatId }) => {
   const [crew, setCrew] = useState(null);
-  useEffect(() => { if (open && online) api.get("/crew-register").then(({ data }) => setCrew(data.crew)).catch(() => setCrew([])); }, [open, online]);
+  useEffect(() => { if (open && online) api.get("/crew-register", { params: { boat_id: boatId } }).then(({ data }) => setCrew(data.crew)).catch(() => setCrew([])); }, [open, online, boatId]);
   if (!crew) return null;
   const on = (c) => c.email.toLowerCase() === email.trim().toLowerCase();
   const groups = [["Registered", crew.filter((c) => c.status === "registered"), "registered"], ["Unregistered", crew.filter((c) => c.status !== "registered"), "unregistered"]];
