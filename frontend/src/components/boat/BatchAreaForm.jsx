@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, ImagePlus } from "lucide-react";
+import { Camera, ImagePlus, ListChecks } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { HelpPanel } from "@/components/boat/HelpPanel";
 import { shrink } from "@/components/boat/PhotoPicker";
@@ -91,7 +91,12 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <button type="button" className="btn-solid h-12" onClick={() => confirm(false)} data-testid="batch-area-confirm-btn">Confirm</button>
           <button type="button" className="btn-ghost h-12" disabled={full} onClick={() => confirm(true)} data-testid="batch-area-confirm-another-btn">Confirm, and add another</button>
-          <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="batch-area-cancel-btn">Cancel</button>
+          {batchNames.length > 0 && (
+            <button type="button" className="btn-ghost h-12 gap-2 border-[var(--navy)]" onClick={onClose} data-testid="batch-area-review-btn">
+              <ListChecks className="h-4 w-4" /> Review Batch ({batchNames.length} {batchNames.length === 1 ? "cupboard" : "cupboards"})
+            </button>
+          )}
+          <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="batch-area-cancel-btn">{batchNames.length ? "Cancel this cupboard" : "Cancel"}</button>
         </DialogFooter>
         <ConfirmDelete item={noPhoto ? {} : null} danger={false} testId="batch-area-empty" title={`No photo of ${name.trim() || "this cupboard"}`} confirmLabel="Create it empty" cancelLabel="Take a photo"
           note="It will be created empty, with nothing listed inside. You can Magic Scan it later from Boat Inventory."
