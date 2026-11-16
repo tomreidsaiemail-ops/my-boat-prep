@@ -66,6 +66,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   const [note, setNote] = useState("");
   const crewDiet = useCrewDiet();
   useEffect(() => setNote(""), [description]);
+  const ready = () => description.trim() && !unfilledPlaceholders(description).length;
   const draft = async () => {
     if (!description.trim()) { setNote("Describe the list in List Description first, then Magic List Generation can create the items"); return; }
     const blanks = unfilledPlaceholders(description);
@@ -87,7 +88,7 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   };
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={hasText ? () => setAsk(true) : draft} disabled={busy || !online} className="btn-ghost justify-center gap-2 text-center" data-testid={`${testId}-ai-draft-btn`}>
+      <button type="button" onClick={hasText && ready() ? () => setAsk(true) : draft} disabled={busy || !online} className="btn-ghost justify-center gap-2 text-center" data-testid={`${testId}-ai-draft-btn`}>
         {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Sparkles className="h-4 w-4 shrink-0" />}
         {busy ? "Magic List Generation is working..." : hasText ? "Replace items using Magic List Generation" : "Create items using Magic List Generation"}
       </button>

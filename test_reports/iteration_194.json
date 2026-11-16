@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only testing at 390x844 of 7 features. All passed. (1) Wizard height: on Model Vessel (pro), steps 1-3 (short) are 211px (25vh) with no training-tall class. Steps 4-7 overflow at normal height, so they are 253px (30vh), body has training-tall and padding-bottom is 253.2px. Next/Back measure again on each step. The mini bar (48px) and the Finish panel drop training-tall, and Back from Finish measures again (still tall). Admin wizard-preview-window was 211px for short steps and 253px for a long typed step, and never set the body class. (2) Press Next: in the preview, typed lines without it got '  Press Next' added. 'Already here. Press Next.' and 'Last one. Press Next to finish.' were not doubled. A line with 'Press Next' in the middle (not in its last 25 chars) got it added. (3) /admin/templates has a Model Vessel chip that shows 6 of 38 lists, all 'Admin - Model Vessel - *'. The brief expected 4; there are now 6 such lists. (4) Admin BoatPrep shows boat-details-templates-btn with 'Template\\nLists' and no svg icon, has no fish/bartender buttons, and the button goes to /admin/templates. The pro user sees fish and bartender buttons and no templates button. (5) Magic List Generation, tested in the admin template editor and the BoatPrep Create List dialog: with text, the button reads 'Replace items...' and opens <testId>-ai-replace-dialog. 'Keep my items' keeps the text, and the parent dialog stays open. 'Replace items' ran a real LLM generation that replaced the items, with the note 'Items ready... 49 Magic generations left'. With empty text, the button reads 'Create items...' and runs with no prompt. (6) Inventory on TEST_Kia Ora: a cupboard with 0 items has no checkbox. Ticking the checkbox on TEST_Cup1 (3 own items + TEST_Box with 2) changed the title to 'Delete the items in \"TEST_Cup1\"?' and the button to 'Delete the 3 contained Items'. Confirming kept the cupboard and its box, which kept its 2 items. The toast read 'Deleted \"3 items from TEST_Cup1\"', and Undo restored the 3 items. The box version read 'Delete the 2 contained Items' and left the box empty. This persisted after a reload. Deleting with the box unticked removed the cupboard and its box. (7) inventory-item-delete-dialog shows the hint text.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DeleteAreaDialog (ticked)", "issue": "When ticked, the note repeats the checkbox label text ('The cupboard stays, empty, and its 1 folder or box is kept...'), so the same sentence appears twice in the dialog.", "selector": "[data-testid='inventory-area-delete-note']", "priority": "LOW"},
+      {"component": "DeleteAreaDialog keeps text", "issue": "Grammar with 1 sub-area: 'its 1 folder or box is kept with their own items' should say 'its own items'.", "selector": "[data-testid='inventory-area-delete-items-only']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Wizard step text", "issues": ["withNext adds two spaces before 'Press Next', but the <p> collapses whitespace, so only one space shows. Add whitespace-pre-wrap if the double space is wanted."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: remove the repeated 'stays, empty...' sentence from either the note or the checkbox label when ticked",
+    "Optional: fix 'their own items' for a single folder or box",
+    "Optional: AiDraftButton asks 'Replace your items?' before checking that List Description is filled in. If the description is empty, the user confirms and then gets 'Describe the list...'. Check the description first.",
+    "Optional: in WizardWindow, tallAt stays set when the steps text changes at the same index (admin preview while editing), so a step that gets shorter stays tall until the user moves to another step"
+  ],
+  "critical_code_review_comments": [
+    "WizardWindow tall logic: once a step is marked tall it is never measured again for that index unless at changes. Fine for live use; only matters in the admin live preview.",
+    "AiDraftButton: the confirm dialog opens even when draft() would only show a validation note (no or unfilled description).",
+    "emptyArea: Undo merges back by id, which is correct. Checklist tags pointing at the area are not touched, which is correct because the area still exists."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "TEST_Cup1 (+TEST_Box) and TEST_Empty were created on test-user-pro/main and then deleted. TEST_Snorkel kit template was never saved. One Magic List Generation used by the admin (49 left). test-user-pro wizard_progress was cleared. Pro user's selected boat was left on Model Vessel, as found. TEST_Port Locker and TEST_Gantry were already there and were not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use cookie session_token test_session_pro_1 / test_session_admin_1. The pro user's selected boat is remembered on the server. Press 'Not yet' on the Arrived? dialog first, then switch boats if needed via boat-switcher > boat-option-main / boat-option-model_vessel. The Boat Inventory list opens with boat-details-home-btn. To add a cupboard, use inventory-add-area-input + inventory-add-area-btn. For a box, use inventory-add-sub-<id> then inventory-sub-input / inventory-sub-confirm-btn. The Create List chooser needs a click on 'Create a standard list using the Create List window' before create-list-dialog appears. Model Vessel Basic Introduction has 7 steps; steps 4-7 are tall at 390x844."
+}

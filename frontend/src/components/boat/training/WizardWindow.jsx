@@ -52,12 +52,13 @@ const MiniBar = ({ steps, at, onGo, onShrink, t }) => (
 export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, t = "training" }) => {
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
-  const tall = tallAt === at && !mini && at < steps.length;
+  const key = `${at}|${steps[at] || ""}`;
+  const tall = tallAt === key && !mini && at < steps.length;
   // Measured at the normal height for each step; only a step that overflows gets the taller window.
   useLayoutEffect(() => {
     const el = text.current;
-    if (el && tallAt !== at && el.scrollHeight > el.clientHeight + 1) setTallAt(at);
-  }, [at, steps, mini, tallAt]);
+    if (el && tallAt !== key && el.scrollHeight > el.clientHeight + 1) setTallAt(key);
+  }, [key, mini, tallAt]);
   useEffect(() => {
     if (t !== "training") return undefined;
     document.body.classList.toggle("training-tall", tall);
