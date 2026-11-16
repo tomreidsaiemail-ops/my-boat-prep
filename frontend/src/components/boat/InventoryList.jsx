@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronsUpDown, HelpCircle, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, HelpCircle, Info, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -12,6 +12,7 @@ import { InventoryItemDialog } from "@/components/boat/InventoryItemDialog";
 import { SuggestAreasDialog } from "@/components/boat/SuggestAreasDialog";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
+import { DeleteAreaDialog } from "@/components/boat/DeleteAreaDialog";
 import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
 import { CupboardPhotoButton, areaPhotos, areaPhotoUrl, uploadAreaPhoto, withPhotos } from "@/components/boat/inventory/CupboardPhoto";
@@ -195,6 +196,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       items.splice(Math.min(index, items.length), 0, item);
       return { ...x, items };
     }));
+  };
+  // Delete items contained: the cupboard or box stays, empty; a cupboard keeps its folders and boxes.
+  const emptyArea = (area) => {
+    const items = area.items;
+    setArea(area.id, (x) => ({ ...x, items: [] }));
+    undoToast(`${items.length} ${items.length === 1 ? "item" : "items"} from ${area.name}`, () => setArea(area.id, (x) => ({ ...x, items: [...items, ...x.items.filter((y) => !items.some((i) => i.id === y.id))] })));
   };
   // Checklist tags point at the area id, so restoring the same area brings its tagged items back too. Its folders and boxes go with it.
   const deleteArea = (area) => {
@@ -570,9 +577,10 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         parents={dialog?.type === "merge" ? tops.filter((t) => t.id !== dialog.area.id) : []} />
       <InventoryItemDialog open={dialog?.type === "item"} item={dialog?.item} areaId={dialog?.area?.id} areas={readOnly ? labelled.filter(crewCan) : labelled} zones={zones} onConfirm={saveItem} onClose={() => setDialog(null)} />
       <ConfirmDelete item={dialog?.type === "deleteItem" ? dialog.item : null} testId="inventory-item-delete" note={dialog?.type === "deleteItem" ? `It comes off ${dialog.area.name}'s list.` : ""}
+        body={<p className="flex gap-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-950" data-testid="inventory-item-delete-hint"><Info className="mt-0.5 h-4 w-4 shrink-0" />Hint. You can also delete all items in a cupboard or a box, and leave the cupboard or box empty.</p>}
         onClose={() => setDialog(null)} onConfirm={() => { deleteItem(dialog.area, dialog.item); setDialog(null); }} />
-      <ConfirmDelete item={dialog?.type === "delete" ? dialog.area : null} note={`Everything listed inside it${dialog?.type === "delete" && subsOf(dialog.area.id).length ? ", including its folders and boxes," : ""} is removed too, and checklist items tagged with it lose their tag.`}
-        onClose={() => setDialog(null)} onConfirm={() => { deleteArea(dialog.area); setDialog(null); }} />
+      <DeleteAreaDialog area={dialog?.type === "delete" ? dialog.area : null} subs={dialog?.type === "delete" ? subsOf(dialog.area.id).length : 0}
+        onClose={() => setDialog(null)} onDelete={() => { deleteArea(dialog.area); setDialog(null); }} onEmpty={() => { emptyArea(dialog.area); setDialog(null); }} />
       <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
       <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={labelled} zones={zones} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
         onMove={finishMove} onClose={() => setDialog(null)} />

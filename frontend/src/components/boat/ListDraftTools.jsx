@@ -4,6 +4,7 @@ import { api, apiError } from "@/lib/api";
 import { amazonSearchLinks, swapBadYouTube } from "@/lib/youtube";
 import { isHeadingLine } from "@/lib/outline";
 import { foodDiet, useCrewDiet } from "@/lib/crewDiet";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 // Repeats are dropped within a numbered group only, so a meal plan can list Salt under several meals.
 export const toLines = (text) => {
@@ -61,6 +62,7 @@ export const ListDescriptionField = ({ value, onChange, testId = "create-list" }
 
 export const AiDraftButton = ({ name, description, online = true, hasText, onDraft, testId = "create-list" }) => {
   const [busy, setBusy] = useState(false);
+  const [ask, setAsk] = useState(false);
   const [note, setNote] = useState("");
   const crewDiet = useCrewDiet();
   useEffect(() => setNote(""), [description]);
@@ -85,10 +87,12 @@ export const AiDraftButton = ({ name, description, online = true, hasText, onDra
   };
   return (
     <div className="flex flex-col gap-1">
-      <button type="button" onClick={draft} disabled={busy || !online} className="btn-ghost justify-center gap-2 text-center" data-testid={`${testId}-ai-draft-btn`}>
+      <button type="button" onClick={hasText ? () => setAsk(true) : draft} disabled={busy || !online} className="btn-ghost justify-center gap-2 text-center" data-testid={`${testId}-ai-draft-btn`}>
         {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Sparkles className="h-4 w-4 shrink-0" />}
         {busy ? "Magic List Generation is working..." : hasText ? "Replace items using Magic List Generation" : "Create items using Magic List Generation"}
       </button>
+      <ConfirmDelete item={ask ? {} : null} title="Replace your items?" note="Magic List Generation replaces every item you've typed here with a new list. What you were working on will be lost."
+        confirmLabel="Replace items" cancelLabel="Keep my items" testId={`${testId}-ai-replace`} onClose={() => setAsk(false)} onConfirm={() => { setAsk(false); draft(); }} />
       {!online && <p className="text-xs text-[var(--muted)]" data-testid={`${testId}-ai-offline`}>Magic List Generation needs a signal.</p>}
       {note && <p role={note.startsWith("Please enter") ? "alert" : undefined} className={`text-xs font-semibold ${note.startsWith("Please enter") ? "rounded-md bg-red-50 px-2 py-1.5 text-[var(--red)]" : ""}`} data-testid={`${testId}-ai-note`}>{note}</p>}
     </div>

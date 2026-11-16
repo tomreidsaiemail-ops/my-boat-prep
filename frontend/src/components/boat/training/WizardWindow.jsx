@@ -1,5 +1,5 @@
 import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Trophy, X } from "lucide-react";
-import { linkedWizard } from "@/lib/wizard";
+import { TALL_STEP, linkedWizard } from "@/lib/wizard";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
 
@@ -47,12 +47,12 @@ const MiniBar = ({ steps, at, onGo, onShrink, t }) => (
   </section>
 );
 
-// One wizard on screen: a quarter-screen step window (or a one-line bar), then the Finish panel after the last step.
+// One wizard on screen: a quarter-screen step window (half the screen for a step over 150 characters) (or a one-line bar), then the Finish panel after the last step.
 export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, t = "training" }) => {
   if (at >= steps.length) return <FinishPanel title={title} finish={finish} onBack={() => onGo(steps.length - 1)} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} t={t} />;
   if (mini) return <MiniBar steps={steps} at={at} onGo={onGo} onShrink={onShrink} t={t} />;
   return (
-    <section data-training-window className={`${SHELL} flex h-[25vh] min-h-[170px] flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
+    <section data-training-window className={`${SHELL} flex ${steps[at].length > TALL_STEP ? "h-[50vh] min-h-[340px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>

@@ -37,7 +37,7 @@ const Row = ({ t, q, hits = [], onEdit, onDelete, onCopy }) => (
 
 const FILTERS = [
   ["all", "All", () => true], ["private", "Admin use only", (t) => t.private], ["published", "Published", (t) => !t.private],
-  ["help", "Help Panels", (t) => /^\s*admin\s*-\s*help panel/i.test(t.name)], ["admin", "Admin lists", (t) => /^\s*admin\s*-/i.test(t.name)],
+  ["help", "Help Panels", (t) => /^\s*admin\s*-\s*help panel/i.test(t.name)], ["model", "Model Vessel", (t) => /^\s*admin\s*-\s*model vessel/i.test(t.name)], ["admin", "Admin lists", (t) => /^\s*admin\s*-/i.test(t.name)],
 ];
 const SORTS = {
   az: ["Name A-Z", (a, b) => a.name.localeCompare(b.name)], za: ["Name Z-A", (a, b) => b.name.localeCompare(a.name)],

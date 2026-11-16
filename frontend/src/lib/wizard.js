@@ -10,8 +10,11 @@ export const wizardKey = (name = "") => wizardTitle(name).toLowerCase();
 
 const kindOf = (l) => (/^\s*\$\$\$/.test(l) ? "link" : /^\s*\$\$/.test(l) ? "idea" : /^\s*---/.test(l) ? "tick" : "head");
 // Finish panel lines: "--" bold, "---" ticked, "$$" an idea, "$$$" a link that opens another walkthrough. Every other line is a step.
+// Steps that don't already end with "Press Next" (e.g. "... Press Next." or "Press Next to finish.") get it added.
+const withNext = (l) => (/press next/i.test(l.trim().slice(-25)) ? l.trim() : `${l.trim()}  Press Next`);
+export const TALL_STEP = 150;
 export const parseWizard = (lines = []) => ({
-  steps: lines.filter((l) => l.trim() && !FINISH.test(l)),
+  steps: lines.filter((l) => l.trim() && !FINISH.test(l)).map(withNext),
   finish: lines.filter((l) => FINISH.test(l)).map((l) => ({ kind: kindOf(l), text: l.replace(/^\s*(-+|\$+)\s*/, "") })).filter((f) => f.text),
 });
 // "$$$ Crew Registration and Invites..." -> that walkthrough, if it exists.

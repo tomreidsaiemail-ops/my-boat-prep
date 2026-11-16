@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GraduationCap } from "lucide-react";
 import useAdminLists from "@/hooks/useAdminLists";
-import { BASIC, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
+import { BASIC, TALL_STEP, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
 import { wizardEvent } from "@/hooks/useWizardsDone";
 
@@ -39,6 +39,7 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
   const show = !shut && steps.length > 0;
   const at = Math.min(step, steps.length);
   const done = at === steps.length;
+  const tall = !done && (steps[at] || "").length > TALL_STEP;
   // Counted once per app session, and again each time it's restarted from the Help menu or after Finish.
   useEffect(() => {
     if (!show || !wizard || opened.current === wizard.key) return;
@@ -55,8 +56,9 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
     document.body.classList.toggle("training-open", show && !mini && !done);
     document.body.classList.toggle("training-mini", show && mini && !done);
     document.body.classList.toggle("training-finish", show && done);
-    return () => document.body.classList.remove("training-open", "training-mini", "training-finish");
-  }, [show, mini, done]);
+    document.body.classList.toggle("training-tall", show && !mini && !done && tall);
+    return () => document.body.classList.remove("training-open", "training-mini", "training-finish", "training-tall");
+  }, [show, mini, done, tall]);
   const go = (n) => { setStep(n); localStorage.setItem(k.step, JSON.stringify(n)); };
   const close = (v) => { setShut(v); localStorage.setItem(k.shut, JSON.stringify(v)); };
   const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };
