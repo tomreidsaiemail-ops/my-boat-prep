@@ -209,3 +209,35 @@ class TestWizardList:
 class TestZMasterUnchanged:
     def test_master_unchanged(self):
         assert master_doc() == MASTER_BEFORE
+
+
+# Iter 189: model_copy on /me/boats, permanent delete (no trash), fresh copy with new model_copy on next sign-in
+class TestModelCopyPermanentDelete:
+    def test_model_copy_and_permanent_delete(self):
+        import time
+        uid = mk_user("perm", role="pro")
+        s = new_session(uid)
+        m = model_in(s.get(f"{BASE_URL}/api/me/boats"))
+        assert len(m) == 1 and m[0]["model"] is True
+        c1 = m[0].get("model_copy")
+        assert isinstance(c1, str) and c1
+        assert s.put(f"{BASE_URL}/api/me/boat", params={"boat_id": "main"}, json=payload("TEST own")).status_code == 200
+        boats = s.get(f"{BASE_URL}/api/me/boats").json()["boats"]
+        assert all("model_copy" not in b for b in boats if b["boat_id"] != "model_vessel")
+        assert s.delete(f"{BASE_URL}/api/me/boats/model_vessel").status_code == 200
+        assert not db.deleted_boats.find_one({"owner_id": uid, "boat_id": "model_vessel"})
+        r = s.get(f"{BASE_URL}/api/me/deleted-boats")
+        if r.status_code == 200:
+            body = r.json()
+            items = body if isinstance(body, list) else body.get("boats", [])
+            assert not [b for b in items if b.get("boat_id") == "model_vessel"]
+        assert model_in(s.get(f"{BASE_URL}/api/me/boats")) == []
+        time.sleep(1)
+        m2 = model_in(new_session(uid).get(f"{BASE_URL}/api/me/boats"))
+        assert len(m2) == 1 and m2[0]["model_copy"] and m2[0]["model_copy"] != c1
+
+    def test_pro_user_has_model_copy(self):
+        s = requests.Session()
+        s.headers.update({"Authorization": "Bearer test_session_pro_1"})
+        m = model_in(s.get(f"{BASE_URL}/api/me/boats"))
+        assert len(m) == 1 and m[0]["model"] is True and m[0]["model_copy"]

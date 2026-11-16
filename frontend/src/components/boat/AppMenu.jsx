@@ -20,7 +20,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             <Menu className="h-5 w-5" strokeWidth={2.5} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-72" data-testid="app-menu">
+        <DropdownMenuContent align="end" className="z-[80] w-72" data-testid="app-menu">
           {(onBartender || onFish || onShopScan || onSyncStores || onBuilder || onImport) && <>
             {onBartender && <DropdownMenuItem onSelect={onBartender} data-testid="app-menu-bartender-item"><Martini className="mr-2 h-4 w-4" />Magic Bartender</DropdownMenuItem>}
             {onFish && <DropdownMenuItem onSelect={onFish} data-testid="app-menu-fish-item"><Fish className="mr-2 h-4 w-4" />Magic Fish Whisperer...</DropdownMenuItem>}

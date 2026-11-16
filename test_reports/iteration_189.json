@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the Model Vessel walkthrough rename, Help > Model Vessel > Basic Introduction Walkthrough, and the change that makes deleting the Model Vessel permanent. Backend: 10/10 pytest pass, including 2 new tests. The admin list is named 'Admin - Model Vessel - Basic Introduction Walkthrough' and no 'wizard instructions' list remains. /me/boats returns model:true with a non-empty model_copy, and non-model boats have no model_copy. Deleting the Model Vessel leaves nothing in deleted_boats. A new session re-creates the copy with a new model_copy. Frontend (390x844, pro user): every requested flow passes. One overlay issue: when the full training window is open, it covers the Help > Model Vessel menu item, so it can't be tapped.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TrainingMode full window vs app menu Help submenu", "issue": "When the full training window is open on the Model Vessel (fixed bottom, 25vh, z-[70]), it sits above the app dropdown menu. At 390x844 the Help submenu is long (about 12 help items), which pushes 'Model Vessel' below about 634px, behind the window. Playwright reported that training-window / training-step-text intercepts the click on app-menu-help-model-vessel-item, so it can't be tapped. The skipper can only restart the walkthrough from the menu after shrinking or closing the window first. Both of those work: the one-line mini bar does not block the item.", "selector": "[data-testid=app-menu-help-model-vessel-item]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_checks": [
+    "Help shows the 'Model Vessel' item, and tapping it expands 'Basic Introduction Walkthrough...'",
+    "On TEST_Kia Ora (not the Model Vessel), the walkthrough item opens model-walkthrough-confirm. The switch note names TEST_Kia Ora and the no-emails warning is shown",
+    "'Stay here' keeps TEST_Kia Ora with no training strip",
+    "'Switch and start' (with stored step 3, closed and mini set beforehand) selects the Model Vessel and opens the full window at 'Step 1 of 7'",
+    "On the Model Vessel, step 3 then shrink, and step 3 then close: Help > Walkthrough reopens the full window at Step 1 with no confirm. localStorage is reset to step 0, closed false, mini false",
+    "The Model Vessel delete dialog says 'deleted permanently ... fresh copy is added next time you sign in' with no '7 days'. The name guard input works. The toast says 'Model Vessel deleted permanently. A fresh copy comes back next time you sign in.' with no Undo button",
+    "The TEST_Kia Ora delete dialog still shows 'bring it back within 7 days' (cancelled, not deleted)",
+    "After the delete, Help > Walkthrough shows the info toast 'Your Model Vessel was deleted. A fresh copy comes back next time you sign in.' and no confirm",
+    "After unsetting model_checked and reloading, the Model Vessel is re-created with a new model_copy. With a stale mbp_model_copy and stored step 3 closed, it opens at Step 1, full window. With the same copy key, the saved step and mini state are kept"
+  ],
+  "test_report_links": ["/app/backend/tests/test_model_vessel.py", "/app/test_reports/pytest/pytest_results_it189.xml"],
+  "action_items": [
+    "Make Help > Model Vessel > Basic Introduction Walkthrough reachable while the full training window is open. Options: hide or shrink the training window while the app menu is open, raise the dropdown z-index above the training window (z-[70]), or move the Model Vessel entry to the top of the Help submenu."
+  ],
+  "critical_code_review_comments": [
+    "BoatSwitcher confirmDelete: boats.select(next.key) runs after await boats.remove, which is fine. The Model Vessel can only be deleted when the user owns more than one boat, and that is enforced on both the frontend and the backend.",
+    "DeletedBoats: a Model Vessel trashed before this change (still inside the 7-day TTL) could still show as restorable, and restoring it would clash with the re-created model_vessel. Low risk, and it expires after 7 days."
+  ],
+  "updated_files": ["/app/backend/tests/test_model_vessel.py"],
+  "success_rate": {"backend": "100%", "frontend": "95% (all requested flows pass; 1 overlay issue)"},
+  "seed_data_creation": "Throwaway TEST_mv_* users were created and removed by the pytest cleanup. The pro user's Model Vessel was deleted through the UI and re-created by unsetting model_checked. It is present again at the end, created_at 2026-11-16T01:49:23.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The pro user test-user-pro owns main (TEST_Kia Ora) and model_vessel. Its main boat shows an 'Arrived?' alert dialog on load: press the 'Not yet' button by role/name. Each browser_automation call starts with empty localStorage, so set mbp_model_copy:<uid> and the step keys yourself to test the copy-based reset. Boat options are boat-option-main and boat-option-model_vessel. Deleting the Model Vessel needs 'Model Vessel' typed into delete-boat-name-input."
+}

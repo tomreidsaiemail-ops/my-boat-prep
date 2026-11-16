@@ -28,7 +28,7 @@ def _cutoff():
 @router.get("/me/deleted-boats")
 async def deleted_boats(user: dict = Depends(get_current_user)):
     out = []
-    async for d in db.deleted_boats.find({"owner_id": user["user_id"], "deleted_at": {"$gte": _cutoff()}}, {"_id": 0, "invites": 0}).sort("deleted_at", -1):
+    async for d in db.deleted_boats.find({"owner_id": user["user_id"], "boat_id": {"$ne": "model_vessel"}, "deleted_at": {"$gte": _cutoff()}}, {"_id": 0, "invites": 0}).sort("deleted_at", -1):
         at = d["deleted_at"].replace(tzinfo=timezone.utc)
         b = (d.get("boat") or {}).get("boat") or {}
         out.append({"boat_id": d["boat_id"], "vessel": b.get("vessel", ""), "make": b.get("make", ""), "model": b.get("model", ""),
