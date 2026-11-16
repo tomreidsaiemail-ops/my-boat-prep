@@ -55,7 +55,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       { id: "shore", ...(!online ? { tone: "warn", text: "No signal, so position sharing and the route plan can't be shared with shore contacts now" }
         : { tone: "info", text: "Checking your shore contacts..." }) },
     ];
-    const blocked = tripIssue(trips, trip) || levelsBlock(b, d.levels) || logBlock(b, d);
+    const blocked = tripIssue(trips, trip) || (!trip.event && `Enter the Event or Trip name on ${trip.name} before you depart.`) || levelsBlock(b, d.levels) || logBlock(b, d);
     setPlan({ kind: "depart", trip, blocked, steps, contacts: 0, checking: !blocked && askShore });
     if (!blocked && askShore) {
       api.get(`/boats/${boatId}/shore`, { timeout: 10000 }).then(({ data }) => {

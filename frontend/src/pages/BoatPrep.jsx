@@ -727,7 +727,9 @@ export default function BoatPrep({ boatId, boats }) {
       askUpgrade("More than 5 To Do items");
       return `The Free plan holds ${FREE_TODO_LIMIT} To Do items. Go Pro for unlimited.`;
     }
-    setItems((list) => [...list, { id: Date.now(), label: text, checked: false }]);
+    const id = Date.now();
+    setItems((list) => [...list, { id, label: text, checked: false }]);
+    if (active.id === "shipsLog") mutate((s) => ({ ...s, boat: withTripLog(s.boat || {}, id) }));
     return true;
   };
   // Roles (not the group headings) in the Crew Roles list carry a Role Briefing.

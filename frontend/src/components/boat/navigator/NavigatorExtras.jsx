@@ -57,14 +57,16 @@ export const TripTiming = ({ weather = {}, onChange, interim }) => {
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
   const noFinish = (weather.finish_at || "").length < 16;
+  const noName = !interim && !String(weather.event_name || "").trim();
   return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
     <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} />
     <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
-      <span className="field-label">Event or Trip name (optional)</span>
+      <span className={`field-label ${noName ? "!text-[var(--red)]" : ""}`}>Event or Trip name{interim ? " (optional)" : ""}</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. The Yacht Club's Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
-        className="field-input text-base normal-case tracking-normal" data-testid="navigator-event-name-input" />
+        className={`field-input text-base normal-case tracking-normal ${noName ? "!border-[var(--red)]" : ""}`} data-testid="navigator-event-name-input" />
     </label>
+    {noName && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-event-name-required">Enter the Event or Trip name. It's needed before you depart.</p>}
     {startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
       : <button type="button" onClick={() => onChange({ event_open: true })} className="flex items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 py-2 text-left text-sm" data-testid="navigator-event-at-expand-btn">
         <ChevronRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
