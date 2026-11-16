@@ -67,7 +67,8 @@ export const TrainingMode = ({ uid, online, copy = "" }) => {
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
       {show && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} steps={steps} finish={finish} at={at} mini={mini}
-        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }} />}
+        onGo={go} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); go(0); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }}
+        wizards={wizards} onOpen={(w) => { wizardEvent(uid, wizard.key, "finish"); restartWalkthrough(uid, w.key); }} />}
     </>
   );
 };

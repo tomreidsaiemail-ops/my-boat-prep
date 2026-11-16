@@ -14,7 +14,9 @@
    "---See the zone map overview,",
    "---See the colours of zones on Model Vessel",
    "---Find other colours of other zones, like Forward Cabin",
-   "---Move the Galley point, and the Galley label around the Model Vessel"
+   "---Move the Galley point, and the Galley label around the Model Vessel",
+   "$$ Would you like to see how you can make crew safer? Click below",
+   "$$$ Crew Registration and Invites..."
   ]
  },
  {
