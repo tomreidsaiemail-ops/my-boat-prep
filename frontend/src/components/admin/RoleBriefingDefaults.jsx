@@ -2,7 +2,7 @@ import { BRIEFING_TAGS_HINT } from "@/lib/briefingFill";
 import { useState } from "react";
 import { ChevronDown, FileText } from "lucide-react";
 import { isHeadingLine } from "@/lib/outline";
-import { BRIEFING_MAX } from "@/components/boat/agreement/RoleBriefingField";
+import { BRIEFING_MAX, BulletButton } from "@/components/boat/agreement/RoleBriefingField";
 
 export const roleKey = (label) => String(label || "").replace(/^\s*\d+[.)]\s*/, "").replace(/^\s*\*\s*/, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -22,6 +22,7 @@ const Role = ({ label, text, onChange }) => {
           placeholder="e.g. Watch out for the boom at all times!" aria-label={`Default Role Briefing for ${label}`}
           className="field-input mx-3 mb-1 !h-auto min-h-[6rem] w-[calc(100%-1.5rem)] resize-y py-2 font-normal leading-snug" data-testid={`${t}-input`} />
       )}
+      {open && <div className="mx-3 mb-1"><BulletButton text={text} onChange={onChange} testId={`${t}-bullets-btn`} /></div>}
       {open && <p className="mx-3 mb-3 text-xs text-[var(--muted)]" data-testid={`${t}-tags`}>{BRIEFING_TAGS_HINT}</p>}
     </li>
   );
