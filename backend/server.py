@@ -75,7 +75,7 @@ from area_photos import router as area_photos_router  # noqa: E402
 from crew_photo import router as crew_photo_router  # noqa: E402
 from sea_route import router as sea_route_router  # noqa: E402
 from email_service import no_email  # noqa: E402
-from model_vessel import MODEL_BOAT_ID, ensure_model_vessel, seed_wizard_list, seed_wizards  # noqa: E402
+from model_vessel import MODEL_BOAT_ID, cover_copies, ensure_model_vessel, seed_wizard_list, seed_wizards  # noqa: E402
 from app_version import router as app_version_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
 
@@ -770,6 +770,7 @@ async def create_indexes():
     await seed_later_rows()
     await seed_wizard_list()
     await seed_wizards()
+    await cover_copies()
     await seed_common_names()
     await seed_terms_template()
     await seed_colour_presets()

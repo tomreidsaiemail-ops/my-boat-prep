@@ -20,6 +20,7 @@ from auth import require_premium
 import quota
 from photos import APP_NAME, get_object, put_object
 from inventory import MAX_BOAT_MAPS, _read_picture, boat_maps
+from model_vessel import cover_text, real_make_model
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -55,7 +56,7 @@ async def web_images(query: str) -> list[dict]:
 
 
 def _public(s: dict) -> dict:
-    return {"search_id": s["search_id"], "query": s["query"],
+    return {"search_id": s["search_id"], "query": s.get("shown") or s["query"],
             "results": [{k: r[k] for k in ("id", "thumb", "title", "source_url", "host", "width", "height")} for r in s["results"]]}
 
 
@@ -75,7 +76,11 @@ async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict =
     boat = payload.model_dump()
     if not (boat["make"].strip() and boat["model"].strip()):
         raise HTTPException(status_code=400, detail="Add your boat's make and model first")
+    shown = search_query(boat)
+    cover = (boat["make"], boat["model"])
+    boat["make"], boat["model"] = await real_make_model(boat["make"], boat["model"])
     query = search_query(boat)
+    titles = (lambda rs: [{**r, "title": cover_text(r.get("title") or "", boat["make"], boat["model"])} for r in rs]) if cover != (boat["make"], boat["model"]) else (lambda rs: rs)  # noqa: E731
     if not payload.fresh:
         recent = await db.zone_searches.find_one({"owner_id": user["user_id"], "boat_id": boat_id, "query": query,
                                                   "created_at": {"$gte": (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()}},
@@ -84,14 +89,14 @@ async def search_schematics(boat_id: BoatPath, payload: SearchBoat, user: dict =
             return {**_public(recent), "reused": True, "scans_left": await quota.left(user["user_id"])}
     source = await quota.consume(user["user_id"])
     try:
-        results = await web_images(query)
+        results = titles(await web_images(query))
     except Exception:
         await quota.refund(user["user_id"], source)
         raise
     if not results:
         await quota.refund(user["user_id"], source)
         raise HTTPException(status_code=404, detail="No schematics found on the web for this boat. Upload your own diagram instead.")
-    s = {"search_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "query": query, "results": results,
+    s = {"search_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "query": query, "shown": shown, "results": results,
          "created_at": datetime.now(timezone.utc).isoformat(), "expires": datetime.now(timezone.utc) + timedelta(days=30)}
     await db.zone_searches.insert_one({**s})
     return {**_public(s), "scans_left": await quota.left(user["user_id"])}
@@ -110,9 +115,14 @@ async def search_again(boat_id: BoatPath, search_id: SearchPath, user: dict = De
             return {**_public(again), "reused": True}
     query = f"{first['query']} {AGAIN_WORDS}"
     results = await web_images(query)
+    if first.get("shown") and first["shown"] != first["query"]:
+        b = ((await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"boat.make": 1, "boat.model": 1})) or {}).get("boat") or {}
+        make, model = await real_make_model(b.get("make") or "", b.get("model") or "")
+        results = [{**r, "title": cover_text(r.get("title") or "", make, model)} for r in results]
     if not results:
         raise HTTPException(status_code=404, detail="No more overhead schematics found. Pick one above, or upload your own diagram.")
     again = {"search_id": str(uuid.uuid4()), "owner_id": user["user_id"], "boat_id": boat_id, "query": query, "results": results,
+             "shown": f"{first.get('shown') or first['query']} {AGAIN_WORDS}",
              "created_at": datetime.now(timezone.utc).isoformat(), "expires": first["expires"]}
     await db.zone_searches.insert_one({**again})
     await db.zone_searches.update_one(key, {"$set": {"again_id": again["search_id"]}})
@@ -263,7 +273,8 @@ async def auto_swatches(boat_id: BoatPath, map_id: Annotated[str, Path(pattern=r
     except Exception:
         raise HTTPException(status_code=503, detail="Couldn't load that plan. Please try again.")
     b = doc.get("boat") or {}
-    name = " ".join(x for x in (b.get("make"), b.get("model"), b.get("boat_type")) if x) or "boat"
+    make, model = await real_make_model(b.get("make") or "", b.get("model") or "")
+    name = " ".join(x for x in (make, model, b.get("boat_type")) if x) or "boat"
     by_label = {p["label"].lower(): p for p in presets}
     source = await quota.consume(user["user_id"])
     chat = LlmChat(api_key=os.environ["EMERGENT_LLM_KEY"], session_id=f"zoneplace-{uuid.uuid4()}",

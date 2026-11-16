@@ -29,6 +29,43 @@ WIZARD_STEPS = [
 DROP = ("_id", "crew", "crew_roles", "crew_names", "shore", "tracking", "shore_plan", "charter", "charter_lock", "walk_stars", "log_sent", "invites")
 
 
+# Skippers' copies show this make and model; Magic still works from the master's real boat.
+COVER_MAKE, COVER_MODEL = "Myboatprep", "XYZ1"
+
+
+async def real_make_model(make: str, model: str) -> tuple[str, str]:
+    """The Model Vessel's cover make/model become the master's real ones when Magic generates maintenance lists or zone schematics."""
+    if (make.strip().lower(), model.strip().lower()) != (COVER_MAKE.lower(), COVER_MODEL.lower()):
+        return make, model
+    b = ((await _master()) or {}).get("boat") or {}
+    return (b.get("make") or make, b.get("model") or model)
+
+
+def cover_text(obj, make: str, model: str):
+    """Magic replies for the Model Vessel: the master's real make/model shown as the cover ones (strings inside lists and dicts too)."""
+    if isinstance(obj, str):
+        for real, cover in ((f"{make} {model}", f"{COVER_MAKE} {COVER_MODEL}"), (model, COVER_MODEL), (make, COVER_MAKE)):
+            if real.strip():
+                obj = re.sub(re.escape(real.strip()), cover, obj, flags=re.I)
+        return obj
+    if isinstance(obj, list):
+        return [cover_text(x, make, model) for x in obj]
+    if isinstance(obj, dict):
+        return {k: cover_text(v, make, model) for k, v in obj.items()}
+    return obj
+
+
+async def cover_copies():
+    """One time: Model Vessel copies made before the cover make/model show it too."""
+    if await db.migrations.find_one({"_id": "model_vessel_cover_make_v2"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    # Stamped now, so a phone still holding the old make/model takes the cover ones on its next sync.
+    await db.user_boats.update_many({"boat_id": MODEL_BOAT_ID, "model": True}, {"$set": {"boat.make": COVER_MAKE, "boat.model": COVER_MODEL,
+                                                                                          "boat_ts.make": now, "boat_ts.model": now, "updated_at": now}})
+    await db.migrations.insert_one({"_id": "model_vessel_cover_make_v2", "at": now})
+
+
 async def _master():
     u = await db.users.find_one({"email": {"$regex": rf"^{re.escape(MASTER_EMAIL)}$", "$options": "i"}}, {"_id": 0, "user_id": 1})
     if not u:
@@ -58,7 +95,7 @@ async def ensure_model_vessel(user: dict, token: str | None):
     now = datetime.now(timezone.utc).isoformat()
     copy = {k: v for k, v in master.items() if k not in DROP}
     boat = dict(copy.get("boat") or {})
-    boat["shore_email"] = ""
+    boat.update({"shore_email": "", "make": COVER_MAKE, "model": COVER_MODEL})
     copy.update({"owner_id": uid, "boat_id": MODEL_BOAT_ID, "boat": boat, "model": True, "crew": [], "created_at": now, "updated_at": now, "synced_at": now})
     await db.user_boats.update_one({"owner_id": uid, "boat_id": MODEL_BOAT_ID}, {"$setOnInsert": copy}, upsert=True)
     for coll, key in (("item_photos", "photo_id"), ("item_files", "file_id")):

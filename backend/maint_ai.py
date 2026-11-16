@@ -14,6 +14,7 @@ from db import db
 from auth import require_premium
 import quota
 from usage import record_usage
+from model_vessel import cover_text, real_make_model
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +89,9 @@ def _json(text: str) -> dict:
 @router.post("/ai/boat-kind")
 async def boat_kind(body: BoatIn, user: dict = Depends(require_premium)):
     """Is this a sailing boat? Cached per make/model/type, so it doesn't use the skipper's Magic allowance."""
+    cover = (body.make, body.model)
+    body.make, body.model = await real_make_model(body.make, body.model)
+    shown = (lambda x: cover_text(x, body.make, body.model)) if cover != (body.make, body.model) else (lambda x: x)  # noqa: E731
     boat = _boat(body)
     if not (body.make.strip() and body.model.strip()):
         raise HTTPException(status_code=422, detail="Add your boat's make and model first")
@@ -95,7 +99,7 @@ async def boat_kind(body: BoatIn, user: dict = Depends(require_premium)):
     key = " ".join(key.split())
     hit = await db.boat_kinds.find_one({"key": key}, {"_id": 0})
     if hit:
-        return {"sailboat": hit["sailboat"], "name": hit["name"]}
+        return {"sailboat": hit["sailboat"], "name": shown(hit["name"])}
     day = datetime.now(timezone.utc).date().isoformat()
     if await db.ai_drafts.count_documents({"user_id": user["user_id"], "kind": "boatkind", "created_at": {"$gte": day}}) >= KIND_DAILY:
         raise HTTPException(status_code=429, detail="The Magic Mariner has checked enough boats today. Try again tomorrow.")
@@ -108,7 +112,7 @@ async def boat_kind(body: BoatIn, user: dict = Depends(require_premium)):
         raise HTTPException(status_code=503, detail="The Magic Mariner couldn't check your boat right now. Please try again.")
     await db.boat_kinds.update_one({"key": key}, {"$set": {"key": key, "sailboat": sail, "name": name}}, upsert=True)
     await record_usage(user["user_id"], "MMM", None)
-    return {"sailboat": sail, "name": name}
+    return {"sailboat": sail, "name": shown(name)}
 
 
 def _clean_attrs(raw, defs: List[AttrDef]) -> dict:
@@ -156,6 +160,8 @@ async def maint_lists(body: MaintIn, user: dict = Depends(require_premium)):
     lists = [k for k in dict.fromkeys(body.lists) if k in MAINT_KEYS]
     if not lists or not (body.make.strip() and body.model.strip()):
         raise HTTPException(status_code=422, detail="Add your boat's make and model first")
+    cover = (body.make, body.model)
+    body.make, body.model = await real_make_model(body.make, body.model)
     boat = _boat(body)
     extra = "".join([f", built {body.year_built}" if body.year_built else "", f", LOA {body.loa} {body.units}" if body.loa.strip() else ""])
     weight_unit = "lb" if body.units == "ft" else "kg"
@@ -215,4 +221,6 @@ async def maint_lists(body: MaintIn, user: dict = Depends(require_premium)):
     if not result:
         await quota.refund(user["user_id"], source)
         raise HTTPException(status_code=503, detail="Magic Mariner maintenance lists couldn't do that right now. Please try again.")
+    if cover != (body.make, body.model):
+        result = cover_text(result, body.make, body.model)
     return {"lists": result, "asks_left": await quota.left(user["user_id"])}
