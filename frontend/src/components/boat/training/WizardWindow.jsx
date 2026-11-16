@@ -1,5 +1,6 @@
 import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Trophy, X } from "lucide-react";
-import { TALL_STEP, linkedWizard } from "@/lib/wizard";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { linkedWizard } from "@/lib/wizard";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
 
@@ -47,19 +48,32 @@ const MiniBar = ({ steps, at, onGo, onShrink, t }) => (
   </section>
 );
 
-// One wizard on screen: a quarter-screen step window (half the screen for a step over 150 characters) (or a one-line bar), then the Finish panel after the last step.
+// One wizard on screen: a quarter-screen step window (20% taller when a step's text needs a scroll bar) (or a one-line bar), then the Finish panel after the last step.
 export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, t = "training" }) => {
+  const text = useRef(null);
+  const [tallAt, setTallAt] = useState(null);
+  const tall = tallAt === at && !mini && at < steps.length;
+  // Measured at the normal height for each step; only a step that overflows gets the taller window.
+  useLayoutEffect(() => {
+    const el = text.current;
+    if (el && tallAt !== at && el.scrollHeight > el.clientHeight + 1) setTallAt(at);
+  }, [at, steps, mini, tallAt]);
+  useEffect(() => {
+    if (t !== "training") return undefined;
+    document.body.classList.toggle("training-tall", tall);
+    return () => document.body.classList.remove("training-tall");
+  }, [tall, t]);
   if (at >= steps.length) return <FinishPanel title={title} finish={finish} onBack={() => onGo(steps.length - 1)} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} t={t} />;
   if (mini) return <MiniBar steps={steps} at={at} onGo={onGo} onShrink={onShrink} t={t} />;
   return (
-    <section data-training-window className={`${SHELL} flex ${steps[at].length > TALL_STEP ? "h-[50vh] min-h-[340px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
+    <section data-training-window className={`${SHELL} flex ${tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
       </div>
-      <p className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>
+      <p ref={text} className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>
       <div className="flex gap-2">
         <button type="button" onClick={() => onGo(at - 1)} disabled={at === 0} className="btn-ghost h-11 flex-1 justify-center gap-1 disabled:opacity-40" data-testid={`${t}-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>
         <button type="button" onClick={() => onGo(at + 1)} className="btn-solid h-11 flex-1 justify-center gap-1 !bg-emerald-700" data-testid={`${t}-next-btn`}>Next <ChevronRight className="h-4 w-4" /></button>
