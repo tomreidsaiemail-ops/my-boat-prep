@@ -54,6 +54,15 @@ PLACEHOLDER = "New step: write the instructions for this step here."
 NOT_STEP = re.compile(r"^\s*(--|\$\$)")
 
 
+async def _wizard_doc(wizard: str) -> dict:
+    key = " ".join(wizard.split()).lower()
+    doc = next((d for d in await db.list_templates.find({"custom": True, "name": {"$regex": r"^\s*admin\s*-\s*model vessel\s*-", "$options": "i"}}, {"_id": 0}).to_list(100)
+                if d["name"].count("-") >= 2 and " ".join(d["name"].split("-", 2)[2].split()).lower() == key), None)
+    if not doc:
+        raise HTTPException(status_code=404, detail="That walkthrough's template list wasn't found")
+    return doc
+
+
 class StepEdit(BaseModel):
     wizard: str = Field(min_length=1, max_length=120)
     step: int = Field(ge=0, le=300)
@@ -66,11 +75,7 @@ class StepEdit(BaseModel):
 @router.post("/admin/wizard-step")
 async def edit_wizard_step(p: StepEdit, admin: dict = Depends(require_admin)):
     """Edit Step on a Model Vessel wizard: replace just that step's line, and add placeholder steps before or after it."""
-    key = " ".join(p.wizard.split()).lower()
-    doc = next((d for d in await db.list_templates.find({"custom": True, "name": {"$regex": r"^\s*admin\s*-\s*model vessel\s*-", "$options": "i"}}, {"_id": 0}).to_list(100)
-                if d["name"].count("-") >= 2 and " ".join(d["name"].split("-", 2)[2].split()).lower() == key), None)
-    if not doc:
-        raise HTTPException(status_code=404, detail="That walkthrough's template list wasn't found")
+    doc = await _wizard_doc(p.wizard)
     items = doc["items"]
     at = [n for n, i in enumerate(items) if i["label"].strip() and not NOT_STEP.match(i["label"])]
     if p.step >= len(at) or items[at[p.step]]["label"].strip() != p.expect.strip():
@@ -84,4 +89,34 @@ async def edit_wizard_step(p: StepEdit, admin: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail="A template list can have up to 300 lines")
     await _keep_version(doc)
     await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Step on the Model Vessel"}})
+    return {"lines": [i["label"] for i in out]}
+
+
+class FinishEdit(BaseModel):
+    wizard: str = Field(min_length=1, max_length=120)
+    expect: list[str] = Field(max_length=100)
+    lines: list[str] = Field(max_length=100)
+
+
+@router.post("/admin/wizard-finish")
+async def edit_wizard_finish(p: FinishEdit, admin: dict = Depends(require_admin)):
+    """Edit Final on a Model Vessel wizard: the Finish panel lines (--, ---, $$, $$$) replace the old ones at the end of the list."""
+    lines = [" ".join(t.split()) for t in p.lines if t.strip()]
+    bad = [n + 1 for n, t in enumerate(lines) if not NOT_STEP.match(t) or not re.sub(r"^(-+|\$+)", "", t).strip()]
+    if bad:
+        raise HTTPException(status_code=400, detail=f"Every Finish panel line must start with --, ---, $$ or $$$ and have some text. Check line {', '.join(map(str, bad[:5]))}.")
+    if any(len(t) > 4000 for t in lines):
+        raise HTTPException(status_code=400, detail="A line can be up to 4000 characters")
+    doc = await _wizard_doc(p.wizard)
+    items = doc["items"]
+    old = [i["label"].strip() for i in items if NOT_STEP.match(i["label"])]
+    if old != [t.strip() for t in p.expect]:
+        raise HTTPException(status_code=409, detail="This Finish panel was changed somewhere else. Close the walkthrough, open it again and try once more.")
+    keep = [i for i in items if not NOT_STEP.match(i["label"])]
+    nid = max([int(i.get("id") or 0) for i in items] + [0]) + 1
+    out = keep + [{"id": nid + n, "label": t} for n, t in enumerate(lines)]
+    if len(out) > 300:
+        raise HTTPException(status_code=400, detail="A template list can have up to 300 lines")
+    await _keep_version(doc)
+    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Final on the Model Vessel"}})
     return {"lines": [i["label"] for i in out]}

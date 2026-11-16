@@ -17,11 +17,12 @@ const FinishLine = ({ f, n, wizards, onOpen, t }) => {
 };
 
 // The last panel, half the screen: "--" bold, "---" ticked, "$$" ideas and "$$$" links to other walkthroughs, then Finish.
-const FinishPanel = ({ title, finish, onBack, onClose, onFinish, wizards, onOpen, t }) => (
+const FinishPanel = ({ title, finish, onBack, onClose, onFinish, wizards, onOpen, onEditFinish, t }) => (
   <section data-training-window className={`${SHELL} flex max-h-[85vh] min-h-[max(50vh,260px)] flex-col gap-3 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label={`${title} finished`} data-testid={`${t}-finish-panel`}>
     <div className="flex items-center gap-2">
       <Trophy className="h-5 w-5 shrink-0 text-emerald-700" />
       <h2 className="flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-finish-title`}>{title} · Well done</h2>
+      {onEditFinish && <button type="button" onClick={onEditFinish} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" data-testid={`${t}-edit-finish-btn`}><Pencil className="h-3.5 w-3.5" /> Edit Final</button>}
       <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-finish-close-btn`}><X className="h-5 w-5" /></button>
     </div>
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-finish-list`}>
@@ -49,7 +50,7 @@ const MiniBar = ({ steps, at, onGo, onShrink, t }) => (
 );
 
 // One wizard on screen: a quarter-screen step window (20% taller when a step's text needs a scroll bar) (or a one-line bar), then the Finish panel after the last step.
-export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, t = "training" }) => {
+export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, t = "training" }) => {
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
   const key = `${at}|${steps[at] || ""}`;
@@ -64,7 +65,7 @@ export const WizardWindow = ({ title = "Training", steps, finish, at, mini, onGo
     document.body.classList.toggle("training-tall", tall);
     return () => document.body.classList.remove("training-tall");
   }, [tall, t]);
-  if (at >= steps.length) return <FinishPanel title={title} finish={finish} onBack={() => onGo(steps.length - 1)} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} t={t} />;
+  if (at >= steps.length) return <FinishPanel title={title} finish={finish} onBack={() => onGo(steps.length - 1)} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} onEditFinish={onEditFinish} t={t} />;
   if (mini) return <MiniBar steps={steps} at={at} onGo={onGo} onShrink={onShrink} t={t} />;
   return (
     <section data-training-window className={`${SHELL} flex ${tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>

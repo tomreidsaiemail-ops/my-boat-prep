@@ -23,6 +23,7 @@ const isStep = (l) => l.trim() && !FINISH.test(l);
 export const parseWizard = (lines = []) => ({
   steps: lines.filter(isStep).map(withNext),
   raw: lines.filter(isStep),
+  finishRaw: lines.filter((l) => FINISH.test(l)).map((l) => l.trim()),
   finish: lines.filter((l) => FINISH.test(l)).map((l) => ({ kind: kindOf(l), text: l.replace(/^\s*(-+|\$+)\s*/, "") })).filter((f) => f.text),
 });
 // "$$$ Crew Registration and Invites..." -> that walkthrough, if it exists.
