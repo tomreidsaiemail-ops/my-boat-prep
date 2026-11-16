@@ -165,7 +165,7 @@ async def walkthrough_done(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_
 async def add_entry(payload: EntryIn, boat_id: BoatQ = None, user: dict = Depends(get_current_user)):
     data = clean(payload, ("name", "email") if payload.kind == "crew" else ("name", "phone", "email"))
     await no_duplicate(user, payload.kind, data["email"], boat_id=boat_id)
-    if await db.crew_register.count_documents({"owner_id": user["user_id"]}) >= 300:
+    if await db.crew_register.count_documents({"owner_id": user["user_id"], **scope(boat_id)}) >= 300:
         raise HTTPException(status_code=400, detail="Your register is full (300 people)")
     now = datetime.now(timezone.utc).isoformat()
     quick = payload.quick and payload.kind == "crew"
@@ -188,7 +188,7 @@ class QuickBulkIn(BaseModel):
 @router.post("/quick-bulk")
 async def quick_bulk(payload: QuickBulkIn, boat_id: BoatQ = None, user: dict = Depends(get_current_user)):
     """Bulk Quick Reg: a pasted list of names and emails, each registered straight away. Bad or repeated lines are skipped with a reason."""
-    room = 300 - await db.crew_register.count_documents({"owner_id": user["user_id"]})
+    room = 300 - await db.crew_register.count_documents({"owner_id": user["user_id"], **scope(boat_id)})
     added, skipped, now = [], [], datetime.now(timezone.utc).isoformat()
     for p in payload.people:
         label = p.name.strip() or p.email.strip() or "A line"
@@ -400,7 +400,7 @@ async def asked(r: dict, user: dict) -> bool:
         return bool(r.get("requested_at"))
     if r["status"] == "pending":
         return True
-    if await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 1}):
+    if await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"], "boat_id": {"$ne": MODEL}}, {"_id": 1}):
         return True
     return bool(await db.user_boats.find_one({"owner_id": r["owner_id"], "crew": user["user_id"]}, {"_id": 1}))
 
@@ -424,7 +424,7 @@ async def waiting_for(user: dict):
     """Registered with a skipper, no boat of their own and no invite yet: they're waiting for that skipper's crew invite."""
     key = email_key(user["email"])
     r = await db.crew_register.find_one({"kind": "crew", "email_key": key, "status": "registered", "owner_id": {"$ne": user["user_id"]}, "model": {"$ne": True}}, {"_id": 0}, sort=[("registered_at", -1)])
-    if not r or await db.crew_invites.find_one({"email_key": key, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 1}):
+    if not r or await db.crew_invites.find_one({"email_key": key, "boat_id": {"$ne": MODEL}, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 1}):
         return None
     owner = await db.users.find_one({"user_id": r["owner_id"]}, {"_id": 0, "name": 1, "email": 1}) or {}
     return {"skipper": owner.get("name") or owner.get("email") or "Your skipper", "vessel": await request_vessel(r)}
@@ -432,7 +432,7 @@ async def waiting_for(user: dict):
 
 async def request_vessel(r: dict) -> str:
     """The boat the skipper asked from: the one the request or a pending invite came from, else their only named boat."""
-    inv = await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"]}, {"_id": 0, "boat_id": 1}, sort=[("created_at", -1)])
+    inv = await db.crew_invites.find_one({"owner_id": r["owner_id"], "email_key": r["email_key"], "boat_id": {"$ne": MODEL}}, {"_id": 0, "boat_id": 1}, sort=[("created_at", -1)])
     boat_id = r.get("boat_id") or (inv or {}).get("boat_id")
     names = {b["boat_id"]: ((b.get("boat") or {}).get("vessel") or "").strip()
              async for b in db.user_boats.find({"owner_id": r["owner_id"]}, {"_id": 0, "boat_id": 1, "boat.vessel": 1})}

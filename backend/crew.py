@@ -540,7 +540,7 @@ async def accept_invite(inv: dict, user: dict) -> dict:
 @router.post("/crew/join")
 async def join_crew(payload: JoinIn, user: dict = Depends(get_current_user)):
     inv = await db.crew_invites.find_one({"token_hash": _hash(payload.token)}, {"_id": 0})
-    if not inv or inv["expires_at"] < datetime.now(timezone.utc).isoformat():
+    if not inv or inv["expires_at"] < datetime.now(timezone.utc).isoformat() or inv.get("boat_id") == "model_vessel":
         raise HTTPException(status_code=400, detail="This invite has expired or was cancelled. Ask the skipper for a new one.")
     if email_key(inv["email"]) != email_key(user["email"]):
         raise HTTPException(status_code=403, detail=f"This invite was sent to {inv['email']}. Sign in with that email to accept it.")
@@ -548,7 +548,7 @@ async def join_crew(payload: JoinIn, user: dict = Depends(get_current_user)):
 
 
 async def my_invite(invite_id: str, user: dict) -> dict:
-    inv = await db.crew_invites.find_one({"invite_id": invite_id, "email_key": email_key(user["email"]), "declined_at": None,
+    inv = await db.crew_invites.find_one({"invite_id": invite_id, "email_key": email_key(user["email"]), "declined_at": None, "boat_id": {"$ne": "model_vessel"},
                                          "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0})
     if not inv:
         raise HTTPException(status_code=404, detail="This invite has expired or was cancelled. Ask the skipper for a new one.")
@@ -560,7 +560,7 @@ InvitePath = Annotated[str, Path(pattern=r"^[a-f0-9-]{36}$")]
 
 @router.get("/crew/pending")
 async def pending_invites(user: dict = Depends(get_current_user)):
-    invs = await db.crew_invites.find({"email_key": email_key(user["email"]), "declined_at": None, "owner_id": {"$ne": user["user_id"]}, "quick": {"$ne": True},
+    invs = await db.crew_invites.find({"email_key": email_key(user["email"]), "declined_at": None, "owner_id": {"$ne": user["user_id"]}, "quick": {"$ne": True}, "boat_id": {"$ne": "model_vessel"},
                                        "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0}).sort("created_at", 1).to_list(20)
     out = []
     for inv in invs:

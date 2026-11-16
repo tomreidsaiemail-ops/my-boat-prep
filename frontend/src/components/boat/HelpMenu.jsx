@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronDown, GraduationCap, HelpCircle, Route, Sparkles } from "lucide-react";
+import { ChevronDown, GraduationCap, HelpCircle, Package, Route, Sparkles } from "lucide-react";
 import { LinkedText } from "@/components/boat/LinkedText";
 
 const PREFIX = /^\s*admin\s*-\s*help panel\s*-\s*/i;
-const TITLES = { "batch magic scan button": "Batch Magic Scan..." };
+const TITLES = { "batch magic scan button": "Batch Magic Scan...", "ships log": "Ship's Log..." };
 const titleOf = (name) => {
   const rest = name.replace(PREFIX, "").replace(/\s+/g, " ").trim();
   return TITLES[rest.toLowerCase()] || `${rest.replace(/\b\w/g, (c) => c.toUpperCase())}...`;
@@ -13,8 +13,9 @@ const titleOf = (name) => {
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const GROUPS = [
-  { title: "Route Planning and getting underway", icon: Route, names: ["mmn routing guidance", "planning routes and inviting crew", "ignore 300 metre warning", "ships log passage folders"] },
+  { title: "Route Planning and getting underway", icon: Route, names: ["mmn routing guidance", "planning routes and inviting crew", "ignore 300 metre warning", "ships log passage folders", "ships log", "creating crew walkthroughs"] },
   { title: "Magic Features", icon: Sparkles, names: ["batch magic scan button", "magic bartender", "magic fish whisperer"] },
+  { title: "Boat Inventory", icon: Package, names: ["how to make a zone map", "how to take your boat inventory", "zone map selection"] },
 ];
 const keyOf = (name) => name.replace(PREFIX, "").replace(/\s+/g, " ").trim().toLowerCase();
 

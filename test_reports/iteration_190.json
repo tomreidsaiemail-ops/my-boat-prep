@@ -1,0 +1,39 @@
+{
+  "summary": "Tested the Model Vessel wizards (Crew Registration and Invites), the Model Vessel crew register separation and the admin Wizard Preview. Backend: 6/6 new pytest pass, and the 10 existing test_model_vessel tests still pass. admin-lists returns Basic (12 items) and Crew (20 items; the last 6 are --/--- lines). quick-bulk, single add and edit are scoped to the model register. Duplicate checks run only within each register. The same email works in both registers. /mine never returns model entries. requests with boat_id model_vessel touches only model entries, and the backend log shows 'Email not sent (Model Vessel training)'. Frontend (390x844) passes every requested flow. Help > Model Vessel lists Basic first, then Crew. The Crew wizard runs Step 1 of 14 through to the Finish panel (1 heading, 5 ticks). Finish closes it, Show steps restarts at step 1, and Basic switches back to 'Training · Step 1 of 7'. From TEST_Kia Ora the confirm dialog appears and Switch and start opens the Crew wizard at step 1 on the Model Vessel. The real flow works with the training window open (full and mini): Bulk Quick Reg, the register shows only model crew, and main shows only live crew. The Invite crew picker on the Model Vessel shows only model crew. Copy WhatsApp message and Preview Crew Member Invite work. Admin: Wizard Preview box shows '14 steps, 5 ticked' and the preview window runs to the Finish panel. Textarea edits show up (15 steps, 6 ticks). The box is hidden for non Model Vessel names. No save request was sent and the template's updated_at did not change. One real problem: invites saved on the Model Vessel are real crew_invites and reach real users.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/boats/model_vessel/invites -> GET /api/crew/pending", "issue": "Invites saved on the Model Vessel (Copy WhatsApp message, Send email invite, Quick Invite) are stored as normal crew_invites. If the skipper practises with a real crew member's email, that user sees 'Join Model Vessel' from the skipper in /crew/pending and can join the skipper's practice boat. Reproduced: pro user invited test.user.free@example.com on model_vessel, and the free user's /api/crew/pending listed the Model Vessel invite (cleaned up afterwards). This conflicts with the user's choice that Model Vessel crew stay separate from live boats.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "crew_register.asked() / waiting_for() / request_vessel()", "issue": "These read crew_invites by owner_id + email_key without a boat or model filter. A Model Vessel invite therefore makes the skipper's LIVE register entry for that email fillable in /mine (asked() returns True), hides the 'waiting for invite' state, and can make request_vessel report 'Model Vessel'. Exclude boat_id 'model_vessel' invites in these queries."},
+      {"endpoint": "POST /api/crew-register, /quick-bulk", "issue": "The 300-person limit counts the model and live registers together, so practice entries use up live register space. Minor."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew Registration dialog on Model Vessel", "issues": ["The intro text still says 'Your crew register works for all your boats', which is wrong on the Model Vessel because its register is separate. Show Model Vessel wording there."]},
+      {"screen": "Crew wizard step 6 copy", "issues": ["The step says 'tap Quick Reg 3 ... Tap Done, then press Next', but when every line is added the Bulk Quick Reg dialog closes by itself and there is no Done button. Adjust the wording."]},
+      {"screen": "Training window (25vh) at 390x844", "issues": ["Long step text is clipped above the Back/Next row and needs scrolling (e.g. step 2's 'Press Next.' is cut off). This is acceptable, but consider a slightly taller window or a smaller font."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_model_vessel_crew_register.py", "/app/backend/tests/test_model_vessel.py", "/app/test_reports/pytest/iter190.xml"],
+  "action_items": [
+    "Keep Model Vessel invites from reaching real users. Either skip boat_id 'model_vessel' invites in /crew/pending (and quick-invite pending), mark them practice-only, or stop them becoming live crew_invites. Also exclude them in crew_register.asked(), waiting_for() and request_vessel().",
+    "Change the Crew Registration dialog intro text on the Model Vessel ('works for all your boats' is wrong there).",
+    "Fix the wording of Crew wizard step 6 ('Tap Done'): the dialog closes by itself."
+  ],
+  "critical_code_review_comments": [
+    "crew_register.py: delete_entry / set_shopper / clear_walkthrough / parties-email are not scoped by model. This is fine because they act by entry_id, but parties-email could mix model crew with a live party if the IDs are combined.",
+    "TrainingMode useEffect depends on [k.which] (a string key per uid). Fine.",
+    "WizardPreview runs straight from the textarea lines and does not call the API. Good."
+  ],
+  "updated_files": ["/app/backend/tests/test_model_vessel_crew_register.py"],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% of requested flows"},
+  "seed_data_creation": "None kept. Created and then deleted: TEST_ register entries made by pytest (module fixture deletes them by id), TEST190 Tom Smith / Dick Jones model entries, and 2 crew_invites (tom.mv190 on model_vessel, plus a test.user.free model invite), all deleted by id. Side effect: a Helmsman role briefing may now be saved on the pro user's model_vessel copy crew roles (practice copy only). The pro register is back to its original 4 entries, including the earlier main-agent 'TEST MV Tom' in both registers.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation run starts with empty localStorage, so the Model Vessel shows the Basic wizard by default. Clicking the Helmsman role in Invite crew opens a 'Role Briefing' popup: press 'Keep it as it is'. Preview Crew Member Invite needs Copy WhatsApp message first. Template IDs: crew wizard tpl_1f10bc539a, basic tpl_a469ac3a3f, colours tpl_fc295b02f0. Admin page: /admin/templates.",
+  "rca of the issue": "Model Vessel invites leak. InviteCrewDialog posts to /api/boats/model_vessel/invites, which inserts an ordinary crew_invites document. /api/crew/pending (crew.py:563) looks invites up only by email_key, so the real user with that email sees the practice invite. To reproduce: as the pro user, POST /api/boats/model_vessel/invites with {name, email: test.user.free@example.com, send_email: false}, then GET /api/crew/pending as the free user: the Model Vessel invite is listed. Fix: add boat_id {$ne: 'model_vessel'} to the pending and quick-invite lookups and to the crew_register asked/waiting_for/request_vessel queries, or flag model invites."
+}

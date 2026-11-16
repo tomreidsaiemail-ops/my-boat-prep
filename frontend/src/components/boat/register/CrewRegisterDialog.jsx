@@ -93,7 +93,9 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
       <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-5 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-register-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Crew Registration</DialogTitle>
-          <DialogDescription className="text-left text-sm">Your crew register works for all your boats. Crew register once, then you can invite them on any trip. Only you can see their details.</DialogDescription>
+          <DialogDescription className="text-left text-sm" data-testid="reg-intro">{boatId === "model_vessel"
+            ? "This is the Model Vessel's practice register. Crew you add here stay on the Model Vessel, and your real boats' crew aren't shown here. Nothing is emailed from the Model Vessel."
+            : "Your crew register works for all your boats. Crew register once, then you can invite them on any trip. Only you can see their details."}</DialogDescription>
         </DialogHeader>
         <button type="button" className="btn-ghost h-10 gap-1.5 self-end px-3 text-sm" onClick={refresh} disabled={refreshing} data-testid="reg-refresh-btn">
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh

@@ -12,6 +12,7 @@ from crew import DEFAULT_TRIP, BoatPath, TripId, email_key, owned_boat, trips_of
 
 router = APIRouter(prefix="/api")
 QUICK = "quick"
+PRACTICE = "model_vessel"
 
 
 class QuickIn(BaseModel):
@@ -75,7 +76,7 @@ async def quick_invite(boat_id: BoatPath, payload: QuickIn, user: dict = Depends
     if found and found["user_id"] in (doc.get("crew") or []) and payload.trip_id in trips_of(doc, found["user_id"]):
         raise HTTPException(status_code=400, detail=f"{name or email} is already crew on {trip_name}")
     await db.crew_invites.delete_many({"invite_id": {"$in": [p["invite_id"] for p in same]}})
-    if found:
+    if found and boat_id != PRACTICE:  # Model Vessel invites are practice only and never add a real person
         await apply_quick(user["user_id"], boat_id, doc, found["user_id"], name, payload.trip_id, roles, now.isoformat(), walk)
         return {"joined": True}
     # Not signed up yet: they join the moment they first sign in with this email.
@@ -88,7 +89,7 @@ async def quick_invite(boat_id: BoatPath, payload: QuickIn, user: dict = Depends
 
 async def claim_quick(user: dict):
     """Quick Invites waiting for this person's first sign-in."""
-    invs = await db.crew_invites.find({"email_key": email_key(user.get("email") or ""), "quick": True, "owner_id": {"$ne": user["user_id"]},
+    invs = await db.crew_invites.find({"email_key": email_key(user.get("email") or ""), "quick": True, "owner_id": {"$ne": user["user_id"]}, "boat_id": {"$ne": PRACTICE},
                                        "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0}).to_list(20)
     for inv in invs:
         doc = await db.user_boats.find_one({"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]}, {"_id": 0, "crew": 1, "crew_trips": 1})
