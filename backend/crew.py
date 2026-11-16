@@ -11,7 +11,7 @@ from email_validator import validate_email, EmailNotValidError
 from briefing_fill import html_lines, shown, video_url
 from db import db
 from auth import get_current_user, require_premium
-from email_service import send_email
+from email_service import no_email, send_email
 from urls import public_base
 import joincrew
 
@@ -302,7 +302,8 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     await db.crew_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "$or": [{"email": email}, {"email_key": key}]})
     await db.crew_invites.insert_one(invite)
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {notes_key(payload.trip_id): notes}})
-    return {"invite_id": invite["invite_id"], "name": name, "email": email, "roles": roles, "created_at": invite["created_at"], "trip_id": payload.trip_id, "trip_name": trip_name}
+    return {"invite_id": invite["invite_id"], "name": name, "email": email, "roles": roles, "created_at": invite["created_at"], "trip_id": payload.trip_id, "trip_name": trip_name,
+            "email_blocked": bool(payload.send_email and no_email.get())}
 
 
 @router.put("/boats/{boat_id}/voyage-notes")

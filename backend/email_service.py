@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 import os
 import re
 import ipaddress
@@ -87,7 +88,14 @@ def _assert_safe_email(subject: str, html: str) -> None:
                 raise ValueError(f"Anchor text {m.group(1)!r} ≠ real link host {real!r} (G3)")
 
 
+# Set for requests about the Model Vessel training copy: no email ever leaves from it.
+no_email: ContextVar[bool] = ContextVar("no_email", default=False)
+
+
 async def send_email(*, to: list[str], subject: str, html: str) -> str | None:
+    if no_email.get():
+        logger.info("Email not sent (Model Vessel training): %s", subject)
+        return None
     _assert_safe_email(subject, html)
     payload = {"to": to, "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
     if EMAIL_REPLY_TO:

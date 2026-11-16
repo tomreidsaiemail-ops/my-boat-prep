@@ -147,6 +147,19 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
             "joincrew_offer": not user.get("joincrew") and not to_user_out(user).has_subscription and await joincrew.live()}
 
 
+@router.get("/boats/{boat_id}/crew-preview")
+async def crew_preview(boat_id: str, roles: List[str] = Query(default=[]), user: dict = Depends(get_current_user)):
+    """Preview Crew Member Invite: the agreement a new crew member with these roles sees, as if nothing were read or ticked yet."""
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "boat_terms": 1, "shore_ids": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Boat not found")
+    briefs = await role_briefings(user["user_id"], boat_id)
+    view = lambda r: {"role": r, "briefing": fill(briefs.get(r.lower(), ""), doc.get("boat") or {})[0],  # noqa: E731
+                      "video": fill(briefs.get(r.lower(), ""), doc.get("boat") or {})[1], "read_at": None, "video_choice": ""}
+    return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [view(r) for r in roles[:12]],
+            "agreement": None, "walkthrough": None, "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [], "joincrew_offer": False}
+
+
 async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:
     """When this crew member last did the complete walkthrough of this boat, so a returning racer can quick-accept."""
     w = await db.walkthroughs.find_one({"owner_id": owner_id, "boat_id": boat_id, "user_id": user["user_id"]}, {"_id": 0, "at": 1, "full_at": 1})

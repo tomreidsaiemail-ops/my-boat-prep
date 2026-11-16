@@ -61,9 +61,13 @@ const Role = ({ r, k, onRead, busy }) => {
 const Roles = ({ roles, onRead, busy }) => (roles.length ? roles.map((r, k) => <Role key={r.role} r={r} k={k} onRead={onRead} busy={busy} />)
   : <p className="text-sm text-[var(--muted)]" data-testid="agreement-no-roles">The skipper hasn't given you a role yet.</p>);
 
-export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved, onRead, onClose }) => {
+// preview: the crew member's name when the skipper is previewing an invite; everything stays on this screen, nothing is saved.
+export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, onSaved, onRead, onClose, preview = "" }) => {
   const [reading, setReading] = useState("");
+  const [localReads, setLocalReads] = useState({});
+  const data = preview ? { ...given, roles: (given.roles || []).map((r) => (localReads[r.role] ? { ...r, read_at: localReads[r.role] } : r)) } : given;
   const read = async (role, video = "") => {
+    if (preview) { setLocalReads((m) => ({ ...m, [role]: new Date().toISOString() })); return; }
     if (!online) { toast.error("Go online to confirm you've read the briefing"); return; }
     setReading(role);
     try {
@@ -94,6 +98,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   const [shoreOk, setShoreOk] = useState(!!data.agreement?.shore_ok_at);
   const [shoreWarn, setShoreWarn] = useState(false);
   const confirmShore = async () => {
+    if (preview) { setShoreOk(true); return; }
     if (!online) { toast.error("Go online to confirm the shore contact instructions"); return; }
     try {
       const { data: res } = await api.post("/crew/shore-brief-ok", { owner_id: boat.owner_id, boat_id: boat.boat_id });
@@ -117,6 +122,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
   };
   const save = async (accept) => {
     if (accept && !briefingsDone()) return;
+    if (preview) { toast.message(accept ? `Preview: this is where ${preview} accepts. Nothing was saved.` : "Preview closed. Nothing was saved."); onClose(); return; }
     const same = !accept && shoreOk === !!data.agreement?.shore_ok_at && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
     if (accepted || (same && data.agreement)) { onClose(); return; }
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
@@ -136,6 +142,7 @@ export const CrewAgreementDialog = ({ data, boat, vessel, areas, online, onSaved
     <Dialog open onOpenChange={(o) => !o && save(false)}>
       <DialogContent guard={false} className="flex max-h-[92vh] max-w-lg flex-col gap-4 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-agreement-dialog"
         onOpenAutoFocus={(e) => e.preventDefault()}>
+        {preview && <p className="-mx-6 -mt-6 rounded-t-md bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900" data-testid="crew-agreement-preview-banner">Preview: exactly what {preview} sees. Your own ticks are ignored and nothing is saved.</p>}
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Boat Terms and Conditions Agreement</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="crew-agreement-intro">

@@ -73,6 +73,7 @@ from quick_invite import router as quick_invite_router, claim_quick  # noqa: E40
 from area_photos import router as area_photos_router  # noqa: E402
 from crew_photo import router as crew_photo_router  # noqa: E402
 from sea_route import router as sea_route_router  # noqa: E402
+from email_service import no_email  # noqa: E402
 from model_vessel import MODEL_BOAT_ID, ensure_model_vessel, seed_wizard_list  # noqa: E402
 from app_version import router as app_version_router  # noqa: E402
 from inventory import router as inventory_router, INVENTORY_ID, inventory_list_for_pdf, boat_maps  # noqa: E402
@@ -654,6 +655,16 @@ app.include_router(quick_invite_router)
 app.include_router(area_photos_router)
 app.include_router(crew_photo_router)
 app.include_router(sea_route_router)
+
+
+@app.middleware("http")
+async def model_vessel_no_email(request: Request, call_next):
+    """Anything done on the Model Vessel training copy never sends email."""
+    token = no_email.set(f"/boats/{MODEL_BOAT_ID}/" in request.url.path or request.query_params.get("boat_id") == MODEL_BOAT_ID)
+    try:
+        return await call_next(request)
+    finally:
+        no_email.reset(token)
 app.include_router(app_version_router)
 app.add_exception_handler(quota.QuotaExceeded, quota.quota_exceeded_handler)
 
