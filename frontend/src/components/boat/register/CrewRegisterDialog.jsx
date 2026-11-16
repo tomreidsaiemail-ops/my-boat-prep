@@ -90,7 +90,8 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[92vh] max-w-md flex-col gap-5 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-register-dialog">
+      {/* Everything here saves straight away (Shopper ticks too); adding or entry windows have their own unsaved-changes check. */}
+      <DialogContent guard={false} className="flex max-h-[92vh] max-w-md flex-col gap-5 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="crew-register-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Crew Registration</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="reg-intro">{boatId === "model_vessel"
