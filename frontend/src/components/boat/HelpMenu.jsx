@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronDown, GraduationCap, HelpCircle } from "lucide-react";
+import { ChevronDown, GraduationCap, HelpCircle, Route, Sparkles } from "lucide-react";
 import { LinkedText } from "@/components/boat/LinkedText";
 
 const PREFIX = /^\s*admin\s*-\s*help panel\s*-\s*/i;
@@ -12,14 +12,39 @@ const titleOf = (name) => {
 };
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-// Help > every admin "Help Panel" list, Batch Magic Scan first.
-export const helpMenuItems = (panels = []) => panels.filter((p) => p.items?.length).map((p) => ({ title: titleOf(p.name), items: p.items }))
-  .sort((a, b) => (a.title.startsWith("Batch Magic Scan") ? -1 : b.title.startsWith("Batch Magic Scan") ? 1 : a.title.localeCompare(b.title)));
+const GROUPS = [
+  { title: "Route Planning and getting underway", icon: Route, names: ["mmn routing guidance", "planning routes and inviting crew", "ignore 300 metre warning", "ships log passage folders"] },
+  { title: "Magic Features", icon: Sparkles, names: ["batch magic scan button", "magic bartender", "magic fish whisperer"] },
+];
+const keyOf = (name) => name.replace(PREFIX, "").replace(/\s+/g, " ").trim().toLowerCase();
 
-export const HelpSubMenu = ({ items, onPick, onModelWalkthrough }) => {
+// Help > the grouped cascades first (in the order above), then every other admin "Help Panel" list A-Z.
+export const helpMenuItems = (panels = []) => {
+  const all = panels.filter((p) => p.items?.length).map((p) => ({ key: keyOf(p.name), title: titleOf(p.name), items: p.items }));
+  const grouped = new Set(GROUPS.flatMap((g) => g.names));
+  return {
+    groups: GROUPS.map((g) => ({ ...g, items: g.names.map((n) => all.find((h) => h.key === n)).filter(Boolean) })).filter((g) => g.items.length),
+    rest: all.filter((h) => !grouped.has(h.key)).sort((a, b) => a.title.localeCompare(b.title)),
+  };
+};
+
+const Cascade = ({ title, icon: Icon, testId, tone = "border-[var(--line)]", children }) => {
   const [open, setOpen] = useState(false);
-  const [model, setModel] = useState(false);
-  if (!items.length && !onModelWalkthrough) return null;
+  return (
+    <>
+      <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setOpen(!open); }} aria-expanded={open} className="pl-3" data-testid={`${testId}-item`}>
+        <Icon className="mr-2 h-4 w-4 shrink-0" />{title}<ChevronDown className={`ml-auto h-4 w-4 shrink-0 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
+      </DropdownMenuItem>
+      {open && <div className={`ml-6 border-l-2 ${tone}`} data-testid={`${testId}-submenu`}>{children}</div>}
+    </>
+  );
+};
+
+const Pick = ({ h, onPick }) => <DropdownMenuItem onSelect={() => onPick(h)} className="pl-3" data-testid={`app-menu-help-${slug(h.title)}`}>{h.title}</DropdownMenuItem>;
+
+export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, onModelWalkthrough }) => {
+  const [open, setOpen] = useState(false);
+  if (!groups.length && !rest.length && !onModelWalkthrough) return null;
   // Opens downwards inside the menu, so the cascade fits on a phone screen.
   return (
     <>
@@ -28,17 +53,17 @@ export const HelpSubMenu = ({ items, onPick, onModelWalkthrough }) => {
       </DropdownMenuItem>
       {open && (
         <div className="ml-6 border-l-2 border-[var(--line)]" data-testid="app-menu-help-submenu">
-          {items.map((h) => <DropdownMenuItem key={h.title} onSelect={() => onPick(h)} className="pl-3" data-testid={`app-menu-help-${slug(h.title)}`}>{h.title}</DropdownMenuItem>)}
-          {onModelWalkthrough && <>
-            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setModel(!model); }} aria-expanded={model} className="pl-3" data-testid="app-menu-help-model-vessel-item">
-              <GraduationCap className="mr-2 h-4 w-4 text-emerald-700" />Model Vessel<ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${model ? "rotate-180" : ""}`} />
-            </DropdownMenuItem>
-            {model && (
-              <div className="ml-6 border-l-2 border-emerald-200" data-testid="app-menu-help-model-vessel-submenu">
-                <DropdownMenuItem onSelect={onModelWalkthrough} className="pl-3" data-testid="app-menu-help-model-walkthrough-item">Basic Introduction Walkthrough...</DropdownMenuItem>
-              </div>
-            )}
-          </>}
+          {groups.map((g) => (
+            <Cascade key={g.title} title={g.title} icon={g.icon} testId={`app-menu-help-group-${slug(g.title)}`}>
+              {g.items.map((h) => <Pick key={h.title} h={h} onPick={onPick} />)}
+            </Cascade>
+          ))}
+          {rest.map((h) => <Pick key={h.title} h={h} onPick={onPick} />)}
+          {onModelWalkthrough && (
+            <Cascade title="Model Vessel" icon={GraduationCap} testId="app-menu-help-model-vessel" tone="border-emerald-200">
+              <DropdownMenuItem onSelect={onModelWalkthrough} className="pl-3" data-testid="app-menu-help-model-walkthrough-item">Basic Introduction Walkthrough...</DropdownMenuItem>
+            </Cascade>
+          )}
         </div>
       )}
     </>
