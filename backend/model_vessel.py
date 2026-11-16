@@ -88,12 +88,18 @@ async def seed_wizard_list():
 
 
 async def seed_wizards():
-    """One time: every Model Vessel wizard as written in preview (replacing the live copy); admin edits after that are kept."""
-    if await db.migrations.find_one({"_id": "model_vessel_wizards_v2"}):
-        return
+    """Model Vessel wizards as written in preview. The first run replaces the live copies; a wizard added later is added once if missing.
+    Admin edits (and deletions) after that are kept."""
     now = datetime.now(timezone.utc).isoformat()
+    first = not await db.migrations.find_one({"_id": "model_vessel_wizards_v2"})
     for w in json.loads((Path(__file__).parent / "seed" / "model_vessel_wizards.json").read_text()):
+        mid = f"model_vessel_wizard:{w['name'].lower()}"
+        if not first and await db.migrations.find_one({"_id": mid}):
+            continue
         items = [{"id": n + 1, "label": t} for n, t in enumerate(w["items"])]
-        await db.list_templates.update_one(_named(w["name"]), {"$set": {"name": w["name"], "description": w["description"], "items": items, "private": True, "updated_at": now, "updated_by": "system"},
-                                                               "$setOnInsert": {"list_id": f"tpl_{uuid4().hex[:10]}", "created_at": now}}, upsert=True)
-    await db.migrations.insert_one({"_id": "model_vessel_wizards_v2", "at": now})
+        if first or not await db.list_templates.find_one(_named(w["name"]), {"_id": 1}):
+            await db.list_templates.update_one(_named(w["name"]), {"$set": {"name": w["name"], "description": w["description"], "items": items, "private": True, "updated_at": now, "updated_by": "system"},
+                                                                   "$setOnInsert": {"list_id": f"tpl_{uuid4().hex[:10]}", "created_at": now}}, upsert=True)
+        await db.migrations.update_one({"_id": mid}, {"$set": {"at": now}}, upsert=True)
+    if first:
+        await db.migrations.insert_one({"_id": "model_vessel_wizards_v2", "at": now})

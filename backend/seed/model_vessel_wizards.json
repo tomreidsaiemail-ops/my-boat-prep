@@ -44,5 +44,35 @@
    "---Save an invite with Copy WhatsApp message, without sending anything",
    "---Preview exactly what a crew member sees when they join"
   ]
+ },
+ {
+  "name": "Admin - Model Vessel - Crew Safety Briefings",
+  "description": "Model Vessel training: shopping for crew, Crew Roles and their default briefings, bullet-point briefings and Prep-to-Deck.",
+  "items": [
+   "This walkthrough shows how crew roles and safety briefings work, from registering crew to the safety messages they read before they sail. It is all practice on the Model Vessel, so nothing is sent to anyone. Press Next.",
+   "First register two crew. Tap Photo and crew (the people icon next to the boat name at the top), then Crew Registration, then \"Bulk Quick Reg: paste names and emails\". Press Next.",
+   "Type two made-up crew, one per line, for example: Sam Taylor, sam@example.com then on the next line Alex Lee, alex@example.com. Tap Quick Reg 2. Both are registered with a yellow Quick Reg badge, and both have Shopper ticked, so they can be given shopping. Press Next.",
+   "Close Crew Registration and the photo and crew window. Open the list menu (the list name below the buttons, e.g. Boat Inventory) and choose Provisions. Press Next.",
+   "If Provisions is empty, add one or two items, like Bread and Milk. Tap Assign shoppers, tick the items, choose Sam Taylor as the Shopper and tap \"Give 2 to Sam Taylor\". When Sam joins the boat he sees these items as his shopping. Press Next.",
+   "Now Crew Roles. Open the list menu again and choose Crew Roles. Every boat starts with My Boat Prep's default crew roles, grouped under headings like \"1. Navigation & Communications\" and \"2. Safety & Emergency\". Press Next.",
+   "The ticked roles are the ones offered when you invite crew. Untick a role you never use and it stops being offered; tick it again to bring it back. The usual roles, like Helmsman and MOB Spotter, are ticked from the start. Press Next.",
+   "Tap a role, like Helmsman, to see its Role Briefing: the short safety message a crew member gets when they are given that role. You can change it and save it. It is saved to this boat's Crew Roles only. Press Next.",
+   "To bring in a new role, add it to Crew Roles like any list item, for example Spinnaker Trimmer, then tap it and write its briefing. When My Boat Prep improves the default roles, Crew Roles shows an Updated note with Merge Latest to bring the new ones in, and the briefings you wrote yourself are kept. Press Next.",
+   "Now see where roles and briefings appear. Open Photo and crew and tap Invite crew. Pick Sam Taylor from your registered crew at the top. Press Next.",
+   "Make sure \"As Roles are clicked & added, show Role Briefing\" is ticked, then tap a role, like MOB Spotter. Its Role Briefing pops up so you can check it before Sam gets it. Press Next.",
+   "Change the briefing if you like and tap Save to Crew Roles. That becomes this boat's default briefing for MOB Spotter, so every future crew member given that role gets your version. \"Keep it as it is\" leaves it unchanged. Press Next.",
+   "If the role you want isn't offered, tap Change available. It takes you to Crew Roles to tick or add roles, and \"Back to invite\" brings you straight back to Sam's invite as you left it. Press Next.",
+   "Write briefings as bullet points: one short point per line, starting with • or -. Crew read them on a phone, often in a hurry, and a bullet point gets read where a long paragraph gets skipped. Press Next.",
+   "Remember Prep-to-Deck: crew read their role briefings at home when they accept your invite, say on Thursday, then hear the same safety messages again on deck at your Saturday briefing. Hearing it twice is what makes it stick when it matters. Press Next.",
+   "Tap Copy WhatsApp message to save Sam's invite (nothing is sent from the Model Vessel), then Preview Crew Member Invite and Join Model Vessel to see the agreement with Sam's role briefings, exactly as he will. Close the preview and tap Done. Press Next to finish.",
+   "--You have learnt how to",
+   "---Register crew and give them shopping in Provisions",
+   "---Find the default Crew Roles and choose which are offered",
+   "---Change a role briefing and save it as your boat's default",
+   "---Bring in new roles, and Merge Latest for new defaults",
+   "---Write briefings as bullet points, ready for Prep-to-Deck",
+   "$$ Want to practise registering and inviting crew step by step? Click below",
+   "$$$ Crew Registration and Invites..."
+  ]
  }
 ]
