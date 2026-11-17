@@ -66,6 +66,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
 
   return (
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
+      <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />

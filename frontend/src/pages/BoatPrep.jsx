@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
 import useShoreTracking from "@/hooks/useShoreTracking";
@@ -190,7 +189,6 @@ const useWarn = () => {
 
 export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { askUpgrade } = useUpgrade();
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
@@ -1070,6 +1068,59 @@ export default function BoatPrep({ boatId, boats }) {
 
   const helpNamed = (n) => helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ").trim() === n)?.items;
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
+  // A list's checks (Select All .. Ask The Magic Mariner); on Route Planning they sit below Archived Trips.
+  const checks = (
+    <>
+      {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
+      {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
+        <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
+      )}
+      {!areaFilter && (
+        <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
+          {showMpa && (
+            <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
+              <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
+            </button>
+          )}
+          <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />
+        </div>
+      )}
+      {showMpa && <DietBanner />}
+      {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
+      {canEditList && active.id === "provisions" && (
+        <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { loadShoppers(); setDialog({ type: "shoppers" }); }} data-testid="assign-shoppers-btn">
+          <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
+        </button>
+      )}
+      {canEditList && mealLists.some((l) => l.id === active.id) && (
+        <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
+          <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
+        </button>
+      )}
+      {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
+        help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
+      {active.id === "shipsLog" && shown.length > 0 && (
+        <ExpandAllButton anyOpen={logOpen.length > 0} onAll={(on) => setLogOpen(on ? (logOn ? logFolders.visible : shown).filter((i) => !i.folder).map((i) => i.id) : [])} />
+      )}
+      {listSearch && items.length > 0 && <ListSearch value={listQuery} onChange={setListQuery} shown={shown.length} total={shownByArea.length} placeholder={`Search ${active.name}`} testId="checklist-search" />}
+      {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
+      <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
+        onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (active.id === "provisions") loadShoppers(); else if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+        ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
+        mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : undefined}
+        clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
+      {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
+      {backToInvite && CREW_ROLES.test(active.name.trim()) && (
+        <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
+          onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem(INVITE_DRAFT); }} />
+      )}
+      {canEditList && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
+        hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
+        placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
+      {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
+    </>
+  );
+
   return (
     <WeightsContext.Provider value={weights}>
     <CrewDietContext.Provider value={diet}>
@@ -1097,7 +1148,10 @@ export default function BoatPrep({ boatId, boats }) {
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
-      {boat.underway?.trip_id && <UnderwayBubble underway={boat.underway} big onOpen={crew ? undefined : () => navigate(`/shore?boat=${encodeURIComponent(boats.current.boat_id)}`)} testId="trip-underway-bubble" />}
+      {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
+      {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />
+        : <ArrivedCard underway={boat.underway} big label="Arrived, all arrival checks done" testId="vessel-arrived"
+            onArrive={() => { if (!doneGuard()) return; setActiveId("arrivingDest"); allDone.openArrive("arrivingDest", allLists.find((l) => l.id === "arrivingDest")?.name || "Arriving at Destination"); }} />)}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
@@ -1176,53 +1230,7 @@ export default function BoatPrep({ boatId, boats }) {
             ctx={{ units: boat.units, yearBuilt: boat.year_built, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
-          {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
-          {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
-            <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
-          )}
-          {!areaFilter && (
-            <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
-              {showMpa && (
-                <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
-                  <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
-                </button>
-              )}
-              <FoldAllButton items={items} folded={folded} onFoldAll={setFoldAll} />
-            </div>
-          )}
-          {showMpa && <DietBanner />}
-          {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
-          {canEditList && active.id === "provisions" && (
-            <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { loadShoppers(); setDialog({ type: "shoppers" }); }} data-testid="assign-shoppers-btn">
-              <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
-            </button>
-          )}
-          {canEditList && mealLists.some((l) => l.id === active.id) && (
-            <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
-              <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
-            </button>
-          )}
-          {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
-            help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
-          {active.id === "shipsLog" && shown.length > 0 && (
-            <ExpandAllButton anyOpen={logOpen.length > 0} onAll={(on) => setLogOpen(on ? (logOn ? logFolders.visible : shown).filter((i) => !i.folder).map((i) => i.id) : [])} />
-          )}
-          {listSearch && items.length > 0 && <ListSearch value={listQuery} onChange={setListQuery} shown={shown.length} total={shownByArea.length} placeholder={`Search ${active.name}`} testId="checklist-search" />}
-          {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
-          <Checklist items={logOn ? logFolders.visible : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-            onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); setEditShopper(null); if (active.id === "provisions") loadShoppers(); else if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-            ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
-            mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : undefined}
-            clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
-          {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
-          {backToInvite && CREW_ROLES.test(active.name.trim()) && (
-            <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
-              onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem(INVITE_DRAFT); }} />
-          )}
-          {canEditList && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
-            hideArea={hideArea} onHideAreaChange={premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
-            placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
-          {!crew && premium && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
+          {!isTripList(active) && checks}
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
@@ -1232,12 +1240,13 @@ export default function BoatPrep({ boatId, boats }) {
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>
           )}
+          {!crew && isTripList(active) && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} />}
+          {isTripList(active) && checks}
           {!crew && items.length > 0 && active.id !== "shipsLog" && !EMERGENCY[active.id] && (
             <button type="button" className="btn-ghost h-10 min-h-0 gap-1.5 self-end px-3 text-sm text-[var(--red)]" onClick={askDeleteList} data-testid="list-delete-list-btn">
               <Trash2 className="h-4 w-4" /> Delete this list
             </button>
           )}
-          {!crew && isTripList(active) && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} />}
         </>
       )}
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
