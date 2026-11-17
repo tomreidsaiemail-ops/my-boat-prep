@@ -3,7 +3,7 @@ import { Loader2, Pencil, RotateCcw, Undo2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
-import { ConfirmPopup, PointPanel, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
+import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
 import { stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 
@@ -131,6 +131,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   };
   const addAfter = (j) => { snap.current = j < latest.current.length ? latest.current : null; put(withSlot(latest.current, j)); setSel(null); setWait(j + 1); };
   const stopAdding = () => { put(snap.current || latest.current.slice(0, -1)); snap.current = null; setWait(null); };
+  // The skipper's own pick is kept, even Mooring on a leg that comes back to the start.
+  const setType = (j, t) => { known.current.add(latest.current[j - 1].id); put(latest.current.map((l, n) => (n === j - 1 ? { ...l, arrive_type: t } : l))); };
   const removePoint = async (j) => {
     const ls = latest.current;
     put(withoutPoint(ls, j));
@@ -158,8 +160,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const placed = stops.filter((s, k) => s.pos && k !== wait).length;
   const idle = wait === null && pending === null;
   const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? "Tap where you'll depart from." : wait !== null ? "Tap the chart for the new stop."
-    : sel !== null ? "Change this point, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin or line to improve it, then tap Done."
-      : "Tap a pin to rename it, change its times, delete it or add a stop after it. Drag pins or lines to improve the route, then tap Done.";
+    : sel !== null ? "Change this point in its popup, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin or line to improve it, then tap Done."
+      : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag pins or lines to improve the route, then tap Done.";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[96vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-lg p-3 sm:p-5" data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -195,11 +197,11 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
             <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} name={name} onConfirm={confirm}
               onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />
+          ) } : idle && sel !== null && posOf(legs, sel) ? { pos: posOf(legs, sel), node: (
+            <PointPopup j={sel} last={legs.length} name={nameOf(legs, sel) || ""} setName={(v) => put(renamed(latest.current, sel, v))}
+              type={sel > 0 ? legs[sel - 1].arrive_type : ""} setType={(t) => setType(sel, t)}
+              onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy > 0} />
           ) } : null} />}
-        {idle && sel !== null && sel < stops.length && (
-          <PointPanel j={sel} last={legs.length} name={nameOf(legs, sel) || ""} setName={(v) => put(renamed(latest.current, sel, v))} leg={sel < legs.length ? legs[sel] : null}
-            setTimes={(p) => put(latest.current.map((l, n) => (n === sel ? { ...l, ...p } : l)))} onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy > 0} />
-        )}
       </DialogContent>
     </Dialog>
   );

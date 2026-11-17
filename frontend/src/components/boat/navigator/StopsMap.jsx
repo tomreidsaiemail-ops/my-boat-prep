@@ -78,7 +78,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     const g = layer.current;
     if (!g) return;
     g.clearLayers();
-    drawRoute(map.current, g, { stops, lines, miles, land: landOf, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+    drawRoute(map.current, g, { stops, lines, miles, land: landOf, badges: quick, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
       tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; },
       // A tap on a line adds a bend there to drag, unless a stop is waiting for its pin (then the map tap drops it).
       onLineTap: pick < 0 ? (k, j, ll) => { const bends = lines[k].slice(1, -1); if (bends.length >= 78) return; const next = [...bends]; next.splice(j, 0, r5(ll)); live.current.onPath(k, next); } : null });

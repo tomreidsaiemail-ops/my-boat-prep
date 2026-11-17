@@ -31,7 +31,7 @@ const problem = (l) => {
   return "";
 };
 
-const LegForm = ({ leg, n, onSave }) => {
+const LegForm = ({ leg, n, onSave, onDelete }) => {
   const [l, setL] = useState(leg);
   const [error, setError] = useState("");
   const set = (patch) => { setL((x) => ({ ...x, ...patch })); setError(""); };
@@ -49,11 +49,16 @@ const LegForm = ({ leg, n, onSave }) => {
       <ArriveType id="leg-arrive-type" value={l.arrive_type} onChange={(v) => set({ arrive_type: v })} warn={error.includes("Type")} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="leg-error">{error}</p>}
       <button type="button" className="btn-solid h-12 justify-center" onClick={save} data-testid="leg-save-btn">Save Leg {n + 1}</button>
+      {onDelete && (
+        <button type="button" className="btn-ghost h-11 justify-center gap-1.5 !border-[var(--red)] !text-[var(--red)]" onClick={onDelete} data-testid="leg-delete-btn">
+          <Trash2 className="h-4 w-4" /> Delete Leg {n + 1}
+        </button>
+      )}
     </div>
   );
 };
 
-const LegRow = ({ leg, n, onEdit, onDelete, onType }) => (
+const LegRow = ({ leg, n, onEdit, onType }) => (
   <li className="flex items-center gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] py-2 pl-3 pr-1 text-sm" data-testid={`planned-leg-${n}`}>
     <div className="min-w-0 flex-1">
       <p className="break-words font-bold">Leg {n + 2}: {[leg.route_start, leg.route_dest].filter(Boolean).join(" to ")}</p>
@@ -61,7 +66,6 @@ const LegRow = ({ leg, n, onEdit, onDelete, onType }) => (
     </div>
     <ArriveQuickPick value={leg.arrive_type} onChange={onType} legLabel={`Leg ${n + 2}`} testId={`planned-leg-type-${n}`} />
     <button type="button" className="icon-btn" aria-label={`Edit leg ${n + 2}`} onClick={onEdit} data-testid={`planned-leg-edit-${n}`}><Pencil className="h-[18px] w-[18px]" /></button>
-    <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label={`Delete leg ${n + 2}`} onClick={onDelete} data-testid={`planned-leg-delete-${n}`}><Trash2 className="h-[18px] w-[18px]" /></button>
   </li>
 );
 
@@ -111,8 +115,8 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
     <div className="flex flex-col gap-2" data-testid="planned-legs">
       <span className="field-label">Legs of the trip</span>
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
-      {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding or deleting a leg opens the Trip Plan Draft map.</p>}
-      {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onDelete={() => remove(n)} onType={(t) => setType(n, t)} />)}</ul>}
+      {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Trip Plan Draft map.</p>}
+      {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
@@ -121,7 +125,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
             <DialogTitle className="font-display text-lg font-extrabold">{edit && edit.at < legs.length ? "Edit" : "Add"} Leg {(edit?.at ?? 0) + 2}</DialogTitle>
             <DialogDescription>Plan this leg of the trip. Pick Returning to Dock for the last leg.</DialogDescription>
           </DialogHeader>
-          {edit && <LegForm leg={edit.leg} n={edit.at + 1} onSave={save} />}
+          {edit && <LegForm leg={edit.leg} n={edit.at + 1} onSave={save} onDelete={edit.at < legs.length ? () => { const n = edit.at; setEdit(null); remove(n); } : null} />}
         </DialogContent>
       </Dialog>
       <TripConfirm open={confirm} legs={[first, ...legs]} name={name} onClose={() => setConfirm(false)} />

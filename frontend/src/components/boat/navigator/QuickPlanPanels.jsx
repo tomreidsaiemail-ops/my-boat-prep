@@ -1,4 +1,5 @@
 import { Check, Flag, Plus, Trash2, X, Zap } from "lucide-react";
+import { ARRIVE_TYPES } from "@/components/boat/navigator/ArriveType";
 
 // Two warnings before a draft can replace an existing route.
 export const ReplaceWarning = ({ step, onYes, onNo, testId = "quick-plan-replace" }) => (
@@ -15,19 +16,8 @@ export const ReplaceWarning = ({ step, onYes, onNo, testId = "quick-plan-replace
   </div>
 );
 
-const Times = ({ n, leg, onChange, testId }) => (
-  <div className="grid grid-cols-2 gap-2">
-    <label className="text-xs font-bold">Leg {n} departure
-      <input type="datetime-local" className="field-input mt-1 w-full" value={leg.depart_at} onChange={(e) => onChange({ depart_at: e.target.value })} data-testid={`${testId}-depart-input`} />
-    </label>
-    <label className="text-xs font-bold">Estimated finish
-      <input type="datetime-local" className="field-input mt-1 w-full" value={leg.finish_at} onChange={(e) => onChange({ finish_at: e.target.value })} data-testid={`${testId}-finish-input`} />
-    </label>
-  </div>
-);
-
 const DeleteBtn = ({ onClick, testId }) => (
-  <button type="button" onClick={onClick} className="inline-flex h-8 items-center gap-1 rounded-full border-[1.5px] border-[var(--red)] bg-white px-2.5 text-xs font-bold text-[var(--red)] hover:bg-red-50" data-testid={testId}>
+  <button type="button" onClick={onClick} className="inline-flex h-9 items-center justify-center gap-1 rounded-full border-[1.5px] border-[var(--red)] bg-white px-2.5 text-xs font-bold text-[var(--red)] hover:bg-red-50" data-testid={testId}>
     <Trash2 className="h-3.5 w-3.5" /> Delete this point
   </button>
 );
@@ -52,20 +42,32 @@ export const ConfirmPopup = ({ i, mid, name, onConfirm, onIgnore }) => (
   </div>
 );
 
-// A pin tapped on the Edit map: rename it, change its leg's times, delete it or add a stop after it.
-export const PointPanel = ({ j, last, name, setName, leg, setTimes, onDelete, onAddAfter, onClose, busy }) => (
-  <div className="flex flex-col gap-2 rounded-md border-2 border-[var(--navy)] bg-[var(--panel)] p-3" data-testid="quick-plan-point-panel">
-    <div className="flex items-center justify-between gap-2">
-      <label className="field-label" htmlFor="quick-plan-point-name" data-testid="quick-plan-point-title">{j === 0 ? "Departing point" : j === last ? `Point ${j + 1} (End of Trip)` : `Point ${j + 1}`}</label>
-      <div className="flex items-center gap-1">
-        <DeleteBtn onClick={onDelete} testId="quick-plan-point-delete-btn" />
-        <button type="button" className="icon-btn h-8 w-8" aria-label="Close" onClick={onClose} data-testid="quick-plan-point-close-btn"><X className="h-4 w-4" /></button>
-      </div>
+// A pin tapped on the draft map, shown at the pin: rename it, pick how its leg arrives, delete it or add a stop after it.
+// type / setType: the arriving type of the leg ending at this pin (none for the departing point).
+export const PointPopup = ({ j, last, name, setName, type, setType, onDelete, onAddAfter, onClose, busy }) => (
+  <div className="flex w-[min(260px,calc(100vw-56px))] flex-col gap-1.5 rounded-lg border-2 border-[var(--navy)] bg-white p-2 shadow-lg" data-testid="quick-plan-point-panel">
+    <div className="flex items-center justify-between gap-1">
+      <label className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]" htmlFor="quick-plan-point-name" data-testid="quick-plan-point-title">
+        {j === 0 ? "Departing point" : j === last ? `Point ${j + 1} (End of Trip)` : `Point ${j + 1}`}
+      </label>
+      <button type="button" className="icon-btn h-8 w-8 min-h-0" aria-label="Close" onClick={onClose} data-testid="quick-plan-point-close-btn"><X className="h-4 w-4" /></button>
     </div>
-    <input id="quick-plan-point-name" className="field-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} data-testid="quick-plan-point-name-input" />
-    {leg && <Times n={j + 1} leg={leg} onChange={setTimes} testId="quick-plan-point" />}
-    <button type="button" className="btn-ghost h-11 justify-center gap-1.5" disabled={busy} onClick={onAddAfter} data-testid="quick-plan-point-add-after-btn">
+    <input id="quick-plan-point-name" className="field-input h-10 min-h-0 text-sm" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} data-testid="quick-plan-point-name-input" />
+    {j > 0 && (
+      <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label="Arriving at Destination Type" data-testid="quick-plan-point-type">
+        {ARRIVE_TYPES.map(({ key, label, Icon }) => (
+          <button key={key} type="button" role="radio" aria-checked={type === key} aria-label={label} title={label} onClick={() => setType(key)}
+            className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-md border-2 border-[var(--navy)] text-[10px] font-bold leading-none [transition:background-color_.15s,color_.15s] ${type === key ? "bg-[var(--navy)] text-white" : "bg-white text-[var(--navy)]"}`}
+            data-testid={`quick-plan-point-type-${key}`}>
+            <Icon className="h-4 w-4" /> {SHORT[key]}
+          </button>
+        ))}
+      </div>
+    )}
+    <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 px-2 text-sm" disabled={busy} onClick={onAddAfter} data-testid="quick-plan-point-add-after-btn">
       <Plus className="h-4 w-4" /> Add a stop after this
     </button>
+    <DeleteBtn onClick={onDelete} testId="quick-plan-point-delete-btn" />
   </div>
 );
+const SHORT = { anchor: "Anchor", berth: "Berth", mooring: "Mooring", dock: "Dock" };

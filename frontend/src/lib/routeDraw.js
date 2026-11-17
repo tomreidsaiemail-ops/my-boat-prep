@@ -1,8 +1,14 @@
 import L from "leaflet";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ARRIVE_TYPES } from "@/components/boat/navigator/ArriveType";
 import { alongLine, milesText } from "@/lib/tripStops";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const pin = (n, picked, kind) => L.divIcon({ className: "", html: `<span class="route-pin${kind}${picked ? " route-pin-picked" : ""}">${n}</span>`, iconSize: [24, 24], iconAnchor: [12, 12] });
+// Each arriving type's icon as markup, for the small badge on a pin's corner.
+const BADGE = Object.fromEntries(ARRIVE_TYPES.map((t) => [t.key, renderToStaticMarkup(createElement(t.Icon, { size: 11, strokeWidth: 2.5 }))]));
+const pin = (n, picked, kind, type) => L.divIcon({ className: "", iconSize: [24, 24], iconAnchor: [12, 12],
+  html: `<span class="route-pin${kind}${picked ? " route-pin-picked" : ""}">${n}${BADGE[type] ? `<span class="route-pin-badge" data-type="${type}">${BADGE[type]}</span>` : ""}</span>` });
 const tag = (cls, text, style = "") => L.divIcon({ className: "", html: `<span class="${cls}"${style ? ` style="${style}"` : ""}>${esc(text)}</span>`, iconSize: [0, 0] });
 
 // A label on the leg's line, close to the stop it arrives at, nudged off the line (above it on screen).
@@ -24,8 +30,8 @@ const nearStop = (m, line, cls, text, interactive, taken) => {
 
 // Planned route: dashed leg lines, miles, a label before each stop and numbered pins. stops: [{ name, pos, type }].
 // land[k][j]: part j of leg k crosses land, drawn solid red. onPinDrag: pins can be dragged.
-// onLineTap(k, j, latlng): a tap on part j of leg k (a wide, invisible strip so a finger can hit it).
-export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, onTag, pick = -1, onPin, onPinDrag, onLineTap }) => {
+// onLineTap(k, j, latlng): a tap on part j of leg k (a wide, invisible strip so a finger can hit it). badges: each pin shows its arriving-type icon.
+export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, onTag, pick = -1, onPin, onPinDrag, onLineTap, badges = false }) => {
   const taken = [];
   lines.forEach((ln, k) => {
     if (!ln) return;
@@ -41,7 +47,7 @@ export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, o
   stops.forEach((s, i) => {
     if (!s?.pos) return;
     const kind = i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : "";
-    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
+    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind, badges && s.type), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
     if (onPin) mk.on("click", () => onPin(i));
     if (onPinDrag) mk.on("dragend", (e) => { const ll = e.target.getLatLng(); onPinDrag(i, { lat: +ll.lat.toFixed(5), lon: +ll.lng.toFixed(5) }); });
     mk.addTo(g);
