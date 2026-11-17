@@ -1002,3 +1002,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: "Do it for me" bubble moved into the wizard header, right after "Step X of N" (shows "Do it" on phones, "Do it for me" on wider screens), freeing a row for the step text.
 - 2026-06: Do it for me times: NOW, NOW+N / NOW-N (minutes), TODAY, TODAY+N / TODAY-N (days), optional "at HH:MM" (lib/doItForMe.js parseWhen). Date boxes get the date and the time box beside them the time; datetime-local and time boxes supported. Verified on Route Planning Departure / Estimated Finish.
 - 2026-06: Do it for me only fills boxes in the open pop-up when one is showing (e.g. Add Leg 2), never the page behind it.
+- 2026-06: UNDERWAY badge moved from under the list picker (trip list only) to under the VESSEL panel, larger, shown on any list whenever boat.underway.trip_id is set (crew boats too); hidden when not underway.

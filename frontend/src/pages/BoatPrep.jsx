@@ -1095,6 +1095,7 @@ export default function BoatPrep({ boatId, boats }) {
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
+      {boat.underway?.trip_id && <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
@@ -1152,7 +1153,6 @@ export default function BoatPrep({ boatId, boats }) {
           onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && setInterim(true) : undefined} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
-      {isTripList(active) && boat.underway?.trip_id === active.id && <UnderwayBubble underway={boat.underway} testId="trip-underway-bubble" />}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
