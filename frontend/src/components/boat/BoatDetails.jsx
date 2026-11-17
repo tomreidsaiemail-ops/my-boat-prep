@@ -41,19 +41,19 @@ const Field = ({ id, label, value, onChange, onBlur, placeholder, type = "text" 
   </label>
 );
 
-const Summary = ({ boat, onExpand }) => (
+const Summary = ({ boat, onExpand, tone }) => (
   <button type="button" onClick={onExpand} data-testid="boat-details-summary" aria-expanded="false" aria-label="Show boat details"
     className="flex min-h-[48px] w-full items-center gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white px-3 text-left [transition:border-color_.15s] hover:border-[var(--navy)]">
     <Ship className="h-5 w-5 shrink-0 text-[var(--navy)]" />
     <span className="flex min-w-0 flex-1 items-baseline gap-2">
-      <span className="field-label shrink-0">Vessel</span><b className="min-w-0 truncate" data-testid="summary-vessel">{boat.vessel}</b>
-      <span className="field-label ml-2 shrink-0">Callsign</span><b className="shrink-0 font-mono" data-testid="summary-callsign">{boat.callsign}</b>
+      <span className="field-label shrink-0">Vessel</span><b className={`min-w-0 truncate ${tone ? `rounded px-1.5 ${tone}` : ""}`} data-testid="summary-vessel">{boat.vessel}</b>
+      <span className="field-label ml-2 shrink-0 max-[420px]:hidden">Callsign</span><b className="shrink-0 font-mono" data-testid="summary-callsign">{boat.callsign}</b>
     </span>
     <ChevronDown className="h-5 w-5 shrink-0 text-[var(--muted)]" data-testid="boat-details-expand-btn" />
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone }) => {
+export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -124,7 +124,7 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
     </div>
   );
 
-  if (complete && !open) return <><div className="flex flex-col gap-2"><Summary boat={boat} onExpand={() => setOpen(true)} />{batchBtn}</div>{dialog}</>;
+  if (complete && !open) return <><div className="flex flex-col gap-2"><Summary boat={boat} onExpand={() => setOpen(true)} tone={tone} />{batchBtn}</div>{dialog}</>;
   return (
     <>
     <section className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="boat-details-bar"

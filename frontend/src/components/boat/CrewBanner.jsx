@@ -4,7 +4,7 @@ export const CrewBanner = ({ boat, owner }) => (
   <div className="flex items-start gap-3 rounded-lg border-[1.5px] border-sky-200 bg-sky-50 p-3.5 text-sm leading-relaxed text-sky-950" data-testid="crew-banner">
     <Users className="mt-0.5 h-5 w-5 shrink-0" />
     <p>
-      <b data-testid="crew-banner-vessel">{boat.vessel || "Shared boat"}</b>{boat.callsign && <> · Callsign <b className="font-mono">{boat.callsign}</b></>}
+      <b className="rounded bg-yellow-300 px-1.5" data-testid="crew-banner-vessel">{boat.vessel || "Shared boat"}</b>{boat.callsign && <> · Callsign <b className="font-mono">{boat.callsign}</b></>}
       <br />You&apos;re crew{owner && <> on {owner}&apos;s boat</>}. You can tick items, and add, change and remove the Food (F) and Drink (D) cupboards, including Batch Magic Scan My Shopping and Sync Food &amp; Drink Cupboards from the menu. The skipper looks after everything else.
     </p>
   </div>
