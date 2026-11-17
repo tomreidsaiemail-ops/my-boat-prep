@@ -30,6 +30,11 @@ const type = (el, value) => {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
   el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  // A short amber flash so the skipper sees what changed.
+  el.classList.remove("do-it-flash");
+  void el.offsetWidth;
+  el.classList.add("do-it-flash");
+  setTimeout(() => el.classList.remove("do-it-flash"), 1800);
 };
 // One box at a time, letting the screen catch up in between (a box may depend on the one before).
 export const doItForMe = async (fill) => {
@@ -37,7 +42,11 @@ export const doItForMe = async (fill) => {
   const missing = [];
   for (const { key, value } of fill) {
     const el = boxFor(key);
-    if (el) { type(el, value); done.push(key); await new Promise((r) => setTimeout(r, 60)); } else missing.push(key);
+    if (!el) { missing.push(key); continue; }
+    if (!done.length) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    type(el, value);
+    done.push(key);
+    await new Promise((r) => setTimeout(r, 60));
   }
   return { done, missing };
 };

@@ -151,3 +151,10 @@ body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + 28px) /
 /* Zone Map Overview panel: light text on dark grey (only its own rows, not the white buttons inside the plan). */
 .overview-dark { --muted: #f4f4f5; }
 .overview-dark > .text-\[var\(--navy\)\] { color: #fff; }
+
+@keyframes do-it-flash {
+  0%, 50% { background-color: #fde68a; box-shadow: 0 0 0 4px #f59e0b; }
+  25%, 75% { background-color: #fff; box-shadow: 0 0 0 2px #fbbf24; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.do-it-flash { animation: do-it-flash 1.6s ease-out; }
