@@ -33,6 +33,21 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
+// Two warnings before a Quick Trip Plan Draft can replace an existing route.
+const ReplaceWarning = ({ step, onYes, onNo }) => (
+  <div role="alert" className="flex flex-col gap-2 rounded-md border-2 border-[var(--red)] bg-red-50 p-3" data-testid="quick-plan-replace-warning">
+    <p className="text-sm font-bold text-[var(--red)]" data-testid="quick-plan-replace-warning-text">
+      {step === 1 ? "A Quick Trip Plan Draft will replace the current Route Planning START, DESTINATION, times and legs. Carry on?" : "Are you really sure? The current route can't be brought back."}
+    </p>
+    <div className="flex gap-2">
+      <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onNo} data-testid="quick-plan-replace-cancel-btn">Cancel</button>
+      <button type="button" className="btn-solid h-11 flex-[2] justify-center gap-1.5 !bg-[var(--red)]" onClick={onYes} data-testid="quick-plan-replace-yes-btn">
+        <Zap className="h-4 w-4" /> {step === 1 ? "Yes, replace it" : "Yes, I'm really sure"}
+      </button>
+    </div>
+  </div>
+);
+
 // interim: the New departure window on Arriving at Destination (today's leg of the trip).
 export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, onLeaving, onArriving }) => {
   const start = boat.route_start || "";
@@ -44,6 +59,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const [askOpen, setAskOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
   const [quick, setQuick] = useState(false);
+  const [sure, setSure] = useState(0);
   const w = boat.weather || {};
   const hasRoute = !!(start || dest || w.start_pos || w.dest_pos || (w.legs || []).length);
   // The draft's first leg is the Route Plan (START, DESTINATION, times, pins); the rest become its planned legs.
@@ -87,12 +103,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
 
   return (
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
-      {!interim && (
-        <button type="button" onClick={() => setQuick(true)} className="btn-ghost h-11 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
+      {!interim && !sure && (
+        <button type="button" onClick={() => (hasRoute ? setSure(1) : setQuick(true))} className="btn-ghost h-11 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
           <Zap className="h-4 w-4 text-amber-500" /> Quick Trip Plan Draft...
         </button>
       )}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} hasRoute={hasRoute} />}
+      {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick(true)))} onNo={() => setSure(0)} />}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} />}
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
         {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}

@@ -50,18 +50,17 @@ const Confirm = ({ i, name, setName, leg, setTimes, onConfirm, onDelete, busy })
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
 // Legs that would cross land are routed over the water; the skipper can still drag them.
-export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
+export const QuickPlanDialog = ({ open, onClose, onApply }) => {
   const [legs, setLegs] = useState(() => [newLeg(1)]);
   const [pending, setPending] = useState(null);
   const [name, setName] = useState("");
   const [ended, setEnded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [sure, setSure] = useState(0);
   const [done, setDone] = useState(0); // points confirmed so far
   const [times, setTimes] = useState({ depart_at: "", finish_at: "" });
   const latest = useRef(legs);
   latest.current = legs;
-  useEffect(() => { if (open) { setLegs([newLeg(1)]); setPending(null); setName(""); setEnded(false); setSure(0); setDone(0); } }, [open]);
+  useEffect(() => { if (open) { setLegs([newLeg(1)]); setPending(null); setName(""); setEnded(false); setDone(0); } }, [open]);
 
   const put = (next) => { latest.current = next; setLegs(next); };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
@@ -105,7 +104,6 @@ export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
     if (i > 0) { setBusy(true); await route(i - 1); setBusy(false); }
   };
   const finish = () => {
-    if (hasRoute && sure < 2) { setSure(sure + 1); return; }
     onApply(latest.current);
     onClose();
   };
@@ -116,16 +114,11 @@ export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold"><Zap className="h-5 w-5 text-amber-500" /> {QUICK_NAME}</DialogTitle>
           <DialogDescription>{ended ? "Trip laid out. Drag any pin or line to improve it, then tap Done." : pending !== null ? "Check the name and times, then confirm this point." : legs[0].start_pos ? "Tap the next stop on the chart." : "Tap where you'll depart from."}</DialogDescription>
         </DialogHeader>
-        {sure > 0 && (
-          <p role="alert" className="rounded-md border-2 border-[var(--red)] bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="quick-plan-replace-warning">
-            {sure === 1 ? "Replace the current Route Planning START, DESTINATION, times and legs with this draft?" : "Are you really sure? The current route can't be brought back."}
-          </p>
-        )}
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="quick-plan-cancel-btn">Cancel</button>
           <button type="button" className="btn-solid h-11 flex-[2] justify-center gap-1.5" disabled={!ended || busy} onClick={finish} data-testid="quick-plan-done-btn">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {sure === 1 ? "Yes, replace it" : sure === 2 ? "Yes, I'm really sure" : "Done Quick Route Plan Draft"}
+            Done Quick Route Plan Draft
           </button>
         </div>
         {open && <StopsMap quick paused={pending !== null || ended} legs={legs} onPlace={onPlace} onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}} />}
