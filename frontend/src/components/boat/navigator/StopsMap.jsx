@@ -38,7 +38,8 @@ const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
 
 // Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
 // quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
-export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false }) => {
+// onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted.
+export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
@@ -59,11 +60,11 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     const g = layer.current;
     if (!g) return;
     g.clearLayers();
-    drawRoute(map.current, g, { stops, lines, miles, land: landOf, pick, onPin: setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+    drawRoute(map.current, g, { stops, lines, miles, land: landOf, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
       tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
     drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
   };
-  live.current = { pick, stops, onPlace, onPath, onPrepare, draw };
+  live.current = { pick, stops, onPlace, onPath, onPrepare, onPinTap, draw };
 
   useEffect(() => {
     const m = L.map(el.current, { doubleClickZoom: false });
@@ -98,7 +99,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     if (boat.current) boat.current.setLatLng(ll); else boat.current = L.marker(ll, { icon: BOAT, title: "Your boat", interactive: false }).addTo(m);
   }, [gps]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { draw(); }, [legs, pick]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { draw(); }, [legs, pick, mark]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = stops.findIndex((s) => !s.pos);
   useEffect(() => { if (quick) setPick(paused ? -1 : open); }, [quick, paused, open, stops.length]);
 

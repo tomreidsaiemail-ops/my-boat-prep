@@ -65,7 +65,8 @@ const LegRow = ({ leg, n, onEdit, onDelete }) => (
 );
 
 // Route Planning: the Route Plan is Leg 1; further planned legs follow it in order.
-export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
+// onDraft(point): a Trip Plan Draft exists, so adding or deleting a leg opens its map at that point.
+export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft }) => {
   const legs = weather.legs || [];
   // Routes drawn over water can land before the next render, so each builds on the latest legs.
   const latest = useRef(legs);
@@ -87,7 +88,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
   const redraw = () => onChange({ path: null, legs: legs.map((l) => ({ ...l, path: null })) });
   const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos, path: weather.path };
   const last = legs[legs.length - 1] || first;
-  const add = () => setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } });
+  const add = () => (onDraft ? onDraft(legs.length + 1) : setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } }));
   // An edited leg's DESTINATION and finish carry on to the next leg's START and departure, where they still matched.
   const save = (leg) => {
     const old = legs[edit.at];
@@ -97,6 +98,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
     if (leg.arrive_type === "dock") setConfirm(true);
   };
   const remove = (n) => {
+    if (onDraft) { onDraft(n + 2); return; }
     onChange({ legs: legs.filter((_, k) => k !== n).map((l, k) => (k === n ? { ...l, path: null } : l)) });
     toast(`Leg ${n + 2} deleted`, { duration: 6000, action: { label: "Undo", onClick: () => onChange({ legs }) } });
   };
@@ -104,6 +106,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange }) => {
     <div className="flex flex-col gap-2" data-testid="planned-legs">
       <span className="field-label">Legs of the trip</span>
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
+      {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding or deleting a leg opens the Trip Plan Draft map.</p>}
       {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onDelete={() => remove(n)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
