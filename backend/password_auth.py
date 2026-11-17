@@ -10,7 +10,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
-from auth import create_session, get_current_user, signed_in_user
+from auth import ADMIN_EMAIL, create_session, get_current_user, signed_in_user
 from twofa import CODE_TRIES, CODES_PER_HOUR, RESEND_SECONDS, code_hash, expiry, is_special, new_code
 from email_service import send_email, EMAIL_FROM_NAME
 from urls import public_base
@@ -98,6 +98,26 @@ async def send_code(email: str) -> None:
         logger.error("Email code failed to send")
 
 
+async def password_alert(email: str, base: str, was_set: bool) -> None:
+    """Tell the skipper their password changed, so they spot it if it wasn't them."""
+    what = "set" if was_set else "changed"
+    when = datetime.now(timezone.utc).strftime("%d %B %Y at %H:%M UTC").lstrip("0")
+    html = (
+        '<div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;max-width:560px">'
+        f'<h1 style="font-size:20px">Your My Boat Prep password was {what}</h1><p>Hi skipper,</p>'
+        f'<p>The password for <b>{escape(email)}</b> was {what} on <b>{when}</b>.</p>'
+        '<p>If this was you, there is nothing else to do.</p>'
+        '<p style="background:#fef3c7;padding:12px;border-radius:8px"><b>Wasn\'t you?</b> Reset your password straight away, '
+        f'then <a href="mailto:{ADMIN_EMAIL}">contact us</a> so we can check your account.</p>'
+        f'<p><a href="{base}/forgot-password" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Reset my password</a></p>'
+        f'<p style="font-size:12px;color:#64748b">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password or card details by email.</p></div>'
+    )
+    try:
+        await send_email(to=[email], subject=f"Your My Boat Prep password was {what}", html=html)
+    except (HTTPException, ValueError):
+        logger.error("Password alert email failed to send")
+
+
 async def needs_code(user: dict) -> bool:
     if user.get("email_verified"):
         return False
@@ -181,12 +201,13 @@ async def resend_code(payload: ForgotIn):
 
 @router.post("/change-password")
 async def change_password(payload: ChangeIn, request: Request, user: dict = Depends(get_current_user)):
-    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 1})
+    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 1, "email": 1})
     if doc.get("password_hash") and not verify_password(payload.current, doc["password_hash"]):
         raise HTTPException(status_code=400, detail="Your current password isn't right")
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": hash_password(payload.password)}})
     token = request.cookies.get("session_token") or request.headers.get("authorization", "")[7:]
     await db.user_sessions.delete_many({"user_id": user["user_id"], "session_token": {"$ne": token}})
+    await password_alert(doc["email"], public_base(request), not doc.get("password_hash"))
     return {"ok": True}
 
 
@@ -217,16 +238,18 @@ async def forgot_password(payload: ForgotIn, request: Request):
 
 
 @router.post("/reset-password")
-async def reset_password(payload: ResetIn):
+async def reset_password(payload: ResetIn, request: Request):
     now = datetime.now(timezone.utc)
     rec = await db.password_reset_tokens.find_one_and_update(
         {"token_hash": _sha(payload.token), "used": False, "expires_at": {"$gt": now}},
         {"$set": {"used": True}}, projection={"_id": 0}, return_document=ReturnDocument.AFTER)
     if not rec:
         raise HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
-    await db.users.update_one({"user_id": rec["user_id"]}, {"$set": {"password_hash": hash_password(payload.password), "email_verified": True}})
+    user = await db.users.find_one_and_update(
+        {"user_id": rec["user_id"]}, {"$set": {"password_hash": hash_password(payload.password), "email_verified": True}},
+        projection={"_id": 0, "email": 1, "password_hash": 1})
     await db.user_sessions.delete_many({"user_id": rec["user_id"]})
-    user = await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0, "email": 1})
     if user:
         await db.login_attempts.delete_one({"identifier": _ident(user["email"])})
+        await password_alert(user["email"], public_base(request), not user.get("password_hash"))
     return {"ok": True}
