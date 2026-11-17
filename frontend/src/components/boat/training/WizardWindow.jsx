@@ -59,10 +59,11 @@ const MiniBar = ({ steps, at, onBack, onNext, asking, onShrink, t }) => (
 
 const list = (keys) => keys.join(keys.length > 2 ? ", " : " and ").replace(/, ([^,]*)$/, " and $1");
 const DoItForMe = ({ fill, t }) => {
-  const run = () => {
-    const { done, missing } = doItForMe(fill);
-    if (done.length) toast.success(`Filled in ${list(done)}`);
-    if (missing.length) toast.error(`Couldn't find ${list(missing)} on screen. Open that part of the app, then tap Do it for me again.`, { duration: 7000 });
+  // Shown at the top so they don't cover the wizard's Next button.
+  const run = async () => {
+    const { done, missing } = await doItForMe(fill);
+    if (done.length) toast.success(`Filled in ${list(done)}`, { position: "top-center" });
+    if (missing.length) toast.error(`Couldn't find ${list(missing)} on screen. Open that part of the app, then tap Do it for me again.`, { duration: 7000, position: "top-center" });
   };
   return (
     <button type="button" onClick={run} className="flex h-9 shrink-0 items-center gap-1.5 self-start rounded-full border-2 border-amber-500 bg-amber-100 px-3.5 text-sm font-extrabold text-amber-900 shadow-sm hover:bg-amber-200 active:scale-95 [transition:background-color_.15s,transform_.1s]" data-testid={`${t}-do-it-btn`}>

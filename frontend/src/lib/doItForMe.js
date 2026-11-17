@@ -1,5 +1,5 @@
 // "@@DOITFORME,START=Mana Marina,DESTINATION=Ship Cove, Marlborough Sounds" at the end of a wizard step:
-// the "Do it for me" button types each value into the box on screen labelled with that name.
+// the "Do it for me" button types each value into the box on screen labelled exactly with that name (or its aria-label).
 const MARK = /@@DOITFORME/i;
 const norm = (s = "") => s.replace(/[*:]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -29,14 +29,15 @@ const type = (el, value) => {
   Object.getOwnPropertyDescriptor(proto, "value").set.call(el, value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
-  el.dispatchEvent(new Event("blur", { bubbles: true }));
+  el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
 };
-export const doItForMe = (fill) => {
+// One box at a time, letting the screen catch up in between (a box may depend on the one before).
+export const doItForMe = async (fill) => {
   const done = [];
   const missing = [];
-  fill.forEach(({ key, value }) => {
+  for (const { key, value } of fill) {
     const el = boxFor(key);
-    if (el) { type(el, value); done.push(key); } else missing.push(key);
-  });
+    if (el) { type(el, value); done.push(key); await new Promise((r) => setTimeout(r, 60)); } else missing.push(key);
+  }
   return { done, missing };
 };

@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only test of Model Vessel wizard @@DOITFORME 'Do it for me' button at 390x844 as admin (test_session_admin_1), using temp private list 'Admin - Model Vessel - DoIt Demo' (tpl_eec2868df9, deleted afterwards). All requested flows pass: step 2 text hides @@ part ('...Marlborough Sounds.  Press Next'), training-do-it-btn shown only on the @@ step (not step 1/3, not on Basic Introduction); with Boat Inventory active it shows the error toast \"Couldn't find START and DESTINATION on screen...\" and stays on step 2; with Route Planning open it fills route-start-input='Mana Marina', route-dest-input='Ship Cove, Marlborough Sounds' (comma kept, trailing full stop dropped), toast 'Filled in START and DESTINATION', stays on step 2; values saved to DB (user_boats.boat.route_start/route_dest) and still shown after reload; template editor Preview wizard shows wizard-preview-do-it-btn on step 2; Edit Step shows full raw line incl. @@DOITFORME; Basic Introduction steps Next/Back normally. Two minor issues found (below).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "WizardWindow DoItForMe toasts (mobile)", "issue": "The error toast (7s) and the success toast sit right over the wizard Back/Next buttons at 390px. elementFromPoint at the Next button centre returns the toast and a normal click on wizard-preview-next-btn / training-next-btn times out until the toast goes away. The spec says the skipper presses Next right after Do it for me, so this blocks them for 4-7s.", "selector": "[data-sonner-toast] over [data-testid=training-next-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Do it for me -> Route Planning Navigator question", "issue": "Once both fields are filled, the 'Ask the Magic Marine Navigator' question (#navigator-question) reads 'Ship Cove, Marlborough Sounds' when it should read 'Mana Marina to Ship Cove, Marlborough Sounds'. RCA: doItForMe fires both input events in the same tick, so NavigatorAsk.setRoute('route_dest') still sees the old (empty) `start` from its closure, and routeText(start, dest) leaves the start out. Typing by hand works. Fix: work out the question from the latest values (e.g. keep start/dest in refs), or let React render between fills (await a tick between keys in doItForMe).", "affected_selectors": ["#navigator-question", "route-start-input", "route-dest-input"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Stop the Do it for me toasts covering the wizard Back/Next buttons on mobile. Options: move them to the top (position='top-center'), give them an offset above the wizard window, or shorten the error toast.",
+    "Fix the stale start/dest closure in NavigatorAsk.setRoute so the Navigator question becomes 'START to DESTINATION' when Do it for me fills both fields."
+  ],
+  "critical_code_review_comments": [
+    "doItForMe.js: blur is sent as a bubbling Event('blur'). React listens for focusout, so onBlur handlers won't fire. That's harmless for RouteField, but boxes that save on blur won't save.",
+    "doItForMe.js boxFor: matching is by exact label text or aria-label only, so a label like 'START (port)' won't match. That's fine for now, but write it down for wizard authors."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "~90% (all requested checks pass; 2 minor issues)"},
+  "seed_data_creation": "Created tpl_eec2868df9 'Admin - Model Vessel - DoIt Demo' then deleted it (200). Model Vessel route_start/route_dest for test-admin-1 were '' before and are '' again after the test (checked in the DB).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Each browser_automation call is a fresh context, so set localStorage mbp_model_wizard:test-admin-1 (e.g. '\"doit demo\"'), mbp_model_step, mbp_model_path '[]', mbp_model_answers '{}' and reload in every script. Route Planning list option = list-option-routeHazards. Admin template editor = /admin/templates > template-list-edit-<id> > wizard-preview-btn. Route values live in db.user_boats {owner_id:'test-admin-1', boat_id:'model_vessel'}.boat.route_start/route_dest."
+}
