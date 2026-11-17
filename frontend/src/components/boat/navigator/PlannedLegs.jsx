@@ -4,7 +4,7 @@ import { Map as MapIcon, Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dmyt } from "@/lib/allDone";
 import { When } from "@/components/boat/navigator/NavigatorExtras";
-import { ArriveType, arriveType } from "@/components/boat/navigator/ArriveType";
+import { ArriveQuickPick, ArriveType, arriveType } from "@/components/boat/navigator/ArriveType";
 import { TripConfirm } from "@/components/boat/navigator/TripConfirm";
 
 const Field = ({ id, label, value, onChange, placeholder }) => (
@@ -53,12 +53,13 @@ const LegForm = ({ leg, n, onSave }) => {
   );
 };
 
-const LegRow = ({ leg, n, onEdit, onDelete }) => (
+const LegRow = ({ leg, n, onEdit, onDelete, onType }) => (
   <li className="flex items-center gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] py-2 pl-3 pr-1 text-sm" data-testid={`planned-leg-${n}`}>
     <div className="min-w-0 flex-1">
       <p className="break-words font-bold">Leg {n + 2}: {[leg.route_start, leg.route_dest].filter(Boolean).join(" to ")}</p>
       <p className="text-xs text-[var(--muted)]">{dmyt(leg.depart_at) || "Departure not set"} - {dmyt(leg.finish_at)} · {arriveType(leg.arrive_type)?.label}</p>
     </div>
+    <ArriveQuickPick value={leg.arrive_type} onChange={onType} legLabel={`Leg ${n + 2}`} testId={`planned-leg-type-${n}`} />
     <button type="button" className="icon-btn" aria-label={`Edit leg ${n + 2}`} onClick={onEdit} data-testid={`planned-leg-edit-${n}`}><Pencil className="h-[18px] w-[18px]" /></button>
     <button type="button" className="icon-btn hover:text-[var(--red)]" aria-label={`Delete leg ${n + 2}`} onClick={onDelete} data-testid={`planned-leg-delete-${n}`}><Trash2 className="h-[18px] w-[18px]" /></button>
   </li>
@@ -97,6 +98,10 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
     setEdit(null);
     if (leg.arrive_type === "dock") setConfirm(true);
   };
+  const setType = (n, t) => {
+    onChange({ legs: legs.map((l, k) => (k === n ? { ...l, arrive_type: t } : l)) });
+    if (t === "dock") setConfirm(true);
+  };
   const remove = (n) => {
     if (onDraft) { onDraft(n + 2); return; }
     onChange({ legs: legs.filter((_, k) => k !== n).map((l, k) => (k === n ? { ...l, path: null } : l)) });
@@ -107,7 +112,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
       <span className="field-label">Legs of the trip</span>
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
       {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding or deleting a leg opens the Trip Plan Draft map.</p>}
-      {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onDelete={() => remove(n)} />)}</ul>}
+      {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onDelete={() => remove(n)} onType={(t) => setType(n, t)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>

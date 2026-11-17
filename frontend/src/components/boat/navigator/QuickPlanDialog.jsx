@@ -23,7 +23,7 @@ const later = (s, h) => {
   d.setHours(d.getHours() + h);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-const newLeg = (n, start = "") => ({ id: n === 1 ? "plan" : Date.now() + n, route_start: start, route_dest: "", depart_at: at(n, "06"), finish_at: at(n, "09"), arrive_type: "", start_pos: null, dest_pos: null, path: null });
+const newLeg = (n, start = "") => ({ id: n === 1 ? "plan" : Date.now() + n, route_start: start, route_dest: "", depart_at: at(n, "06"), finish_at: at(n, "09"), arrive_type: "mooring", start_pos: null, dest_pos: null, path: null });
 const posOf = (legs, i) => (i === 0 ? legs[0].start_pos : legs[i - 1].dest_pos);
 const nameOf = (legs, i) => (i === 0 ? legs[0].route_start : legs[i - 1].route_dest);
 const ll = (p) => [p.lat, p.lon];
@@ -41,8 +41,17 @@ const withoutPoint = (ls, j) => {
 const withSlot = (ls, j) => {
   if (j === ls.length) return [...ls, newLeg(j + 1, nameOf(ls, j))];
   const old = ls[j];
-  return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: "" },
+  return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: "mooring" },
     { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: later(old.finish_at, 3), path: null }, ...ls.slice(j + 1)];
+};
+// The trip ends where it started: the same name, or pins within about 300 m.
+const backHome = (ls) => {
+  const [a, b] = [ls[0], ls[ls.length - 1]];
+  const same = a.route_start && a.route_start.toLowerCase() === (b.route_dest || "").toLowerCase();
+  const p = a.start_pos;
+  const q = b.dest_pos;
+  const near = p && q && Math.hypot((q.lat - p.lat) * 111320, (q.lon - p.lon) * 111320 * Math.cos((p.lat * Math.PI) / 180)) < 300;
+  return !!(same || near);
 };
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
@@ -62,6 +71,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const snap = useRef(null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
+  const known = useRef(new Set((draft || []).map((l) => l.id))); // legs already in Route Planning keep their arriving type
 
   const put = (next) => { latest.current = next; setLegs(next); };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
@@ -134,9 +144,13 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     put(b.legs); setWait(b.wait); setPending(null); setSel(null); setName(""); snap.current = null; asking.current = null;
     setUndo((u) => u.slice(0, -1));
   };
-  const startNew = () => { put([newLeg(1)]); setUndo([]); snap.current = null; setFresh(true); setWait(0); setSel(null); setPending(null); setSure(0); };
+  const startNew = () => { put([newLeg(1)]); setUndo([]); known.current = new Set(); snap.current = null; setFresh(true); setWait(0); setSel(null); setPending(null); setSure(0); };
   const finish = () => {
-    onApply(latest.current.map((l) => ({ ...l, route_start: (l.route_start || "").trim(), route_dest: (l.route_dest || "").trim() })), fresh);
+    const ls = latest.current.map((l) => ({ ...l, route_start: (l.route_start || "").trim(), route_dest: (l.route_dest || "").trim() }));
+    const end = ls[ls.length - 1];
+    // A new last leg that comes back to the start is Returning to Dock rather than the Mooring default.
+    if (end.arrive_type === "mooring" && !known.current.has(end.id) && backHome(ls)) ls[ls.length - 1] = { ...end, arrive_type: "dock" };
+    onApply(ls, fresh);
     onClose();
   };
 

@@ -1,4 +1,6 @@
-import { Anchor, Home, LifeBuoy, Sailboat } from "lucide-react";
+import { useState } from "react";
+import { Anchor, Check, HelpCircle, Home, LifeBuoy, Sailboat } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // How a planned leg ends; each opens its own arrival checklist from the trip plan.
 export const ARRIVE_TYPES = [
@@ -26,3 +28,28 @@ export const ArriveType = ({ id, value, onChange, warn }) => (
     </div>
   </div>
 );
+
+// A leg row's arriving-type icon; tapping it picks the type straight from the list ("?" when not picked yet).
+export const ArriveQuickPick = ({ value, onChange, testId, legLabel }) => {
+  const [open, setOpen] = useState(false);
+  const t = arriveType(value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className={`icon-btn ${t ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} aria-label={`${legLabel} arriving type: ${t ? t.label : "not picked"}. Change it`} data-testid={testId}>
+          {t ? <t.Icon className="h-[18px] w-[18px]" /> : <HelpCircle className="h-[18px] w-[18px]" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-1.5" data-testid={`${testId}-menu`}>
+        <p className="px-2 pb-1 pt-0.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Arriving at Destination Type</p>
+        {ARRIVE_TYPES.map(({ key, label, Icon }) => (
+          <button key={key} type="button" onClick={() => { setOpen(false); if (key !== value) onChange(key); }}
+            className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-bold [transition:background-color_.15s] ${key === value ? "bg-[var(--navy)] text-white" : "text-[var(--navy)] hover:bg-slate-100"}`}
+            aria-pressed={key === value} data-testid={`${testId}-${key}`}>
+            <Icon className="h-4 w-4 shrink-0" /> <span className="flex-1">{label}</span> {key === value && <Check className="h-4 w-4" />}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+};
