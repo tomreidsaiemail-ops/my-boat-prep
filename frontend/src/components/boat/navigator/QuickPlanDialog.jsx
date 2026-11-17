@@ -16,6 +16,13 @@ const at = (days, hh) => {
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hh}:00`;
 };
+// A "YYYY-MM-DDTHH:MM" time h hours later.
+const later = (s, h) => {
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  d.setHours(d.getHours() + h);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 const newLeg = (n, start = "") => ({ id: n === 1 ? "plan" : Date.now() + n, route_start: start, route_dest: "", depart_at: at(n, "06"), finish_at: at(n, "09"), arrive_type: "", start_pos: null, dest_pos: null, path: null });
 const posOf = (legs, i) => (i === 0 ? legs[0].start_pos : legs[i - 1].dest_pos);
 const nameOf = (legs, i) => (i === 0 ? legs[0].route_start : legs[i - 1].route_dest);
@@ -35,7 +42,7 @@ const withSlot = (ls, j) => {
   if (j === ls.length) return [...ls, newLeg(j + 1, nameOf(ls, j))];
   const old = ls[j];
   return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: "" },
-    { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: old.finish_at, path: null }, ...ls.slice(j + 1)];
+    { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: later(old.finish_at, 3), path: null }, ...ls.slice(j + 1)];
 };
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.

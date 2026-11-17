@@ -1,0 +1,43 @@
+{
+  "summary": "Tested the Edit Trip Plan Draft feature end to end (frontend only, mobile 390x844, Pro user test_session_pro_1, boat TEST_Kia Ora/main, Route Planning). Everything requested works, and I found no functional bugs. Covered: the two replace warnings before a new draft; creating a 4-point / 3-leg draft by tapping water near Wellington; the button changing to 'Edit Trip Plan Draft...' with a pencil after a draft exists; Route Planning name and time changes showing on the Edit map; pin panel edits and deletes flowing back; adding a stop after a picked pin (middle and last); Stop adding stops; Cancel; add-leg and delete-leg opening the map; Start New Draft; and the 'View planned route...' map with its stop list. Changes were checked in MongoDB.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit map - stop slotted into the middle", "issues": ["A stop added in the middle gets depart_at = finish_at = the old leg's finish time, so the new leg lasts 0 minutes and the old leg's finish time doesn't move. The skipper has to fix the times by hand in the confirm panel."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: when a stop is added in the middle, give the new leg a non-zero default length (e.g. split the old leg's time, or finish +3h).",
+    "Optional: on the Edit map, a point's name comes from the previous leg's DESTINATION. If the skipper changed a planned leg's START (leg-start-input) to something else in the leg form, the Edit map doesn't show that START. Think about syncing the two, or showing both."
+  ],
+  "critical_code_review_comments": [
+    "PlannedLegs: remove(n) -> onDraft(n+2) and add() -> onDraft(legs.length+1) pick the right points (planned-leg-delete-0 opened 'Point 3'; Add Leg opened the last point, 'Point N (End of Trip)').",
+    "withoutPoint (middle point): the joined leg takes the removed leg's destination, finish_at and arrive_type. It shows correctly in Route Planning and the joined leg is re-routed (17nm and 18nm lines drawn).",
+    "applyQuick only sets event_name when the draft is fresh, so editing a draft keeps the skipper's Event/Trip name. Correct.",
+    "I could not run the regression for a boat with no route at all: the Pro user's other boat (model_vessel) has route_start 'Mana', and the beta user's unnamed boat has no Route Planning list. I checked the code instead: NavigatorAsk line 97 goes straight to setQuick when hasRoute is false. Note that hasRoute is also true when only start_pos/dest_pos pins exist; the Pro boat started with empty START/DEST but saved pins, and the two warnings showed. That is reasonable behaviour."
+  ],
+  "verified_flows": [
+    "Existing route (pins only), no draft: the button reads 'Quick Trip Plan Draft...' and the two warnings appear ('A Quick Trip Plan Draft will replace...' then 'Are you really sure?...') before the dialog opens. The dialog title is 'Quick Trip Plan Draft' with the hint 'Tap where you'll depart from.'",
+    "Create: 4 taps gave buttons 'Departing point', 'Arriving (Leg 2 Departing point)', 'Arriving (Leg 3 Departing point)', then 'Arriving (End of Trip point)'; 4 pins. Done showed the toast 'Quick Trip Plan Draft: 3 legs added to Route Planning'. START and DEST were filled, planned-leg-0 and planned-leg-1 appeared, and trip_draft=true was saved in the DB.",
+    "After the draft: quick-plan-btn reads 'Edit Trip Plan Draft...' with a pencil and opens with no warnings. Title is 'Edit Trip Plan Draft' (pencil icon), 4 pins, Done is enabled and reads 'Done, update Route Planning', quick-plan-start-new-btn is shown, and planned-legs-draft-hint is shown.",
+    "Changes in Route Planning reach the Edit map: route-start 'Harbour Start' showed on pin 1. Planned leg 0's DEST 'TEST_Bay' showed on pin 3, and its depart time 07:30 showed on pin 2 (depart 2026-11-19T07:30). The next leg's START followed to TEST_Bay.",
+    "Point panel edits flow back: pin 1 renamed to TEST_Start2 -> START; pin 2 depart changed to 08:15 -> leg row; pin 4 renamed to TEST_End -> Leg 3 DEST. Toast 'Trip Plan Draft: 3 legs updated in Route Planning'.",
+    "Deleting a middle pin (pin 3): 4 pins went to 3 and the joined leg was re-routed. After Done, Route Planning had 1 planned leg (Wellington to TEST_End).",
+    "Add a stop after pin 2: hint 'Tap the chart for the new stop.', Done disabled, Stop adding shown. Stop adding restored 3 pins with the same names. Adding again by tapping water showed a single 'Add this stop' button with no end button; 4 pins, the new TEST_Mid became Point 3 and TEST_End moved to Point 4 (End of Trip).",
+    "Add after the last pin: both 'Arriving (Leg 5 Departing point)' and 'Arriving (End of Trip point)' were shown. Ending there made 5 pins.",
+    "Cancel: the shared 'Discard your changes?' guard appears (discard-changes-confirm-btn). After discarding, Route Planning was unchanged; checked twice, including a rename to TEST_ShouldNotSave that was not saved.",
+    "add-leg-btn opens the Edit map with the last point's panel open ('POINT 3 (END OF TRIP)'), not the leg form. planned-leg-delete-0 opens the map at 'POINT 3' and does not delete straight away. planned-leg-edit-0 still opens leg-dialog.",
+    "Full add-leg path: Add Leg -> Add a stop after this -> tap water -> End -> Done gave 2 planned legs. Then planned-leg-delete-0 -> 'POINT 3' -> Delete this point -> Done gave 1 planned leg, and this was saved in the DB.",
+    "Start New Draft: first warning 'A Quick Trip Plan Draft will replace...' (the Start New Draft button hides while it shows). Cancel kept the Edit map (title unchanged, 3 pins). Yes, then 'Are you really sure?', then Yes cleared the map: 0 pins, title 'Quick Trip Plan Draft', hint 'Tap where you'll depart from.', Done disabled and reading 'Done Quick Route Plan Draft'. Cancelling the dialog after that left Route Planning as it was.",
+    "Regression: 'View planned route...' (trip-view-dialog) Stops tab works. The Map tab shows the 'Rough outline map' warning, then the map with 3 pins, the stop list, the hint and 'Straighten all legs'. Picking a stop shows its clear button."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not requested)", "frontend": "100% of executed flows (12/12); the no-route regression was checked in code only"},
+  "seed_data_creation": "Changed only the test boat test-user-pro/main route (allowed by the brief). Final state: START TEST_Start2, DEST Wellington, 1 planned leg Wellington to TEST_Last, trip_draft=true, event_name 'Quick Trip Plan Draft'. No other data was touched. The beta user's Unnamed boat was only opened; a crew registration modal was dismissed without saving.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pins are '.leaflet-marker-icon .route-pin' with text 1..N; click them with force. Cancel on the Edit map triggers the shared discard guard (discard-changes-dialog / discard-changes-confirm-btn) when something changed. The View planned route Map tab needs route-map-warning-ok-btn the first time. To tap water on an existing draft, tap the canvas at a pin's position offset by about (-30,+25). Opening a new map without pins: click .leaflet-control-zoom-in 3 times (zoom 9 on Wellington); water at canvas positions (98,133), (78,233), (78,313), (178,333). Place-name lookup returns 'Wellington' for all of these. The beta user lands on a 'Where to?' chooser, and their Unnamed boat has no Route Planning list."
+}

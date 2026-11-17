@@ -15,7 +15,7 @@ const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat
 const r5 = (ll) => [+ll.lat.toFixed(5), +ll.lng.toFixed(5)];
 const same = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
 
-// Drag a bend to move it, drag a faint middle handle to add one, double-tap a bend to remove it. Crowded handles wait for a closer zoom.
+// Drag a bend to move it, drag a faint middle handle (or tap the line) to add one, double-tap a bend to remove it. Crowded handles wait for a closer zoom.
 const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
   if (!ln) return;
   const bends = ln.slice(1, -1);
@@ -61,7 +61,9 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     if (!g) return;
     g.clearLayers();
     drawRoute(map.current, g, { stops, lines, miles, land: landOf, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
-      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
+      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; },
+      // A tap on a line adds a bend there to drag, unless a stop is waiting for its pin (then the map tap drops it).
+      onLineTap: pick < 0 ? (k, j, ll) => { const bends = lines[k].slice(1, -1); if (bends.length >= 78) return; const next = [...bends]; next.splice(j, 0, r5(ll)); live.current.onPath(k, next); } : null });
     drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
   };
   live.current = { pick, stops, onPlace, onPath, onPrepare, onPinTap, draw };
@@ -125,8 +127,8 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
         {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
-      {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Drag a faint handle on a line to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}
-      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Drag a faint handle on the red part out over the water to put a kink in the line.</p>}
+      {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Tap a line, or drag a faint handle on it, to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}
+      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Tap the red part to add a handle, then drag it out over the water to put a kink in the line.</p>}
       {!quick && <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Straighten all legs</button>}
       {!quick && <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (

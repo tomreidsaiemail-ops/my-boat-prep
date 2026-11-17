@@ -24,12 +24,15 @@ const nearStop = (m, line, cls, text, interactive, taken) => {
 
 // Planned route: dashed leg lines, miles, a label before each stop and numbered pins. stops: [{ name, pos, type }].
 // land[k][j]: part j of leg k crosses land, drawn solid red. onPinDrag: pins can be dragged.
-export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, onTag, pick = -1, onPin, onPinDrag }) => {
+// onLineTap(k, j, latlng): a tap on part j of leg k (a wide, invisible strip so a finger can hit it).
+export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, onTag, pick = -1, onPin, onPinDrag, onLineTap }) => {
   const taken = [];
   lines.forEach((ln, k) => {
     if (!ln) return;
     L.polyline(ln, { color: "#0f172a", weight: 3, dashArray: "8 6", interactive: false }).addTo(g);
     ln.slice(1).forEach((p, j) => land[k]?.[j] && L.polyline([ln[j], p], { color: "#dc2626", weight: 5, interactive: false }).addTo(g));
+    if (onLineTap) ln.slice(1).forEach((p, j) => L.polyline([ln[j], p], { weight: 24, opacity: 0, bubblingMouseEvents: false, className: "route-line-tap" })
+      .on("click", (e) => onLineTap(k, j, e.latlng)).addTo(g));
     if (miles[k] != null) L.marker(alongLine(ln, 0.35).at, { icon: tag("stop-miles", milesText(miles[k])), interactive: false }).addTo(g);
     const t = tagFor(stops[k + 1]);
     const mk = t && nearStop(m, ln, t.cls, t.text, !!onTag, taken);
