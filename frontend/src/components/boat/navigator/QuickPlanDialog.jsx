@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
-import { stopsOf } from "@/lib/tripStops";
+import { legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 
 export const QUICK_NAME = "Quick Trip Plan Draft";
@@ -52,6 +52,29 @@ const backHome = (ls) => {
   const q = b.dest_pos;
   const near = p && q && Math.hypot((q.lat - p.lat) * 111320, (q.lon - p.lon) * 111320 * Math.cos((p.lat * Math.PI) / 180)) < 300;
   return !!(same || near);
+};
+
+// Each drawn leg's distance (along its bends) and the trip total, under the map.
+const TripMiles = ({ legs }) => {
+  const miles = legMiles(legs);
+  const rows = legs.map((l, n) => ({ n, l, nm: miles[n] })).filter((r) => r.nm != null);
+  if (!rows.length) return null;
+  const total = rows.reduce((t, r) => t + r.nm, 0);
+  return (
+    <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm" data-testid="quick-plan-miles">
+      <ul className="flex flex-col gap-1">
+        {rows.map(({ n, l, nm }) => (
+          <li key={l.id ?? n} className="flex items-baseline gap-2" data-testid={`quick-plan-miles-leg-${n}`}>
+            <span className="min-w-0 flex-1 break-words"><b>Leg {n + 1}</b> · {l.route_start || "Start"} to {l.route_dest || "next stop"}</span>
+            <span className="shrink-0 font-bold tabular-nums">{milesText(nm)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 flex items-baseline justify-between gap-2 border-t border-[var(--line)] pt-1.5 font-extrabold" data-testid="quick-plan-miles-total">
+        <span>Trip total</span><span className="tabular-nums">{milesText(total)}</span>
+      </p>
+    </div>
+  );
 };
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
@@ -202,6 +225,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
               type={sel > 0 ? legs[sel - 1].arrive_type : ""} setType={(t) => setType(sel, t)}
               onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy > 0} />
           ) } : null} />}
+        <TripMiles legs={legs} />
       </DialogContent>
     </Dialog>
   );
