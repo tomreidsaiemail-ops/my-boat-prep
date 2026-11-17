@@ -103,7 +103,7 @@ import { MagicPanel } from "@/components/boat/MagicPanel";
 import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
@@ -187,6 +187,10 @@ const useWarn = () => {
   const show = (zone) => { setWarn(zone); clearTimeout(t.current); t.current = setTimeout(() => setWarn(null), 4000); };
   return [warn, show];
 };
+
+// One-tap hops between the trip lists ("trip" = the Route Planning in use).
+const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"] };
+const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
 
 export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
@@ -1200,9 +1204,12 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {!crew && active.id === "leavingDock" && allLists.some((l) => l.id === hopTrip) && (
-        <div className="flex flex-wrap items-center gap-2" data-testid="leaving-route-hop">
-          <HopBubble icon={Route} label="Route Planning" onClick={() => setActiveId(hopTrip)} departAt={tripBoat(boat, hopTrip).weather?.depart_at} testId="leaving-route-planning" />
+      {!crew && HOPS[active.id] && (
+        <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
+          {HOPS[active.id].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
+            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
+              departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
+          ))}
         </div>
       )}
       {!crew && active.id === "leavingDock" && (
@@ -1241,7 +1248,8 @@ export default function BoatPrep({ boatId, boats }) {
         <>
           {!isTripList(active) && checks}
           {!crew && isTripList(active) && (
-            <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+            <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
+              onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (

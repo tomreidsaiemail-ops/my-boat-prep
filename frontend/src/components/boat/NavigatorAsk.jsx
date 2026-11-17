@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Anchor, Compass, Loader2, Users, X } from "lucide-react";
+import { Anchor, Compass, Flag, Loader2, Users, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
@@ -32,7 +32,7 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
 );
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip).
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, onLeaving }) => {
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, onLeaving, onArriving }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -74,6 +74,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
         {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
+        {onArriving && <HopBubble icon={Flag} label="Arriving at Destination" onClick={onArriving} testId="route-arriving" />}
       </div>
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
