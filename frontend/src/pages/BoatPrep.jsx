@@ -77,7 +77,7 @@ import { PublishTemplateBar } from "@/components/boat/PublishTemplateBar";
 import { Header } from "@/components/boat/Header";
 import { boatTone } from "@/components/boat/BoatPhoto";
 import { BoatDetails } from "@/components/boat/BoatDetails";
-import { ActionBar } from "@/components/boat/ActionBar";
+import { ActionBar, ValidationBar } from "@/components/boat/ActionBar";
 import { SyncBanner } from "@/components/boat/SyncBanner";
 import { ListSelector } from "@/components/boat/ListSelector";
 import { CrewOrganiseButton, OrganiseDialog } from "@/components/boat/OrganiseDialog";
@@ -103,7 +103,8 @@ import { MagicPanel } from "@/components/boat/MagicPanel";
 import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
@@ -1068,6 +1069,8 @@ export default function BoatPrep({ boatId, boats }) {
 
   const helpNamed = (n) => helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ").trim() === n)?.items;
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
+  // Leaving Dock's "Route Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Route Planning.
+  const hopTrip = boat.underway?.trip_id || boat.route_trip || DEFAULT_TRIP;
   // A list's checks (Select All .. Ask The Magic Mariner); on Route Planning they sit below Archived Trips.
   const checks = (
     <>
@@ -1154,7 +1157,8 @@ export default function BoatPrep({ boatId, boats }) {
             onArrive={() => { if (!doneGuard()) return; setActiveId("arrivingDest"); allDone.openArrive("arrivingDest", allLists.find((l) => l.id === "arrivingDest")?.name || "Arriving at Destination"); }} />)}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
-      <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
+      {/* Reset and Export live at the bottom; the "still loading" warning stays up here where the skipper is. */}
+      <ValidationBar show={warn === "top" && !ready} testId="top-validation-bar" />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} homeId={homeList.id} onSetHome={crew ? undefined : setHome} updatedIds={updatedIds} />
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
@@ -1195,6 +1199,11 @@ export default function BoatPrep({ boatId, boats }) {
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
+      )}
+      {!crew && active.id === "leavingDock" && allLists.some((l) => l.id === hopTrip) && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="leaving-route-hop">
+          <HopBubble icon={Route} label="Route Planning" onClick={() => setActiveId(hopTrip)} departAt={tripBoat(boat, hopTrip).weather?.depart_at} testId="leaving-route-planning" />
+        </div>
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
