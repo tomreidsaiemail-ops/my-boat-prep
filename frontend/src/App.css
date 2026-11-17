@@ -18,11 +18,7 @@ body {
 }
 body.admin-mode { background: #fecaca; }
 body.training-mode { background: #bbf7d0; }
-body.admin-mode.training-mode { background: #7f1d1d; }
-body.admin-mode.training-mode [data-testid="app-header"] { border-color: #fecaca; }
-body.admin-mode.training-mode :is([data-testid="app-title"], [data-testid="app-header"] .field-label, [data-testid="gps-position"], [data-testid="network-status-label"]) { color: #fee2e2; }
-body.admin-mode.training-mode :is([data-testid^="inventory-colour-group-"][data-testid$="-toggle"], [data-testid^="inventory-colour-group-"][data-testid$="-photos"]:not(:hover), label[data-testid^="inventory-print-cards-"]) { color: #fee2e2; }
-body.admin-mode.training-mode [data-testid="network-status-label"] .text-\[var\(--red\)\] { color: #fca5a5; }
+body.admin-mode.training-mode { background: #fed7aa; }
 body.training-open { padding-bottom: max(25vh, 170px); }
 body.training-mini { padding-bottom: 56px; }
 body.training-finish { padding-bottom: max(50vh, 260px); }
