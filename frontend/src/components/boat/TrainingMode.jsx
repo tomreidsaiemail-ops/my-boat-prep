@@ -68,7 +68,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };
   return (
     <>
-      <div data-training-window className="pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 bg-emerald-700 px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden" role="status" data-testid="training-mode-strip">
+      <div data-training-window className={`pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 ${admin ? "bg-red-950" : "bg-emerald-700"} px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden`} role="status" data-testid="training-mode-strip">
         <GraduationCap className="h-4 w-4 shrink-0" /> &ldquo;Model Vessel&rdquo; Training Mode
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
