@@ -10,7 +10,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
-from auth import ADMIN_EMAIL, create_session, get_current_user, signed_in_user
+from auth import ADMIN_EMAIL, create_session, provider_of, get_current_user, signed_in_user
 from twofa import CODE_TRIES, CODES_PER_HOUR, RESEND_SECONDS, code_hash, expiry, is_special, new_code
 from email_service import send_email, EMAIL_FROM_NAME
 from urls import public_base
@@ -22,6 +22,7 @@ LOCK_MINUTES = 15
 RESET_HOURS = 1
 RESETS_PER_HOUR = 3
 LOGIN_ERROR = "Incorrect email or password"
+GOOGLE_MANAGED = "Password management for this account is handled by Google. Sign in with Google instead."
 DUMMY_HASH = bcrypt.hashpw(b"not-a-real-password", bcrypt.gensalt()).decode()
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,11 @@ class CodeIn(BaseModel):
     code: str = Field(pattern=r"^\s*\d{6}\s*$")
 
 
-class ChangeIn(BaseModel):
-    current: str = Field(default="", max_length=128)
+class CurrentIn(BaseModel):
+    current: str = Field(min_length=1, max_length=128)
+
+
+class ChangeIn(CurrentIn):
     password: str = Field(min_length=8, max_length=128)
 
 
@@ -71,6 +75,33 @@ def _sha(token: str) -> str:
 def _ident(email: str) -> str:
     # Keyed by account, not IP: client-supplied forwarding headers can't reset the counter.
     return f"email:{email}"
+
+
+async def _failed(ident: str, attempt: dict | None, now: datetime) -> None:
+    count = (attempt or {}).get("count", 0) + 1
+    lock = now + timedelta(minutes=LOCK_MINUTES) if count >= MAX_FAILS else None
+    await db.login_attempts.update_one({"identifier": ident}, {"$set": {"count": 0 if lock else count, "locked_until": lock, "updated_at": now}}, upsert=True)
+
+
+async def _locked(ident: str, now: datetime) -> dict | None:
+    attempt = await db.login_attempts.find_one({"identifier": ident}, {"_id": 0})
+    if attempt and attempt.get("locked_until") and attempt["locked_until"].replace(tzinfo=timezone.utc) > now:
+        raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {LOCK_MINUTES} minutes or reset your password.")
+    return attempt
+
+
+async def _own_password(user_id: str, current: str) -> dict:
+    """Email accounts only; wrong current passwords count towards the same lock as sign-in."""
+    doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "email": 1, "password_hash": 1, "auth_provider": 1})
+    if provider_of(doc) == "google":
+        raise HTTPException(status_code=403, detail=GOOGLE_MANAGED)
+    ident, now = _ident(doc["email"]), datetime.now(timezone.utc)
+    attempt = await _locked(ident, now)
+    if not verify_password(current, doc.get("password_hash") or DUMMY_HASH):
+        await _failed(ident, attempt, now)
+        raise HTTPException(status_code=400, detail="Your current password isn't right")
+    await db.login_attempts.delete_one({"identifier": ident})
+    return doc
 
 
 async def send_code(email: str) -> None:
@@ -133,10 +164,10 @@ async def register(payload: RegisterIn, response: Response):
     existing = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1, "password_hash": 1})
     if existing:
         detail = ("An account with this email already exists. Sign in instead." if existing.get("password_hash")
-                  else "This email already signs in with Google. Use Google, or 'Forgot password' to add a password.")
+                  else "This email signs in with Google. Use Continue with Google instead.")
         raise HTTPException(status_code=400, detail=detail)
     user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": payload.name.strip() or email.split("@")[0],
-            "picture": "", "role": "free", "password_hash": hash_password(payload.password), "email_verified": False,
+            "picture": "", "role": "free", "password_hash": hash_password(payload.password), "email_verified": False, "auth_provider": "email",
             "created_at": datetime.now(timezone.utc).isoformat()}
     try:
         await db.users.insert_one(dict(user))
@@ -154,15 +185,11 @@ async def login(payload: LoginIn, request: Request, response: Response):
     email = payload.email.strip().lower()
     ident = _ident(email)
     now = datetime.now(timezone.utc)
-    attempt = await db.login_attempts.find_one({"identifier": ident}, {"_id": 0})
-    if attempt and attempt.get("locked_until") and attempt["locked_until"].replace(tzinfo=timezone.utc) > now:
-        raise HTTPException(status_code=429, detail=f"Too many attempts. Try again in {LOCK_MINUTES} minutes or reset your password.")
+    attempt = await _locked(ident, now)
     user = await db.users.find_one({"email": email}, {"_id": 0})
     ok = verify_password(payload.password, (user or {}).get("password_hash") or DUMMY_HASH)
     if not user or not user.get("password_hash") or not ok:
-        count = (attempt or {}).get("count", 0) + 1
-        lock = now + timedelta(minutes=LOCK_MINUTES) if count >= MAX_FAILS else None
-        await db.login_attempts.update_one({"identifier": ident}, {"$set": {"count": 0 if lock else count, "locked_until": lock, "updated_at": now}}, upsert=True)
+        await _failed(ident, attempt, now)
         raise HTTPException(status_code=401, detail=LOGIN_ERROR)
     await db.login_attempts.delete_one({"identifier": ident})
     if await needs_code(user):
@@ -199,22 +226,28 @@ async def resend_code(payload: ForgotIn):
     return {"ok": True}
 
 
+@router.post("/check-password")
+async def check_password(payload: CurrentIn, user: dict = Depends(get_current_user)):
+    await _own_password(user["user_id"], payload.current)
+    return {"ok": True}
+
+
 @router.post("/change-password")
 async def change_password(payload: ChangeIn, request: Request, user: dict = Depends(get_current_user)):
-    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 1, "email": 1})
-    if doc.get("password_hash") and not verify_password(payload.current, doc["password_hash"]):
-        raise HTTPException(status_code=400, detail="Your current password isn't right")
+    doc = await _own_password(user["user_id"], payload.current)
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": hash_password(payload.password)}})
     token = request.cookies.get("session_token") or request.headers.get("authorization", "")[7:]
     await db.user_sessions.delete_many({"user_id": user["user_id"], "session_token": {"$ne": token}})
-    await password_alert(doc["email"], public_base(request), not doc.get("password_hash"))
+    await password_alert(doc["email"], public_base(request), False)
     return {"ok": True}
 
 
 @router.post("/forgot-password")
 async def forgot_password(payload: ForgotIn, request: Request):
     email = payload.email.strip().lower()
-    user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1, "name": 1})
+    user = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1, "password_hash": 1, "auth_provider": 1})
+    if user and provider_of(user) == "google":
+        raise HTTPException(status_code=400, detail=GOOGLE_MANAGED)
     since = datetime.now(timezone.utc) - timedelta(hours=1)
     if user and await db.password_reset_tokens.count_documents({"user_id": user["user_id"], "created_at": {"$gte": since}}) < RESETS_PER_HOUR:
         token = secrets.token_urlsafe(32)
@@ -245,6 +278,8 @@ async def reset_password(payload: ResetIn, request: Request):
         {"$set": {"used": True}}, projection={"_id": 0}, return_document=ReturnDocument.AFTER)
     if not rec:
         raise HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
+    if provider_of(await db.users.find_one({"user_id": rec["user_id"]}, {"_id": 0, "password_hash": 1, "auth_provider": 1}) or {"auth_provider": "email"}) == "google":
+        raise HTTPException(status_code=403, detail=GOOGLE_MANAGED)
     user = await db.users.find_one_and_update(
         {"user_id": rec["user_id"]}, {"$set": {"password_hash": hash_password(payload.password), "email_verified": True}},
         projection={"_id": 0, "email": 1, "password_hash": 1})

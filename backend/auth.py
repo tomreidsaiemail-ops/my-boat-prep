@@ -55,6 +55,16 @@ class UserOut(BaseModel):
     ignore_300: bool = False
     show_sundowners: bool = False
     has_password: bool = False
+    auth_provider: str = "email"
+
+
+def provider_of(u: dict) -> str:
+    return u.get("auth_provider") or ("email" if u.get("password_hash") else "google")
+
+
+async def seed_auth_provider() -> None:
+    await db.users.update_many({"auth_provider": {"$exists": False}, "password_hash": {"$exists": True}}, {"$set": {"auth_provider": "email"}})
+    await db.users.update_many({"auth_provider": {"$exists": False}}, {"$set": {"auth_provider": "google"}})
 
 
 def to_user_out(u: dict) -> UserOut:
@@ -63,7 +73,7 @@ def to_user_out(u: dict) -> UserOut:
     role = u.get("role", "free")
     return UserOut(
         user_id=u["user_id"], email=u["email"], name=u.get("name", ""), picture=u.get("picture", ""),
-        has_password=bool(u.get("password_hash")),
+        has_password=bool(u.get("password_hash")), auth_provider=provider_of(u),
         role=role, is_admin=is_admin, premium=is_admin or role in ("beta_tester", "pro") or first200_cached(email), launch_free=first200_cached(email),
         pro_until=u.get("pro_until"), cancel_at_period_end=bool(u.get("cancel_at_period_end")),
         has_subscription=bool(u.get("stripe_subscription_id")) and u.get("subscription_status") in ("active", "trialing"),
@@ -142,16 +152,17 @@ async def create_session(response: Response, user_id: str) -> None:
 async def start_session(response: Response, email: str, name: str, picture: str) -> UserOut:
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if user:
-        update = {"$set": {"name": name or user.get("name", ""), "picture": picture, "email_verified": True}}
+        update = {"$set": {"name": name or user.get("name", ""), "picture": picture, "email_verified": True, "auth_provider": provider_of(user)}}
         from twofa import is_special
         if user.get("password_hash") and not user.get("email_verified") and not await is_special(email):
             # Google proves the real owner; drop a password someone set without proving this email.
             update["$unset"] = {"password_hash": ""}
+            update["$set"]["auth_provider"] = "google"
             await db.user_sessions.delete_many({"user_id": user["user_id"]})
         await db.users.update_one({"user_id": user["user_id"]}, update)
     else:
         user = {"user_id": f"user_{uuid.uuid4().hex[:12]}", "email": email, "name": name, "picture": picture,
-                "role": "free", "email_verified": True, "created_at": datetime.now(timezone.utc).isoformat()}
+                "role": "free", "email_verified": True, "auth_provider": "google", "created_at": datetime.now(timezone.utc).isoformat()}
         await db.users.insert_one(dict(user))
     await create_session(response, user["user_id"])
     return await signed_in_user(user["user_id"])

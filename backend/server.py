@@ -52,6 +52,7 @@ from fish import router as fish_router  # noqa: E402
 from admin_analytics import router as admin_analytics_router  # noqa: E402
 from wizard_progress import router as wizard_progress_router  # noqa: E402
 from twofa import seed_special_users  # noqa: E402
+from auth import seed_auth_provider  # noqa: E402
 import quota  # noqa: E402
 import joincrew  # noqa: E402
 from shore import router as shore_router, tracking_brief, ensure_indexes as shore_indexes  # noqa: E402
@@ -774,6 +775,7 @@ async def create_indexes():
     await seed_wizard_list()
     await seed_wizards()
     await seed_special_users()
+    await seed_auth_provider()
     await cover_copies()
     await seed_common_names()
     await seed_terms_template()

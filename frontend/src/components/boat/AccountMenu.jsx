@@ -68,7 +68,7 @@ export const AccountMenu = () => {
         <MagicBalance open={menuOpen} /><DropdownMenuSeparator />
         <DropdownMenuItem onSelect={openPlan} data-testid="account-plan-item"><Crown className="mr-2 h-4 w-4" />{user.premium ? "My plan" : "Upgrade to Pro"}</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setSettings(true)} data-testid="account-settings-item"><Settings className="mr-2 h-4 w-4" />My settings</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => setPw(true)} data-testid="account-change-password-item"><KeyRound className="mr-2 h-4 w-4" />{user.has_password ? "Change password..." : "Set a password..."}</DropdownMenuItem>
+        {user.auth_provider !== "google" && <DropdownMenuItem onSelect={() => setPw(true)} data-testid="account-change-password-item"><KeyRound className="mr-2 h-4 w-4" />Change password...</DropdownMenuItem>}
         {user.shore_contact && <DropdownMenuItem onSelect={() => navigate("/shore")} data-testid="account-shore-map-item"><MapPinned className="mr-2 h-4 w-4" />Shore contact map</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin/analytics")} data-testid="account-analytics-item"><BarChart3 className="mr-2 h-4 w-4" />Analytics dashboard</DropdownMenuItem>}
         {user.is_admin && <DropdownMenuItem onSelect={() => navigate("/admin")} data-testid="account-admin-item"><ShieldCheck className="mr-2 h-4 w-4" />Manage user tiers</DropdownMenuItem>}
@@ -82,7 +82,7 @@ export const AccountMenu = () => {
       note={`You haven't accepted ${termsFor}'s Boat Terms and Conditions yet. Please come back and do this, including the Boat Walk Through.`}
       confirmLabel="Sign out anyway" cancelLabel="Stay" onConfirm={() => { setTermsFor(""); afterTerms(); }} onClose={() => setTermsFor("")} />
     <MySettingsDialog open={settings} onClose={() => setSettings(false)} />
-    <ChangePasswordDialog open={pw} hasPassword={user.has_password} onClose={() => setPw(false)} onDone={refresh} />
+    {user.auth_provider !== "google" && <ChangePasswordDialog open={pw} onClose={() => setPw(false)} onDone={refresh} />}
     <PhoneReminderDialog save={askPhone} unsynced={unsyncedCount} onLeave={() => { setAskPhone(null); leave(); }} onClose={() => setAskPhone(null)} />
     <SignOutDialog open={warnCount > 0} pending={warnCount} onConfirm={() => { setWarnCount(0); logout(); }} onClose={() => setWarnCount(0)} />
     </>

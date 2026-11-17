@@ -11,14 +11,14 @@ const Input = ({ id, label, ...props }) => (
   </label>
 );
 
-export const PasswordField = ({ id = "password", label = "Password", value, onChange, autoComplete }) => {
+export const PasswordField = ({ id = "password", label = "Password", value, onChange, autoComplete, noPaste = false }) => {
   const [show, setShow] = useState(false);
   return (
     <label htmlFor={id} className="flex flex-col gap-1">
       <span className="field-label">{label}</span>
       <span className="relative">
         <input id={id} type={show ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} required minLength={8}
-          autoComplete={autoComplete} className="field-input w-full !pr-12" data-testid={`${id}-input`} />
+          autoComplete={autoComplete} onPaste={noPaste ? (e) => e.preventDefault() : undefined} onDrop={noPaste ? (e) => e.preventDefault() : undefined} className="field-input w-full !pr-12" data-testid={`${id}-input`} />
         <button type="button" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"} data-testid={`${id}-toggle-btn`}
           className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-[var(--muted)] hover:text-[var(--navy)]">
           {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
