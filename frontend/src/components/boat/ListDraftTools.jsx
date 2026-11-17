@@ -17,7 +17,7 @@ export const toLines = (text) => {
       if (heads.has(key)) return;
       heads.add(key);
       seen = new Set();
-    } else if (seen.has(key) && !l.startsWith("???")) return; // wizard jump lines ("???goto ##finish") may repeat
+    } else if (seen.has(key) && !/^(\?\?\?|\$\$|--|%%)/.test(l)) return; // wizard jump and Finish lines may repeat
     seen.add(key);
     out.push(l);
   });

@@ -1,6 +1,6 @@
 import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { finishFor, linkedWizard, nextPanel } from "@/lib/wizard";
+import { SEEN, finishFor, linkedWizard, walk } from "@/lib/wizard";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
 
@@ -74,7 +74,10 @@ const Answers = ({ q, onBack, at, onAnswer, t }) => {
 // Question panels show one button per answer; Next, answers and "???" jumps go through nextPanel, Back retraces the path taken.
 export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers = {}, mini, onMove, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, t = "training" }) => {
   const { steps } = wiz;
-  const next = (ans = answers) => onMove(nextPanel(wiz, at, ans), [...path, at], ans);
+  const next = (ans = answers) => {
+    const { to, labels } = walk(wiz, at, ans);
+    onMove(to, [...path, at], labels.length ? { ...ans, [SEEN]: [...new Set([...(ans[SEEN] || []), ...labels])] } : ans);
+  };
   const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), answers) : onMove(Math.max(0, at - 1), [], answers));
   const q = wiz.question[at];
   const text = useRef(null);
