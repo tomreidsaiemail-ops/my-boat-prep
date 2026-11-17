@@ -1,0 +1,25 @@
+{
+  "summary": "Tested auth_provider lockdown and the two-step Change password. Backend: 19/19 new pytest tests pass. They cover auth_provider in /me for Google and email users, check-password returning 200 or 400, the 5-try lock giving 429 that is shared with login, change-password (wrong current 400, short new 422, success, other sessions signed out), Google users getting 403 on check-password and change-password, forgot-password returning 400 for a Google email and ok for email and unknown addresses, reset-password returning 403 for a Google user with no password_hash written, and register (Google email message, sets auth_provider email). Frontend at 390x844: Google users (free, pro) have no account-change-password-item in the Account menu. The email user sees 'Change password...'. Step 1 shows only the current password field and a 'Next' button that is disabled while empty. A wrong password shows the error. The right password moves to step 2 with the new and re-enter fields. Paste is blocked on both fields: the synthetic paste event is defaultPrevented and real Ctrl+V leaves the value empty. A mismatch shows the error and disables save. Under 8 characters keeps save disabled. Matching passwords enable save, which shows the toast, closes the dialog and keeps the current session. The password is left as Harbour2026! and login with it was checked.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Change password save (flaky, infrastructure)", "issue": "The first UI save attempt got a Cloudflare 520 'origin web server returned an invalid or incomplete response'. The request never reached the backend (no log line). The retry worked. Separately, the dialog shows the raw long Cloudflare message as change-password-error. A friendlier generic error for non-JSON or 5xx responses would be better.", "affected_selectors": ["change-password-error"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_auth_provider_change_password.py", "/app/test_reports/pytest/auth_provider.xml"],
+  "action_items": ["Optional: in apiError / ChangePasswordDialog, map non-JSON gateway errors (502/520) to a short message like 'Couldn't reach the server, try again'."],
+  "critical_code_review_comments": [
+    "The current-password PasswordField has required minLength={8}. Any legacy password shorter than 8 characters would be blocked by browser validation before reaching the check. This is low risk because register enforces 8 or more.",
+    "forgot-password returns 400 'handled by Google' for Google emails, which reveals that a Google account exists for that address. The user asked for this, but it is an account-enumeration trade-off.",
+    "reset-password marks the token used before the Google check. That is fine and safe.",
+    "The change-password endpoint re-verifies current on save, so skipping step 1 via the API is not possible. Good."
+  ],
+  "updated_files": ["/app/backend/tests/test_auth_provider_change_password.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (1 flaky infra 520 on first save, passed on retry)"},
+  "seed_data_creation": "None. The register test created one test_prov_*@example.com user and deleted it by user_id along with its sessions and codes. The email account test.user.password@example.com accepted the Terms of Service during the UI login (the Terms gate appeared). Its password was set back to Harbour2026! (same value) and login_attempts was cleared.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run serially: pytest tests/test_auth_provider_change_password.py -p no:xdist -o addopts=''. It needs REACT_APP_BACKEND_URL exported. Free user test_session_free_1 gets a Crew Registration dialog on the home page, and pro gets a training tour. Press Escape before clicking account-menu-btn. The email user may hit the TermsGate (terms-agree-checkbox, terms-accept-btn) after login."
+}

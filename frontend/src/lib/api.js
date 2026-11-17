@@ -32,6 +32,7 @@ api.interceptors.response.use((res) => { nudgeLowBalance(res); return res; }, (e
 
 export const apiError = (e, fallback = "Something went wrong. Please try again.") => {
   if (e?.response?.data?.code === "daily_limit") return "You've used all your Magic generations.";
+  if (e?.response?.status >= 520 && e.response.status <= 530) return "Couldn't reach the server. Please try again.";
   const detail = e?.response?.data?.detail;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((d) => (typeof d?.msg === "string" ? d.msg.replace(/^Value error, /, "") : "")).filter(Boolean).join(" ") || fallback;

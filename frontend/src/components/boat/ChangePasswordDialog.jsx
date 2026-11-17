@@ -37,7 +37,7 @@ export const ChangePasswordDialog = ({ open, onClose, onDone }) => {
         </DialogHeader>
         {!checked ? (
           <form onSubmit={check} className="flex flex-col gap-3" data-testid="change-password-current-step">
-            <PasswordField id="current-password" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
+            <PasswordField id="current-password" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" minLength={1} />
             {error && <p className="text-sm font-bold text-[var(--red)]" role="alert" data-testid="change-password-error">{error}</p>}
             <button type="submit" disabled={busy || !current} className="btn-solid min-h-[48px] justify-center disabled:opacity-60" data-testid="change-password-check-btn">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}Next
