@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useBoatStore, { boatParams } from "@/hooks/useBoatStore";
 import useShoreTracking from "@/hooks/useShoreTracking";
@@ -189,6 +190,7 @@ const useWarn = () => {
 
 export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { askUpgrade } = useUpgrade();
   const premium = !!user.premium;
   const needPro = (reason) => { if (premium) return true; askUpgrade(reason); return false; };
@@ -1095,7 +1097,7 @@ export default function BoatPrep({ boatId, boats }) {
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
-      {boat.underway?.trip_id && <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />}
+      {boat.underway?.trip_id && <UnderwayBubble underway={boat.underway} big onOpen={crew ? undefined : () => navigate(`/shore?boat=${encodeURIComponent(boats.current.boat_id)}`)} testId="trip-underway-bubble" />}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       <ActionBar zone="top" warn={warn === "top" && !ready} onReset={() => reset("top")} onExport={(c) => exportLists(c, "top")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />

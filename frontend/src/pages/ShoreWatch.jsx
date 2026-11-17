@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Anchor, ListChecks, Loader2, LogOut, RefreshCw, Ship } from "lucide-react";
 import { ShorePosition } from "@/components/boat/shore/ShorePosition";
 import { toast } from "sonner";
@@ -20,15 +20,23 @@ export default function ShoreWatch() {
   const { user, logout, refresh } = useAuth();
   const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
+  // /shore?boat=<boat_id> (tapping UNDERWAY) opens straight on that boat of the skipper's own.
+  const want = new URLSearchParams(useLocation().search).get("boat");
   const [boats, setBoats] = useState(null);
   const [pick, setPick] = useState(0);
   const [track, setTrack] = useState(null);
   const shoreHome = !!(user?.shore_only || user?.home === "shore" || user?.shore_contact);
-  const [choosing, setChoosing] = useState(() => shoreHome && !readPick(user?.user_id));
+  const [choosing, setChoosing] = useState(() => shoreHome && !readPick(user?.user_id) && !want);
   const boat = choosing ? null : boats?.[pick];
   const alertOn = (track?.alert || boat?.alert)?.state === "active";
 
-  useEffect(() => { api.get("/shore/boats").then(({ data }) => setBoats(data.boats)).catch(() => setBoats([])); }, []);
+  useEffect(() => {
+    api.get("/shore/boats").then(({ data }) => {
+      setBoats(data.boats);
+      const i = want ? data.boats.findIndex((b) => b.mine && b.boat_id === want) : -1;
+      if (i >= 0) setPick(i);
+    }).catch(() => setBoats([]));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const load = () => boat && api.get("/shore/track", { params: { owner_id: boat.owner_id, boat_id: boat.boat_id } }).then(({ data }) => setTrack(data)).catch(() => {});
   useEffect(() => {
     setTrack(null);
