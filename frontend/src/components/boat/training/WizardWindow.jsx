@@ -60,7 +60,7 @@ const Answers = ({ q, onBack, at, onAnswer, t }) => {
   const many = q.answers.length > 2;
   const back = <button type="button" onClick={onBack} disabled={at === 0} className={`btn-ghost h-11 justify-center gap-1 px-3 disabled:opacity-40 ${many ? "" : "flex-1"}`} data-testid={`${t}-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>;
   const buttons = q.answers.map((a, n) => (
-    <button key={a} type="button" onClick={() => onAnswer(a)} className="btn-solid min-h-11 flex-1 justify-center !bg-emerald-700 px-3 py-2 text-center" data-testid={`${t}-answer-${n}`}>{a}</button>
+    <button key={n} type="button" onClick={() => onAnswer(a)} className="btn-solid min-h-11 flex-1 justify-center !bg-emerald-700 px-3 py-2 text-center" data-testid={`${t}-answer-${n}`}>{a}</button>
   ));
   return many ? (
     <div className="flex flex-col gap-2" data-testid={`${t}-answers`}>

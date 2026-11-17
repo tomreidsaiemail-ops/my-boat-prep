@@ -1,0 +1,31 @@
+{
+  "summary": "Tested Model Vessel conditional question panels (??Q / ??? / ##). Backend: 5/5 pytest pass (duplicate '???goto ##finish' saved by POST, wizard-step indexes only panels, step 2 = 'Some cool stuff', step 8 out of range 409, wizard-finish accepts '???IF Q1 Yes' + keeps body/??? lines, 'random' 400, wrong expect 409). Frontend mobile 390x844 on the boat page: Path A (Yes -> Some cool stuff -> trip planning -> Trip panel 1 -> Finish with both goals; Back retraces Trip panel 1 -> Q2 -> Some cool stuff -> Q1 -> Intro), Path B (No skips to Q2 -> provisioning -> Prov 1 -> Prov 2 -> Finish with only 'Finished the demo'), safety path, 'Step X of 8' counter, 3 answers stacked full width, MiniBar on question panel expands instead of skipping, path/answers persisted in localStorage and survive reload, Edit Final shows the 3-line block incl ???IF, Edit Step on Q2 shows '??Q2 ...' raw line. Basic Introduction regression OK. FAILURE: admin Template editor wizard preview (and Save changes) drop the duplicate '???goto ##finish' line, so the trip planning path runs into Safety panel 1. Demo list was created and deleted (tpl_bd85acacb2).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TemplateListEditor / toLines (/app/frontend/src/components/boat/ListDraftTools.jsx line 20)", "issue": "toLines() still drops repeated lines, including '???' lines. Editor shows '22 items' for the 23-line demo; Preview wizard: Trip panel 1 -> Next goes to 'Safety panel 1' (step 8) instead of Finish. Worse: pressing 'Save changes' on the list SAVES only 22 lines (second '???goto ##finish' removed, verified via GET) which breaks the live walkthrough. Fix: skip the de-dup for lines starting with '???' (same rule as backend _items_from_labels), e.g. `else if (seen.has(key) && !l.startsWith('???')) return;`", "selector": "[data-testid='template-list-items-input'], [data-testid='wizard-preview-btn']", "priority": "HIGH"},
+      {"component": "TrainingMode first switch to Model Vessel", "issue": "On a device with no mbp_model_copy:<uid> in localStorage (first time, or after a fresh Model Vessel copy), picking Help > Model Vessel > Question Demo from another boat and pressing 'Switch and start' opens the Basic Introduction walkthrough instead. RCA: switchToModel calls restartWalkthrough(uid, 'question demo') then TrainingMode mounts and the copy check `useState(() => { if (copy && read(k.copy) !== copy) reset(k) })` calls reset(k) with default which=BASIC, overwriting the chosen wizard. Fix: keep read(k.which) (or pass it) in that reset when a restart was just requested.", "selector": "[data-testid='model-walkthrough-switch-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit Final dialog (mobile)", "issues": ["Textarea opens slightly scrolled: first line '--- Finished the demo' is clipped at the top edge"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_wizard_questions.py", "/app/test_reports/pytest/pytest_wizard_questions.xml"],
+  "action_items": [
+    "Allow duplicate '???' lines in frontend toLines() (ListDraftTools.jsx) so the Template editor preview and Save keep both '???goto ##finish' lines",
+    "Don't reset the chosen walkthrough to Basic in TrainingMode's copy-check reset when switching to the Model Vessel via Help",
+    "Minor: Edit Final textarea initial scroll clips first line"
+  ],
+  "critical_code_review_comments": [
+    "WizardWindow Answers uses key={a}: duplicate answer text would collide (use index)",
+    "EditStep onSaved does go(at + before) but leaves path indexes unshifted, so Back after adding placeholder steps before the current one retraces wrong panels",
+    "Back fallback when path is empty uses at-1 (linear) which can land on a skipped panel for legacy saved states - acceptable"
+  ],
+  "updated_files": ["/app/backend/tests/test_wizard_questions.py"],
+  "success_rate": {"backend": "100%", "frontend": "85%"},
+  "seed_data_creation": "Temporary 'Admin - Model Vessel - Question Demo' lists created by pytest (self-deleting) and for UI (tpl_bd85acacb2, deleted at end). No other lists changed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run tests/test_wizard_questions.py (creates+deletes the demo list; skips if one already exists). For UI create the demo list via /tmp-like script with ITEMS from that test, then admin cookie session_token=test_session_admin_1, set localStorage mbp_boats_active=model_vessel, app-menu-btn > app-menu-help-item > app-menu-help-model-vessel-item > app-menu-help-model-wizard-question-demo. Retest Template editor preview Trip path ends at Finish and editor shows 23 items. Delete the demo list afterwards."
+}

@@ -25,7 +25,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
   // A freshly made copy of the Model Vessel starts the Basic Introduction again at step 1.
-  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
+  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k, read(k.which, BASIC)); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
   const [which, setWhich] = useState(() => read(k.which, BASIC));
   const [step, setStep] = useState(() => read(k.step, 0));
   // Panels visited (for Back) and the skipper's answers to "??" questions.
@@ -84,7 +84,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
       {admin && show && done && <EditFinishDialog open={editingFinish} wizard={wizard} raw={finishRaw} onClose={() => setEditingFinish(false)}
         onSaved={() => { setEditingFinish(false); refreshAdminLists(); }} />}
       {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={at} raw={raw[at] || ""} onClose={() => setEditing(false)}
-        onSaved={(before) => { setEditing(false); go(at + before); refreshAdminLists(); }} />}
+        onSaved={(before) => { setEditing(false); move(at + before, path.map((p) => (p >= at ? p + before : p)), answers); refreshAdminLists(); }} />}
     </>
   );
 };

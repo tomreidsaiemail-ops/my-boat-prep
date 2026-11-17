@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +11,10 @@ const lineOk = (l) => (IF_ONLY.test(l) && !/\bthen\s+goto\b/i.test(l)) || (/^\s*
 export const EditFinishDialog = ({ open, wizard, raw, onSaved, onClose }) => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const box = useRef(null);
   useEffect(() => { if (open) setText(raw.join("\n")); }, [open, raw]);
+  // Start at the first line, not scrolled down.
+  useEffect(() => { if (open) setTimeout(() => { if (box.current) box.current.scrollTop = 0; box.current?.closest("[role=dialog]")?.scrollTo?.(0, 0); }, 50); }, [open]);
   const lines = text.split("\n").filter((l) => l.trim());
   const bad = lines.map((l, n) => (lineOk(l) ? 0 : n + 1)).filter(Boolean);
   const save = async () => {
@@ -33,7 +36,7 @@ export const EditFinishDialog = ({ open, wizard, raw, onSaved, onClose }) => {
             These replace the Finish panel lines at the end of &quot;Admin - Model Vessel - {wizard.title}&quot;. The steps are not changed.
           </DialogDescription>
         </DialogHeader>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} className="field-input !h-auto min-h-[16rem] resize-y py-2 font-mono text-sm leading-snug" aria-label="Finish panel lines" data-testid="edit-finish-text" />
+        <textarea ref={box} value={text} onChange={(e) => setText(e.target.value)} rows={12} className="field-input !h-auto min-h-[16rem] resize-y py-2 font-mono text-sm leading-snug" aria-label="Finish panel lines" data-testid="edit-finish-text" />
         {bad.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="edit-finish-error">Every line must start with --, ---, $$, $$$, %% or ???IF and have some text. Check line {bad.slice(0, 5).join(", ")}.</p>}
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="edit-finish-cancel-btn">Cancel</button>
