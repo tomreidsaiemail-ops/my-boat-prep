@@ -169,7 +169,7 @@ async def _route(a: list, b: list, grow: float) -> list | None:
     hh, ww = grid.shape[0] // f, grid.shape[1] // f
     # A cell is open water only when nearly all of it is water, with a one-cell margin off the shore.
     water = grid[:hh * f, :ww * f].reshape(hh, f, ww, f).mean(axis=(1, 3)) > 0.9
-    water = ~_grow(~water, 1)
+    water = ~_grow(~water, 2)
     cell = lambda p: (min(hh - 1, max(0, int((_px(p[0], p[1], z)[1] - ty0 * 256) / f))), min(ww - 1, max(0, int((_px(p[0], p[1], z)[0] - tx0 * 256) / f))))
     sa, sb = _near_water(water, *cell(a)), _near_water(water, *cell(b))
     if not sa or not sb:
@@ -192,22 +192,48 @@ async def sea_route(body: LineIn, user: dict = Depends(get_current_user)):
     """Waypoints that take a leg from its first to last point over the water (none needed when the straight line is clear)."""
     _limit(user)
     a, b = body.line[0], body.line[-1]
+    best = None
     try:
         if not (await _crosses([a, b]))[0]:
             return {"path": []}
         for grow in (0.35, 1.0):
             pts = await _route(a, b, grow)
-            if pts:
-                return {"path": pts[1:-1] if len(pts) > 2 else []}
+            if not pts or len(pts) < 3:
+                continue
+            # Checked like the map does; the first and last bits may touch land when a pin sits on a marina or beach.
+            wet = await _crosses([a, *pts[1:-1], b])
+            inner = wet[1:-1]
+            if not any(inner):
+                return {"path": pts[1:-1], "land": False}
+            if best is None or sum(inner) < best[1]:
+                best = (pts[1:-1], sum(inner))
     except httpx.HTTPError:
         raise HTTPException(status_code=503, detail="Couldn't load the map to plan around land. Try again shortly.")
-    return {"path": None}
+    return {"path": best[0], "land": True} if best else {"path": None}
+
+
+_names: OrderedDict = OrderedDict()
+_name_lock = asyncio.Lock()
+_name_at = [0.0]
 
 
 @router.get("/place-name")
 async def place_name(lat: float, lon: float, user: dict = Depends(get_current_user)):
-    """The nearest bay, marina or place name for a map tap (blank when OpenStreetMap has none)."""
+    """The nearest bay, marina or place name for a map tap (blank when OpenStreetMap has none).
+    Cached, and at most one lookup a second, as OpenStreetMap's Nominatim asks."""
     _limit(user)
+    key = (round(lat, 3), round(lon, 3))
+    if key in _names:
+        return {"name": _names[key]}
+    async with _name_lock:
+        wait = 1.1 - (time.monotonic() - _name_at[0])
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _name_at[0] = time.monotonic()
+        return {"name": await _lookup(lat, lon, key)}
+
+
+async def _lookup(lat: float, lon: float, key: tuple) -> str:
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=10) as client:
             r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 14, "addressdetails": 1})
@@ -216,4 +242,7 @@ async def place_name(lat: float, lon: float, user: dict = Depends(get_current_us
         d = {}
     a = d.get("address") or {}
     name = d.get("name") or next((a[k] for k in ("bay", "marina", "harbour", "beach", "island", "hamlet", "village", "suburb", "locality", "town", "city") if a.get(k)), "")
-    return {"name": name}
+    _names[key] = name
+    if len(_names) > 2000:
+        _names.popitem(last=False)
+    return name

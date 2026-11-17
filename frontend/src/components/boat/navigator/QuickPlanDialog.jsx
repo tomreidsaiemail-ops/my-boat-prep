@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Flag, Loader2, Zap } from "lucide-react";
+import { Check, Flag, Loader2, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
@@ -17,9 +17,14 @@ const newLeg = (n, start = "") => ({ id: n === 1 ? "plan" : Date.now() + n, rout
 const posOf = (legs, i) => (i === 0 ? legs[0].start_pos : legs[i - 1].dest_pos);
 const ll = (p) => [p.lat, p.lon];
 
-const Confirm = ({ i, name, setName, leg, setTimes, onConfirm, busy }) => (
+const Confirm = ({ i, name, setName, leg, setTimes, onConfirm, onDelete, busy }) => (
   <div className="flex flex-col gap-2 rounded-md border-2 border-amber-500 bg-amber-50 p-3" data-testid="quick-plan-confirm">
-    <label className="field-label" htmlFor="quick-plan-name">{i === 0 ? "Departing point" : `Point ${i + 1}`}</label>
+    <div className="flex items-center justify-between gap-2">
+      <label className="field-label" htmlFor="quick-plan-name">{i === 0 ? "Departing point" : `Point ${i + 1}`}</label>
+      <button type="button" onClick={onDelete} className="inline-flex h-8 items-center gap-1 rounded-full border-[1.5px] border-[var(--red)] bg-white px-2.5 text-xs font-bold text-[var(--red)] hover:bg-red-50" data-testid="quick-plan-delete-point-btn">
+        <Trash2 className="h-3.5 w-3.5" /> Delete this point
+      </button>
+    </div>
     <input id="quick-plan-name" className="field-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Finding the place name..." data-testid="quick-plan-name-input" />
     <div className="grid grid-cols-2 gap-2">
       <label className="text-xs font-bold">Leg {i + 1} departure
@@ -29,6 +34,7 @@ const Confirm = ({ i, name, setName, leg, setTimes, onConfirm, busy }) => (
         <input type="datetime-local" className="field-input mt-1 w-full" value={leg.finish_at} onChange={(e) => setTimes({ finish_at: e.target.value })} data-testid="quick-plan-finish-input" />
       </label>
     </div>
+    {i > 0 && <p className="text-xs text-[var(--muted)]">These times are for Leg {i + 1}. They aren't needed if this is the End of Trip point.</p>}
     <div className="flex flex-wrap gap-2">
       <button type="button" className="btn-solid h-11 flex-1 justify-center gap-1.5" disabled={busy || !name.trim()} onClick={() => onConfirm(false)} data-testid="quick-plan-confirm-btn">
         <Check className="h-4 w-4" /> {i === 0 ? "Departing point" : `Arriving (Leg ${i + 1} Departing point)`}
@@ -67,7 +73,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
     if (!a || !b) return;
     try {
       const { data } = await api.post("/sea-route", { line: [ll(a), ll(b)] }, { timeout: 60000 });
-      if (data.path === null) toast.error(`Couldn't find a way round the land for leg ${k + 1}. Drag the red part out over the water.`);
+      if (data.path === null || data.land) toast.error(`${data.path === null ? "Couldn't find a way round the land" : "Part of the way round the land still touches it"} for leg ${k + 1}. Drag the red part out over the water.`);
       put(latest.current.map((l, n) => (n === k ? { ...l, path: data.path || [] } : l)));
     } catch {
       toast.error("Couldn't plan round the land just now. Drag any red part out over the water.");
@@ -110,8 +116,6 @@ export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold"><Zap className="h-5 w-5 text-amber-500" /> {QUICK_NAME}</DialogTitle>
           <DialogDescription>{ended ? "Trip laid out. Drag any pin or line to improve it, then tap Done." : pending !== null ? "Check the name and times, then confirm this point." : legs[0].start_pos ? "Tap the next stop on the chart." : "Tap where you'll depart from."}</DialogDescription>
         </DialogHeader>
-        {open && <StopsMap quick paused={pending !== null || ended} legs={legs} onPlace={onPlace} onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}} />}
-        {pending !== null && <Confirm i={pending} name={name} setName={setName} leg={times} setTimes={(p) => setTimes((t) => ({ ...t, ...p }))} onConfirm={confirm} busy={busy} />}
         {sure > 0 && (
           <p role="alert" className="rounded-md border-2 border-[var(--red)] bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="quick-plan-replace-warning">
             {sure === 1 ? "Replace the current Route Planning START, DESTINATION, times and legs with this draft?" : "Are you really sure? The current route can't be brought back."}
@@ -124,6 +128,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, hasRoute }) => {
             {sure === 1 ? "Yes, replace it" : sure === 2 ? "Yes, I'm really sure" : "Done Quick Route Plan Draft"}
           </button>
         </div>
+        {open && <StopsMap quick paused={pending !== null || ended} legs={legs} onPlace={onPlace} onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}} />}
+        {pending !== null && <Confirm i={pending} onDelete={() => { put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} name={name} setName={setName} leg={times} setTimes={(p) => setTimes((t) => ({ ...t, ...p }))} onConfirm={confirm} busy={busy} />}
       </DialogContent>
     </Dialog>
   );

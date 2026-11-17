@@ -50,6 +50,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const applyQuick = ([first, ...rest]) => {
     onChange("route_start", first.route_start);
     onChange("route_dest", first.route_dest);
+    const next = routeText(first.route_start, first.route_dest);
+    setQuestion((q) => (q.startsWith(auto.current) ? next + q.slice(auto.current.length) : q || next).slice(0, 1024));
+    auto.current = next;
     onWeather({ event_name: QUICK_NAME, event_at: first.depart_at, depart_at: first.depart_at, finish_at: first.finish_at, start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: "",
       legs: rest.map(({ start_pos, ...l }) => l) });
     toast.success(`${QUICK_NAME}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} added to Route Planning`);

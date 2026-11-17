@@ -1,0 +1,40 @@
+{
+  "summary": "Tested Quick Trip Plan Draft (backend POST /api/sea-route, GET /api/place-name; frontend QuickPlanDialog/StopsMap quick mode/NavigatorAsk applyQuick) at 390x844 as admin on Model Vessel > Route Planning. Backend 9/9 pytest pass. Frontend: every requested flow works: quick-plan-btn above LEG 1; dialog with map and no stop list/hint/Straighten button; tap 1 -> confirm panel, name filled from nearest place ('Marlborough', or 'Point 1' when blank), depart/finish = tomorrow 06:00/09:00, button 'Departing point', no end button, Done disabled; taps while a point waits for confirmation add no pin; point 2 -> 'Arriving (Leg 2 Departing point)' + 'Arriving (End of Trip point)', times today+2; point 3 ended the trip; taps after End add nothing; the end pin can still be dragged (moved and saved). Replace warning: 'Replace the current...' / 'Yes, replace it' -> 'Are you really sure?...' / 'Yes, I'm really sure' -> third tap applies; Cancel after the first warning left Naenae/Wellington unchanged. Two-tap trip -> toast 'Quick Trip Plan Draft: 1 leg added to Route Planning', START/DEST = point names, 0 planned legs. 3-point trip -> toast '2 legs added', planned-leg-edit-0 present, event name 'Quick Trip Plan Draft'; all of it still there after reload (DB user_boats.boat.route_start/route_dest/weather). View planned route Map tab (feature mocked on client) shows the same 3 pins, hint, stop list and Straighten all legs (regression OK). A leg across the Wellington peninsula was auto-routed out through the harbour entrance with handles. Main problem: auto-routed or 'clear' legs can still be drawn red with the land warning (details below).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sea-route", "issue": "The returned path is not checked with _crosses, so /api/sea-check can still flag parts of it as land. Harbour (-41.28,174.85) -> Cook Strait (-41.32,174.55): path has 4 points but sea-check gives land [F,F,T,F,F]. Picton -> Ship Cove: segment 0 is flagged. Leg (-41.50027,174.49036)->(-41.64827,175.00122): sea-check land=[true] every time, but sea-route returns path [] (seen as clear, no toast). RCA: _route's A* grid is coarse (cells must be >0.9 water, z<=15) and the smoothed result is only [start,end], so pts[1:-1] is []. Meanwhile _crosses reads z16 and treats OSM's purple maritime boundary line (which this leg runs along) and thin headlands as land. Result: the skipper gets a red leg and the 'Red parts of the route cross land' warning right after auto-routing, with no toast. Fix: after _route, run _crosses on the full path and retry with grow=1.0 or a finer grid; if the straight line is flagged but A* gives no bends, return null or a toast-worthy flag; ignore boundary-line colours in the water mask."},
+      {"endpoint": "GET /api/place-name", "issue": "For points out at sea it returns broad region names ('Wellington' for 2 different stops, 'Marlborough' for Cook Strait), so START and DEST names often repeat (e.g. leg 2 'Wellington -> Wellington'). In one run, points in Wellington Harbour got blank names (became 'Point 1/2'), maybe because of Nominatim rate limits (it allows 1 request/s; no caching or throttling). This is acceptable but worth knowing."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuickPlanDialog / feature flags", "issue": "The Quick Trip Plan Draft map dialog is not gated by the 'route_map' feature ('Planned route map tab Feature; enabled for nobody' in Admin - disabled features). Everyone gets a full chart in Quick Plan even though the Planned route Map tab is switched off. Even the admin can't see the Map tab under View planned route without a client mock. Decide whether quick-plan-btn should honour useFeature('route_map').", "selector": "[data-testid='quick-plan-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Auto-route then land check", "issue": "After an auto-routed leg (or a 'clear' leg), stops-map-land-warning still shows and the leg is partly red (see the sea-route backend issue).", "affected_selectors": ["[data-testid='stops-map-land-warning']"]}
+    ],
+    "design_issues": [
+      {"screen": "QuickPlanDialog on Model Vessel (training mode)", "issues": ["The training wizard panel (fixed at the bottom, about 210px) sits over the dialog's lower part. With the replace warning or land warning shown, the Cancel/Done buttons are pushed under the panel and you have to scroll inside the dialog to reach them.", "The confirm panel for the End of Trip point still shows 'Leg N departure / Estimated finish' times, which are thrown away when End is tapped. Hide them for End, or label them clearly."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_sea_route_quick_plan.py", "/app/test_reports/pytest/pytest_sea_route.xml"],
+  "action_items": [
+    "sea-route: check the result with _crosses before returning. Don't return [] when the straight line is flagged as land. Make the A* water mask match the sea-check mask, ignoring OSM boundary-line colours.",
+    "Decide whether Quick Trip Plan Draft should follow the route_map disabled feature.",
+    "Optional: throttle and cache place-name lookups to Nominatim (max 1 per second); hide the time inputs on the End of Trip confirm.",
+    "Optional: applyQuick calls onChange directly, not setRoute, so the Magic Navigator question text keeps the old route text."
+  ],
+  "critical_code_review_comments": [
+    "sea_route.py: when len(pts)==2 the result is returned as [] (meaning clear) although _crosses said the line crosses land. It should return None, or bends that are checked.",
+    "QuickPlanDialog: the leg id is Date.now()+n, so it is stored in Mongo as Int64 (Long). That works, but other ids may be strings or ints, so check consistency.",
+    "NavigatorAsk.applyQuick: fine overall. Leg start_pos is stripped for planned legs, which relies on legLines using the previous dest_pos (verified working in View planned route)."
+  ],
+  "updated_files": ["/app/backend/tests/test_sea_route_quick_plan.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "~95% (all requested flows pass; auto-route land-warning inconsistency)"},
+  "seed_data_creation": "None. The Model Vessel route (which already held a Naenae->Wellington Quick draft from the main agent) was reset at the end: user_boats {owner_id:'test-admin-1', boat_id:'model_vessel'} boat.route_start='', boat.route_dest='', boat.weather={}.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Route data lives in user_boats.boat.route_start/route_dest/weather (not top level). The Planned route Map tab is behind the 'route_map' feature, which is disabled for everyone; to test it, mock /api/me/features with page.route returning {disabled:[]} and set localStorage mbp_route_map_warned:test-admin-1='1'. Map opens at NZ zoom 6 centred on -41.2,174.8. After 2 zoom-ins (zoom 8), offsets (-73,+24), (-55,+72), (0,+72) px from the canvas centre are in Cook Strait. After 3 zoom-ins, (+18,+39) is Wellington Harbour and (-91,+58) is Cook Strait (a land-crossing leg).",
+  "rca of the issue": "Red leg after auto-route: sea_route() runs _crosses (z16, boundary lines and thin land count as dry) and then _route (coarse A* where a cell is water only if >90% water). The coarse grid sees a straight clear line, so after smoothing the path is [start,end] and [] is returned. Reproduce: POST /api/sea-route {line:[[-41.50027,174.49036],[-41.64827,175.00122]]} gives {path:[]}, while POST /api/sea-check with the same line gives {land:[true]}. Fix: check the result against _crosses and make the two masks match."
+}
