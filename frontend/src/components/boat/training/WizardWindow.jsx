@@ -66,8 +66,8 @@ const DoItForMe = ({ fill, t }) => {
     if (missing.length) toast.error(`Couldn't find ${list(missing)} on screen. Open that part of the app, then tap Do it for me again.`, { duration: 7000, position: "top-center" });
   };
   return (
-    <button type="button" onClick={run} className="flex h-9 shrink-0 items-center gap-1.5 self-start rounded-full border-2 border-amber-500 bg-amber-100 px-3.5 text-sm font-extrabold text-amber-900 shadow-sm hover:bg-amber-200 active:scale-95 [transition:background-color_.15s,transform_.1s]" data-testid={`${t}-do-it-btn`}>
-      <Wand2 className="h-4 w-4" /> Do it for me
+    <button type="button" onClick={run} aria-label="Do it for me" className="flex h-9 min-h-0 shrink-0 items-center gap-1 rounded-full border-2 border-amber-500 bg-amber-100 px-2.5 text-xs font-extrabold text-amber-900 shadow-sm hover:bg-amber-200 active:scale-95 [transition:background-color_.15s,transform_.1s]" data-testid={`${t}-do-it-btn`}>
+      <Wand2 className="h-3.5 w-3.5" /><span className="whitespace-nowrap">Do it<span className="hidden sm:inline"> for me</span></span>
     </button>
   );
 };
@@ -116,7 +116,9 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
     <section data-training-window className={`${SHELL} flex ${q?.answers.length > 2 || rich ? "max-h-[75vh] min-h-[170px]" : tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
-        <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
+        <h2 className="flex min-w-0 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
+        {fill?.length > 0 && <DoItForMe fill={fill} t={t} />}
+        <span className="flex-1" />
         {onEdit && !rich && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" aria-label="Edit Step" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit Step</span></button>}
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
@@ -126,7 +128,6 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
           {finishFor(rich, answers).map((f, n) => <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={`${t}-step`} />)}
         </div>
       ) : <p ref={text} className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>}
-      {fill?.length > 0 && <DoItForMe fill={fill} t={t} />}
       {q ? <Answers q={q} at={at} onBack={back} onAnswer={(a) => next({ ...answers, [q.q]: a })} t={t} /> : (
         <div className="flex gap-2">
           <button type="button" onClick={back} disabled={at === 0} className="btn-ghost h-11 flex-1 justify-center gap-1 disabled:opacity-40" data-testid={`${t}-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>
