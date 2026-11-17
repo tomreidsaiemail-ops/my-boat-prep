@@ -26,6 +26,8 @@ export const CollapseToggle = ({ label, collapsed, onToggle, testId }) => (
   </button>
 );
 
+// Orange until every level is picked: they must be set before ARRIVED, ALL CHECKS DONE.
+export const unsetTone = (parts) => (parts.some((t) => t.endsWith(": not set")) ? "rounded-md bg-orange-200 px-2 py-1 text-orange-950" : "");
 export const batterySummary = (boat, levels = {}) => batteriesOf(boat).map((b) => `${batteryName(b)}: ${levelLabel(levels[`bat_${b.id}`])}`);
 
 // The big battery level buttons, saved in the Leaving the Dock levels so both lists show the same status.
@@ -37,7 +39,7 @@ export const BatteryStatus = ({ boat, levels = {}, onLevel, prefix = "", lowText
     <div className="flex flex-col gap-2" data-testid={`${prefix}battery-status`}>
       <CollapseToggle label="Battery status" collapsed={collapsed} onToggle={toggle} testId={`${prefix}battery-status-toggle`} />
       {collapsed
-        ? <p className="text-sm font-semibold" data-testid={`${prefix}battery-status-summary`}>{batterySummary(boat, levels).join(" · ")}</p>
+        ? <p className={`text-sm font-semibold ${unsetTone(batterySummary(boat, levels))}`} data-testid={`${prefix}battery-status-summary`}>{batterySummary(boat, levels).join(" · ")}</p>
         : bats.map((b) => <LevelPicker key={b.id} id={`${prefix}bat-${b.id}`} label={batteryName(b)} value={levels[`bat_${b.id}`]} onChange={(v) => onLevel(`bat_${b.id}`, v)} lowText={lowText} />)}
     </div>
   );
