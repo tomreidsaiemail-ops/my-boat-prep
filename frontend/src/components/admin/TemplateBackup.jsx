@@ -32,7 +32,7 @@ const Preview = ({ plan, busy, onConfirm, onClose }) => {
                 {rows.map((l, n) => (
                   <li key={`${l.name}-${n}`} className="flex justify-between gap-2 border-b border-[var(--line)] px-3 py-1.5 last:border-b-0" data-testid={`template-restore-${k}-${n}`}>
                     <span className="min-w-0 break-words font-bold">{l.name}</span>
-                    <span className="shrink-0 text-xs text-[var(--muted)]">{l.reason || `${l.items} ${l.items === 1 ? "item" : "items"}`}</span>
+                    <span className="shrink-0 text-xs text-[var(--muted)]">{l.reason || `${l.items} ${l.items === 1 ? "item" : "items"}${l.version ? ` · becomes v${l.version}` : ""}`}</span>
                   </li>
                 ))}
               </ul>

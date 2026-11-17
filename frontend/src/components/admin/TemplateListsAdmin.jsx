@@ -10,7 +10,13 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const fmt = (iso) => new Date(iso).toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" });
+// Date and time updated; a date with no time shows 00:01.
+const fmt = (iso = "") => {
+  const s = String(iso);
+  const d = new Date(/T\d/.test(s) ? s : `${s.slice(0, 10)}T00:01:00`);
+  if (Number.isNaN(d.getTime())) return "unknown";
+  return `${d.toLocaleDateString("en-NZ", { day: "2-digit", month: "2-digit", year: "numeric" })} ${d.toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+};
 
 const Row = ({ t, q, hits = [], onEdit, onDelete, onCopy }) => (
   <li className="flex items-center justify-between gap-3 border-b border-[var(--line)] p-3 last:border-b-0" data-testid={`template-list-row-${t.id}`}>
@@ -19,7 +25,7 @@ const Row = ({ t, q, hits = [], onEdit, onDelete, onCopy }) => (
         <span className="min-w-0 break-words font-bold [overflow-wrap:anywhere]" data-testid={`template-list-name-${t.id}`}><Highlight text={t.name} query={q} /></span>
         {t.private && <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--red)] text-[11px] font-extrabold text-white" title="Admin use only" aria-label="Admin use only" data-testid={`template-list-private-${t.id}`}>A</span>}
       </div>
-      <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · updated {fmt(t.updated_at)}</div>
+      <div className="text-xs text-[var(--muted)]">{t.items.length} {t.items.length === 1 ? "item" : "items"} · <span data-testid={`template-list-version-${t.id}`}>v{t.version || 1}</span> · updated <span data-testid={`template-list-updated-${t.id}`}>{fmt(t.updated_at)}</span></div>
       {hits.length > 0 && (
         <ul className="mt-1 flex flex-col gap-0.5 text-xs" data-testid={`template-list-hits-${t.id}`}>
           {hits.slice(0, 3).map((i, n) => <li key={n} className="break-words text-[var(--navy)]" data-testid={`template-list-hit-${t.id}-${n}`}>· <Highlight text={i.label} query={q} /></li>)}

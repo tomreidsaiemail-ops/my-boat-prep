@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from auth import get_current_user, require_admin
 from db import db
-from templates import _keep_version
+from templates import _keep_version, next_version
 
 router = APIRouter(prefix="/api")
 
@@ -112,7 +112,7 @@ async def edit_wizard_step(p: StepEdit, admin: dict = Depends(require_admin)):
     if len(out) > 300:
         raise HTTPException(status_code=400, detail="A template list can have up to 300 lines")
     await _keep_version(doc)
-    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Step on the Model Vessel"}})
+    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Step on the Model Vessel", "version": next_version(doc)}})
     return {"lines": [i["label"] for i in out]}
 
 
@@ -143,5 +143,5 @@ async def edit_wizard_finish(p: FinishEdit, admin: dict = Depends(require_admin)
     if len(out) > 300:
         raise HTTPException(status_code=400, detail="A template list can have up to 300 lines")
     await _keep_version(doc)
-    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Final on the Model Vessel"}})
+    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Edit Final on the Model Vessel", "version": next_version(doc)}})
     return {"lines": [i["label"] for i in out]}

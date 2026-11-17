@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from db import db
 from auth import require_admin
-from templates import CREW_ROLES_NAME, NOTE_MAX, REQUIRED_DYNAMIC, RESERVED_NAMES, TEMPLATE_LISTS, TemplateItem, _keep_version, push_indents, push_role_briefings
+from templates import CREW_ROLES_NAME, NOTE_MAX, REQUIRED_DYNAMIC, RESERVED_NAMES, TEMPLATE_LISTS, TemplateItem, _keep_version, next_version, push_indents, push_role_briefings
 
 router = APIRouter(prefix="/api")
 BACKUP_KIND = "my-boat-prep-template-lists"
@@ -20,7 +20,7 @@ async def export_template_lists(_: dict = Depends(require_admin)):
     """Every master template list (built-in and admin-made) as one restorable backup."""
     docs = await db.list_templates.find({}, {"_id": 0, "updated_by": 0}).sort("created_at", 1).to_list(2000)
     lists = [{"list_id": d["list_id"], "name": _name(d), "custom": bool(d.get("custom")), "description": d.get("description", ""), "private": bool(d.get("private")),
-              "note": d.get("note", ""), "items": d.get("items") or [], "created_at": d.get("created_at", ""), "updated_at": d.get("updated_at", "")}
+              "note": d.get("note", ""), "items": d.get("items") or [], "created_at": d.get("created_at", ""), "updated_at": d.get("updated_at", ""), "version": d.get("version") or 1}
              for d in docs if d.get("custom") or d["list_id"] in TEMPLATE_LISTS]
     return {"kind": BACKUP_KIND, "version": 1, "exported_at": datetime.now(timezone.utc).isoformat(), "lists": lists}
 
@@ -107,13 +107,14 @@ async def _apply(p: dict, admin_id: str, now: str):
     if not lst.custom:
         if old:
             await _keep_version(old)
-        await db.list_templates.update_one({"list_id": lst.list_id}, {"$set": {"list_id": lst.list_id, "items": items, "updated_at": now, "updated_by": admin_id, "note": note}}, upsert=True)
+        await db.list_templates.update_one({"list_id": lst.list_id}, {"$set": {"list_id": lst.list_id, "items": items, "updated_at": now, "updated_by": admin_id, "note": note, "version": next_version(old)}}, upsert=True)
         if old:
             await push_indents(lst.list_id, old, items, now)
         return
     if old:
         changed = old["items"] != items
-        upd = {"description": lst.description.strip(), "private": lst.private, "items": items, "updated_by": admin_id, **({"updated_at": now, "note": note} if changed else {})}
+        # A pasted or restored list takes the next version of the list it replaces, never the source's version.
+        upd = {"description": lst.description.strip(), "private": lst.private, "items": items, "updated_by": admin_id, "version": next_version(old), **({"updated_at": now, "note": note} if changed else {})}
         if changed:
             await _keep_version(old)
         await db.list_templates.update_one({"list_id": old["list_id"]}, {"$set": upd})
@@ -123,7 +124,7 @@ async def _apply(p: dict, admin_id: str, now: str):
                 await push_role_briefings(items, now, old["list_id"], old["items"])
         return
     await db.list_templates.insert_one({"list_id": p["new_id"], "custom": True, "name": p["name"], "description": lst.description.strip(), "items": items,
-                                        "private": lst.private, "note": note, "created_at": lst.created_at or now, "updated_at": now, "updated_by": admin_id})
+                                        "private": lst.private, "note": note, "created_at": lst.created_at or now, "updated_at": now, "updated_by": admin_id, "version": 1})
     if not lst.private and CREW_ROLES_NAME.match(p["name"]):
         await push_role_briefings(items, now)
 
@@ -139,4 +140,5 @@ async def import_template_lists(payload: ImportIn, admin: dict = Depends(require
         for p in plan:
             if p["action"] in ("add", "overwrite"):
                 await _apply(p, admin["user_id"], now)
-    return {"dry_run": payload.dry_run, "lists": [{"name": p["name"], "action": p["action"], "items": len(p["items"]), **({"reason": p["reason"]} if p.get("reason") else {})} for p in plan]}
+    return {"dry_run": payload.dry_run, "lists": [{"name": p["name"], "action": p["action"], "items": len(p["items"]), **({"reason": p["reason"]} if p.get("reason") else {}),
+                                                  **({"version": next_version(p.get("old"))} if p["action"] in ("add", "overwrite") else {})} for p in plan]}

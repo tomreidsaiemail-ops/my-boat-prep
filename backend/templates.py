@@ -64,7 +64,12 @@ class TemplateListIn(BaseModel):
 
 def _custom_out(d: dict) -> dict:
     return {"id": d["list_id"], "name": d["name"], "description": d.get("description", ""), "items": d["items"], "private": bool(d.get("private")),
-            "created_at": d["created_at"], "updated_at": d["updated_at"]}
+            "created_at": d["created_at"], "updated_at": d["updated_at"], "version": d.get("version") or 1}
+
+
+def next_version(doc: dict | None) -> int:
+    """Template list versions start at 1 and go up by one on every change (lists from before versions count as 1)."""
+    return (doc.get("version") or 1) + 1 if doc else 1
 
 
 def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[list] = None) -> list:
@@ -170,7 +175,7 @@ async def create_template_list(payload: TemplateListIn, admin: dict = Depends(re
     name = await _check_name(payload.name)
     now = datetime.now(timezone.utc).isoformat()
     doc = {"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": name, "description": payload.description.strip(), "items": _items_from_labels(payload.items),
-           "private": bool(payload.private), "created_at": now, "updated_at": now, "updated_by": admin["user_id"]}
+           "private": bool(payload.private), "created_at": now, "updated_at": now, "updated_by": admin["user_id"], "version": 1}
     await db.list_templates.insert_one({**doc})
     return _custom_out(doc)
 
@@ -184,6 +189,8 @@ async def update_template_list(list_id: str, payload: TemplateListIn, admin: dic
     items = _items_from_labels(payload.items, doc["items"])
     changed = items != doc["items"]
     upd = {"name": name, "description": payload.description.strip(), "items": items, "private": doc.get("private", False) if payload.private is None else payload.private, "updated_by": admin["user_id"], **({"updated_at": datetime.now(timezone.utc).isoformat(), "note": payload.note.strip()} if changed else {})}
+    if changed or any(upd[k] != doc.get(k, d) for k, d in (("name", ""), ("description", ""), ("private", False))):
+        upd["version"] = next_version(doc)
     if changed:
         await _keep_version(doc)
     await db.list_templates.update_one({"list_id": list_id}, {"$set": upd})
