@@ -56,6 +56,7 @@ const SORTS = {
 };
 
 const FILTER_KEY = "mbp_admin_template_filter";
+const SORT_KEY = "mbp_admin_template_sort";
 const Controls = ({ q, setQ, filter, setFilter, sort, setSort, shown, total }) => (
   <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="template-list-controls">
     <div className="flex flex-col gap-2 sm:flex-row">
@@ -65,7 +66,7 @@ const Controls = ({ q, setQ, filter, setFilter, sort, setSort, shown, total }) =
       </span>
       <label className="flex shrink-0 items-center gap-1.5">
         <ArrowDownUp className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
-        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort template lists" className="field-input !w-auto" data-testid="template-list-sort">
+        <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort template lists" className={`field-input !w-auto ${sort === "az" ? "" : "!border-orange-500 !bg-orange-100 font-bold text-orange-900"}`} data-testid="template-list-sort">
           {Object.entries(SORTS).map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
         </select>
       </label>
@@ -88,7 +89,8 @@ export const TemplateListsAdmin = () => {
   // The chosen filter stays on (this phone, across sign-outs) until the admin picks All again.
   const [filter, setFilter] = useState(() => (FILTERS.some(([k]) => k === localStorage.getItem(FILTER_KEY)) ? localStorage.getItem(FILTER_KEY) : "all"));
   useEffect(() => { localStorage.setItem(FILTER_KEY, filter); }, [filter]);
-  const [sort, setSort] = useState("az");
+  const [sort, setSort] = useState(() => (SORTS[localStorage.getItem(SORT_KEY)] ? localStorage.getItem(SORT_KEY) : "az"));
+  useEffect(() => { localStorage.setItem(SORT_KEY, sort); }, [sort]);
   const query = q.trim().toLowerCase();
   const hitsOf = (t) => (query ? t.items.filter((i) => matches(i.label, query)) : []);
   const found = (t) => !query || matches(t.name, query) || matches(t.description || "", query) || hitsOf(t).length > 0;
