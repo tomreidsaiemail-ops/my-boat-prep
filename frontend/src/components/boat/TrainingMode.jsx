@@ -24,7 +24,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const [editing, setEditing] = useState(false);
   const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
-  // A freshly made copy of the Model Vessel starts the Basic Introduction again at step 1.
+  // A freshly made copy of the Model Vessel starts the chosen walkthrough (Basic Introduction if none) again at step 1.
   useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k, read(k.which, BASIC)); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
   const [which, setWhich] = useState(() => read(k.which, BASIC));
   const [step, setStep] = useState(() => read(k.step, 0));

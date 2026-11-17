@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend retest of the Model Vessel question panels after the iteration_197 fixes. All 4 fixes and the Path A/B regression passed. FIX 1: the Template editor shows '23 items' for the Question Demo list. Preview wizard Yes -> Some cool stuff -> trip planning -> Trip panel 1 -> Next opens the Finish panel with 2 goals. 'Save changes' keeps all 23 lines (both '???goto ##finish', updated_at changed, labels == ITEMS). FIX 2: on New boat (main) with every mbp_model_* key removed, Help > Model Vessel > Question Demo > 'Switch and start' opened QUESTION DEMO Step 1 of 8 'Intro panel', with mbp_model_wizard='question demo'. FIX 3: Edit Final at 390x844 opens with textarea scrollTop 0. An element screenshot shows '--- Finished the demo' fully visible. FIX 4: 'Add step before' (x1) on Trip panel 1 (reached via the Q2 jump) moved it to Step 8 of 9 and kept path [0,1,2,3]. Back went Q2 -> Some cool stuff. Going forward again, the jump lands on the new placeholder. Next/Back between the placeholder and Trip panel 1 work. Second case: 'Add step before' x2 on Q2 (reached via the Q1 No jump) moved it to Step 6 of 11, answers kept. Back went to Q1. Regression: Path A finished with both goals and Back retraced Trip panel 1 -> Q2 -> Some cool stuff -> Q1 -> Intro. Path B (No -> provisioning -> Prov 1 -> Prov 2) finished with only 'Finished the demo'. The demo list (tpl_501316d882) was deleted at the end (200, and no longer listed).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit Final dialog / Edit Step dialog textarea", "issues": ["The textarea classes 'py-2 text-sm' have no effect. The later App.css rule .field-input { padding: 0 12px; font-size: 16px } wins (computed paddingTop 0px, font-size 16px), so the first line sits flush against the top border. It is not clipped. Use '!py-2' (and '!text-sm' if wanted), as '!h-auto' already does."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_wizard_questions.py"],
+  "action_items": ["Optional cosmetic fix: change py-2 to !py-2 on the EditFinishDialog and EditStepDialog textareas so they get top/bottom padding"],
+  "critical_code_review_comments": [
+    "TrainingMode copy check now does reset(k, read(k.which, BASIC)). This keeps the chosen wizard, but a fresh Model Vessel copy no longer goes back to Basic as the code comment says. Fine if intended; update the comment.",
+    "The EditStep onSaved path shift (p >= at ? p + before : p) is correct but in practice a no-op: the path only holds indexes earlier than the current panel."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "Created the 'Admin - Model Vessel - Question Demo' list tpl_501316d882 with ITEMS from test_wizard_questions.py. Edit Step added 3 placeholder steps to it. Deleted at the end. No other lists changed: the Basic Introduction Edit Final dialog was opened once by accident and cancelled without saving.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The admin's last active boat is stored on the server (data.last). Switch with boat-selector > boat-option-main or boat-option-model_vessel, not only through localStorage. In this browser tool, localStorage between runs can come back with mbp_model_wizard reset to basic, so set mbp_model_wizard:test-admin-1 to '\"question demo\"' at the start of each run. The test_wizard_questions.py pytest creates and deletes its own demo list."
+}

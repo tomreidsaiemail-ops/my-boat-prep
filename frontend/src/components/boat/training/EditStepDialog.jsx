@@ -33,7 +33,7 @@ export const EditStepDialog = ({ open, wizard, step, raw, onSaved, onClose }) =>
           <DialogTitle className="font-display text-xl font-extrabold">Edit Step {step + 1}</DialogTitle>
           <DialogDescription>Only this step&apos;s line in &quot;Admin - Model Vessel - {wizard.title}&quot; is changed. &quot;Press Next&quot; is added for you if it isn&apos;t at the end.</DialogDescription>
         </DialogHeader>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} maxLength={4000} className="field-input !h-auto min-h-[9rem] resize-y py-2 text-base leading-snug" aria-label="Step text" data-testid="edit-step-text" />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} maxLength={4000} className="field-input !h-auto min-h-[9rem] resize-y !py-2 text-base leading-snug" aria-label="Step text" data-testid="edit-step-text" />
         <div className="flex gap-2">
           <Add n={before} set={setBefore} label="Add step before" id="before" />
           <Add n={after} set={setAfter} label="Add step after" id="after" />
