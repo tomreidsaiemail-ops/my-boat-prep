@@ -74,11 +74,12 @@ const Answers = ({ q, onBack, at, onAnswer, t }) => {
 // Question panels show one button per answer; Next, answers and "???" jumps go through nextPanel, Back retraces the path taken.
 export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers = {}, mini, onMove, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, t = "training" }) => {
   const { steps } = wiz;
+  // answers[SEEN] keeps the ## places passed on each move, in step with path, so Back forgets them again.
   const next = (ans = answers) => {
     const { to, labels } = walk(wiz, at, ans);
-    onMove(to, [...path, at], labels.length ? { ...ans, [SEEN]: [...new Set([...(ans[SEEN] || []), ...labels])] } : ans);
+    onMove(to, [...path, at], { ...ans, [SEEN]: [...(ans[SEEN] || []), labels] });
   };
-  const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), answers) : onMove(Math.max(0, at - 1), [], answers));
+  const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), { ...answers, [SEEN]: (answers[SEEN] || []).slice(0, -1) }) : onMove(Math.max(0, at - 1), [], answers));
   const q = wiz.question[at];
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);

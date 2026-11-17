@@ -1,0 +1,25 @@
+{
+  "summary": "Tested the Model Vessel Topics Demo fix (Finish lines limited to visited ##places, repeated Finish lines shown once, duplicate $$/$$$/???/--/%% lines saved). Backend: new tests/test_wizard_topics.py (4 tests) plus the regression tests/test_wizard_questions.py (5 tests) all pass (9/9). Create, GET and PUT keep all 35 lines: '$$$ Route Planning' x2, '$$$ Creating above deck hardware' x2, '???goto ##finish' x6, and every id is unique. Plain duplicates are still dropped. UI at 390x844 as admin on Model Vessel: boat maintenance, provisioning, trip planning, safety and AI integrations all show the expected panels and Finish lines, with no Magic scan on the maintenance path and no duplicates. Template editor shows '35 items', and Preview wizard on the boat maintenance path gives the same result. The Basic Introduction Finish panel is unchanged (7 lines). One bug found: Back keeps the places already visited, so stale Finish lines appear after you change an answer.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "WizardWindow back() / answers['##']", "issue": "Back never removes ## places from answers['##']. Steps: answer 'boat maintenance', reach Finish, press Back to Q1, answer 'safety', go through 2 panels to Finish. The Finish panel then shows 'Create the 6 boat maintenance lists' + 'Creating above deck hardware' at the top, a section the skipper is no longer on. localStorage answers = {q1:'safety','##':['boat maintenance','finish','safety']}. The same thing happens in WizardPreview.", "selector": "[data-testid=training-finish-back-btn], [data-testid=training-back-btn]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_wizard_topics.py", "/app/backend/tests/test_wizard_questions.py", "/app/test_reports/pytest/pytest_results_199.xml"],
+  "action_items": [
+    "Recompute visited ## places when going Back. Easiest: in finishFor or at render, rebuild SEEN by replaying walk() along path + at with the current answers. Or store the labels for each step in the path and drop them on Back. Re-answering a question after Back should only show Finish lines for the new route."
+  ],
+  "critical_code_review_comments": [
+    "WizardWindow.next merges labels into answers['##'] but back() passes answers through unchanged, so SEEN only ever grows (root cause of the bug above).",
+    "_items_from_labels: repeated $$/--/%%/??? lines reuse old_ids by lowercase label. The 'used' set gives unique ids, which is correct, verified by the unique-id assertion."
+  ],
+  "updated_files": ["/app/backend/tests/test_wizard_topics.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "95% (all requested paths pass; Back-then-reanswer stale Finish lines bug)"},
+  "seed_data_creation": "Created 'Admin - Model Vessel - Topics Demo' (tpl_bdaedd5318) for UI testing, then deleted it (200, no longer listed). test_wizard_topics.py creates and deletes its own copy (set KEEP_TOPICS=1 to keep it for UI tests). No other lists changed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Fast way into the UI: add cookie session_token=test_session_admin_1, open /, switch with boat-selector > boat-option-model_vessel, set localStorage mbp_model_wizard:test-admin-1='\"topics demo\"' with step '0', path '[]', answers '{}', closed 'false', mini 'false', then reload. Finish lines are in [data-testid=training-finish-list] > * (preview uses the wizard-preview- prefix). Run 'KEEP_TOPICS=1 pytest tests/test_wizard_topics.py' to create the list for UI work, then delete it by id. Retest: answer boat maintenance -> Finish -> Back -> safety -> Finish should show only the ##finish section."
+}

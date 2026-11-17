@@ -88,11 +88,11 @@ export const parseWizard = (lines = []) => {
   };
 };
 const said = (answers, n) => norm(answers[n.q]) === n.a;
-// answers["##"] holds the ## places the skipper has passed through.
+// answers["##"] holds the ## places the skipper passed through, one list per move.
 export const SEEN = "##";
 // Finish goals for this skipper: their "???IF" lines match, their ## place was visited, and each shows once.
 export const finishFor = (finish, answers = {}) => {
-  const seen = new Set(answers[SEEN] || []);
+  const seen = new Set((answers[SEEN] || []).flat());
   const shown = new Set();
   return finish.filter((f) => {
     const key = `${f.kind}:${norm(f.text)}`;
