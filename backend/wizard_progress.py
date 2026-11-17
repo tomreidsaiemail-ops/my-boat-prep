@@ -56,14 +56,25 @@ NOT_STEP = re.compile(r"^\s*(--|\$\$|%%|\?\?\?|##)")
 IF_ONLY = re.compile(r"^\s*\?\?\?\s*IF\s+\S+\s+(?!.*\bthen\s+goto\b)\S", re.I)
 
 
+LABEL = re.compile(r"^\s*##\s*(.*)$")
+
+
 def _finish_block(labels: list[str]) -> list[bool]:
-    """Finish panel lines, plus the "???IF" lines straight before them (blank lines skipped)."""
+    """Finish panel lines, plus the "???IF" lines straight before them (blank lines skipped).
+    Lines under a ##place other than ##finish are an ideas panel in the walkthrough, not Finish panel lines,
+    unless they are the last lines of the list."""
+    tail = max([n for n, t in enumerate(labels) if t.strip() and not FINISH.match(t) and not IF_ONLY.match(t)], default=-1)
+    section, inside = None, []
+    for n, t in enumerate(labels):
+        if m := LABEL.match(t):
+            section = None if " ".join(m[1].split()).lower() == "finish" else m[1]
+        inside.append(section is not None and n < tail)
     out, nxt = [False] * len(labels), False
     for n in range(len(labels) - 1, -1, -1):
         t = labels[n]
         if not t.strip():
             continue
-        out[n] = nxt = bool(FINISH.match(t)) or (bool(IF_ONLY.match(t)) and nxt)
+        out[n] = nxt = not inside[n] and (bool(FINISH.match(t)) or (bool(IF_ONLY.match(t)) and nxt))
     return out
 
 

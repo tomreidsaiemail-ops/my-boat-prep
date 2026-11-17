@@ -83,7 +83,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
         onEditFinish={admin && online ? () => setEditingFinish(true) : undefined} />}
       {admin && show && done && <EditFinishDialog open={editingFinish} wizard={wizard} raw={finishRaw} onClose={() => setEditingFinish(false)}
         onSaved={() => { setEditingFinish(false); refreshAdminLists(); }} />}
-      {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={at} raw={raw[at] || ""} onClose={() => setEditing(false)}
+      {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={wiz.editAt[at]} raw={raw[at] || ""} onClose={() => setEditing(false)}
         onSaved={(before) => { setEditing(false); move(at + before, path.map((p) => (p >= at ? p + before : p)), answers); refreshAdminLists(); }} />}
     </>
   );

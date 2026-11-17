@@ -25,7 +25,9 @@ export const withNext = (l) => {
 //   ???IF Q1 Yes then goto ##x    jump to the line after ##x when Q1 was answered Yes
 //   ???goto ##x                   always jump; ##finish is the Finish panel
 //   ???IF Q1 Yes                  the next panel or Finish goal only shows when Q1 was answered Yes
-//   ##x                           a hidden place to jump to; Finish lines under it only show if the skipper went there
+//   ##x                           a hidden place to jump to. "--", "$$", "$$$" lines under it (not under ##finish)
+//                                 make their own panel of ideas and links, with Next; ##finish lines and the last lines
+//                                 of the list go on the Finish panel
 const norm = (s = "") => s.replace(/\s+/g, " ").trim().toLowerCase();
 const QUESTION = /^\s*\?\?(?!\?)\s*(\S+)\s*(.*)$/;
 const IFGO = /^\s*\?\?\?\s*IF\s+(\S+)\s+(.+?)\s+then\s+goto\s*(?:##)?\s*(.+)$/i;
@@ -44,7 +46,25 @@ const classify = (l) => {
   if ((m = l.match(QUESTION))) return { type: "question", q: norm(m[1]), text: m[2].trim(), answers: [] };
   return { type: "step" };
 };
-const panel = (n) => n.type === "step" || n.type === "question";
+const panel = (n) => n.type === "step" || n.type === "question" || n.type === "rich";
+const finishItem = (line, cond = []) => ({ kind: kindOf(line), text: line.replace(/^\s*(-+|\$+|%+)\s*/, ""), cond });
+// Finish-style lines inside a ## place (other than ##finish) become one panel, where they are; "???IF" lines just before a line go with it.
+// The last run of Finish lines at the bottom of the list always stays on the Finish panel.
+const group = (nodes) => {
+  const out = [];
+  let section = null;
+  const tail = nodes.reduce((last, n, i) => (n.type === "finish" || n.type === "if" ? last : i), -1);
+  nodes.forEach((n, i) => {
+    if (n.type === "label") section = n.name === "finish" ? null : n.name;
+    if (n.type !== "finish" || !section || i > tail) { out.push(n); return; }
+    const cond = [];
+    while (out[out.length - 1]?.type === "if") cond.unshift(out.pop());
+    const last = out[out.length - 1];
+    if (last?.type === "rich") last.items.push(finishItem(n.line, cond));
+    else out.push({ type: "rich", line: n.line, items: [finishItem(n.line, cond)] });
+  });
+  return out;
+};
 const addAnswers = (nodes) => {
   const qs = nodes.filter((n) => n.type === "question");
   let last = null;
@@ -63,66 +83,60 @@ const finishBlock = (nodes) => {
   return inBlock;
 };
 export const parseWizard = (lines = []) => {
-  const nodes = lines.map((line) => ({ ...classify(line), line })).filter((n) => n.type);
+  const nodes = group(lines.map((line) => ({ ...classify(line), line })).filter((n) => n.type));
   addAnswers(nodes);
   const visible = nodes.map((n, i) => (panel(n) ? i : -1)).filter((i) => i >= 0);
   const block = finishBlock(nodes);
   const finish = [];
   let cond = [];
-  let section = null;
   nodes.forEach((n) => {
-    if (n.type === "label") section = n.name === "finish" ? null : n.name;
     if (n.type === "if") cond.push(n);
-    else if (n.type === "finish") {
-      const text = n.line.replace(/^\s*(-+|\$+|%+)\s*/, "");
-      if (text) finish.push({ kind: kindOf(n.line), text, cond, section });
-      cond = [];
-    } else if (n.type !== "answers" && n.type !== "label") cond = [];
+    else if (n.type === "finish") { finish.push(finishItem(n.line, cond)); cond = []; }
+    else if (n.type !== "answers" && n.type !== "label") cond = [];
   });
+  const rich = (i) => nodes[i].type === "rich";
+  let k = 0;
   return {
-    nodes, visible, finish,
-    steps: visible.map((i) => (nodes[i].type === "question" ? nodes[i].text : withNext(nodes[i].line))),
-    raw: visible.map((i) => nodes[i].line),
+    nodes, visible, finish: finish.filter((f) => f.text),
+    steps: visible.map((i) => (nodes[i].type === "question" ? nodes[i].text : rich(i) ? nodes[i].items.map((f) => f.text).join(" · ") : withNext(nodes[i].line))),
+    raw: visible.map((i) => (rich(i) ? "" : nodes[i].line)),
+    // Ideas-and-links panels (no Edit Step); editAt is a step's number on the server, which doesn't count those panels.
+    rich: visible.map((i) => (rich(i) ? nodes[i].items.filter((f) => f.text) : null)),
+    editAt: visible.map((i) => (rich(i) ? -1 : k++)),
     question: visible.map((i) => (nodes[i].type === "question" && nodes[i].answers.length ? nodes[i] : null)),
     finishRaw: nodes.filter((n, i) => block[i]).map((n) => n.line.trim()),
   };
 };
 const said = (answers, n) => norm(answers[n.q]) === n.a;
-// answers["##"] holds the ## places the skipper passed through, one list per move.
-export const SEEN = "##";
-// Finish goals for this skipper: their "???IF" lines match, their ## place was visited, and each shows once.
+// Finish (or ideas panel) lines for this skipper: their "???IF" lines match, and each shows once.
 export const finishFor = (finish, answers = {}) => {
-  const seen = new Set((answers[SEEN] || []).flat());
   const shown = new Set();
   return finish.filter((f) => {
     const key = `${f.kind}:${norm(f.text)}`;
-    if ((f.section && !seen.has(f.section)) || !f.cond.every((c) => said(answers, c)) || shown.has(key)) return false;
+    if (!f.cond.every((c) => said(answers, c)) || shown.has(key)) return false;
     shown.add(key);
     return true;
   });
 };
-// The panel after panel `from` (-1 = start) for these answers (steps.length = the Finish panel), and the ## places passed on the way.
-export const walk = (wiz, from, answers = {}) => {
+// The panel after panel `from` (-1 = start) for these answers; steps.length means the Finish panel.
+export const nextPanel = (wiz, from, answers = {}) => {
   const { nodes, visible } = wiz;
   const place = (name) => (name === "finish" ? nodes.length : nodes.findIndex((n) => n.type === "label" && n.name === name));
   let i = from < 0 ? 0 : visible[from] + 1;
   let skip = false;
-  const labels = [];
   for (let guard = 0; i < nodes.length && guard < nodes.length * 4; guard += 1) {
     const n = nodes[i];
-    if (panel(n)) { if (!skip) return { to: visible.indexOf(i), labels }; skip = false; }
-    else if (n.type === "label") labels.push(n.name);
+    if (panel(n)) { if (!skip) return visible.indexOf(i); skip = false; }
     else if (n.type === "finish") skip = false;
     else if (n.type === "if" && !said(answers, n)) skip = true;
     else if (n.type === "goto" || (n.type === "ifgo" && said(answers, n))) {
       const to = place(n.to);
-      if (to >= 0) { labels.push(n.to); i = to + 1; skip = false; continue; }
+      if (to >= 0) { i = to + 1; skip = false; continue; }
     }
     i += 1;
   }
-  return { to: visible.length, labels };
+  return visible.length;
 };
-export const nextPanel = (wiz, from, answers = {}) => walk(wiz, from, answers).to;
 // "$$$ Crew Registration and Invites..." -> that walkthrough, if it exists.
 export const linkedWizard = (wizards, text) => wizards.find((w) => w.key === text.replace(/\.+\s*$/, "").replace(/\s+/g, " ").trim().toLowerCase());
 

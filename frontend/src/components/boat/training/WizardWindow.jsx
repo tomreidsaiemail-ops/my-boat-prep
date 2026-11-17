@@ -1,6 +1,6 @@
 import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { SEEN, finishFor, linkedWizard, walk } from "@/lib/wizard";
+import { finishFor, linkedWizard, nextPanel } from "@/lib/wizard";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
 
@@ -74,13 +74,10 @@ const Answers = ({ q, onBack, at, onAnswer, t }) => {
 // Question panels show one button per answer; Next, answers and "???" jumps go through nextPanel, Back retraces the path taken.
 export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers = {}, mini, onMove, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, t = "training" }) => {
   const { steps } = wiz;
-  // answers[SEEN] keeps the ## places passed on each move, in step with path, so Back forgets them again.
-  const next = (ans = answers) => {
-    const { to, labels } = walk(wiz, at, ans);
-    onMove(to, [...path, at], { ...ans, [SEEN]: [...(ans[SEEN] || []), labels] });
-  };
-  const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), { ...answers, [SEEN]: (answers[SEEN] || []).slice(0, -1) }) : onMove(Math.max(0, at - 1), [], answers));
+  const next = (ans = answers) => onMove(nextPanel(wiz, at, ans), [...path, at], ans);
+  const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), answers) : onMove(Math.max(0, at - 1), [], answers));
   const q = wiz.question[at];
+  const rich = wiz.rich[at];
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
   const key = `${at}|${steps[at] || ""}`;
@@ -98,15 +95,19 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
   if (at >= steps.length) return <FinishPanel title={title} finish={finishFor(wiz.finish, answers)} onBack={back} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} onEditFinish={onEditFinish} t={t} />;
   if (mini) return <MiniBar steps={steps} at={at} onBack={back} onNext={() => next()} asking={!!q} onShrink={onShrink} t={t} />;
   return (
-    <section data-training-window className={`${SHELL} flex ${q?.answers.length > 2 ? "max-h-[75vh] min-h-[170px]" : tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
+    <section data-training-window className={`${SHELL} flex ${q?.answers.length > 2 || rich ? "max-h-[75vh] min-h-[170px]" : tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
-        {onEdit && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /> Edit Step</button>}
+        {onEdit && !rich && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /> Edit Step</button>}
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
       </div>
-      <p ref={text} className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>
+      {rich ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-ideas`}>
+          {finishFor(rich, answers).map((f, n) => <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={`${t}-step`} />)}
+        </div>
+      ) : <p ref={text} className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>}
       {q ? <Answers q={q} at={at} onBack={back} onAnswer={(a) => next({ ...answers, [q.q]: a })} t={t} /> : (
         <div className="flex gap-2">
           <button type="button" onClick={back} disabled={at === 0} className="btn-ghost h-11 flex-1 justify-center gap-1 disabled:opacity-40" data-testid={`${t}-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>
