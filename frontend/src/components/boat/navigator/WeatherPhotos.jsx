@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, CloudSun, Loader2, Maximize2, Trash2 } from "lucide-react";
+import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Img } from "@/components/boat/PhotoSlots";
 import { shrink } from "@/components/boat/PhotoPicker";
@@ -34,7 +35,8 @@ const Slot = ({ p, n, url, readOnly, onNote, onRemove, onFull }) => {
 };
 
 // Up to 5 screenshots from weather and routing products, each with the skipper's commentary, shared with the crew.
-export const WeatherPhotos = ({ boat, onPatch, online, boatId, owner, readOnly }) => {
+// With onToggle the title opens and closes the photos (Route Planning starts them closed).
+export const WeatherPhotos = ({ boat, onPatch, online, boatId, owner, readOnly, open = true, onToggle }) => {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [full, setFull] = useState(null);
@@ -66,8 +68,9 @@ export const WeatherPhotos = ({ boat, onPatch, online, boatId, owner, readOnly }
   if (readOnly && !photos.length) return null;
   return (
     <section className="flex flex-col gap-2" data-testid="weather-photos">
-      <h4 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide"><CloudSun className="h-4 w-4" /> Weather and routing photos ({photos.length} of {MAX_WEATHER_PHOTOS})</h4>
-      {photos.length > 0 && (
+      {onToggle ? <FoldHeader open={open} onToggle={onToggle} icon={CloudSun} testId="weather-photos-toggle">Weather and routing photos ({photos.length} of {MAX_WEATHER_PHOTOS})</FoldHeader>
+        : <h4 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide"><CloudSun className="h-4 w-4" /> Weather and routing photos ({photos.length} of {MAX_WEATHER_PHOTOS})</h4>}
+      {open && photos.length > 0 && (
         <ul className="flex flex-col gap-2">
           {photos.map((p, n) => (
             <Slot key={p.id} p={p} n={n} url={url(p.id)} readOnly={readOnly} onFull={() => setFull(p)} onRemove={() => remove(p)}
@@ -75,7 +78,7 @@ export const WeatherPhotos = ({ boat, onPatch, online, boatId, owner, readOnly }
           ))}
         </ul>
       )}
-      {!readOnly && (
+      {open && !readOnly && (
         <>
           <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="weather-photo-input" />
           <button type="button" className="btn-ghost h-11 justify-center gap-2" disabled={busy || photos.length >= MAX_WEATHER_PHOTOS} onClick={() => input.current?.click()} data-testid="weather-photo-add-btn">

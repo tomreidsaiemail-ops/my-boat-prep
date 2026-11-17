@@ -6,6 +6,7 @@ import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
 import { NavigatorIntro, NavigatorReminders, TripTiming, WhyGoing } from "@/components/boat/navigator/NavigatorExtras";
 import { stamp } from "@/components/boat/departure/LogCopy";
 import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
+import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -36,6 +37,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const auto = useRef(routeText(start, dest));
   const [question, setQuestion] = useState(auto.current);
   const [state, setState] = useState({ busy: false, error: "", result: null, left: null });
+  // Both start closed to keep Route Planning short.
+  const [askOpen, setAskOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
 
   // Keep the route at the front of the question, leaving anything the skipper added after it.
   const setRoute = (key, value) => {
@@ -71,7 +75,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
       </div>
-      <label htmlFor="navigator-question" className="field-label">ASK THE MAGIC MARINE NAVIGATOR</label>
+      <FoldHeader open={askOpen || state.busy || !!state.result} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>
+      {(askOpen || state.busy || !!state.result) && (<>
+      <label htmlFor="navigator-question" className="sr-only">ASK THE MAGIC MARINE NAVIGATOR</label>
       <NavigatorIntro online={online} />
       <div className="flex items-start gap-2">
         <textarea id="navigator-question" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1024} rows={question ? 3 : 1} style={{ height: question ? 84 : 44, paddingTop: 10, paddingBottom: 6 }}
@@ -83,8 +89,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {state.busy && <p className="flex items-center gap-2 text-sm font-semibold" data-testid="navigator-loading"><Loader2 className="h-4 w-4 animate-spin" /> The Magic Marine Navigator is plotting...</p>}
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-error">{state.error}</p>}
       {state.result && <AnswerCard result={state.result} boat={boat} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
-      <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} />
-      <NavigatorReminders />
+      </>)}
+      <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />
+      {photosOpen && <NavigatorReminders />}
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} />}
