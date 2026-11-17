@@ -14,14 +14,18 @@ export const splitDoItForMe = (line) => {
 };
 
 const shown = (el) => el.getClientRects().length > 0 && !el.disabled && !el.readOnly && !el.closest("[data-training-window]");
+// With a pop-up open (e.g. Add Leg 2), only its boxes count, not the page behind it.
+const scope = () => [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')]
+  .filter((d) => !d.closest("[data-training-window]") && d.getAttribute("data-state") !== "closed" && d.getClientRects().length).pop() || document;
 const boxFor = (key) => {
   const k = norm(key);
-  for (const label of document.querySelectorAll("label")) {
+  const root = scope();
+  for (const label of root.querySelectorAll("label")) {
     if (norm(label.textContent) !== k) continue;
-    const el = label.htmlFor ? document.getElementById(label.htmlFor) : label.querySelector("input, textarea");
+    const el = label.htmlFor ? root.querySelector(`#${CSS.escape(label.htmlFor)}`) || document.getElementById(label.htmlFor) : label.querySelector("input, textarea");
     if (el && /^(INPUT|TEXTAREA)$/.test(el.tagName) && shown(el)) return el;
   }
-  return [...document.querySelectorAll("input, textarea")].find((el) => shown(el) && norm(el.getAttribute("aria-label") || "") === k);
+  return [...root.querySelectorAll("input, textarea")].find((el) => shown(el) && norm(el.getAttribute("aria-label") || "") === k);
 };
 // Times: NOW, NOW+6 / NOW-30 (minutes), TODAY, TODAY+1 (days), optionally "at 07:00". null when the value isn't a time.
 const pad = (n) => String(n).padStart(2, "0");
