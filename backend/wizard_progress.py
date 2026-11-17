@@ -51,7 +51,20 @@ async def tutorial_stats() -> list:
 
 
 PLACEHOLDER = "New step: write the instructions for this step here."
-NOT_STEP = re.compile(r"^\s*(--|\$\$|%%)")
+FINISH = re.compile(r"^\s*(--|\$\$|%%)")
+NOT_STEP = re.compile(r"^\s*(--|\$\$|%%|\?\?\?|##)")
+IF_ONLY = re.compile(r"^\s*\?\?\?\s*IF\s+\S+\s+(?!.*\bthen\s+goto\b)\S", re.I)
+
+
+def _finish_block(labels: list[str]) -> list[bool]:
+    """Finish panel lines, plus the "???IF" lines straight before them (blank lines skipped)."""
+    out, nxt = [False] * len(labels), False
+    for n in range(len(labels) - 1, -1, -1):
+        t = labels[n]
+        if not t.strip():
+            continue
+        out[n] = nxt = bool(FINISH.match(t)) or (bool(IF_ONLY.match(t)) and nxt)
+    return out
 
 
 async def _wizard_doc(wizard: str) -> dict:
@@ -102,17 +115,18 @@ class FinishEdit(BaseModel):
 async def edit_wizard_finish(p: FinishEdit, admin: dict = Depends(require_admin)):
     """Edit Final on a Model Vessel wizard: the Finish panel lines (--, ---, $$, $$$) replace the old ones at the end of the list."""
     lines = [" ".join(t.split()) for t in p.lines if t.strip()]
-    bad = [n + 1 for n, t in enumerate(lines) if not NOT_STEP.match(t) or not re.sub(r"^(-+|\$+|%+)", "", t).strip()]
+    bad = [n + 1 for n, t in enumerate(lines) if not IF_ONLY.match(t) and (not FINISH.match(t) or not re.sub(r"^(-+|\$+|%+)", "", t).strip())]
     if bad:
-        raise HTTPException(status_code=400, detail=f"Every Finish panel line must start with --, ---, $$, $$$ or %% and have some text. Check line {', '.join(map(str, bad[:5]))}.")
+        raise HTTPException(status_code=400, detail=f"Every Finish panel line must start with --, ---, $$, $$$, %% or ???IF and have some text. Check line {', '.join(map(str, bad[:5]))}.")
     if any(len(t) > 4000 for t in lines):
         raise HTTPException(status_code=400, detail="A line can be up to 4000 characters")
     doc = await _wizard_doc(p.wizard)
     items = doc["items"]
-    old = [i["label"].strip() for i in items if NOT_STEP.match(i["label"])]
+    block = _finish_block([i["label"] for i in items])
+    old = [i["label"].strip() for i, b in zip(items, block) if b]
     if old != [t.strip() for t in p.expect]:
         raise HTTPException(status_code=409, detail="This Finish panel was changed somewhere else. Close the walkthrough, open it again and try once more.")
-    keep = [i for i in items if not NOT_STEP.match(i["label"])]
+    keep = [i for i, b in zip(items, block) if not b]
     nid = max([int(i.get("id") or 0) for i in items] + [0]) + 1
     out = keep + [{"id": nid + n, "label": t} for n, t in enumerate(lines)]
     if len(out) > 300:

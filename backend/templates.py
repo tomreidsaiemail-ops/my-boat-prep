@@ -76,7 +76,8 @@ def _items_from_labels(labels: List[Union[str, TemplateLine]], old: Optional[lis
         label = line.label.strip()[:TEMPLATE_LINE_MAX]
         sub = line.indent and out
         # Sub-items may repeat under different headings (e.g. Salt in several meals).
-        if not label or label.lower() in (group if sub else seen):
+        # Wizard jump lines ("???goto ##finish") may repeat.
+        if not label or (label.lower() in (group if sub else seen) and not label.startswith("???")):
             continue
         if sub:
             group.add(label.lower())
