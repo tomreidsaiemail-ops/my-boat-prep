@@ -99,7 +99,7 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 flex-1 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
-        {onEdit && !rich && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /> Edit Step</button>}
+        {onEdit && !rich && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" aria-label="Edit Step" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit Step</span></button>}
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
       </div>

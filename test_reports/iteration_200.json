@@ -1,0 +1,24 @@
+{
+  "summary": "Tested the Model Vessel ideas-panel change. Backend: new tests/test_wizard_ideas_panel.py (6 tests: _finish_block keeps only the 9 ##finish lines for the Topics Demo list, a bottom run under ##safety stays on Finish, create, Edit Step on 'Mayday and pan-pans' with server index 2 then revert, 409 on a wrong expect, Edit Final round trip) plus regression test_wizard_questions.py and test_wizard_topics.py: 15/15 pass. UI at 390x844 as admin on Model Vessel, Topics Demo (42 lines from /tmp/lines.txt): 8 panels. Q1 has 5 answers. 'provisioning and inventory' goes to panel 3, an ideas panel (training-step-ideas) with 2 ideas and 2 links, Back and Next, and no Edit Step button. Next goes to a Finish panel with only the 9 ##finish items and no 'Magic scan'. Back from Finish returns to the ideas panel, and Back again returns to Q1. 'boat maintenance' goes to panel 5 with its 1 idea and 1 link, then Finish. 'trip planning' goes to panel 4 with its 4 lines, then Finish. 'safety' shows panels 6 and 7 (Mayday, Grab bag), then Finish. The Magic Scanning link opens that walkthrough (STEP 1 OF 20). Edit Step on Mayday opens with the raw line; a save and revert both work. Edit Final shows exactly the 9 ##finish lines. Template editor Preview wizard behaves the same (wizard-preview-step-ideas, no edit button, 9 Finish lines). The Basic Introduction Finish panel still shows its 7 lines. The Topics Demo list was deleted afterwards.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Training window header at 390px with Edit Step", "issues": ["On long walkthrough titles (e.g. 'Magic Scanning') the title truncates to 'M.' next to the Edit Step button. Minor, admin only, and existed before this change."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_wizard_ideas_panel.py", "/app/backend/tests/test_wizard_questions.py", "/app/backend/tests/test_wizard_topics.py", "/app/test_reports/pytest/iter200.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "WizardPreview help text doesn't explain the new rule (Finish-style lines under a ##place become an ideas panel). Worth adding one sentence.",
+    "wizard.js group(): if every item in an ideas panel has a ???IF condition that doesn't match, the panel still shows, but empty. Consider skipping it in nextPanel.",
+    "test_wizard_topics.py uses its own 35-line LINES set, not /tmp/lines.txt. That's fine: it has no assertions on the removed visited-places logic, so it was left unchanged."
+  ],
+  "updated_files": ["/app/backend/tests/test_wizard_ideas_panel.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created 'Admin - Model Vessel - Topics Demo' (private) for UI testing, then deleted it. The Mayday Edit Step and Edit Final edits were reverted before the delete.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run 'KEEP_TOPICS=1 pytest -n0 tests/test_wizard_ideas_panel.py' to create the 42-line Topics Demo list (same as /tmp/lines.txt). Run it without KEEP_TOPICS to delete it. Any test in that file that uses the fixture recreates the list. Fast UI entry: cookie session_token=test_session_admin_1, then set localStorage mbp_model_wizard:test-admin-1='\"topics demo\"', mbp_model_step:test-admin-1, mbp_model_path:test-admin-1, mbp_model_answers:test-admin-1 (e.g. '{\"q1\":\"safety\"}') and reload. Panel indexes: 0 intro, 1 Q1, 2 provisioning ideas, 3 trip ideas, 4 maintenance ideas, 5 Mayday, 6 Grab bag, 7 AI, 8 = Finish."
+}

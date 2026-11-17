@@ -126,7 +126,11 @@ export const nextPanel = (wiz, from, answers = {}) => {
   let skip = false;
   for (let guard = 0; i < nodes.length && guard < nodes.length * 4; guard += 1) {
     const n = nodes[i];
-    if (panel(n)) { if (!skip) return visible.indexOf(i); skip = false; }
+    if (panel(n)) {
+      const empty = n.type === "rich" && !finishFor(n.items, answers).length;
+      if (!skip && !empty) return visible.indexOf(i);
+      skip = false;
+    }
     else if (n.type === "finish") skip = false;
     else if (n.type === "if" && !said(answers, n)) skip = true;
     else if (n.type === "goto" || (n.type === "ifgo" && said(answers, n))) {
