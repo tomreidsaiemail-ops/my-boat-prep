@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ClipboardPaste, Download, Loader2, Upload } from "lucide-react";
+import { AlertTriangle, ClipboardPaste, Download, Loader2, Upload } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -16,6 +16,7 @@ const download = (data) => {
 
 const Preview = ({ plan, busy, onConfirm, onClose }) => {
   const changes = plan.lists.filter((l) => l.action === "add" || l.action === "overwrite").length;
+  const conflicts = plan.lists.filter((l) => l.conflict).length;
   return (
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="template-restore-preview">
@@ -23,6 +24,12 @@ const Preview = ({ plan, busy, onConfirm, onClose }) => {
           <DialogTitle className="font-display text-xl font-extrabold">Restore template lists?</DialogTitle>
           <DialogDescription>Lists with the same name are overwritten, missing ones are added, and lists not in the backup are kept.</DialogDescription>
         </DialogHeader>
+        {conflicts > 0 && (
+          <p className="flex items-start gap-2 rounded-md border-2 border-[var(--red)] bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="template-restore-conflict-warning">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            {conflicts === 1 ? "1 list was" : `${conflicts} lists were`} changed here since last copied or pasted. Pasting overwrites those changes.
+          </p>
+        )}
         {GROUPS.map(([k, label]) => {
           const rows = plan.lists.filter((l) => l.action === k);
           return rows.length > 0 && (
@@ -31,7 +38,9 @@ const Preview = ({ plan, busy, onConfirm, onClose }) => {
               <ul className="rounded-md border-[1.5px] border-[var(--line)] text-sm">
                 {rows.map((l, n) => (
                   <li key={`${l.name}-${n}`} className="flex justify-between gap-2 border-b border-[var(--line)] px-3 py-1.5 last:border-b-0" data-testid={`template-restore-${k}-${n}`}>
-                    <span className="min-w-0 break-words font-bold">{l.name}</span>
+                    <span className="min-w-0 break-words font-bold">{l.name}
+                      {l.conflict && <span className="block text-xs font-bold text-[var(--red)]" data-testid={`template-restore-conflict-${n}`}>Changed here since last copied (v{l.conflict.now} now, v{l.conflict.then} then)</span>}
+                    </span>
                     <span className="shrink-0 text-xs text-[var(--muted)]">{l.reason || `${l.items} ${l.items === 1 ? "item" : "items"}${l.version ? ` · becomes v${l.version}` : ""}`}</span>
                   </li>
                 ))}
