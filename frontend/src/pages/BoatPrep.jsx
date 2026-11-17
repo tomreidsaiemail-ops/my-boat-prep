@@ -1232,7 +1232,7 @@ export default function BoatPrep({ boatId, boats }) {
         <>
           {!isTripList(active) && checks}
           {!crew && isTripList(active) && (
-            <NavigatorAsk key={`${boatId}-${active.id}`} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+            <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (

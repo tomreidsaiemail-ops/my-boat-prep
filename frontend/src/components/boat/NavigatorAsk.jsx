@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Compass, Loader2, Users, X } from "lucide-react";
+import { Anchor, Compass, Loader2, Users, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
@@ -31,7 +31,18 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
 );
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip).
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim }) => {
+// "(today)", "(2 days)", "(1 day ago)" from the Departure date; "" when there is none.
+const daysToGo = (at) => {
+  if (!at) return "";
+  const day = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const n = Math.round((day(new Date(at)) - day(new Date())) / 86400000);
+  if (Number.isNaN(n)) return "";
+  if (n === 0) return "(today)";
+  const word = `${Math.abs(n)} day${Math.abs(n) === 1 ? "" : "s"}`;
+  return n > 0 ? `(${word})` : `(${word} ago)`;
+};
+
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, onLeaving }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -70,7 +81,15 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
 
   return (
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
-      <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
+        {onLeaving && (
+          <button type="button" onClick={onLeaving} className="inline-flex h-8 items-center gap-1.5 rounded-full border-2 border-[var(--navy)] bg-white px-3 text-xs font-extrabold text-[var(--navy)] shadow-sm hover:bg-slate-100 active:scale-95 [transition:background-color_.15s,transform_.1s]" data-testid="route-leaving-dock-btn">
+            <Anchor className="h-3.5 w-3.5" /> Leaving Dock
+          </button>
+        )}
+        {onLeaving && daysToGo(boat.weather?.depart_at) && <span className="text-sm font-bold text-[var(--muted)]" data-testid="route-departure-days">{daysToGo(boat.weather?.depart_at)}</span>}
+      </div>
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
