@@ -44,6 +44,7 @@ const SORTS = {
   updated: ["Recently updated", (a, b) => String(b.updated_at).localeCompare(String(a.updated_at))], size: ["Most items", (a, b) => b.items.length - a.items.length],
 };
 
+const FILTER_KEY = "mbp_admin_template_filter";
 const Controls = ({ q, setQ, filter, setFilter, sort, setSort, shown, total }) => (
   <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="template-list-controls">
     <div className="flex flex-col gap-2 sm:flex-row">
@@ -73,7 +74,9 @@ export const TemplateListsAdmin = () => {
   const [editing, setEditing] = useState(null);
   const [removing, setRemoving] = useState(null);
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState("all");
+  // The chosen filter stays on (this phone, across sign-outs) until the admin picks All again.
+  const [filter, setFilter] = useState(() => (FILTERS.some(([k]) => k === localStorage.getItem(FILTER_KEY)) ? localStorage.getItem(FILTER_KEY) : "all"));
+  useEffect(() => { localStorage.setItem(FILTER_KEY, filter); }, [filter]);
   const [sort, setSort] = useState("az");
   const query = q.trim().toLowerCase();
   const hitsOf = (t) => (query ? t.items.filter((i) => matches(i.label, query)) : []);
