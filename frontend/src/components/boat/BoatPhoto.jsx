@@ -4,8 +4,8 @@ import { API } from "@/lib/api";
 
 export const photoUrl = (b) => `${API}/boats/${b.boat_id}/photo?${b.owner_id ? `owner=${encodeURIComponent(b.owner_id)}&` : ""}v=${encodeURIComponent(b.photo_v)}`;
 
-// Model Vessel green, a boat you crew on yellow.
-export const boatTone = (b) => (b?.model ? "bg-emerald-300" : b?.crew ? "bg-yellow-300" : "");
+// Model Vessel green, charter boats purple (chartered, out on charter or ended), a boat you crew on yellow.
+export const boatTone = (b) => (b?.model ? "bg-emerald-300" : b?.charter || b?.charter_lock ? "bg-purple-300" : b?.crew ? "bg-yellow-300" : "");
 
 export const BoatPhoto = ({ boat, size = "h-12 w-12", testId }) => {
   const [failed, setFailed] = useState(null);
