@@ -37,7 +37,8 @@ const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
 });
 
 // Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
-export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
+// quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
+export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
@@ -98,6 +99,8 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
   }, [gps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { draw(); }, [legs, pick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const open = stops.findIndex((s) => !s.pos);
+  useEffect(() => { if (quick) setPick(paused ? -1 : open); }, [quick, paused, open, stops.length]);
 
   // Legs are straight rhumb lines between pins and the skipper's waypoints; each line is checked for crossing land (shown red).
   useEffect(() => {
@@ -121,10 +124,10 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
         {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
-      <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Drag a faint handle on a line to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>
+      {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Drag a faint handle on a line to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}
       {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Drag a faint handle on the red part out over the water to put a kink in the line.</p>}
-      <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Straighten all legs</button>
-      <ol className="flex flex-col gap-1.5">
+      {!quick && <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Straighten all legs</button>}
+      {!quick && <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
           <li key={i} className="flex items-center gap-1">
             <button type="button" onClick={() => setPick(pick === i ? -1 : i)} aria-pressed={pick === i}
@@ -138,7 +141,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare }) => {
             {pick === i && s.pos && <button type="button" className="icon-btn shrink-0" aria-label={`Clear the pin for ${s.name}`} onClick={() => onPlace(i, null)} data-testid={`stops-map-clear-${i}`}><X className="h-4 w-4" /></button>}
           </li>
         ))}
-      </ol>
+      </ol>}
     </div>
   );
 };

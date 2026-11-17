@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
-import { Anchor, Compass, Flag, Loader2, Users, X } from "lucide-react";
+import { Anchor, Compass, Flag, Loader2, Users, X, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { QUICK_NAME, QuickPlanDialog } from "@/components/boat/navigator/QuickPlanDialog";
 import { api, apiError } from "@/lib/api";
 import { CoastGuardReport, coastGuardReport } from "@/components/boat/CoastGuardReport";
 import { WeatherPhotos } from "@/components/boat/navigator/WeatherPhotos";
@@ -41,6 +43,17 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   // Both start closed to keep Route Planning short.
   const [askOpen, setAskOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
+  const [quick, setQuick] = useState(false);
+  const w = boat.weather || {};
+  const hasRoute = !!(start || dest || w.start_pos || w.dest_pos || (w.legs || []).length);
+  // The draft's first leg is the Route Plan (START, DESTINATION, times, pins); the rest become its planned legs.
+  const applyQuick = ([first, ...rest]) => {
+    onChange("route_start", first.route_start);
+    onChange("route_dest", first.route_dest);
+    onWeather({ event_name: QUICK_NAME, event_at: first.depart_at, depart_at: first.depart_at, finish_at: first.finish_at, start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: "",
+      legs: rest.map(({ start_pos, ...l }) => l) });
+    toast.success(`${QUICK_NAME}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} added to Route Planning`);
+  };
 
   // Keep the route at the front of the question, leaving anything the skipper added after it.
   const setRoute = (key, value) => {
@@ -71,6 +84,12 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
 
   return (
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
+      {!interim && (
+        <button type="button" onClick={() => setQuick(true)} className="btn-ghost h-11 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
+          <Zap className="h-4 w-4 text-amber-500" /> Quick Trip Plan Draft...
+        </button>
+      )}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} hasRoute={hasRoute} />}
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
         {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}

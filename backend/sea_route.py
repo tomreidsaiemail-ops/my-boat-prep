@@ -99,3 +99,121 @@ async def sea_check(body: LineIn, user: dict = Depends(get_current_user)):
     except Exception as e:  # noqa: BLE001
         log.warning("Sea check failed: %r", e)
         raise HTTPException(status_code=503, detail="Couldn't read the map to check for land. Try again shortly.") from e
+
+
+def _ll(x: float, y: float, z: int) -> list:
+    n = 256 * 2 ** z
+    return [round(math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * y / n)))), 5), round(x / n * 360 - 180, 5)]
+
+
+def _near_water(water: np.ndarray, r: int, c: int) -> tuple | None:
+    """The closest water cell to a pin that sits on a marina or beach."""
+    if water[r, c]:
+        return r, c
+    for d in range(1, 25):
+        rs, cs = np.nonzero(water[max(0, r - d):r + d + 1, max(0, c - d):c + d + 1])
+        if len(rs):
+            k = int(np.argmin((rs + max(0, r - d) - r) ** 2 + (cs + max(0, c - d) - c) ** 2))
+            return int(rs[k] + max(0, r - d)), int(cs[k] + max(0, c - d))
+    return None
+
+
+def _astar(water: np.ndarray, a: tuple, b: tuple) -> list | None:
+    import heapq
+    h, w = water.shape
+    best = {a: 0.0}
+    came = {}
+    todo = [(0.0, a)]
+    steps = [(-1, 0, 1), (1, 0, 1), (0, -1, 1), (0, 1, 1), (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414)]
+    while todo:
+        _, cur = heapq.heappop(todo)
+        if cur == b:
+            out = [cur]
+            while cur in came:
+                cur = came[cur]
+                out.append(cur)
+            return out[::-1]
+        for dr, dc, cost in steps:
+            nr, nc = cur[0] + dr, cur[1] + dc
+            if 0 <= nr < h and 0 <= nc < w and water[nr, nc]:
+                g = best[cur] + cost
+                if g < best.get((nr, nc), 1e18):
+                    best[(nr, nc)] = g
+                    came[(nr, nc)] = cur
+                    heapq.heappush(todo, (g + math.hypot(nr - b[0], nc - b[1]), (nr, nc)))
+    return None
+
+
+def _clear(water: np.ndarray, p: tuple, q: tuple) -> bool:
+    n = max(abs(p[0] - q[0]), abs(p[1] - q[1])) + 1
+    rs = np.rint(np.linspace(p[0], q[0], n + 1)).astype(int)
+    cs = np.rint(np.linspace(p[1], q[1], n + 1)).astype(int)
+    return bool(water[rs, cs].all())
+
+
+async def _route(a: list, b: list, grow: float) -> list | None:
+    span = max(abs(a[0] - b[0]), abs(a[1] - b[1]), 0.01)
+    m = span * grow
+    lat0, lat1, lon0, lon1 = min(a[0], b[0]) - m, max(a[0], b[0]) + m, min(a[1], b[1]) - m, max(a[1], b[1]) + m
+    for z in range(15, 6, -1):
+        (x0, y0), (x1, y1) = _px(lat1, lon0, z), _px(lat0, lon1, z)
+        tx0, tx1, ty0, ty1 = int(x0) // 256, int(x1) // 256, int(y0) // 256, int(y1) // 256
+        if (tx1 - tx0 + 1) * (ty1 - ty0 + 1) <= 36:
+            break
+    row = list(range(tx0, tx1 + 1))
+    async with httpx.AsyncClient(headers=HEADERS, timeout=15) as client:
+        got = await asyncio.gather(*[_tile(client, z, x, y) for y in range(ty0, ty1 + 1) for x in row])
+    grid = np.vstack([np.hstack(got[k:k + len(row)]) for k in range(0, len(got), len(row))])
+    grid = ~_grow(~_grow(grid, 3), 3)
+    f = max(1, int(math.ceil(max(grid.shape) / 320)))
+    hh, ww = grid.shape[0] // f, grid.shape[1] // f
+    # A cell is open water only when nearly all of it is water, with a one-cell margin off the shore.
+    water = grid[:hh * f, :ww * f].reshape(hh, f, ww, f).mean(axis=(1, 3)) > 0.9
+    water = ~_grow(~water, 1)
+    cell = lambda p: (min(hh - 1, max(0, int((_px(p[0], p[1], z)[1] - ty0 * 256) / f))), min(ww - 1, max(0, int((_px(p[0], p[1], z)[0] - tx0 * 256) / f))))
+    sa, sb = _near_water(water, *cell(a)), _near_water(water, *cell(b))
+    if not sa or not sb:
+        return None
+    cells = _astar(water, sa, sb)
+    if not cells:
+        return None
+    keep, i = [cells[0]], 0
+    while i < len(cells) - 1:
+        j = len(cells) - 1
+        while j > i + 1 and not _clear(water, cells[i], cells[j]):
+            j -= 1
+        keep.append(cells[j])
+        i = j
+    return [_ll((c + 0.5) * f + tx0 * 256, (r + 0.5) * f + ty0 * 256, z) for r, c in keep]
+
+
+@router.post("/sea-route")
+async def sea_route(body: LineIn, user: dict = Depends(get_current_user)):
+    """Waypoints that take a leg from its first to last point over the water (none needed when the straight line is clear)."""
+    _limit(user)
+    a, b = body.line[0], body.line[-1]
+    try:
+        if not (await _crosses([a, b]))[0]:
+            return {"path": []}
+        for grow in (0.35, 1.0):
+            pts = await _route(a, b, grow)
+            if pts:
+                return {"path": pts[1:-1] if len(pts) > 2 else []}
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Couldn't load the map to plan around land. Try again shortly.")
+    return {"path": None}
+
+
+@router.get("/place-name")
+async def place_name(lat: float, lon: float, user: dict = Depends(get_current_user)):
+    """The nearest bay, marina or place name for a map tap (blank when OpenStreetMap has none)."""
+    _limit(user)
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, timeout=10) as client:
+            r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 14, "addressdetails": 1})
+            d = r.json() if r.status_code == 200 else {}
+    except (httpx.HTTPError, ValueError):
+        d = {}
+    a = d.get("address") or {}
+    name = d.get("name") or next((a[k] for k in ("bay", "marina", "harbour", "beach", "island", "hamlet", "village", "suburb", "locality", "town", "city") if a.get(k)), "")
+    return {"name": name}
