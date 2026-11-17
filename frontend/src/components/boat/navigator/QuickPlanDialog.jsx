@@ -3,7 +3,7 @@ import { Loader2, Pencil, RotateCcw, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
-import { Confirm, PointPanel, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
+import { ConfirmPopup, PointPanel, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
 import { stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 
@@ -54,12 +54,13 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const [pending, setPending] = useState(null);
   const [sel, setSel] = useState(draft ? select : null);
   const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(0); // legs being routed round land
   const [sure, setSure] = useState(0);
   const [times, setTimes] = useState({ depart_at: "", finish_at: "" });
   const latest = useRef(legs);
   latest.current = legs;
   const snap = useRef(null); // the legs before a stop was slotted in, for Stop adding
+  const asking = useRef(null); // the tapped spot whose place name is being looked up
 
   const put = (next) => { latest.current = next; setLegs(next); };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
@@ -77,7 +78,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       toast.error("Couldn't plan round the land just now. Drag any red part out over the water.");
     }
   };
-  const rerouting = async (ks) => { setBusy(true); for (const k of ks) await route(k); setBusy(false); };
+  const rerouting = async (ks) => { setBusy((b) => b + 1); for (const k of ks) await route(k); setBusy((b) => b - 1); };
   const onPlace = (i, pos) => {
     put(setPos(latest.current, i, pos));
     if (!pos) return;
@@ -87,7 +88,15 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       setPending(i);
       setName("");
       setTimes(i < ls.length ? { depart_at: ls[i].depart_at, finish_at: ls[i].finish_at } : { depart_at: at(i + 1, "06"), finish_at: at(i + 1, "09") });
-      api.get("/place-name", { params: { lat: pos.lat, lon: pos.lon } }).then(({ data }) => setName((n) => n || data.name || `Point ${i + 1}`)).catch(() => setName((n) => n || `Point ${i + 1}`));
+      asking.current = pos;
+      // A point confirmed before its name arrived is called "Point n" until the name comes in.
+      api.get("/place-name", { params: { lat: pos.lat, lon: pos.lon } }).then(({ data }) => {
+        if (!data.name) return;
+        if (asking.current === pos) setName((n) => n || data.name);
+        const ls2 = latest.current;
+        const k = stopsOf(ls2).findIndex((s) => s.pos === pos);
+        if (k >= 0 && nameOf(ls2, k) === `Point ${i + 1}`) put(renamed(ls2, k, data.name));
+      }).catch(() => {});
     } else {
       if (i > 0) route(i - 1);
       if (i < latest.current.length && posOf(latest.current, i + 1)) route(i);
@@ -95,7 +104,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   };
   const confirm = async (end) => {
     const i = pending;
-    const clean = name.trim();
+    const clean = name.trim() || `Point ${i + 1}`;
+    asking.current = null;
     const mid = i > 0 && i < latest.current.length;
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
     if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
@@ -123,7 +133,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const stops = stopsOf(legs);
   const placed = stops.filter((s, k) => s.pos && k !== wait).length;
   const idle = wait === null && pending === null;
-  const hint = pending !== null ? "Check the name and times, then confirm this point." : wait === 0 ? "Tap where you'll depart from." : wait !== null ? "Tap the chart for the new stop."
+  const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? "Tap where you'll depart from." : wait !== null ? "Tap the chart for the new stop."
     : sel !== null ? "Change this point, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin or line to improve it, then tap Done."
       : "Tap a pin to rename it, change its times, delete it or add a stop after it. Drag pins or lines to improve the route, then tap Done.";
   return (
@@ -152,11 +162,14 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           <button type="button" className="btn-ghost h-10 justify-center text-sm" onClick={stopAdding} data-testid="quick-plan-stop-adding-btn">Stop adding stops</button>
         )}
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
-          onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}} />}
-        {pending !== null && <Confirm i={pending} mid={pending > 0 && pending < legs.length} onDelete={() => { put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} name={name} setName={setName} leg={times} setTimes={(p) => setTimes((t) => ({ ...t, ...p }))} onConfirm={confirm} busy={busy} />}
+          onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
+          popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
+            <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} name={name} onConfirm={confirm}
+              onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />
+          ) } : null} />}
         {idle && sel !== null && sel < stops.length && (
           <PointPanel j={sel} last={legs.length} name={nameOf(legs, sel) || ""} setName={(v) => put(renamed(latest.current, sel, v))} leg={sel < legs.length ? legs[sel] : null}
-            setTimes={(p) => put(latest.current.map((l, n) => (n === sel ? { ...l, ...p } : l)))} onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy} />
+            setTimes={(p) => put(latest.current.map((l, n) => (n === sel ? { ...l, ...p } : l)))} onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy > 0} />
         )}
       </DialogContent>
     </Dialog>

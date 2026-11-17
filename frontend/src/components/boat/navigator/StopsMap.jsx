@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Loader2, MapPin, RefreshCw, X } from "lucide-react";
@@ -14,6 +14,23 @@ const GHOST = L.divIcon({ className: "", html: '<span class="route-handle route-
 const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat != null ? [gps.last.lat, gps.last.lon] : null);
 const r5 = (ll) => [+ll.lat.toFixed(5), +ll.lng.toFixed(5)];
 const same = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
+
+// popup: shown beside its spot on the map (above it, else below, else as near as fits), kept inside the map.
+const MapPopup = ({ at, box, children }) => {
+  const ref = useRef(null);
+  const [h, setH] = useState(0);
+  // Re-measured every render (the name can wrap); an unchanged height doesn't render again.
+  useLayoutEffect(() => { setH(ref.current?.offsetHeight || 0); }); // eslint-disable-line react-hooks/exhaustive-deps
+  const [w, bh] = [box?.clientWidth || 0, box?.clientHeight || 0];
+  let top = at.y - 16 - h;
+  if (top < 4) top = at.y + 16;
+  if (top + h > bh - 4) top = Math.max(4, bh - 4 - h);
+  return (
+    <div ref={ref} className="absolute z-[1100]" style={{ left: Math.min(Math.max(at.x, 132), Math.max(132, w - 132)), top, transform: "translateX(-50%)", visibility: h ? "visible" : "hidden" }} data-testid="stops-map-popup">
+      {children}
+    </div>
+  );
+};
 
 // Drag a bend to move it, drag a faint middle handle (or tap the line) to add one, double-tap a bend to remove it. Crowded handles wait for a closer zoom.
 const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
@@ -39,7 +56,7 @@ const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
 // Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
 // quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
 // onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted.
-export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null }) => {
+export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
@@ -47,6 +64,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
   // No stop is picked once all are pinned, so a stray tap can't move one.
   const [pick, setPick] = useState(() => stops.findIndex((s) => !s.pos));
   const [drawing, setDrawing] = useState(0);
+  const [, setMoved] = useState(0); // re-renders the popup as the map pans and zooms
   // Which parts of each leg cross land, keyed by the leg's line so an old answer never colours a changed line.
   const [land, setLand] = useState({});
   const landOf = lines.map((ln) => (ln ? land[JSON.stringify(ln)] : undefined));
@@ -83,6 +101,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
       setPick(s.findIndex((x, k) => k !== i && !x.pos));
     });
     m.on("zoomend", () => live.current.draw());
+    m.on("move zoom", () => setMoved((n) => n + 1));
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
     live.current.draw();
@@ -125,6 +144,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     <div className="flex flex-col gap-2" data-testid="stops-map">
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
+        {popup && map.current && <MapPopup at={map.current.latLngToContainerPoint([popup.pos.lat, popup.pos.lon])} box={el.current}>{popup.node}</MapPopup>}
         {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
       {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Tap a line, or drag a faint handle on it, to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}

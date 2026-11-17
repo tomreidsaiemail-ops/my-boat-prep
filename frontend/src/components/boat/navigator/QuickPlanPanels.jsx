@@ -32,26 +32,23 @@ const DeleteBtn = ({ onClick, testId }) => (
   </button>
 );
 
-// A newly tapped point: check its name and times, then confirm it. mid: a stop slotted in between two others.
-export const Confirm = ({ i, mid, name, setName, leg, setTimes, onConfirm, onDelete, busy }) => (
-  <div className="flex flex-col gap-2 rounded-md border-2 border-amber-500 bg-amber-50 p-3" data-testid="quick-plan-confirm">
-    <div className="flex items-center justify-between gap-2">
-      <label className="field-label" htmlFor="quick-plan-name">{i === 0 ? "Departing point" : `Point ${i + 1}`}</label>
-      <DeleteBtn onClick={onDelete} testId="quick-plan-delete-point-btn" />
-    </div>
-    <input id="quick-plan-name" className="field-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Finding the place name..." data-testid="quick-plan-name-input" />
-    <Times n={i + 1} leg={leg} onChange={setTimes} testId="quick-plan" />
-    {i > 0 && !mid && <p className="text-xs text-[var(--muted)]">These times are for Leg {i + 1}. They aren't needed if this is the End of Trip point.</p>}
-    <div className="flex flex-wrap gap-2">
-      <button type="button" className="btn-solid h-11 flex-1 justify-center gap-1.5" disabled={busy || !name.trim()} onClick={() => onConfirm(false)} data-testid="quick-plan-confirm-btn">
-        <Check className="h-4 w-4" /> {mid ? "Add this stop" : i === 0 ? "Departing point" : `Arriving (Leg ${i + 1} Departing point)`}
+// A newly tapped point, shown right where it was tapped: confirm it, end the trip there, or ignore the tap.
+// mid: a stop slotted in between two others. Times take their defaults; tap the pin later to change them.
+export const ConfirmPopup = ({ i, mid, name, onConfirm, onIgnore }) => (
+  <div className="flex w-[min(250px,calc(100vw-56px))] flex-col gap-1.5 rounded-lg border-2 border-amber-500 bg-white p-2 shadow-lg" data-testid="quick-plan-confirm">
+    <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">{i === 0 ? "Departing point" : `Point ${i + 1}`}</p>
+    <p className="break-words text-sm font-bold" data-testid="quick-plan-confirm-name">{name || <span className="font-semibold italic text-[var(--muted)]">Finding the place name...</span>}</p>
+    <button type="button" className="btn-solid h-10 min-h-0 justify-center gap-1.5 px-2 text-sm" onClick={() => onConfirm(false)} data-testid="quick-plan-confirm-btn">
+      <Check className="h-4 w-4 shrink-0" /> {mid ? "Add this stop" : i === 0 ? "Departing point" : `Arriving (Leg ${i + 1} Departing point)`}
+    </button>
+    {i > 0 && !mid && (
+      <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 px-2 text-sm !border-emerald-700 !text-emerald-800" onClick={() => onConfirm(true)} data-testid="quick-plan-end-btn">
+        <Flag className="h-4 w-4 shrink-0" /> Arriving (End of Trip point)
       </button>
-      {i > 0 && !mid && (
-        <button type="button" className="btn-ghost h-11 flex-1 justify-center gap-1.5 !border-emerald-700 !text-emerald-800" disabled={busy || !name.trim()} onClick={() => onConfirm(true)} data-testid="quick-plan-end-btn">
-          <Flag className="h-4 w-4" /> Arriving (End of Trip point)
-        </button>
-      )}
-    </div>
+    )}
+    <button type="button" className="btn-ghost h-9 min-h-0 justify-center gap-1.5 px-2 text-xs" onClick={onIgnore} data-testid="quick-plan-ignore-btn">
+      <X className="h-3.5 w-3.5" /> Ignore this tap
+    </button>
   </div>
 );
 
