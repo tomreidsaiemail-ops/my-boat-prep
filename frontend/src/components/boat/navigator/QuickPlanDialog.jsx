@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Loader2, Pencil, RotateCcw, Zap } from "lucide-react";
+import { Loader2, Pencil, RotateCcw, Undo2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
@@ -61,6 +61,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   latest.current = legs;
   const snap = useRef(null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
+  const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
 
   const put = (next) => { latest.current = next; setLegs(next); };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
@@ -72,6 +73,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     if (!a || !b) return;
     try {
       const { data } = await api.post("/sea-route", { line: [ll(a), ll(b)] }, { timeout: 60000 });
+      if (posOf(latest.current, k) !== a || posOf(latest.current, k + 1) !== b) return; // moved, undone or deleted meanwhile
       if (data.path === null || data.land) toast.error(`${data.path === null ? "Couldn't find a way round the land" : "Part of the way round the land still touches it"} for leg ${k + 1}. Drag the red part out over the water.`);
       put(latest.current.map((l, n) => (n === k ? { ...l, path: data.path || [] } : l)));
     } catch {
@@ -107,6 +109,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     const clean = name.trim() || `Point ${i + 1}`;
     asking.current = null;
     const mid = i > 0 && i < latest.current.length;
+    const before = mid ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
+    setUndo((u) => [...u, before]);
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
     if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
@@ -124,7 +128,13 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     if (ls.length === 1) setWait(1);
     else if (j > 0 && j < ls.length) await rerouting([j - 1]);
   };
-  const startNew = () => { put([newLeg(1)]); snap.current = null; setFresh(true); setWait(0); setSel(null); setPending(null); setSure(0); };
+  // Takes back the newest confirmed point: the map waits for that tap again (a slotted-in stop just goes).
+  const undoLast = () => {
+    const b = undo[undo.length - 1];
+    put(b.legs); setWait(b.wait); setPending(null); setSel(null); setName(""); snap.current = null; asking.current = null;
+    setUndo((u) => u.slice(0, -1));
+  };
+  const startNew = () => { put([newLeg(1)]); setUndo([]); snap.current = null; setFresh(true); setWait(0); setSel(null); setPending(null); setSure(0); };
   const finish = () => {
     onApply(latest.current.map((l) => ({ ...l, route_start: (l.route_start || "").trim(), route_dest: (l.route_dest || "").trim() })), fresh);
     onClose();
@@ -163,6 +173,11 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
         )}
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
           onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
+          overlay={undo.length > 0 && pending === null && (
+            <button type="button" onClick={undoLast} className="absolute right-2 top-2 z-[1050] flex h-10 items-center gap-1.5 rounded-full border-2 border-[var(--navy)] bg-white px-3 text-sm font-bold text-[var(--navy)] shadow-md [transition:background-color_.15s] active:bg-slate-100" data-testid="quick-plan-undo-btn">
+              <Undo2 className="h-4 w-4" /> Undo last point
+            </button>
+          )}
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
             <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} name={name} onConfirm={confirm}
               onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />

@@ -55,8 +55,8 @@ const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
 
 // Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
 // quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
-// onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted.
-export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null }) => {
+// onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted. overlay: drawn over the map.
+export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
@@ -144,6 +144,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     <div className="flex flex-col gap-2" data-testid="stops-map">
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
+        {overlay}
         {popup && map.current && <MapPopup at={map.current.latLngToContainerPoint([popup.pos.lat, popup.pos.lon])} box={el.current}>{popup.node}</MapPopup>}
         {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
