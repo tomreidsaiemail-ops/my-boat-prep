@@ -1,4 +1,6 @@
 // Model Vessel walkthroughs: every "Admin - Model Vessel - <title>" list is one wizard.
+import { splitDoItForMe } from "@/lib/doItForMe";
+
 export const WIZARD_PREFIX = "Admin - Model Vessel";
 export const BASIC = "basic introduction walkthrough";
 const PREFIX_RE = /^\s*admin\s*-\s*model vessel\s*-\s*/i;
@@ -98,7 +100,9 @@ export const parseWizard = (lines = []) => {
   let k = 0;
   return {
     nodes, visible, finish: finish.filter((f) => f.text),
-    steps: visible.map((i) => (nodes[i].type === "question" ? nodes[i].text : rich(i) ? nodes[i].items.map((f) => f.text).join(" · ") : withNext(nodes[i].line))),
+    steps: visible.map((i) => (nodes[i].type === "question" ? nodes[i].text : rich(i) ? nodes[i].items.map((f) => f.text).join(" · ") : withNext(splitDoItForMe(nodes[i].line).text))),
+    // "Do it for me" boxes and values for a step ending with @@DOITFORME,KEY=value,...
+    fill: visible.map((i) => (nodes[i].type === "step" ? splitDoItForMe(nodes[i].line).fill : null)),
     raw: visible.map((i) => (rich(i) ? "" : nodes[i].line)),
     // Ideas-and-links panels (no Edit Step); editAt is a step's number on the server, which doesn't count those panels.
     rich: visible.map((i) => (rich(i) ? nodes[i].items.filter((f) => f.text) : null)),

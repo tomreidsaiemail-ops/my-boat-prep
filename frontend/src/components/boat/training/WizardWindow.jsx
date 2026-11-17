@@ -1,5 +1,7 @@
-import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, Wand2, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { doItForMe } from "@/lib/doItForMe";
 import { finishFor, linkedWizard, nextPanel } from "@/lib/wizard";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
@@ -55,6 +57,20 @@ const MiniBar = ({ steps, at, onBack, onNext, asking, onShrink, t }) => (
   </section>
 );
 
+const list = (keys) => keys.join(keys.length > 2 ? ", " : " and ").replace(/, ([^,]*)$/, " and $1");
+const DoItForMe = ({ fill, t }) => {
+  const run = () => {
+    const { done, missing } = doItForMe(fill);
+    if (done.length) toast.success(`Filled in ${list(done)}`);
+    if (missing.length) toast.error(`Couldn't find ${list(missing)} on screen. Open that part of the app, then tap Do it for me again.`, { duration: 7000 });
+  };
+  return (
+    <button type="button" onClick={run} className="flex h-9 shrink-0 items-center gap-1.5 self-start rounded-full border-2 border-amber-500 bg-amber-100 px-3.5 text-sm font-extrabold text-amber-900 shadow-sm hover:bg-amber-200 active:scale-95 [transition:background-color_.15s,transform_.1s]" data-testid={`${t}-do-it-btn`}>
+      <Wand2 className="h-4 w-4" /> Do it for me
+    </button>
+  );
+};
+
 // Two answers sit beside Back; more are listed one per row (two per row on wider screens).
 const Answers = ({ q, onBack, at, onAnswer, t }) => {
   const many = q.answers.length > 2;
@@ -78,6 +94,7 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
   const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), answers) : onMove(Math.max(0, at - 1), [], answers));
   const q = wiz.question[at];
   const rich = wiz.rich[at];
+  const fill = wiz.fill[at];
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
   const key = `${at}|${steps[at] || ""}`;
@@ -108,6 +125,7 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
           {finishFor(rich, answers).map((f, n) => <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={`${t}-step`} />)}
         </div>
       ) : <p ref={text} className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-text`}>{steps[at]}</p>}
+      {fill?.length > 0 && <DoItForMe fill={fill} t={t} />}
       {q ? <Answers q={q} at={at} onBack={back} onAnswer={(a) => next({ ...answers, [q.q]: a })} t={t} /> : (
         <div className="flex gap-2">
           <button type="button" onClick={back} disabled={at === 0} className="btn-ghost h-11 flex-1 justify-center gap-1 disabled:opacity-40" data-testid={`${t}-back-btn`}><ChevronLeft className="h-4 w-4" /> Back</button>
