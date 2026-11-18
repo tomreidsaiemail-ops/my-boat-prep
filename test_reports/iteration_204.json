@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only e2e test (390x844, admin cookie test_session_admin_1, Model Vessel) of the Arriving at Destination / Route Planning leg integration and single ARRIVED card. All requested checks PASSED: (1) Not underway: on Arriving at Destination the order is arrivingDest-hop (Route Planning | Returning to Dock) -> arrived-card ('No departure is marked underway.', direct next sibling) -> arrival-check; same on Returning to Dock (returningDock-hop 'Route Planning' -> arrived-card -> arrival-check); no vessel-arrived card. (2) Route Plan set up (TEST Mana Marina -> TEST Tawa Bay, 18/11 07:00-12:00, Mooring, event TEST Sounds Trip) + Leg 2 via add-leg-btn (TEST Tawa Bay -> TEST Ship Cove, 19/11 09:00-12:00, Anchoring); persisted after reload. (3) Depart via Leaving Dock (levels picked, DEPART ALL CHECKS DONE -> confirm): big vessel-arrived-card appears above list-selector (top 431 vs selector 627). (4) Underway on Leaving Dock, Arriving at Destination, Returning to Dock and Route Planning: exactly 1 vessel-arrived-card and 0 arrived-card. Button reads 'ARRIVED, ALL CHECKS DONE' on Returning to Dock and opens the Returning to Dock arrival (steps 'Tick all 7 Returning to Dock items' + fold step, no choices); on other lists reads 'ARRIVED, ALL ARRIVAL CHECKS DONE' and opens Arriving at Destination (arrive choices berth/anchor/mooring). (5) Arrived Leg 1 (Arrive Mooring). New departure dialog: description 'Leg 2 from Route Planning is filled in, leaving now.', heading LEG 2, START TEST Tawa Bay, DESTINATION TEST Ship Cove, departure 2026-11-18 04:22 (= now), finish 2026-11-18 07:22 (= now + 3h), interim-departure-planned-times directly after navigator-finish-at-field: 'Planned Leg 2 times: Departure 19/11/2026 09:00 · Estimated Finish 19/11/2026 12:00. Departure is set to now and the finish moved to match.' (amber-900 on amber-50, good contrast). (6) Regression: departed Leg 2 via Leave Mooring (underway card shows TEST Tawa Bay-TEST Ship Cove), New departure while underway on Leg 2 = blank, no note; arrived again (Drop Anchor) -> New departure opens blank (empty START/DEST, empty finish) and no orange note. Cleanup: trip not underway at end; Leg 2 deleted via Delete Leg; Route Planning START/DEST/event/depart/finish/actual cleared and arrive type deselected (verified after reload).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InterimDepartureDialog (blank state)", "issue": "When there is no next planned leg, the heading still reads 'LEG 1' (legNo defaults to 1) even when the boat has already sailed 2 legs of this trip (it is really leg 3). Could use sailed legs + 1.", "selector": "[data-testid='interim-departure-dialog'] [data-testid='route-leg-1-heading']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "New departure / Route Planning / leg dialog", "issues": ["Date/time fields use native <input type=date/time> browser pickers instead of the shadcn calendar (existing pattern, not new)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: in InterimDepartureDialog pass legNo = sailed legs + 1 when no next planned leg so the heading isn't 'Leg 1' mid-trip.",
+    "Optional: interimDepart rec does not store the prefilled leg's arrive_type (e.g. Anchoring for Leg 2); consider keeping it on the sailed leg record."
+  ],
+  "critical_code_review_comments": [
+    "nextLeg() picks planned[n] where n = sailed legs count, regardless of whether the last leg has arrived; tapping New departure while still underway on Leg 1 would also prefill Leg 2 (probably acceptable).",
+    "After Returning to Dock folds the trip, b.legs[trip] becomes [], so a later New departure on Arriving at Destination (not underway) would prefill Leg 1 (the Route Plan itself) with a 'Planned Leg 1 times' note. Not tested; confirm this is intended.",
+    "BoatPrep.jsx is 1366 lines - well above the 700-line guideline; consider splitting."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not requested)", "frontend": "100% of requested checks"},
+  "seed_data_creation": "None kept. Side effects on shared Model Vessel (preview DB) from running the real flow that were NOT reverted: Ship's Log entries (Departed, 2 Arrivals, 1 Interim departure Leave Mooring), Leaving Dock items all ticked, Arriving at Destination items ticked per arrival kind, Leaving Dock departure levels set to Full and arrival levels set (half), b.legs for the default trip holds 2 sailed legs (reset on next Leaving Dock depart). Trip is NOT underway at the end.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Arrival dialog on Arriving at Destination: clicking all-done-choice-<berth|anchor|mooring> confirms immediately (no all-done-confirm-btn). Arrival needs level-arrive-<fuel|gas|water|bat-engine|bat-house>-<level> picks first; depart needs level-<...>-full on Leaving Dock. Big card testids: vessel-arrived-card / vessel-arrived-all-done-btn; list card: arrived-card / arrived-not-underway / arrived-all-done-btn. Interim depart buttons: interim-departure-<berth|anchor|mooring>-btn. Training wizard closes via [aria-label='Close training']. Browser runs in UTC."
+}

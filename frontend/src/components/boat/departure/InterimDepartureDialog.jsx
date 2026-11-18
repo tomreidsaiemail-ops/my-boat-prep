@@ -23,7 +23,7 @@ const missing = (w) => {
   return "";
 };
 
-const Body = ({ trip, next, boat, items, online, locked, onUpgrade, boatId, onDepart }) => {
+const Body = ({ trip, next, legNo, boat, items, online, locked, onUpgrade, boatId, onDepart }) => {
   const [leg, setLeg] = useState(() => blank(next));
   const planned = next && (next.depart_at || next.finish_at) ? (
     <p className="-mt-1 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900" data-testid="interim-departure-planned-times">
@@ -39,7 +39,7 @@ const Body = ({ trip, next, boat, items, online, locked, onUpgrade, boatId, onDe
   };
   return (
     <>
-      <NavigatorAsk interim timesNote={planned} legNo={next?.n || 1} boat={legBoat} items={items} online={online} locked={locked} onUpgrade={onUpgrade} boatId={boatId}
+      <NavigatorAsk interim timesNote={planned} legNo={next?.n || legNo || 1} boat={legBoat} items={items} online={online} locked={locked} onUpgrade={onUpgrade} boatId={boatId}
         onChange={(k, v) => { setLeg((l) => ({ ...l, [k]: v })); setError(""); }}
         onWeather={(patch) => { setLeg((l) => ({ ...l, weather: { ...l.weather, ...patch } })); setError(""); }} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="interim-departure-error">{error}</p>}

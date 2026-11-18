@@ -1342,7 +1342,7 @@ export default function BoatPrep({ boatId, boats }) {
           help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
-      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} boat={boat} boatId={boats.current.boat_id}
+      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); await allDone.interimDepart(kind, leg); }} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onConfirm={allDone.confirm} onClose={allDone.close} />
