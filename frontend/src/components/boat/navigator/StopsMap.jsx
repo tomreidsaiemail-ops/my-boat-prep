@@ -1,19 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Loader2, MapPin, RefreshCw, X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import useGps from "@/hooks/useGps";
-import { toast } from "sonner";
-import { api, apiError } from "@/lib/api";
 import { drawRoute } from "@/lib/routeDraw";
 import { legLines, legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
 
 const BOAT = L.divIcon({ className: "", html: '<span class="boat-dot"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
-const HANDLE = L.divIcon({ className: "", html: '<span class="route-handle"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
-const GHOST = L.divIcon({ className: "", html: '<span class="route-handle route-handle-ghost"></span>', iconSize: [14, 14], iconAnchor: [7, 7] });
 const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat != null ? [gps.last.lat, gps.last.lon] : null);
-const r5 = (ll) => [+ll.lat.toFixed(5), +ll.lng.toFixed(5)];
 const same = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
 
 // popup: shown beside its spot on the map (above it, else below, else as near as fits), kept inside the map.
@@ -33,73 +28,31 @@ const MapPopup = ({ at, box, children }) => {
   );
 };
 
-// Drag a bend to move it, drag a faint middle handle (or tap the line) to add one, double-tap a bend to remove it. Crowded handles wait for a closer zoom.
-const drawHandles = (m, g, lines, setBends) => lines.forEach((ln, k) => {
-  if (!ln) return;
-  const bends = ln.slice(1, -1);
-  const px = ln.map((p) => m.latLngToContainerPoint(p));
-  const gap = (i, j) => Math.hypot(px[i].x - px[j].x, px[i].y - px[j].y);
-  let lastAt = 0;
-  bends.forEach((p, j) => {
-    if (gap(j + 1, lastAt) < 22 || gap(j + 1, ln.length - 1) < 22) return;
-    lastAt = j + 1;
-    L.marker(p, { icon: HANDLE, draggable: true, zIndexOffset: 500, title: "Drag to shape the route" })
-      .on("dragend", (e) => setBends(k, bends.map((x, n) => (n === j ? r5(e.target.getLatLng()) : x))))
-      .on("dblclick", () => setBends(k, bends.filter((_, n) => n !== j))).addTo(g);
-  });
-  ln.slice(1).forEach((p, j) => {
-    if (gap(j, j + 1) < 44 || bends.length >= 78) return;
-    L.marker([(ln[j][0] + p[0]) / 2, (ln[j][1] + p[1]) / 2], { icon: GHOST, draggable: true, zIndexOffset: 450, title: "Drag to add a bend" })
-      .on("dragend", (e) => { const next = [...bends]; next.splice(j, 0, r5(e.target.getLatLng())); setBends(k, next); }).addTo(g);
-  });
-});
-
-// Map tab: pick a stop, tap the map to drop its pin; each leg is drawn over the water and can be shaped with handles.
+// Map tab: pick a stop, tap the map to drop its pin. Only pins are shown; each leg's water route is worked out behind the scenes.
 // quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
 // onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted. overlay: drawn over the map.
-export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null }) => {
+export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
   const miles = legMiles(legs);
   // No stop is picked once all are pinned, so a stray tap can't move one.
   const [pick, setPick] = useState(() => stops.findIndex((s) => !s.pos));
-  const [drawing, setDrawing] = useState(0);
   const [, setMoved] = useState(0); // re-renders the popup as the map pans and zooms
-  // Which parts of each leg cross land, keyed by the leg's line so an old answer never colours a changed line.
-  const [land, setLand] = useState({});
-  const landOf = lines.map((ln) => (ln ? land[JSON.stringify(ln)] : undefined));
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
   const boat = useRef(null);
-  const pending = useRef(new Set());
   const live = useRef({});
   const draw = () => {
     const g = layer.current;
     if (!g) return;
     g.clearLayers();
-    drawRoute(map.current, g, { stops, lines, miles, land: landOf, badges: quick, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
-      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; },
-      // A tap on a line adds a bend there to drag, unless a stop is waiting for its pin (then the map tap drops it).
-      // On a red part the bend goes on the nearest water and the line either side is re-drawn round the land.
-      onLineTap: pick < 0 ? (k, j, ll) => {
-        const bends = lines[k].slice(1, -1);
-        if (bends.length >= 78) return;
-        if (landOf[k]?.[j]) { mend(k, j, ll); return; }
-        const next = [...bends]; next.splice(j, 0, r5(ll)); live.current.onPath(k, next);
-      } : null });
-    drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
+    // Just the pins: no lines are drawn between them (the water route is still worked out for the miles).
+    drawRoute(map.current, g, { stops, lines: lines.map(() => null), miles, badges: quick, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+      tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
   };
-  const mend = (k, j, ll) => {
-    const key = JSON.stringify(lines[k]);
-    setDrawing((n) => n + 1);
-    api.post("/sea-mend", { line: lines[k], seg: j, tap: [ll.lat, ll.lng] }, { timeout: 90000 })
-      .then(({ data }) => { if (JSON.stringify(legLines(live.current.legs)[k]) === key) live.current.onPath(k, data.path); })
-      .catch((e) => toast.error(apiError(e, "Couldn't re-draw that part over the water. Drag a handle instead.")))
-      .finally(() => setDrawing((n) => n - 1));
-  };
-  live.current = { pick, stops, legs, onPlace, onPath, onPrepare, onPinTap, draw };
+  live.current = { pick, stops, onPlace, onPrepare, onPinTap, draw };
 
   useEffect(() => {
     const m = L.map(el.current, { doubleClickZoom: false });
@@ -139,33 +92,14 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
   const open = stops.findIndex((s) => !s.pos);
   useEffect(() => { if (quick) setPick(paused ? -1 : open); }, [quick, paused, open, stops.length]);
 
-  // Legs are straight rhumb lines between pins and the skipper's waypoints; each line is checked for crossing land (shown red).
-  useEffect(() => {
-    if (!navigator.onLine) return;
-    lines.forEach((ln) => {
-      const key = ln && JSON.stringify(ln);
-      if (!ln || land[key] || pending.current.has(key)) return;
-      pending.current.add(key);
-      setDrawing((n) => n + 1);
-      api.post("/sea-check", { line: ln }, { timeout: 45000 }).then(({ data }) => setLand((x) => ({ ...x, [key]: data.land })))
-        .catch(() => {}).finally(() => { pending.current.delete(key); setDrawing((n) => n - 1); });
-    });
-  }, [legs]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { draw(); }, [land]); // eslint-disable-line react-hooks/exhaustive-deps
-  const onLand = landOf.some((f) => f?.some(Boolean));
-
   return (
     <div className="flex flex-col gap-2" data-testid="stops-map" data-no-dirty>
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
         {overlay}
         {popup && map.current && <MapPopup at={map.current.latLngToContainerPoint([popup.pos.lat, popup.pos.lon])} box={el.current}>{popup.node}</MapPopup>}
-        {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
-      {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Tap a line, or drag a faint handle on it, to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}
-      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Tap a red part: a handle goes on the nearest water and the line is re-drawn round the land. Drag any handle to fine-tune it.</p>}
-      {!quick && <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Straighten all legs</button>}
+      {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Not for navigation.</p>}
       {!quick && <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
           <li key={i} className="flex items-center gap-1">

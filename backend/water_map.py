@@ -4,21 +4,22 @@ import asyncio
 import heapq
 import math
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 import httpx
 import mapbox_vector_tile as mvt
 import numpy as np
 from PIL import Image, ImageDraw
 from shapely import affinity
-from shapely.geometry import LineString, Polygon, box, shape
+from shapely.geometry import LineString, Point, Polygon, box, shape
 from shapely.ops import unary_union
 
 TILEJSON = "https://tiles.openfreemap.org/planet"
 HEADERS = {"User-Agent": "MyBoatPrep/1.0 (boat route planning)"}
 EXT = 4096  # vector tile units per tile side
 GRAZE_M = 15  # brushing the shoreline by less than this isn't crossing land
-OFF_M, CLOSE_M = 150, 50  # routes keep 150 m off the shore where they can, and only go closer than 50 m when there's no other way
+PIN_M = 60  # how much land a pin on a pontoon, berth or beach may cross to reach the water
+OFF_M, CLOSE_M = 10, 5  # routes keep 10 m off the shore where they can, and only go closer than 5 m when there is no other way
 NOT_BOATS = {"swimming_pool"}
 _geo: OrderedDict = OrderedDict()
 _tmpl = {"url": "", "at": 0.0}
@@ -102,7 +103,10 @@ async def land_parts(pts: list) -> list:
             water = unary_union(await asyncio.gather(*[tile_water(client, z, tx, ty) for tx, ty in near]))
             dry = line.difference(water)
             k = m_per_unit((a[0] + b[0]) / 2, z)
-            out.append(any(p.length * k > GRAZE_M for p in getattr(dry, "geoms", [dry]) if not p.is_empty))
+            # A pin on a pontoon, berth or beach may cross a few metres of land to reach the water.
+            pins = [Point(line.coords[0])] * (len(out) == 0) + [Point(line.coords[-1])] * (len(out) == len(pts) - 2)
+            out.append(any(p.length * k > (PIN_M if any(p.distance(q) * k < 1 for q in pins) else GRAZE_M)
+                           for p in getattr(dry, "geoms", [dry]) if not p.is_empty))
     return out
 
 
@@ -138,7 +142,7 @@ class Chart:
                 break
             z -= 1
         k = m_per_unit((lat0 + lat1) / 2, z)
-        cell_m = max(20.0, max(x1 - x0, y1 - y0) * k / max_cells)
+        cell_m = max(6.0, max(x1 - x0, y1 - y0) * k / max_cells)  # fine enough for a marina entrance on a small box
         cu = cell_m / k
         h, w = math.ceil((y1 - y0) / cu), math.ceil((x1 - x0) / cu)
         async with httpx.AsyncClient(headers=HEADERS, timeout=20) as client:
@@ -153,7 +157,9 @@ class Chart:
                 draw.polygon(to_px(poly.exterior), fill=1)
                 for hole in poly.interiors:
                     draw.polygon(to_px(hole), fill=0)
-        fine = ~_grow(~np.asarray(img, bool), 1)
+        fine = np.asarray(img, bool)
+        if cell_m > 10:  # a fine grid (marina berths, narrow entrances) keeps every bit of water; every route is checked anyway
+            fine = ~_grow(~fine, 1)
         coarse = fine[:h * 2, :w * 2].reshape(h, 2, w, 2).all(axis=(1, 3))
         return cls(coarse, z, x0, y0, cu, cell_m)
 
@@ -181,6 +187,37 @@ class Chart:
         rs = np.clip(np.rint(np.linspace(p[0], q[0], n + 1)).astype(int), 0, self.cost.shape[0] - 1)
         cs = np.clip(np.rint(np.linspace(p[1], q[1], n + 1)).astype(int), 0, self.cost.shape[1] - 1)
         return float(self.cost[rs, cs].max())
+
+    def reach(self, s: tuple) -> np.ndarray:
+        """Every water cell a boat can get to from s on this grid."""
+        h, w = self.cost.shape
+        ok = np.isfinite(self.cost)
+        seen = np.zeros((h, w), bool)
+        seen[s] = True
+        todo = deque([s])
+        while todo:
+            r, c = todo.popleft()
+            for nr, nc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+                if 0 <= nr < h and 0 <= nc < w and ok[nr, nc] and not seen[nr, nc]:
+                    seen[nr, nc] = True
+                    todo.append((nr, nc))
+        return seen
+
+    def joined(self, s: tuple, t: tuple, most_m: float = 600) -> tuple | None:
+        """s and t moved into the same water when one sits in a basin the grid has closed off
+        (e.g. a marina with a narrow entrance): it goes to the nearest cell of the bigger water, at most most_m away.
+        None when they're further apart than that (the way round may be outside this box)."""
+        rs = self.reach(s)
+        if rs[t]:
+            return s, t
+        rt = self.reach(t)
+        big, move = (rs, t) if rs.sum() >= rt.sum() else (rt, s)
+        ys, xs = np.nonzero(big)
+        k = int(np.argmin((ys - move[0]) ** 2 + (xs - move[1]) ** 2))
+        moved = (int(ys[k]), int(xs[k]))
+        if metres(self.point(move), self.point(moved)) > most_m:
+            return None
+        return (s, moved) if move == t else (moved, t)
 
     def astar(self, s: tuple, t: tuple, cap: int = 1_500_000) -> list | None:
         h, w = self.cost.shape
@@ -260,7 +297,7 @@ class Chart:
         return pts
 
 
-async def route(a: list, b: list, grow: float) -> list | None:
+async def route(a: list, b: list, grow: float, most: int = 50) -> list | None:
     """Waypoints from a to b over the water (a and b themselves left out), or None when no way round was found."""
     span = max(abs(a[0] - b[0]), abs(a[1] - b[1]), 0.01)
     m = span * grow
@@ -268,31 +305,36 @@ async def route(a: list, b: list, grow: float) -> list | None:
     s, t = chart.nearest(chart.cell(a)), chart.nearest(chart.cell(b))
     if not s or not t:
         return None
-    cells = await asyncio.to_thread(chart.astar, s, t)
+    ends = await asyncio.to_thread(chart.joined, s, t)
+    if not ends:
+        return None
+    cells = await asyncio.to_thread(chart.astar, *ends)
     if not cells:
         return None
-    pts = chart.smooth([tuple(map(float, c)) for c in chart.pull(cells)])
+    pts = chart.smooth([tuple(map(float, c)) for c in chart.pull(cells)], most=most)  # room left for mending
     return [chart.point(p) for p in pts]
 
 
 async def _mend(pts: list, bad: list, a: list, b: list) -> tuple:
-    """Re-routes, on a finer grid, the parts of a route that still clip land (the coarse grid misses small points and islets)."""
+    """Re-routes, on a finer grid, the parts of a route that still clip land: small points and islets the coarse grid
+    missed, and the bit into a marina or bay at either end. Kept only when it means less land."""
     full = [a, *pts, b]
-    for _ in range(6):
-        inner = [i for i in range(1, len(full) - 2) if bad[i]] or ([0] if bad[0] and len(full) == 2 else [])
-        if not inner:
+    tried = set()
+    for _ in range(8):
+        todo = [i for i in range(len(full) - 1) if bad[i] and (tuple(full[i]), tuple(full[i + 1])) not in tried]
+        if not todo:
             break
-        i = inner[0]
-        sub = await route(full[i], full[i + 1], 0.6)
+        i = todo[0]
+        tried.add((tuple(full[i]), tuple(full[i + 1])))
+        sub = await route(full[i], full[i + 1], 0.6, most=max(4, 78 - len(full)))
         if not sub:
-            break
+            continue
         trial = full[:i + 1] + sub + full[i + 1:]
         if len(trial) > 80:
-            break
+            continue
         tb = await land_parts(trial)
-        if sum(tb[1:-1]) >= sum(bad[1:-1]):
-            break
-        full, bad = trial, tb
+        if sum(tb) < sum(bad):
+            full, bad = trial, tb
     return full[1:-1], bad
 
 
@@ -308,7 +350,7 @@ async def water_path(a: list, b: list) -> tuple:
         pts = [p for p in pts if metres(p, a) > 1 and metres(p, b) > 1]
         # A pin on a marina berth or beach may touch land on its way to the water; the rest must be clear.
         bad = await land_parts([a, *pts, b])
-        if any(bad[1:-1]):
+        if any(bad):
             pts, bad = await _mend(pts, bad, a, b)
         if not any(bad[1:-1]):
             return pts, False

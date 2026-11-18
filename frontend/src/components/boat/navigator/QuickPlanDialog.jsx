@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { Loader2, Pencil, RotateCcw, Undo2, Zap } from "lucide-react";
-import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
@@ -109,10 +108,9 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     try {
       const { data } = await api.post("/sea-route", { line: [ll(a), ll(b)] }, { timeout: 60000 });
       if (posOf(latest.current, k) !== a || posOf(latest.current, k + 1) !== b) return; // moved, undone or deleted meanwhile
-      if (data.path === null || data.land) toast.error(`${data.path === null ? "Couldn't find a way round the land" : "Part of the way round the land still touches it"} for leg ${k + 1}. Drag the red part out over the water.`);
       put(latest.current.map((l, n) => (n === k ? { ...l, path: data.path || [] } : l)));
     } catch {
-      toast.error("Couldn't plan round the land just now. Drag any red part out over the water.");
+      // No route over the water just now: the leg's miles are measured straight until it's re-routed.
     }
   };
   const rerouting = async (ks) => { setBusy((b) => b + 1); for (const k of ks) await route(k); setBusy((b) => b - 1); };
@@ -185,8 +183,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const placed = stops.filter((s, k) => s.pos && k !== wait).length;
   const idle = wait === null && pending === null;
   const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? "Tap where you'll depart from." : wait !== null ? "Tap the chart for the new stop."
-    : sel !== null ? "Change this point in its popup, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin or line to improve it, then tap Done."
-      : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag pins or lines to improve the route, then tap Done.";
+    : sel !== null ? "Change this point in its popup, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin to move it, then tap Done."
+      : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag a pin to move it, then tap Done.";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[96vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-lg p-3 sm:p-5" data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}

@@ -45,7 +45,7 @@ async def sea_check(body: LineIn, user: dict = Depends(get_current_user)):
 @router.post("/sea-route")
 async def sea_route(body: LineIn, user: dict = Depends(get_current_user)):
     """Waypoints that take a leg from its first to last point over the water (none needed when the straight line is clear):
-    A* over a water grid that keeps 150 m off the shore where it can (50 m at a pinch), straightened, smoothed and checked."""
+    A* over a water grid that keeps 10 m off the shore where it can, straightened, smoothed and checked."""
     _limit(user)
     try:
         path, land = await water_path(body.line[0], body.line[-1])

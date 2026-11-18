@@ -73,3 +73,15 @@ class TestWaterRoute:
     def test_cook_strait_into_wellington_harbour(self):
         _, land = self._route([-41.30, 174.60], [-41.25, 174.86])
         assert not any(land)
+
+    def test_tawa_bay_into_mana_marina_basin(self):
+        _, land = self._route([-41.1262, 174.1898], [-41.1014, 174.8673])
+        assert not any(land)
+
+    def test_tawa_bay_into_havelock_marina(self):
+        _, land = self._route([-41.1262, 174.1898], [-41.2777, 173.7691])
+        assert not any(land)
+
+    def test_tawa_bay_into_portage_marina(self):
+        _, land = self._route([-41.1262, 174.1898], [-41.2069, 174.1155])
+        assert not any(land)
