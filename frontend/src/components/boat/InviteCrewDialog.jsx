@@ -11,7 +11,7 @@ import { RsvpSummary } from "@/components/boat/Rsvp";
 import { INVITE_DRAFT } from "@/lib/crewRoles";
 import { RegisterPicker } from "@/components/boat/register/RegisterPicker";
 import { fillDetails, shownBriefing } from "@/lib/briefingFill";
-import { BRIEFING_PROMPT_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
+import { QUICK_ROLES_KEY, briefingPromptOn, RoleBriefingPrompt } from "@/components/boat/RoleBriefingPrompt";
 import { InviteCloseCheck } from "@/components/boat/crew/InviteCloseCheck";
 import { DEFAULT_TRIP } from "@/lib/trips";
 import { JOINCREW_OFFER } from "@/lib/joincrew";
@@ -33,6 +33,9 @@ export const crewMessage = ({ vessel, skipper, roles, notes, email, name, briefi
 ].filter(Boolean).join("\n");
 
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } };
+
+// Invite toasts show at the top, clear of the Done button.
+const TOP = { position: "top-center" };
 
 export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
@@ -69,7 +72,9 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
     setRoles(next);
     if (prompt && onSaveBriefing) setQueue((q) => [...q.filter((r) => next.includes(r)), ...added.filter((r) => !q.includes(r))]);
   };
-  const togglePrompt = (on) => { setPrompt(on); localStorage.setItem(BRIEFING_PROMPT_KEY, on ? "1" : "0"); };
+  const togglePrompt = (on) => { setPrompt(on); localStorage.setItem(QUICK_ROLES_KEY, on ? "0" : "1"); };
+  // Each invited crew member gets their own Crew Prep list on the boat.
+  const invited = (who) => { onInvited(who); window.dispatchEvent(new CustomEvent("mbp:crew-invited", { detail: { boat_id: boat.boat_id, name: who.name } })); };
   const asking = queue[0] || "";
   const nextPrompt = () => setQueue((q) => q.slice(1));
   // The draft from "Change available" stays until the invite is sent or closed, so a second run of this effect still finds it.
@@ -102,10 +107,10 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/quick-invite`, { entry_id: picked.entry_id, trip_id: trip, trip_name: cur.name, roles, ...ownWalk }, { timeout: 30000 });
       keepTrip();
-      toast.success(`${picked.name} is in for ${cur.name} (Quick Invite)${data.joined ? "" : ". They join the moment they first sign in"}. Nothing was sent to them.`);
+      toast.success(`${picked.name} is in for ${cur.name} (Quick Invite)${data.joined ? "" : ". They join the moment they first sign in"}. Nothing was sent to them.`, TOP);
       sessionStorage.removeItem(INVITE_DRAFT);
       setCrewName(""); setEmail(""); setRoles([]); setPicked(null);
-      onInvited({ name: picked.name, email: picked.email });
+      invited({ name: picked.name, email: picked.email });
     } catch (err) { setError(apiError(err, "Couldn't Quick Invite them, please try again")); }
     finally { setQuickBusy(false); }
   };
@@ -131,12 +136,12 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
       keepTrip();
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
       if (mode === "qr") setQrFor(who);
-      else if (mode === "email" && saved.email_blocked) toast.message(`Invite saved for ${crewName.trim() || who}, but no email was sent: emails are switched off on the Model Vessel while you're training.`);
-      else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`);
-      else if (copied) toast.success(mode === "link" ? `Invite saved and link copied. ${who} logs in with that email to join.` : `Invite saved, no email sent. Message copied: paste it into WhatsApp and send it to ${crewName.trim() || who}.`);
-      else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.");
+      else if (mode === "email" && saved.email_blocked) toast.message(`Invite saved for ${crewName.trim() || who}, but no email was sent: emails are switched off on the Model Vessel while you're training.`, TOP);
+      else if (mode === "email") toast.success(`Invite emailed to ${who}. They just log in to join.`, TOP);
+      else if (copied) toast.success(mode === "link" ? `Invite saved and link copied. ${who} logs in with that email to join.` : `Invite saved, no email sent. Message copied: paste it into WhatsApp and send it to ${crewName.trim() || who}.`, TOP);
+      else toast.message("Invite saved. Copying isn't allowed here, so press and hold the message to copy it.", TOP);
       if (copied) setAskClear(who);
-      onInvited({ name: crewName.trim(), email: who });
+      invited({ name: crewName.trim(), email: who });
     } catch (err) { setError(apiError(err, "Couldn't save the invite, please try again")); }
     finally { setBusy(""); }
   };
@@ -203,13 +208,18 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
           )}
         </div>
         <RolePicker groups={roleGroups} options={info.role_options || []} selected={roles} onChange={pickRoles}
-          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes, trip }); })} />
-        {onSaveBriefing && (
-          <label className="-mt-2 flex items-start gap-2 text-sm font-semibold text-[var(--navy)]" data-testid="role-briefing-toggle">
-            <input type="checkbox" data-no-dirty checked={prompt} onChange={(e) => togglePrompt(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="role-briefing-toggle-input" />
-            As Roles are clicked &amp; added, show Role Briefing
-          </label>
-        )}
+          onChangeAvailable={onChangeAvailable && (() => { saveNotes(); onChangeAvailable({ name: crewName, email, roles, notes, trip }); })}
+          below={onSaveBriefing && (
+            <div className="flex flex-col gap-1" data-testid="quick-role-selection">
+              <label className="flex items-start gap-2 text-sm font-semibold text-[var(--navy)]">
+                <input type="checkbox" data-no-dirty checked={!prompt} onChange={(e) => togglePrompt(!e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="quick-role-selection-input" />
+                Quick Role Selection
+              </label>
+              <p className={`pl-7 text-xs ${prompt ? "text-[var(--muted)]" : "font-bold text-[var(--red)]"}`} data-testid="quick-role-selection-help">
+                Check WhatsApp message below, if necessary, uncheck, reselect briefings, and override as needed.
+              </p>
+            </div>
+          )} />
         <RoleBriefingPrompt role={asking} current={fillDetails(briefings[asking.toLowerCase()] || "", details || {})} isNew={!!asking && knownRole && !knownRole(asking)} onSkip={nextPrompt}
           onSave={(text) => { onSaveBriefing(asking, text); nextPrompt(); }} />
         <CrewWalkStops boat={boat} areas={areas} skip={walkSkip} onChange={setWalkSkip} />

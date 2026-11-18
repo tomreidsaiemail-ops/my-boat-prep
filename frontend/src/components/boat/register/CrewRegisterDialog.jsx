@@ -120,6 +120,7 @@ export const CrewRegisterDialog = ({ open, boatId, online, premium, onUpgrade, o
           <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => add("party")} data-testid="reg-add-party-btn"><UserPlus className="h-4 w-4" /> Add interested party</button>
           {reg.parties.length > 0 && <EmailPartiesButton boatId={boatId} online={online} premium={premium} onUpgrade={onUpgrade} testId="reg-email-parties-btn" />}
         </div>
+        <button type="button" className="btn-solid h-12 w-full justify-center" onClick={onClose} data-testid="reg-done-btn">Done</button>
         <RegEntryDialog boatId={boatId} entry={editing} onSaved={load} onClose={() => setEditing(null)} />
         <BulkQuickReg boatId={boatId} open={bulk} onDone={load} onClose={() => setBulk(false)} />
         <ConfirmDelete item={clearing ? { name: `${clearing.walk.vessel} walkthrough` } : null} title={`Remove ${clearing?.entry.name || ""}'s ${clearing?.walk.vessel || ""} walkthrough?`}

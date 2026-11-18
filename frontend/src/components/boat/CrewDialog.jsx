@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Anchor, ClipboardList, Clock, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
+import { Anchor, ClipboardList, Clock, Eye, Loader2, Mail, Pencil, RefreshCw, UserMinus, UserPlus, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { CrewInvitePreview } from "@/components/boat/crew/CrewInvitePreview";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CrewAvatar } from "@/components/boat/register/CrewPhoto";
 import { api, apiError } from "@/lib/api";
@@ -33,14 +35,15 @@ import { openList } from "@/lib/trips";
 const bubblesFor = (p, joined, testId) => (p.briefings || (p.roles || []).map((role) => ({ role, has_briefing: false })))
   .map((b, k) => <RoleBubble key={b.role} b={b} who={p.name || p.email} joined={joined} testId={`${testId}-role-${k}`} />);
 
-const Row = ({ title, sub, bubbles, rsvp, badge, onRemove, onEdit, label, testId, top, avatar }) => (
+const Row = ({ title, sub, bubbles, rsvp, after, badge, onRemove, onEdit, label, testId, top, avatar }) => (
   <li className="flex items-center gap-2 px-3 py-2.5" data-testid={testId}>
     {avatar}
     <div className="min-w-0 flex-1">
       {top}
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <p className="truncate text-sm font-bold">{title}</p>
         {rsvp !== undefined && <span className="shrink-0"><RsvpBadge status={rsvp} testId={`${testId}-rsvp`} /></span>}
+        {after}
       </div>
       <p className="truncate text-xs text-[var(--muted)]">{sub}</p>
       {badge}
@@ -69,6 +72,8 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
   const charterOn = useFeature("charter");
   useEffect(() => { if (open && startInvite) setInviting(true); }, [open, startInvite]);
   const [editing, setEditing] = useState(null);
+  const [previewing, setPreviewing] = useState(null);
+  const { user } = useAuth();
   const [rota, setRota] = useState(false);
   const [register, setRegister] = useState(false);
   const openRota = () => {
@@ -189,6 +194,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
           ))}
           {g.invites.map((i) => (
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} rsvp={i.quick ? "in" : null} label={i.quick ? "Remove Quick Invite" : "Cancel invite"} testId={`crew-invite-${i.invite_id}`}
+              after={<button type="button" onClick={() => setPreviewing(i)} className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full border-[1.5px] border-[var(--navy)] bg-white px-2 text-[11px] font-extrabold text-[var(--navy)] hover:bg-slate-100 [transition:background-color_.15s]" data-testid={`crew-invite-${i.invite_id}-preview-btn`}><Eye className="h-3 w-3" /> Preview Invite</button>}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-invite-${i.invite_id}-trip`} />}
               badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
@@ -216,6 +222,8 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
         <EditRolesDialog member={editing} groups={roleGroups} options={info.role_options || []} onSave={saveRoles} onClose={() => setEditing(null)} />
         <CrewRegisterDialog open={register} boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} onClose={() => { setRegister(false); loadReg(); window.dispatchEvent(new Event("mbp:register-changed")); }} />
         <WatchRotaDialog open={rota} boat={boat} info={info} online={online} onSaved={load} onClose={() => setRota(false)} />
+        {previewing && <CrewInvitePreview invite={previewing} boat={{ ...details, ...boat, ...(previewing.walk_skip ? { walk_skip: previewing.walk_skip } : {}) }} vessel={name}
+          skipper={user?.name || user?.email || "Your skipper"} areas={areas} online={online} onClose={() => setPreviewing(null)} />}
       </DialogContent>
     </Dialog>
   );

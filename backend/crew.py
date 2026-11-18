@@ -343,7 +343,7 @@ async def get_crew(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     roles = doc.get("crew_roles") or {}
     now = datetime.now(timezone.utc).isoformat()
     invites = await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "expires_at": {"$gt": now}},
-                                         {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1, "trip_id": 1, "trip_name": 1, "quick": 1}).to_list(100)
+                                         {"_id": 0, "invite_id": 1, "name": 1, "email": 1, "roles": 1, "declined_at": 1, "created_at": 1, "trip_id": 1, "trip_name": 1, "quick": 1, "walk_skip": 1}).to_list(100)
     rsvp = doc.get("rsvp") or {}
     names, agreements = doc.get("crew_names") or {}, doc.get("agreements") or {}
     prep = await crew_prep_progress(user["user_id"], boat_id)

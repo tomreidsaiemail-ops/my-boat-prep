@@ -1,4 +1,4 @@
-import { ClipboardCheck } from "lucide-react";
+import { CheckCircle2, ClipboardCheck } from "lucide-react";
 
 export const prepCounts = (items) => {
   const tasks = items.filter((i, n) => !(!i.indent && items[n + 1]?.indent));
@@ -26,8 +26,13 @@ export const CrewPrepProgress = ({ name, items }) => {
 };
 
 // Small line under a person in the skipper's crew list.
-export const PrepBadge = ({ prep, testId }) => prep ? (
-  <p className={`mt-1 flex items-center gap-1 text-xs font-bold ${prep.total && prep.ticked === prep.total ? "text-emerald-800" : "text-sky-900"}`} data-testid={testId}>
-    <ClipboardCheck className="h-3.5 w-3.5 shrink-0" /> {prep.list_name}: {prep.ticked} of {prep.total} ticked
-  </p>
-) : null;
+export const PrepBadge = ({ prep, testId }) => {
+  if (!prep) return null;
+  const done = prep.total > 0 && prep.ticked === prep.total;
+  const Icon = done ? CheckCircle2 : ClipboardCheck;
+  return (
+    <p className={`mt-1 flex w-fit items-center gap-1 text-xs font-bold ${done ? "rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800 ring-1 ring-emerald-500" : "text-sky-900"}`} data-testid={testId}>
+      <Icon className="h-3.5 w-3.5 shrink-0" /> {prep.list_name}: {prep.ticked} of {prep.total} ticked
+    </p>
+  );
+};

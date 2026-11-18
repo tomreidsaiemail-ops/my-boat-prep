@@ -3,8 +3,9 @@ import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BRIEFING_MAX, BulletButton } from "@/components/boat/agreement/RoleBriefingField";
 
-export const BRIEFING_PROMPT_KEY = "mbp_role_briefing_prompt";
-export const briefingPromptOn = () => localStorage.getItem(BRIEFING_PROMPT_KEY) !== "0";
+// Quick Role Selection (ticked) skips the Role Briefing pop-up as roles are added; it starts unticked.
+export const QUICK_ROLES_KEY = "mbp_quick_role_selection";
+export const briefingPromptOn = () => localStorage.getItem(QUICK_ROLES_KEY) !== "1";
 
 // Opens as each role is added to an invite: edit or blank its Role Briefing, saved straight to the boat's Crew Roles list.
 export const RoleBriefingPrompt = ({ role, current = "", isNew, onSave, onSkip }) => {

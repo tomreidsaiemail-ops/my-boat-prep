@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Anchor, Compass, Flag, Loader2, Pencil, Users, X, Zap } from "lucide-react";
+import { Anchor, ClipboardCheck, Compass, Flag, Loader2, Pencil, UserCog, Users, X, Zap } from "lucide-react";
+import { openList } from "@/lib/trips";
 import { toast } from "sonner";
 import { EDIT_NAME, QUICK_NAME, QuickPlanDialog } from "@/components/boat/navigator/QuickPlanDialog";
 import { ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
@@ -110,6 +111,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} />
         </div>
       )}
+      {!interim && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="route-crew-hops">
+          <HopBubble icon={Users} label="Crew" tone="crew" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} testId="route-crew" />
+          <HopBubble icon={ClipboardCheck} label="Prep" tone="crew" onClick={() => openList("crewPrep")} testId="route-prep" />
+          <HopBubble icon={UserCog} label="Roles" tone="crew" onClick={() => window.dispatchEvent(new CustomEvent("mbp:crew-roles", { detail: { hop: true } }))} testId="route-roles" />
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
         {!interim && !sure && (
@@ -155,9 +163,6 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
-      {!interim && <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
-        <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status
-      </button>}
     </div>
   );
 };

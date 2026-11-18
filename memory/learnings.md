@@ -1,0 +1,1 @@
+- USER RULE (2026-06): never update Model Vessel walkthroughs (admin lists) in prod on deploy unless the user explicitly says so. No startup migrations that reword walkthrough steps.

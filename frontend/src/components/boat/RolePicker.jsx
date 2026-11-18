@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Check, Plus, SlidersHorizontal } from "lucide-react";
 
 // Roles grouped under their Crew Roles headings; roles already picked but not in the list show under "Other roles".
-export const RolePicker = ({ groups = [], options = [], selected, onChange, onChangeAvailable }) => {
+// below: shown under the heading and Change available.
+export const RolePicker = ({ groups = [], options = [], selected, onChange, onChangeAvailable, below }) => {
   const [custom, setCustom] = useState("");
   const base = groups.length ? groups : options.length ? [{ name: "", roles: options }] : [];
   const known = base.flatMap((g) => g.roles).map((r) => r.toLowerCase());
@@ -26,6 +27,7 @@ export const RolePicker = ({ groups = [], options = [], selected, onChange, onCh
           </button>
         )}
       </div>
+      {below}
       {all.length > 0 ? all.map((g, gi) => (
         <div key={`${g.name}-${gi}`} className="flex flex-col gap-1.5" data-testid={`crew-role-group-${gi}`}>
           {g.name && <span className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]" data-testid={`crew-role-group-name-${gi}`}>{g.name}</span>}

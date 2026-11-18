@@ -52,7 +52,7 @@ import { CrewAgreement } from "@/components/boat/agreement/CrewAgreement";
 import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField";
 import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
-import { CrewPrepProgress, crewPrepName } from "@/components/boat/CrewPrepProgress";
+import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeatherPhotos, weatherUrl } from "@/components/boat/navigator/WeatherPhotos";
 import { DepartureLogDialog, departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
@@ -104,7 +104,7 @@ import { MagicPanel } from "@/components/boat/MagicPanel";
 import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
@@ -191,9 +191,10 @@ const useWarn = () => {
 };
 
 // One-tap hops between the trip lists ("trip" = the Route Planning in use).
-const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"] };
+const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
 const HOP_LABEL = { arrivingDest: "Arriving" };
+const CREW_HOPS = ["crewPrep", "crewRoles"];
 
 
 export default function BoatPrep({ boatId, boats }) {
@@ -840,11 +841,13 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(isNew ? `${role} added to Crew Roles${text.trim() ? " with its briefing" : ""}` : text.trim() ? `${role} briefing saved to Crew Roles` : `${role} briefing removed from Crew Roles`);
   };
   useEffect(() => {
-    const openRoles = () => {
+    // hop: the Roles bubble on Route Planning, so there's no invite to go back to.
+    const openRoles = (e) => {
+      const hop = !!e?.detail?.hop;
       const list = crewRolesList(state);
-      if (!list) { toast.error("This boat has no Crew Roles list. Add one to choose the roles offered to crew."); window.dispatchEvent(new Event("mbp:open-invite")); return; }
+      if (!list) { toast.error("This boat has no Crew Roles list. Add one to choose the roles offered to crew."); if (!hop) window.dispatchEvent(new Event("mbp:open-invite")); return; }
       setActiveId(list.id);
-      setBackToInvite(true);
+      setBackToInvite(!hop);
       setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     };
     window.addEventListener("mbp:crew-roles", openRoles);
@@ -920,7 +923,8 @@ export default function BoatPrep({ boatId, boats }) {
       : { id: i.id, label: i.label, checked: false, ...(i.indent ? { indent: true } : {}), ...(i.level ? { level: i.level } : {}) })) };
   };
   const listExists = (name) => allLists.some((l) => l.name.toLowerCase() === name.toLowerCase());
-  const cloneMany = (source, names) => {
+  // quiet: made in the background (an invite's own Crew Prep), so the list on screen and any open window stay put.
+  const cloneMany = (source, names, quiet = false) => {
     const fresh = [...new Set(names)].filter((n) => !listExists(n));
     if (!fresh.length) return false;
     const { kind, items: copied } = cloneSource(source);
@@ -929,11 +933,24 @@ export default function BoatPrep({ boatId, boats }) {
     const stampNow = Date.now();
     const made = fresh.map((name, n) => ({ id: `custom_${stampNow}${n ? `_${n}` : ""}`, name, isSystem: false, ...(kind ? { kind } : {}), ...(category ? { category } : {}), ...(isTripList(source) ? { trip: true } : {}) }));
     mutate((s) => ({ ...s, registry: [...s.registry, ...made], data: { ...s.data, ...Object.fromEntries(made.map((l) => [l.id, copied.map((i) => ({ ...i }))])) } }));
+    if (quiet) { toast.success(`${fresh.join(", ")} made for the crew`, { position: "top-center" }); return true; }
     setActiveId(made[made.length - 1].id);
     setDialog(null);
     toast.success(fresh.length === 1 ? `${fresh[0]} created from ${source.name}` : `${fresh.join(", ")} created from ${source.name}`);
     return true;
   };
+  // Inviting a crew member gives them their own "Crew Prep - <name>" copy of Crew Prep.
+  const onCrewInvited = useRef(null);
+  onCrewInvited.current = ({ boat_id, name }) => {
+    const source = allLists.find((l) => l.id === "crewPrep");
+    if (crew || !source || !name?.trim() || boat_id !== boats.current?.boat_id) return;
+    cloneMany(source, [`${source.name} - ${name.trim()}`], true);
+  };
+  useEffect(() => {
+    const f = (e) => onCrewInvited.current?.(e.detail || {});
+    window.addEventListener("mbp:crew-invited", f);
+    return () => window.removeEventListener("mbp:crew-invited", f);
+  }, []);
   const cloneList = (name) => {
     if (!name) return "Please enter a list name";
     if (listExists(name)) return `${name} already exists`;
@@ -1081,6 +1098,9 @@ export default function BoatPrep({ boatId, boats }) {
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
   // Leaving Dock's "Route Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Route Planning.
   const hopTrip = boat.underway?.trip_id || boat.route_trip || DEFAULT_TRIP;
+  const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : active.id;
+  // Crew members' own Crew Prep lists, as bubbles on Crew Prep: light red, green once they've ticked everything.
+  const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
   // A list's checks (Select All .. Ask The Magic Mariner); on Route Planning they sit below Archived Trips.
   const checks = (
     <>
@@ -1215,16 +1235,25 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {!crew && HOPS[active.id] && (
+      {!crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
-          {HOPS[active.id].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
+          {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
             <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
-          {allLists.some((l) => l.id === hopTrip) && (
+          {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
               weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
           )}
+        </div>
+      )}
+      {!crew && prepClones.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
+          {prepClones.map((l) => {
+            const { ticked, total } = prepCounts(state.data[l.id] || []);
+            const done = total > 0 && ticked === total;
+            return <HopBubble key={l.id} icon={done ? CheckCircle2 : User} label={crewPrepName(l.name)} tone={done ? "done" : "prep"} onClick={() => setActiveId(l.id)} testId={`crew-prep-clone-${l.id}`} />;
+          })}
         </div>
       )}
       {/* Not underway: the ARRIVED card sits under the Route Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
