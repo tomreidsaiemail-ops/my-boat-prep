@@ -72,8 +72,12 @@ export const foldTrip = (log, legs, tripName) => {
   const base = Date.now() + 10;
   const first = legs[0] || {}, last = legs[legs.length - 1] || {};
   const range = (a, b) => ({ from: day(a.depart_at, a.at), to: day(b.actual_finish_at, b.arrived_at) || day(a.depart_at, a.at) });
-  const trip = { id: base, folder: "passage", trip: true, open: false, checked: false, src: first.start || "", dst: last.dest || "", ...range(first, last),
-    label: `Trip: ${tripHead(first.start, last.dest, first.depart_at, first.at)} - ${tripName} - ${legs.length} leg${legs.length === 1 ? "" : "s"}` };
+  const span = range(first, last);
+  // "Trip: Depart Mana Marina, Away 2 days, Return Mana Marina": every calendar day counts; Arrive when it ends somewhere else.
+  const days = span.from && span.to ? Math.max(1, Math.round((new Date(`${span.to}T12:00`) - new Date(`${span.from}T12:00`)) / 864e5) + 1) : 1;
+  const home = (first.start || "").trim().toLowerCase() === (last.dest || "").trim().toLowerCase();
+  const trip = { id: base, folder: "passage", trip: true, open: false, checked: false, src: first.start || "", dst: last.dest || "", ...span,
+    label: `Trip: Depart ${(first.start || "").trim() || "?"}, Away ${days} day${days === 1 ? "" : "s"}, ${home ? "Return" : "Arrive"} ${(last.dest || "").trim() || "?"}, departure ${dmyt(first.depart_at) || local(first.at) || "not set"} - ${tripName} - ${legs.length} leg${legs.length === 1 ? "" : "s"}` };
   const legFolders = legs.map((l, n) => ({ id: base + 1 + n, in: base, folder: "passage", open: false, checked: false, src: l.start || "", dst: l.dest || "", ...range(l, l),
     label: `Leg ${n + 1}: ${tripHead(l.start, l.dest, l.depart_at, l.at)}` })).filter((f, n) => members.some((m) => owner.get(m.id) === n));
   const ids = new Set(members.map((m) => m.id));
