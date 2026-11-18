@@ -1,0 +1,28 @@
+{
+  "summary": "Tested the 'Admin - Global Config' starting Model Vessel wizard. All 6 backend pytest checks passed. UI scenarios A-E were run with test-user-pro on a 390px mobile viewport, and all passed. A: Basic not finished, last used = route planning, fresh copy -> 'TRAINING · STEP 1 OF 6' (Basic, not Route Planning). Next and reload stay on Basic, step 2. B: Basic finished -> 'ROUTE PLANNING · STEP 1 OF 28'. C: localStorage cleared, Basic not finished -> Basic step 1. D: Help > Model Vessel > Crew Registration and Invites -> step 1 of 14; Next -> step 2; reload keeps Crew Registration step 2. E: config line changed to Crew Safety Briefings -> 'CREW SAFETY BRIEFINGS · STEP 1 OF 16'. One minor race: in E, Basic shows for about 150ms first, then switches.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Fresh Model Vessel copy on a device that has never loaded the Global Config or wizards-done lists",
+       "issue": "TrainingMode uses start = startingWizard(useAdminLists(CONFIG)) || BASIC, and finished comes from useWizardsDone (localStorage cache, then GET /api/wizards/mine). Both load async, so the first render can show the wrong walkthrough. Seen in Scenario E: titles over time were ['TRAINING · STEP 1 OF 6', 'CREW SAFETY BRIEFINGS · STEP 1 OF 16']. The wizardEvent 'open' effect also fired for Basic: db.wizard_progress basic opens went up by 1 for a walkthrough that was never really shown. Analytics gets an extra open. If the user presses Next during that short window, go() locks the wrong walkthrough (fresh=false). The same race can happen in Scenario B (finished=[] before /wizards/mine returns), but it did not show in my run.",
+       "affected_selectors": ["[data-testid='training-step-count']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_global_config_wizard.py", "/app/test_reports/pytest/global_config.xml"],
+  "action_items": [
+    "Minor: on a fresh copy, wait to render the wizard and send the 'open' wizardEvent until the CONFIG admin list and /wizards/mine have loaded at least once (or until a cached value exists). This stops the short Basic flash, the extra Basic open count and an accidental lock-in."
+  ],
+  "critical_code_review_comments": [
+    "TrainingMode.jsx: pick = fresh && !finished.includes(start) ? start : which || start is correct. go() clears fresh on the first move, and restartWalkthrough sets fresh=false. The logic matches the user's rule.",
+    "When copy is '' (model_copy is missing because created_at is missing), the reset never runs. That is fine because server.py always sends created_at for model boats.",
+    "On a new device with Basic finished and no last-used walkthrough, which='' falls back to start (Basic). That matches the rule."
+  ],
+  "updated_files": ["/app/backend/tests/test_global_config_wizard.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (5/5 scenarios; 1 minor race)"},
+  "seed_data_creation": "No seed data was added. Changes restored: test-user-pro's model_vessel user_boats doc (backed up and re-inserted, created_at 2026-11-16T01:49:23); test-user-pro's wizard_progress (restored to the original single Basic record, opens 3, no finished_at; records the tests added for route planning, crew registration and invites, and crew safety briefings were removed); the Global Config line is back to Basic Introduction; test_session_pro_1 model_checked=true. Note: each fresh copy also re-copied test-user-pro's model_vessel item_photos and item_files from the master (same content, new created_at).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To make a fresh copy: db.user_boats.deleteOne({owner_id:uid, boat_id:'model_vessel'}) and db.user_sessions.updateOne({session_token}, {$set:{model_checked:false}}), then load /app. On the mobile viewport, test-user-pro can get an 'Arrived?' dialog; dismiss it with 'Not yet'. Help menu testids: app-menu-btn > app-menu-help-item > app-menu-help-model-vessel-item > app-menu-help-model-wizard-<slug>. Boat option: boat-option-model_vessel."
+}

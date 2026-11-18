@@ -6,6 +6,7 @@ import { EditFinishDialog } from "@/components/boat/training/EditFinishDialog";
 import { BASIC, CONFIG, WIZARD_PREFIX, parseWizard, startingWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
 import useWizardsDone, { wizardEvent } from "@/hooks/useWizardsDone";
+import { api } from "@/lib/api";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const RESTART = "mbp-model-walkthrough";
@@ -46,12 +47,23 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
-  const pick = fresh && !finished.includes(start) ? start : which || start;
-  const wizard = wizards.find((w) => w.key === pick) || wizards.find((w) => w.key === start) || wizards.find((w) => w.key === BASIC) || wizards[0];
+  // A fresh copy waits for the latest starting walkthrough and finished list, so the wrong one never flashes up.
+  const [boot, setBoot] = useState(null);
+  useEffect(() => {
+    if (!fresh || !online) return undefined;
+    let live = true;
+    Promise.all([api.get("/admin-lists", { params: { prefix: CONFIG } }), api.get("/wizards/mine")])
+      .then(([a, b]) => live && setBoot({ start: startingWizard(a.data.lists) || BASIC, finished: b.data.finished }))
+      .catch(() => live && setBoot({}));
+    return () => { live = false; };
+  }, [fresh, online]);
+  const first = boot?.start || start;
+  const pick = fresh && !(boot?.finished || finished).includes(first) ? first : which || first;
+  const wizard = wizards.find((w) => w.key === pick) || wizards.find((w) => w.key === first) || wizards.find((w) => w.key === BASIC) || wizards[0];
   const wiz = parseWizard(wizard?.lines);
   const { steps, raw, finishRaw } = wiz;
   const [editingFinish, setEditingFinish] = useState(false);
-  const show = !shut && steps.length > 0;
+  const show = !shut && !(fresh && online && !boot) && steps.length > 0;
   // Hidden while the admin edits a step or the Finish panel, so the edit window gets the whole screen.
   const win = show && !editing && !editingFinish;
   const at = Math.min(step, steps.length);
