@@ -116,6 +116,28 @@ async def edit_wizard_step(p: StepEdit, admin: dict = Depends(require_admin)):
     return {"lines": [i["label"] for i in out]}
 
 
+class StepDelete(BaseModel):
+    wizard: str = Field(min_length=1, max_length=120)
+    step: int = Field(ge=0, le=300)
+    expect: str = Field(max_length=4000)
+
+
+@router.post("/admin/wizard-step-delete")
+async def delete_wizard_step(p: StepDelete, admin: dict = Depends(require_admin)):
+    """Delete this step on a Model Vessel wizard: just that step's line goes; the next step takes its place."""
+    doc = await _wizard_doc(p.wizard)
+    items = doc["items"]
+    at = [n for n, i in enumerate(items) if i["label"].strip() and not NOT_STEP.match(i["label"])]
+    if p.step >= len(at) or items[at[p.step]]["label"].strip() != p.expect.strip():
+        raise HTTPException(status_code=409, detail="This step was changed somewhere else. Close the walkthrough, open it again and try once more.")
+    if len(at) < 2:
+        raise HTTPException(status_code=400, detail="A walkthrough needs at least one step, so its only step can't be deleted. Edit it instead.")
+    out = items[:at[p.step]] + items[at[p.step] + 1:]
+    await _keep_version(doc)
+    await db.list_templates.update_one({"list_id": doc["list_id"]}, {"$set": {"items": out, "updated_by": admin["user_id"], "updated_at": datetime.now(timezone.utc).isoformat(), "note": "Delete Step on the Model Vessel", "version": next_version(doc)}})
+    return {"lines": [i["label"] for i in out]}
+
+
 class FinishEdit(BaseModel):
     wizard: str = Field(min_length=1, max_length=120)
     expect: list[str] = Field(max_length=100)

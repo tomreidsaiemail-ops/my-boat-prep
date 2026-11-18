@@ -11,19 +11,24 @@ const lineOk = (l) => (IF_ONLY.test(l) && !/\bthen\s+goto\b/i.test(l)) || (/^\s*
 export const EditFinishDialog = ({ open, wizard, raw, onSaved, onClose }) => {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [tried, setTried] = useState(false);
   const box = useRef(null);
-  useEffect(() => { if (open) setText(raw.join("\n")); }, [open, raw]);
+  // Filled once as the window opens (raw is rebuilt on every render, so it mustn't reset what's being typed).
+  useEffect(() => { if (open) { setText(raw.join("\n")); setTried(false); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   // Start at the first line, not scrolled down.
   useEffect(() => { if (open) setTimeout(() => { if (box.current) box.current.scrollTop = 0; box.current?.closest("[role=dialog]")?.scrollTo?.(0, 0); }, 50); }, [open]);
   const lines = text.split("\n").filter((l) => l.trim());
   const bad = lines.map((l, n) => (lineOk(l) ? 0 : n + 1)).filter(Boolean);
+  // Lines are only checked when OK is pressed.
   const save = async () => {
+    setTried(true);
+    if (bad.length) return;
     setBusy(true);
     try {
       await api.post("/admin/wizard-finish", { wizard: wizard.key, expect: raw, lines });
-      toast.success(`Finish panel saved to ${wizard.title}.`);
+      toast.success(`Finish panel saved to ${wizard.title}.`, { position: "top-center" });
       onSaved();
-    } catch (e) { toast.error(apiError(e, "Couldn't save the Finish panel. Please try again.")); }
+    } catch (e) { toast.error(apiError(e, "Couldn't save the Finish panel. Please try again."), { position: "top-center" }); }
     setBusy(false);
   };
   return (
@@ -36,11 +41,11 @@ export const EditFinishDialog = ({ open, wizard, raw, onSaved, onClose }) => {
             These replace the Finish panel lines at the end of &quot;Admin - Model Vessel - {wizard.title}&quot;. The steps are not changed.
           </DialogDescription>
         </DialogHeader>
-        <textarea ref={box} value={text} onChange={(e) => setText(e.target.value)} rows={12} className="field-input !h-auto min-h-[16rem] resize-y !py-2 font-mono !text-sm leading-snug" aria-label="Finish panel lines" data-testid="edit-finish-text" />
-        {bad.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="edit-finish-error">Every line must start with --, ---, $$, $$$, %% or ???IF and have some text. Check line {bad.slice(0, 5).join(", ")}.</p>}
+        <textarea ref={box} value={text} onChange={(e) => { setText(e.target.value); setTried(false); }} rows={12} className="field-input !h-auto min-h-[16rem] resize-y !py-2 font-mono !text-sm leading-snug" aria-label="Finish panel lines" data-testid="edit-finish-text" />
+        {tried && bad.length > 0 && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="edit-finish-error">Every line must start with --, ---, $$, $$$, %% or ???IF and have some text. Check line {bad.slice(0, 5).join(", ")}.</p>}
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="edit-finish-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" disabled={busy || bad.length > 0} onClick={save} data-testid="edit-finish-ok-btn">
+          <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" disabled={busy} onClick={save} data-testid="edit-finish-ok-btn">
             {busy && <Loader2 className="h-4 w-4 animate-spin" />} OK
           </button>
         </div>

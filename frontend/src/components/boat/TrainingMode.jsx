@@ -84,7 +84,8 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
       {admin && show && done && <EditFinishDialog open={editingFinish} wizard={wizard} raw={finishRaw} onClose={() => setEditingFinish(false)}
         onSaved={() => { setEditingFinish(false); refreshAdminLists(); }} />}
       {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={wiz.editAt[at]} raw={raw[at] || ""} onClose={() => setEditing(false)}
-        onSaved={(before) => { setEditing(false); move(at + before, path.map((p) => (p >= at ? p + before : p)), answers); refreshAdminLists(); }} />}
+        only={steps.length < 2} onSaved={(before) => { setEditing(false); move(at + before, path.map((p) => (p >= at ? p + before : p)), answers); refreshAdminLists(); }}
+        onDeleted={() => { setEditing(false); move(at, path.filter((p) => p !== at).map((p) => (p > at ? p - 1 : p)), answers); refreshAdminLists(); }} />}
     </>
   );
 };
