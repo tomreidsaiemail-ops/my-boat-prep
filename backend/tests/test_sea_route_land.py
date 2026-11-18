@@ -48,6 +48,28 @@ class TestSeaCheck:
         r = requests.post(f"{BASE_URL}/api/sea-check", json={"line": [MANA, PICTON]}, timeout=30)
         assert r.status_code == 401
 
-    def test_sea_route_removed(self):
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": {"lat": MANA[0], "lon": MANA[1]}, "b": {"lat": PICTON[0], "lon": PICTON[1]}}, headers=PRO, timeout=30)
-        assert r.status_code in (404, 405), r.status_code
+
+
+class TestWaterRoute:
+    """Routes drawn over OpenStreetMap water, checked against the same outlines: no inner part may cross land."""
+
+    def _route(self, a, b):
+        r = requests.post(f"{BASE_URL}/api/sea-route", json={"line": [a, b]}, headers=PRO, timeout=120)
+        assert r.status_code == 200, r.text
+        path = r.json()["path"]
+        assert path, "a route round the land was expected"
+        full = [a, *path, b]
+        land = requests.post(f"{BASE_URL}/api/sea-check", json={"line": full}, headers=PRO, timeout=120).json()["land"]
+        return path, land
+
+    def test_mana_to_picton_stays_on_water(self):
+        _, land = self._route(MANA, PICTON)
+        assert not any(land[1:-1])
+
+    def test_kenepuru_to_ship_cove_out_of_the_sounds(self):
+        _, land = self._route([-41.18, 174.08], [-41.10, 174.24])
+        assert not any(land)
+
+    def test_cook_strait_into_wellington_harbour(self):
+        _, land = self._route([-41.30, 174.60], [-41.25, 174.86])
+        assert not any(land)

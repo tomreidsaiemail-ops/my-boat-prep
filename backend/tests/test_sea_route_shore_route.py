@@ -18,13 +18,6 @@ ROUTE = {
 
 
 # Removed auto sea-route endpoint
-class TestSeaRouteRemoved:
-    def test_sea_route_gone(self):
-        r = requests.post(f"{BASE_URL}/api/sea-route", json={"a": MANA, "b": PICTON}, headers=PRO, timeout=30)
-        assert r.status_code in (404, 405)
-
-
-# Shore route share + watched track
 class TestShoreRoute:
     def test_put_route_and_shore_sees_it(self):
         r = requests.put(f"{BASE_URL}/api/boats/main/shore/route", json=ROUTE, headers=PRO, timeout=30)
