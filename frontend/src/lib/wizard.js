@@ -9,6 +9,12 @@ const FINISH = /^\s*(--|\$\$|%%)/;
 export const isWizardName = (name = "") => PREFIX_RE.test(name);
 export const wizardTitle = (name = "") => name.replace(PREFIX_RE, "").replace(/\s+/g, " ").trim();
 export const wizardKey = (name = "") => wizardTitle(name).toLowerCase();
+export const CONFIG = "Admin - Global Config";
+// "Admin - Global Config" line "Starting Model Vessel Wizard, <walkthrough list name>": that walkthrough's key.
+export const startingWizard = (lists = []) => {
+  const line = (lists[0]?.items || []).map((i) => i.label.match(/^\s*starting model vessel wizard\s*[,:;-]?\s*(.+)$/i)).find(Boolean);
+  return line ? wizardKey(line[1]) : "";
+};
 
 const kindOf = (l) => (/^\s*%%/.test(l) ? "para" : /^\s*\$\$\$/.test(l) ? "link" : /^\s*\$\$/.test(l) ? "idea" : /^\s*---/.test(l) ? "tick" : "head");
 // Finish panel lines: "--" bold, "---" ticked, "$$" an idea, "$$$" a link that opens another walkthrough. Every other line is a step.

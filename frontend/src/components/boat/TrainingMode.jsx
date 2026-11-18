@@ -3,16 +3,19 @@ import { GraduationCap } from "lucide-react";
 import useAdminLists, { refreshAdminLists } from "@/hooks/useAdminLists";
 import { EditStepDialog } from "@/components/boat/training/EditStepDialog";
 import { EditFinishDialog } from "@/components/boat/training/EditFinishDialog";
-import { BASIC, WIZARD_PREFIX, parseWizard, wizardsFrom } from "@/lib/wizard";
+import { BASIC, CONFIG, WIZARD_PREFIX, parseWizard, startingWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
-import { wizardEvent } from "@/hooks/useWizardsDone";
+import useWizardsDone, { wizardEvent } from "@/hooks/useWizardsDone";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const RESTART = "mbp-model-walkthrough";
 const openKey = (w) => `mbp_wizard_opened:${w}`;
-const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, path: `mbp_model_path:${uid}`, answers: `mbp_model_answers:${uid}`, copy: `mbp_model_copy:${uid}`, which: `mbp_model_wizard:${uid}` });
-const reset = (k, which = BASIC) => {
-  localStorage.setItem(k.step, "0"); localStorage.setItem(k.path, "[]"); localStorage.setItem(k.answers, "{}"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false"); localStorage.setItem(k.which, JSON.stringify(which));
+const keys = (uid) => ({ step: `mbp_model_step:${uid}`, shut: `mbp_model_wizard_closed:${uid}`, mini: `mbp_model_wizard_mini:${uid}`, path: `mbp_model_path:${uid}`, answers: `mbp_model_answers:${uid}`, copy: `mbp_model_copy:${uid}`, which: `mbp_model_wizard:${uid}`, fresh: `mbp_model_fresh:${uid}` });
+// No walkthrough given (a fresh Model Vessel copy): the starting walkthrough until it's finished, then the last one used.
+const reset = (k, which) => {
+  localStorage.setItem(k.step, "0"); localStorage.setItem(k.path, "[]"); localStorage.setItem(k.answers, "{}"); localStorage.setItem(k.shut, "false"); localStorage.setItem(k.mini, "false");
+  localStorage.setItem(k.fresh, JSON.stringify(which === undefined));
+  if (which !== undefined) localStorage.setItem(k.which, JSON.stringify(which));
 };
 
 // Help > Model Vessel > <walkthrough>: that wizard from step 1, open.
@@ -24,9 +27,12 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const [editing, setEditing] = useState(false);
   const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
-  // A freshly made copy of the Model Vessel starts the chosen walkthrough (Basic Introduction if none) again at step 1.
-  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k, read(k.which, BASIC)); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
-  const [which, setWhich] = useState(() => read(k.which, BASIC));
+  const start = startingWizard(useAdminLists(CONFIG, online)) || BASIC;
+  const finished = useWizardsDone(uid, online);
+  // A freshly made copy of the Model Vessel starts again at step 1.
+  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
+  const [which, setWhich] = useState(() => read(k.which, ""));
+  const [fresh, setFresh] = useState(() => read(k.fresh, false));
   const [step, setStep] = useState(() => read(k.step, 0));
   // Panels visited (for Back) and the skipper's answers to "??" questions.
   const [path, setPath] = useState(() => read(k.path, []));
@@ -36,11 +42,12 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const [mini, setMini] = useState(() => read(k.mini, false));
   const opened = useRef("");
   useEffect(() => {
-    const again = () => { opened.current = ""; sessionStorage.removeItem(openKey(read(k.which, BASIC))); setWhich(read(k.which, BASIC)); setStep(0); setPath([]); setAnswers({}); setShut(false); setMini(false); };
+    const again = () => { opened.current = ""; sessionStorage.removeItem(openKey(read(k.which, BASIC))); setWhich(read(k.which, BASIC)); setFresh(false); setStep(0); setPath([]); setAnswers({}); setShut(false); setMini(false); };
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
-  const wizard = wizards.find((w) => w.key === which) || wizards.find((w) => w.key === BASIC) || wizards[0];
+  const pick = fresh && !finished.includes(start) ? start : which || start;
+  const wizard = wizards.find((w) => w.key === pick) || wizards.find((w) => w.key === start) || wizards.find((w) => w.key === BASIC) || wizards[0];
   const wiz = parseWizard(wizard?.lines);
   const { steps, raw, finishRaw } = wiz;
   const [editingFinish, setEditingFinish] = useState(false);
@@ -67,7 +74,11 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
     document.body.classList.toggle("training-finish", win && done);
     return () => document.body.classList.remove("training-open", "training-mini", "training-finish");
   }, [win, mini, done]);
-  const go = (n) => { setStep(n); localStorage.setItem(k.step, JSON.stringify(n)); };
+  // The first move locks in the walkthrough being shown, so it stays put after the starting one is finished.
+  const go = (n) => {
+    setStep(n); localStorage.setItem(k.step, JSON.stringify(n));
+    if (wizard && (fresh || which !== wizard.key)) { setWhich(wizard.key); setFresh(false); localStorage.setItem(k.which, JSON.stringify(wizard.key)); localStorage.setItem(k.fresh, "false"); }
+  };
   const move = (n, p, a) => { go(n); setPath(p); setAnswers(a); localStorage.setItem(k.path, JSON.stringify(p)); localStorage.setItem(k.answers, JSON.stringify(a)); };
   const close = (v) => { setShut(v); localStorage.setItem(k.shut, JSON.stringify(v)); };
   const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };

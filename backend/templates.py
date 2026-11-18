@@ -150,7 +150,7 @@ async def boat_types(_: dict = Depends(get_current_user)):
     return {"types": types or DEFAULT_BOAT_TYPES}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ", "admin - global config ")
 
 
 @router.get("/admin-lists")
@@ -491,6 +491,12 @@ DISABLED_FEATURES = [
      ["Speak Button Feature; enabled for nobody", "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody"]),
 ]
 
+GLOBAL_CONFIG = [
+    ("Admin - Global Config", "App-wide settings, one per line. \"Starting Model Vessel Wizard, <walkthrough list name>\": the walkthrough a new Model Vessel opens with "
+     "until the skipper has finished it; after that a new Model Vessel opens their last used walkthrough.",
+     ["Starting Model Vessel Wizard, Admin - Model Vessel - Basic Introduction Walkthrough"]),
+]
+
 BOAT_TYPES_ADMIN = [
     (BOAT_TYPES_LIST, "The choices in Boat type (Additional details), in this order. Skippers can still pick Other... and type their own.", DEFAULT_BOAT_TYPES),
 ]
@@ -547,7 +553,7 @@ CREW_WALK_HELP = [
 async def seed_log_help():
     """Runs once per panel group: adds the editable help panels, if they aren't there already."""
     now = datetime.now(timezone.utc).isoformat()
-    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP), ("ignore_300_help", IGNORE_300_HELP), ("crew_walkthrough_help", CREW_WALK_HELP)):
+    for mig, panels in (("ships_log_help", LOG_HELP[:-1]), ("zone_map_selection_help", LOG_HELP[-1:]), ("magic_fish_bartender_help", MAGIC_HELP), ("inventory_help", INVENTORY_HELP), ("charter_admin_lists", CHARTER_ADMIN), ("disabled_features_list", DISABLED_FEATURES), ("boat_types_list", BOAT_TYPES_ADMIN), ("zone_map_how_to_help", ZONE_MAP_HOW_TO), ("routes_crew_help", ROUTES_CREW_HELP), ("ignore_300_help", IGNORE_300_HELP), ("crew_walkthrough_help", CREW_WALK_HELP), ("global_config_list", GLOBAL_CONFIG)):
         if await db.migrations.find_one({"_id": mig}):
             continue
         for name, description, lines in panels:
