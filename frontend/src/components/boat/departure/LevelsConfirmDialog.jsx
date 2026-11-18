@@ -27,8 +27,8 @@ export const LevelsConfirmDialog = ({ ask, boat, onConfirm, onClose }) => {
             <div className="flex flex-col gap-2.5">
               {rows.map(([k, n]) => <LevelPicker key={k} id={`confirm-${k}`} label={n} value={levels[k]} lowText={lowText} onChange={(v) => setLevels((l) => ({ ...l, [k]: v }))} />)}
             </div>
-            {missing.length > 0 && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="levels-confirm-missing">Pick a level for {missing.join(", ")}.</p>}
-            <div className="sticky bottom-0 -mx-1 flex gap-2 bg-white px-1 pb-1 pt-2">
+            <div className="sticky bottom-0 -mx-1 flex flex-wrap gap-2 bg-white px-1 pb-1 pt-2">
+              {missing.length > 0 && <p role="alert" className="w-full text-sm font-bold text-[var(--red)]" data-testid="levels-confirm-missing">Pick a level for {missing.join(", ")}.</p>}
               <button type="button" className="btn-solid h-11 flex-1 justify-center" disabled={missing.length > 0} onClick={() => onConfirm(levels)} data-testid="levels-confirm-btn">Confirm levels</button>
               <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="levels-confirm-cancel-btn">Cancel</button>
             </div>

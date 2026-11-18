@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test of the levels confirm pop-up, START/DESTINATION/DEPARTURE log prefix and End-of-trip fold. Run on test-user-pro's Model Vessel at 390px mobile. I set up Route Planning with TEST_Mana -> TEST_ShipCove departing today and a 2nd planned leg TEST_ShipCove -> TEST_Picton, then checked each step in the DB. All 7 requested scenarios PASS. (1) A missing Event name still shows the blocked message, not the pop-up. (2) DEPART with no last_levels opens levels-confirm-dialog with nothing pre-filled. Confirm stays disabled and levels-confirm-missing lists 'Fuel, LPG, Water, Engine battery, House bank' until every row is picked. After Confirm, all-done-dialog opens and the Leaving the Dock panel shows the picked levels. depart.levels and last_levels are saved. (3) Both DEPART log entries start with 'TEST_Mana to TEST_ShipCove, departure 18/11/2026 09:00 - '. (4) ARRIVED while underway opens the pop-up pre-filled with the departure levels. Changed levels are saved to arrive.levels. Both arrival entries carry the leg prefix. The End-of-trip checkbox was UNticked because a planned leg remained, and the fold step was hidden. Ticking it shows the fold step and unticking hides it again. Arriving left the entries unfolded. (5) New arrival is pre-filled with the latest levels. Cancel changed nothing; Confirm set arrive.levels. (6) New departure is pre-filled with the latest arrival levels. Cancel does not open the interim dialog; Confirm opens interim-departure-dialog. Leave Mooring logged 'TEST_ShipCove to TEST_Picton, departure 18/11/2026 07:47 - Interim departure, Leave Mooring ... Levels: Fuel 3/4, LPG 3/4, Water Full, Engine battery Full, House bank 1/2.'. legs.routeHazards[1].levels and last_levels were saved. (7) The next ARRIVED was pre-filled with the leg-2 levels, and End of trip was PRE-TICKED (no planned legs left). Arriving folded everything into one entry: 'TEST_Mana to TEST_Picton, departure 18/11/2026 09:00 - Trip - Route Plan: Route Planning - TEST_LevelsTrip - TEST_Mana to TEST_Picton, 18/11/2026 - 2 legs - ...'. legs, depart and arrive were reset. 'Used on the passage TEST_ShipCove to TEST_Picton: fuel about 25 L' was worked out from leg 2's departure (3/4 -> 1/2 of 100 L), not from Leaving Dock (Full). House bank shows 'was 1/2', the leg level. Regression: Returning to Dock pre-ticks End of trip even with a planned leg left, and folds the single-leg trip. A second DEPART with last_levels set opened the pop-up pre-filled with the last levels.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LevelsConfirmDialog (390px)", "issues": ["When all 5 levels are missing, the red levels-confirm-missing line is half hidden under the sticky Confirm/Cancel bar until you scroll. Consider putting it above the pickers, or inside the sticky bar."]},
+      {"screen": "AllDoneDialog arrival", "issues": ["'Actual finish date and time' uses the browser's native date/time inputs, not the shadcn calendar. This was already there before this change."]},
+      {"screen": "Model Vessel training mode", "issues": ["The TRAINING step bottom sheet covers the bottom ~200px of the dialogs on mobile. The dialog buttons were still reachable. This was already there before this change."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: move or keep levels-confirm-missing visible above the sticky footer on small screens.",
+    "Optional edge case: if the skipper unticks End of trip on the final arrival, the next Leaving the Dock DEPART skips the levels pop-up. b.depart.levels from the old trip are still there (depart is only reset when folding), so the old dock levels are reused without asking. That DEPART also replaces boat.legs[trip] with a fresh [leg], so the old trip's legs can never be folded. Consider clearing depart.levels, or always asking, when a new dock departure starts while the old legs are arrived but not folded."
+  ],
+  "critical_code_review_comments": [
+    "useAllDone.js openDepart: the trip/event check runs before the levels pop-up. Correct.",
+    "useAllDone.js openArrive: the levels check runs before everything else, even when not underway. This is fine, but ARRIVED on a boat that was never underway will also ask for levels first.",
+    "latestLevels merges last_levels < leg depart levels < arrive levels. Pre-fill was correct in every step tested.",
+    "newArrival saveLevels('arrive', v, false) drops arrive.log_id/log_sig and keeps only .leg. Intended (fresh arrival), but the arrival status entry already in the log is no longer linked to it.",
+    "tripFold.js interim leg depart_at is 'now' when the planned leg's own time (19/11 09:00) is ignored by the interim dialog default. So the head reads 'departure 18/11/2026 07:47'. Probably intended (leaving now).",
+    "BoatPrep.jsx is 1360 lines, still well over the 700-line guideline."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "100% (7/7 requested scenarios + 2 regressions)"},
+  "seed_data_creation": "Temporarily edited test-user-pro/model_vessel in Mongo: Route Planning start/dest/weather (event TEST_LevelsTrip, 2 planned legs) and tank sizes (fuel 100, water 200, gas 1x9). The whole Model Vessel doc was backed up first (/tmp/backup_pro_model_vessel.json) and restored after the tests, so it is not underway, has no TEST_ log entries and last_levels is null. Not changed by me: test-user-pro/main got an automatic template sync (tpl_a469ac3a3f 'Admin - Model Vessel - Basic Introduction Walkthrough' added to registry/data) and last_levels null->{} at 07:47:35 while the app was loaded. These come from the app's template propagation and the new pydantic default.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use Model Vessel of test-user-pro (cookie session_token=test_session_pro_1). Set boat.route_start/route_dest and boat.weather.depart_at to today, plus weather.event_name, in Mongo user_boats {owner_id:'test-user-pro', boat_id:'model_vessel'}. Add weather.legs for a planned 2nd leg. After reload the app opens on Boat Inventory, so ARRIVED goes to arrivingDest unless you first select list-option-returningDock. LevelPicker testids: level-confirm-<fuel|gas|water|bat_engine|bat_house>-<full|3q|half|1q|empty>. Pressed state is aria-pressed/aria-checked/data-state."
+}

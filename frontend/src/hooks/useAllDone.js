@@ -45,7 +45,9 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
 
   const openDepart = (lv) => {
     const b = state.boat || {};
-    const d = lv ? { ...(b.depart || {}), levels: lv } : b.depart || {};
+    // A check already used for an earlier departure isn't reused: the new one starts from the confirmed levels.
+    const old = !!b.depart?.trip_id && !b.underway?.trip_id;
+    const d = lv ? { ...(old ? {} : b.depart || {}), levels: lv } : b.depart || {};
     const trips = routeTrips(state.registry, b);
     const trip = pickTrip(trips, b.route_trip, b.route_trip_day);
     if (!trip) return;
@@ -63,8 +65,8 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         : { tone: "info", text: "Checking your shore contacts..." }) },
     ];
     const tripBlock = tripIssue(trips, trip) || (!trip.event && `Enter the Event or Trip name on ${trip.name} before you depart.`);
-    if (!tripBlock && !allLevelsPicked(b, d.levels)) {
-      setAsk({ title: "Confirm your levels before you depart", levels: { ...latestLevels(b), ...(d.levels || {}) }, then: (v) => { saveLevels("depart", v); openDepart(v); } });
+    if (!tripBlock && ((!lv && old) || !allLevelsPicked(b, d.levels))) {
+      setAsk({ title: "Confirm your levels before you depart", levels: { ...latestLevels(b), ...(old ? {} : d.levels || {}) }, then: (v) => { saveLevels("depart", v, !old); openDepart(v); } });
       return;
     }
     const blocked = tripBlock || logBlock(b, d);
