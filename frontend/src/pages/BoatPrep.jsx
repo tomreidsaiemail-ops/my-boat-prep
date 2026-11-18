@@ -104,7 +104,7 @@ import { MagicPanel } from "@/components/boat/MagicPanel";
 import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { CheckCircle2, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
@@ -191,10 +191,11 @@ const useWarn = () => {
 };
 
 // One-tap hops between the trip lists ("trip" = the Route Planning in use).
-const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"] };
-const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
+const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"] };
+const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck };
+const HOP_TONE = { crewPrep: "crew" };
 const HOP_LABEL = { arrivingDest: "Arriving" };
-const CREW_HOPS = ["crewPrep", "crewRoles"];
+const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone"];
 
 
 export default function BoatPrep({ boatId, boats }) {
@@ -1098,7 +1099,7 @@ export default function BoatPrep({ boatId, boats }) {
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
   // Leaving Dock's "Route Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Route Planning.
   const hopTrip = boat.underway?.trip_id || boat.route_trip || DEFAULT_TRIP;
-  const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : active.id;
+  const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : crewPrepName(active.name) ? "crewPrepClone" : active.id;
   // Crew members' own Crew Prep lists, as bubbles on Crew Prep: light red, green once they've ticked everything.
   const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
   // A list's checks (Select All .. Ask The Magic Mariner); on Route Planning they sit below Archived Trips.
@@ -1238,7 +1239,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
-            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
+            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
