@@ -141,7 +141,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
   const onLand = landOf.some((f) => f?.some(Boolean));
 
   return (
-    <div className="flex flex-col gap-2" data-testid="stops-map">
+    <div className="flex flex-col gap-2" data-testid="stops-map" data-no-dirty>
       <div className="relative isolate h-[48dvh] overflow-hidden rounded-md border border-[var(--line)]">
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
         {overlay}

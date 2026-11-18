@@ -96,6 +96,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
   const known = useRef(new Set((draft || []).map((l) => l.id))); // legs already in Route Planning keep their arriving type
 
+  const initial = useRef(null);
+  if (initial.current === null) initial.current = JSON.stringify(legs);
   const put = (next) => { latest.current = next; setLegs(next); };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
   // Leg k joins point k and k+1: route it round any land.
@@ -187,7 +189,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag pins or lines to improve the route, then tap Done.";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[96vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-lg p-3 sm:p-5" data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-h-[96vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-lg p-3 sm:p-5" data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
+        dirty={pending !== null || JSON.stringify(legs) !== initial.current}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold" data-testid="quick-plan-title">
             {fresh ? <Zap className="h-5 w-5 text-amber-500" /> : <Pencil className="h-5 w-5 text-amber-500" />} {fresh ? QUICK_NAME : EDIT_NAME}

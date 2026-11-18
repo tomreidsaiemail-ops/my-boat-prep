@@ -31,10 +31,10 @@ const problem = (l) => {
   return "";
 };
 
-const LegForm = ({ leg, n, onSave, onDelete }) => {
+const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
   const [l, setL] = useState(leg);
   const [error, setError] = useState("");
-  const set = (patch) => { setL((x) => ({ ...x, ...patch })); setError(""); };
+  const set = (patch) => { const next = { ...l, ...patch }; setL(next); onDirty(JSON.stringify(next) !== JSON.stringify(leg)); setError(""); };
   const save = () => { const why = problem(l); setError(why); if (!why) onSave({ ...l, route_start: l.route_start.trim(), route_dest: l.route_dest.trim() }); };
   return (
     <div className="flex flex-col gap-3">
@@ -78,6 +78,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
   latest.current = legs;
   const putLegs = (patch, next) => { latest.current = next; onChange({ ...patch, legs: next }); };
   const [edit, setEdit] = useState(null);
+  const [legDirty, setLegDirty] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [view, setView] = useState(false);
   // Stop 1 is the Route Plan START, stop 2 its DESTINATION, then each planned leg's DESTINATION. Leg 1's line is weather.path.
@@ -100,6 +101,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
     const follow = (x) => (!old ? x : { ...x, ...(x.route_start === old.route_dest ? { route_start: leg.route_dest } : {}), ...(x.depart_at === old.finish_at ? { depart_at: leg.finish_at } : {}) });
     onChange({ legs: old ? legs.map((x, n) => (n === edit.at ? leg : n === edit.at + 1 ? follow(x) : x)) : [...legs, leg] });
     setEdit(null);
+    setLegDirty(false);
     if (leg.arrive_type === "dock") setConfirm(true);
   };
   const setType = (n, t) => {
@@ -119,13 +121,13 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
       {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
-      <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
-        <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="leg-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <Dialog open={!!edit} onOpenChange={(o) => { if (!o) { setEdit(null); setLegDirty(false); } }}>
+        <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="leg-dialog" onOpenAutoFocus={(e) => e.preventDefault()} dirty={legDirty}>
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-extrabold">{edit && edit.at < legs.length ? "Edit" : "Add"} Leg {(edit?.at ?? 0) + 2}</DialogTitle>
             <DialogDescription>Plan this leg of the trip. Pick Returning to Dock for the last leg.</DialogDescription>
           </DialogHeader>
-          {edit && <LegForm leg={edit.leg} n={edit.at + 1} onSave={save} onDelete={edit.at < legs.length ? () => { const n = edit.at; setEdit(null); remove(n); } : null} />}
+          {edit && <LegForm onDirty={setLegDirty} leg={edit.leg} n={edit.at + 1} onSave={save} onDelete={edit.at < legs.length ? () => { const n = edit.at; setEdit(null); setLegDirty(false); remove(n); } : null} />}
         </DialogContent>
       </Dialog>
       <TripConfirm open={confirm} legs={[first, ...legs]} name={name} onClose={() => setConfirm(false)} />
