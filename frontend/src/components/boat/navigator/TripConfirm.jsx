@@ -42,7 +42,7 @@ const Stops = ({ legs }) => {
   return <ol className="flex flex-col gap-4" data-testid="trip-stops">{legs.map((l, n) => <Leg key={l.id ?? n} leg={l} n={n} prev={legs[n - 1]} miles={miles[n]} />)}</ol>;
 };
 
-// Shown once a planned leg returns to the dock, or from View planned route... (onPlace: with the Stops and Map tabs).
+// Shown once a planned leg returns to the dock, or from the Route bubble (onPlace: with the Stops and Map tabs).
 export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedraw }) => {
   const home = arriveType(legs[legs.length - 1]?.arrive_type)?.key === "dock";
   return (

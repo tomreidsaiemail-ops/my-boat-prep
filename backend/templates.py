@@ -564,6 +564,18 @@ async def seed_log_help():
         await db.migrations.insert_one({"_id": mig, "at": now})
 
 
+async def reword_route_view_step():
+    """Runs once: "View planned route..." became the Route bubble, so the Route Planning walkthrough step says so (only if unedited)."""
+    if await db.migrations.find_one({"_id": "route_bubble_step"}):
+        return
+    old = "Tap View planned route.... It shows every leg"
+    async for t in db.list_templates.find({"custom": True, "name": "Admin - Model Vessel - Route Planning"}, {"_id": 1, "items": 1}):
+        items = [{**i, "label": i["label"].replace(old, "Tap the Route bubble at the top. It shows every leg")} for i in t.get("items", [])]
+        if items != t.get("items"):
+            await db.list_templates.update_one({"_id": t["_id"]}, {"$set": {"items": items, "updated_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"version": 1}})
+    await db.migrations.insert_one({"_id": "route_bubble_step", "at": datetime.now(timezone.utc).isoformat()})
+
+
 async def seed_common_names():
     """Runs once: adds the Galley cupboard pick list offered while batch scanning the Galley zone."""
     if await db.migrations.find_one({"_id": "common_galley_names"}):

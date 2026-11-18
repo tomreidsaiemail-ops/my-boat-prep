@@ -29,7 +29,7 @@ const MapPopup = ({ at, box, children }) => {
 };
 
 // Map tab: pick a stop, tap the map to drop its pin. Only pins are shown; each leg's water route is worked out behind the scenes.
-// quick (Quick Trip Plan Draft): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
+// quick (Quick Draft Plan): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
 // onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted. overlay: drawn over the map.
 export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null }) => {
   const gps = useGps();

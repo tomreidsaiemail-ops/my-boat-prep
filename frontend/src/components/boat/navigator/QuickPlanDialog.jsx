@@ -6,8 +6,8 @@ import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navi
 import { legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 
-export const QUICK_NAME = "Quick Trip Plan Draft";
-export const EDIT_NAME = "Edit Trip Plan Draft";
+export const QUICK_NAME = "Quick Draft Plan";
+export const EDIT_NAME = "Edit Draft Plan";
 const pad = (n) => String(n).padStart(2, "0");
 // Leg n (1 = first) leaves at 06:00 and finishes at 09:00, n days from today.
 const at = (days, hh) => {
@@ -77,7 +77,7 @@ const TripMiles = ({ legs }) => {
 };
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
-// draft: the Route Planning legs of an existing Trip Plan Draft, opened for editing (select: the point to show first).
+// draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first).
 export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null }) => {
   const [fresh, setFresh] = useState(!draft);
   const [legs, setLegs] = useState(() => draft || [newLeg(1)]);

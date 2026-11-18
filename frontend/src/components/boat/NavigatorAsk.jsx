@@ -11,6 +11,7 @@ import { stamp } from "@/components/boat/departure/LogCopy";
 import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
+import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -61,7 +62,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     auto.current = next;
     onWeather({ ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true, depart_at: first.depart_at, finish_at: first.finish_at,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
-    toast.success(`${fresh ? QUICK_NAME : "Trip Plan Draft"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Route Planning`);
+    toast.success(`${fresh ? QUICK_NAME : "Draft Plan"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Route Planning`);
   };
 
   // Keep the route at the front of the question, leaving anything the skipper added after it.
@@ -93,6 +94,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
 
   return (
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
+      {!interim && (
+        <div className="flex flex-wrap items-center gap-2" data-testid="route-hops">
+          {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
+          {onArriving && <HopBubble icon={Flag} label="Arriving" onClick={onArriving} testId="route-arriving" />}
+          <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} />
+        </div>
+      )}
       {!interim && !sure && (
         <button type="button" onClick={() => (draft ? setQuick({}) : hasRoute ? setSure(1) : setQuick({}))} className="btn-ghost h-11 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
           {draft ? <Pencil className="h-4 w-4 text-amber-500" /> : <Zap className="h-4 w-4 text-amber-500" />} {draft ? EDIT_NAME : QUICK_NAME}...
@@ -100,11 +108,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       )}
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
       {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} />}
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
-        {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
-        {onArriving && <HopBubble icon={Flag} label="Arriving at Destination" onClick={onArriving} testId="route-arriving" />}
-      </div>
+      <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />

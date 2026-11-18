@@ -106,6 +106,7 @@ import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
+import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
@@ -192,6 +193,7 @@ const useWarn = () => {
 // One-tap hops between the trip lists ("trip" = the Route Planning in use).
 const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
+const HOP_LABEL = { arrivingDest: "Arriving" };
 
 
 export default function BoatPrep({ boatId, boats }) {
@@ -1216,9 +1218,13 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && HOPS[active.id] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[active.id].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
-            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
+            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
+          {active.id !== "leavingDock" && allLists.some((l) => l.id === hopTrip) && (
+            <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
+              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
+          )}
         </div>
       )}
       {/* Not underway: the ARRIVED card sits under the Route Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}

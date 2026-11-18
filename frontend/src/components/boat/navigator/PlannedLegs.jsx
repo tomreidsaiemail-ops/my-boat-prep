@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Map as MapIcon, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dmyt } from "@/lib/allDone";
 import { When } from "@/components/boat/navigator/NavigatorExtras";
 import { ArriveQuickPick, ArriveType, arriveType } from "@/components/boat/navigator/ArriveType";
 import { TripConfirm } from "@/components/boat/navigator/TripConfirm";
+import { firstLeg } from "@/components/boat/navigator/PlannedRouteView";
 
 const Field = ({ id, label, value, onChange, placeholder }) => (
   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -70,29 +71,13 @@ const LegRow = ({ leg, n, onEdit, onType }) => (
 );
 
 // Route Planning: the Route Plan is Leg 1; further planned legs follow it in order.
-// onDraft(point): a Trip Plan Draft exists, so adding or deleting a leg opens its map at that point.
+// onDraft(point): a Draft Plan exists, so adding or deleting a leg opens its map at that point.
 export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft }) => {
   const legs = weather.legs || [];
-  // Routes drawn over water can land before the next render, so each builds on the latest legs.
-  const latest = useRef(legs);
-  latest.current = legs;
-  const putLegs = (patch, next) => { latest.current = next; onChange({ ...patch, legs: next }); };
   const [edit, setEdit] = useState(null);
   const [legDirty, setLegDirty] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [view, setView] = useState(false);
-  // Stop 1 is the Route Plan START, stop 2 its DESTINATION, then each planned leg's DESTINATION. Leg 1's line is weather.path.
-  const clearPaths = (ls, patch, ks) => ks.reduce((acc, k) => (k < 0 || k > legs.length ? acc : k === 0 ? { ...acc, patch: { ...acc.patch, path: null } }
-    : { ...acc, ls: acc.ls.map((l, n) => (n === k - 1 ? { ...l, path: null } : l)) }), { ls, patch });
-  const place = (i, pos) => {
-    const ls = i > 1 ? latest.current.map((l, n) => (n === i - 2 ? { ...l, dest_pos: pos } : l)) : latest.current;
-    // The skipper's waypoints stay put when a pin moves (a cleared pin also clears its legs' waypoints).
-    const out = clearPaths(ls, i === 0 ? { start_pos: pos } : i === 1 ? { dest_pos: pos } : {}, pos ? [] : [i - 1, i]);
-    if (out.ls !== latest.current) putLegs(out.patch, out.ls); else onChange(out.patch);
-  };
-  const setPath = (k, pts) => (k === 0 ? onChange({ path: pts }) : putLegs({}, latest.current.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l))));
-  const redraw = () => onChange({ path: null, legs: legs.map((l) => ({ ...l, path: null })) });
-  const first = { id: "plan", route_start: start, route_dest: dest, depart_at: weather.depart_at || "", finish_at: weather.finish_at || "", arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos, path: weather.path };
+  const first = firstLeg(start, dest, weather);
   const last = legs[legs.length - 1] || first;
   const add = () => (onDraft ? onDraft(legs.length + 1) : setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } }));
   // An edited leg's DESTINATION and finish carry on to the next leg's START and departure, where they still matched.
@@ -117,10 +102,9 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
     <div className="flex flex-col gap-2" data-testid="planned-legs">
       <span className="field-label">Legs of the trip</span>
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
-      {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Trip Plan Draft map.</p>}
+      {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Draft Plan map.</p>}
       {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />)}</ul>}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
-      <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setView(true)} data-testid="view-planned-route-btn"><MapIcon className="h-4 w-4" /> View planned route...</button>
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) { setEdit(null); setLegDirty(false); } }}>
         <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="leg-dialog" onOpenAutoFocus={(e) => e.preventDefault()} dirty={legDirty}>
           <DialogHeader>
@@ -131,7 +115,6 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
         </DialogContent>
       </Dialog>
       <TripConfirm open={confirm} legs={[first, ...legs]} name={name} onClose={() => setConfirm(false)} />
-      {view && <TripConfirm open legs={[first, ...legs]} name={name} onClose={() => setView(false)} onPlace={place} onPath={setPath} onRedraw={redraw} />}
     </div>
   );
 };

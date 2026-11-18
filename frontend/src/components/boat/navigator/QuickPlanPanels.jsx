@@ -5,7 +5,7 @@ import { ARRIVE_TYPES } from "@/components/boat/navigator/ArriveType";
 export const ReplaceWarning = ({ step, onYes, onNo, testId = "quick-plan-replace" }) => (
   <div role="alert" className="flex flex-col gap-2 rounded-md border-2 border-[var(--red)] bg-red-50 p-3" data-testid={`${testId}-warning`}>
     <p className="text-sm font-bold text-[var(--red)]" data-testid={`${testId}-warning-text`}>
-      {step === 1 ? "A Quick Trip Plan Draft will replace the current Route Planning START, DESTINATION, times and legs. Carry on?" : "Are you really sure? The current route can't be brought back."}
+      {step === 1 ? "A Quick Draft Plan will replace the current Route Planning START, DESTINATION, times and legs. Carry on?" : "Are you really sure? The current route can't be brought back."}
     </p>
     <div className="flex gap-2">
       <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onNo} data-testid={`${testId}-cancel-btn`}>Cancel</button>
