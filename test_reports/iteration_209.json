@@ -1,0 +1,31 @@
+{
+  "summary": "Frontend-only test of the Return trip checkbox and the return-trip Quick Draft Plan, on test-user-pro / Model Vessel at 390x844. All 6 requested flows PASS. One real data bug: the Leg 2 that Quick Draft Plan creates gets today+2 days 06:00-09:00, so it can sit before Leg 1. (1) Checkbox: return-trip sits right of START/DEST (x 324-374, scrollWidth 390, no overflow) and its label reads 'RETURN / TRIP'. It is disabled and unchecked when empty or START-only, then enabled and checked once both are typed. Unticking saved weather.return_trip=false, which survived a reload, and re-ticking works. (2) Ticked, typed TEST_Mana Marina/TEST_Mana Island, no legs: quick-plan-btn shows no replace warning and opens the dialog straight away, titled 'Quick Draft Plan', with the hint 'Return trip: tap START, TEST_Mana Marina (green).' Popup 1 is prefilled with TEST_Mana Marina. Hint 2 is correct. Popup 2 has only 'DESTINATION, then return to start' plus Ignore, with no end-btn. Pins: 1 green, 2 navy, 3 red at the same pixel as 1. Done ('Done, update Route Planning') enabled after about 9s. After Done: START/DEST and Dec 18 09:00-12:00 times are kept, event_name stays TEST_Event, Leg 2 runs TEST_Mana Island->TEST_Mana Marina as Returning to Dock (dock), and the button reads 'Edit Draft Plan...'. (3) The checkbox is checked and disabled, with the title 'Leg 2 comes back to START...'. Dragging the START/end spot moved pins 1 and 3 together. Renaming point 1 (DEPARTING POINT popup) to TEST_Mana Home renamed Leg 1's START and Leg 2's DEST, and both persisted. (4) Edit Draft Plan > pin 3 > Delete > Done left 0 planned rows, unticked and enabled, which held after a reload (DB return_trip false). With no draft, edit Leg 2 > Delete Leg did the same. (5) With no draft and ticked, Add Leg... is enabled. A hand Leg 2 home stays checked and disabled. A hand Leg 2 elsewhere is unchecked and disabled. Editing its DEST to START re-checks it. A 3rd leg makes it unchecked and disabled, and Quick Draft Plan then shows the normal replace warning. Deleting Leg 3 brought back checked and disabled. Quick Draft Plan with a hand-made 2-leg return trip skips the warning and seeds the taps, and Done kept the hand Leg 2's times and type (18/12 12:00-19/12 17:00, Mooring). (6) Unticked: the replace warning shows, then the normal flow ('Tap where you'll depart from.'), and popup 2 has 'Arriving (Leg 2 Departing point)' and 'Arriving (End of Trip point)'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "QuickPlanDialog confirm() return-trip home leg", "issue": "A new Leg 2 made by the return-trip Quick Draft Plan takes newLeg(2) times, i.e. today+2 days 06:00-09:00, and ignores Leg 1's times. With typed Leg 1 at 2026-12-18 09:00-12:00, Leg 2 was saved as 2026-11-20 06:00-09:00, departing a month BEFORE Leg 1. Fix: when there's no seed.back, set depart_at to ls[0].finish_at and finish_at to later(ls[0].finish_at, 3), or similar.", "selector": "[data-testid='planned-leg-0']", "priority": "HIGH"},
+      {"component": "QuickPlanDialog map pins (return trip)", "issue": "Red pin 3 sits exactly on top of green pin 1, which has a lower z-index, so the green START is never visible or tappable. Dragging moves both, so it works, but the user can't see the green START and tapping the spot always opens 'Point 3 (End of Trip)'. Consider offsetting pin 3 slightly or drawing a combined green/red marker.", "selector": "[data-testid='stops-map-canvas'] .leaflet-marker-icon", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Route Planning, Return trip checkbox", "issues": ["When checked and disabled (a 2-leg return trip), the native checkbox renders very pale grey/green on the mint background, so it is hard to tell it is ticked. Consider a custom styled check or a 'locked' note."]},
+      {"screen": "Quick Draft Plan (return-trip seed)", "issues": ["After both taps, a 'Start New Draft' button appears (fresh=false for seed) even though the title is still 'Quick Draft Plan'. Minor, but it is a bit inconsistent."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/seed_return_209.py"],
+  "action_items": [
+    "QuickPlanDialog.confirm(): give the auto-created return Leg 2 times based on Leg 1's finish (not today+2 days) when seed.back is null",
+    "Optional: make the green START visible under the red end pin on return trips; improve the look of the checked+disabled checkbox"
+  ],
+  "critical_code_review_comments": [
+    "QuickPlanDialog confirm(): `times` (at(i+1)) is computed for i=1 but never used for the home leg, and newLeg(2) dates come from today, so they don't follow Leg 1.",
+    "PlannedLegs remove(): the Undo toast restores legs but not return_trip. It works anyway, because isReturn re-derives ret, but weather.return_trip stays false.",
+    "NavigatorAsk: the return_trip flag is left true in the DB when a 3rd leg is added (ret is computed from the legs, so it's harmless)."
+  ],
+  "updated_files": ["/app/tests/seed_return_209.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "95% (6/6 flows pass; 1 data bug in auto Leg 2 times)"},
+  "seed_data_creation": "Temporarily overwrote test-user-pro/model_vessel Route Planning (TEST_Mana Marina -> TEST_Mana Island, TEST_ legs). Backup /app/test_reports/backup/model_vessel_209.json (original: empty route, weather {}) was restored via `python /app/tests/seed_return_209.py restore`. user_cd2a5bd996a9 not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Helper /app/tests/seed_return_209.py [backup|empty|typed|show|restore]. 'typed' = TEST_Mana Marina->TEST_Mana Island, Dec 18 09:00-12:00, event TEST_Event, no legs, no draft. Map taps at 390x844 after opening quick-plan-dialog: (110,420) and (300,560) are sea points; Done enabled in about 9s. Pins: '[data-testid=stops-map-canvas] .leaflet-marker-icon' (innerText 1/2/3). Pin 3 covers pin 1 on return trips, so use JS el.click() on the marker with text '1' to open its popup. Hand legs: add-leg-btn > add-leg-position-ok-btn > leg-dest-input, leg-finish-at-input/-time-input, leg-arrive-type-{dock|mooring}, leg-save-btn; a dock pick opens trip-confirm-dialog (Escape)."
+}

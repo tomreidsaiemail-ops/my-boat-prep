@@ -163,7 +163,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
     if (home) {
       const { start_pos, dest_pos, path, ...back } = seed?.back || {};
-      ls = [...ls, { ...newLeg(2, clean), ...back, route_start: clean, route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: back.arrive_type || "dock" }];
+      const out = ls[0].finish_at ? { depart_at: ls[0].finish_at, finish_at: later(ls[0].finish_at, 3) } : {}; // a new Leg 2 sets off when Leg 1 arrives
+      ls = [...ls, { ...newLeg(2, clean), ...out, ...back, route_start: clean, route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: back.arrive_type || "dock" }];
     }
     else if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
