@@ -88,13 +88,13 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
   const pick = (at) => {
     setPlacing(false);
     if (onDraft) { onDraft(null, at); return; }
-    const leg = at < 0 ? { id: Date.now(), route_start: "", route_dest: start, depart_at: "", finish_at: first.depart_at || "", arrive_type: "" }
+    const leg = at < 0 ? { id: Date.now(), route_start: "", route_dest: start, depart_at: first.depart_at || "", finish_at: "", arrive_type: "" }
       : { id: Date.now(), route_start: points[at] || "", route_dest: "", depart_at: (at === 0 ? first.depart_at : all[at - 1].finish_at) || "", finish_at: "", arrive_type: "" };
     setEdit({ insert: at, leg });
   };
   // Slotted in at point `at`: the leg that left that point now leaves the new stop, once this leg finishes.
   const insert = (leg, at) => {
-    if (at < 0) return [{ ...leg, id: "plan", start_pos: null, dest_pos: first.start_pos || null, path: null }, { ...first, id: Date.now() + 1 }, ...legs];
+    if (at < 0) return [{ ...leg, id: "plan", start_pos: null, dest_pos: first.start_pos || null, path: null }, { ...first, id: Date.now() + 1, depart_at: leg.finish_at }, ...legs];
     const next = all[at];
     const moved = next && { ...next, id: at === 0 ? Date.now() + 1 : next.id, route_start: leg.route_dest, depart_at: leg.finish_at, start_pos: null, path: null };
     const added = at === 0 ? { ...leg, id: "plan", start_pos: first.start_pos || null, dest_pos: null, path: null } : { ...leg, dest_pos: null, path: null };

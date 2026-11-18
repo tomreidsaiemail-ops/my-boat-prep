@@ -44,8 +44,9 @@ const withSlot = (ls, j) => {
     { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: later(old.finish_at, 3), path: null }, ...ls.slice(j + 1)];
 };
 // A new START before point 1: the new first leg ends at the old START.
-const withFront = (ls) => [{ ...newLeg(1), route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, depart_at: ls[0].depart_at, finish_at: ls[0].depart_at },
-  { ...ls[0], id: Date.now(), path: null }, ...ls.slice(1)];
+// The old first leg keeps its route over the water, and sets off once the new one is in (3 hours later).
+const withFront = (ls) => [{ ...newLeg(1), route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, depart_at: ls[0].depart_at, finish_at: later(ls[0].depart_at, 3) },
+  { ...ls[0], id: Date.now(), depart_at: later(ls[0].depart_at, 3), finish_at: later(ls[0].finish_at, 3) }, ...ls.slice(1)];
 // The trip ends where it started: the same name, or pins within about 300 m.
 const backHome = (ls) => {
   const [a, b] = [ls[0], ls[ls.length - 1]];

@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only test of the 'Position the Leg To Add' dialog and the Quick Draft Plan button row, on test-user-pro / Model Vessel at 390x844. Everything requested PASSES. (1) Dialog: add-leg-btn opens add-leg-position-dialog titled 'Position the Leg To Add'. 'Add after leg' is checked by default. add-leg-points is an <ol>: point 1 has a green pin (route-pin-start, rgb(21,128,61)), the middle points are navy, and the last is red (route-pin-end). The last point is pressed by default and add-leg-new-stop sits after it. 'Add before' moves the new-stop row above the selected point. add-leg-where text is correct for the end, between-points and new START cases. Reopening resets to after/last. No horizontal overflow. (2) Without a Draft Plan (seeded TEST_Mana->TEST_ShipCove + 2 legs): after point 2 opened leg-dialog 'Add Leg 2' with START=TEST_ShipCove and the departure prefilled from Leg 1's finish. Saving inserted it as Leg 2, and the next leg's START became TEST_Kenepuru. Before point 1 opened 'Add Leg 1' with DESTINATION=TEST_Mana. Saving set route-start-input to TEST_Porirua and route-dest to TEST_Mana, and the old Leg 1 became Leg 2. After the last point appended Leg 6. All of this persisted in Mongo. (3) Quick Draft Plan: Cancel / Undo Last Pin / Done Quick Draft Plan sit on one row at 390px, left to right, with no overflow, and there is no floating undo. Undo is disabled before any pin and while a pin is pending, enabled after a confirm, and removed pin 2 correctly. (4) With a Draft Plan (3 pins): after point 2 opened the Edit Draft Plan map with the hint 'Tap the chart for the new stop.' One tap gave the confirm popup, and confirming slotted the stop between points 2 and 3 (pins 1 green, 2, 3, 4 red). 'Done, update Route Planning' saved it as the middle leg. Before point 1 gave the hint 'Tap where you'll depart from.' with no green pin until the tap, and the tap became the new green START with the old start as point 2. Undo after a slotted or front stop restores the original pins. The Mongo doc was backed up and restored afterwards.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AddLegPosition dialog", "issue": "If you toggle a radio (e.g. Add before leg) and then tap Cancel or X, the generic 'Discard your changes?' prompt appears, though there is nothing to lose. The DialogContent guard snapshots [role=radio][data-state]. Fix: pass guard={false} to the DialogContent in AddLegPosition.jsx.", "selector": "[data-testid='add-leg-position-cancel-btn'] -> [data-testid='discard-changes-dialog']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "No Draft Plan, Add before point 1 (new START)", "issue": "The new Leg 1 has an empty departure. pick(-1) sets depart_at:'', and putLegs writes weather.depart_at=''. So the trip-level Departure that was set (2026-12-18T09:00) is wiped. It is now only on the old Leg 1 (now Leg 2). Consider prefilling the departure, or keeping the old value.", "affected_selectors": ["leg-depart-at-input", "route-leaving-dock"]},
+      {"flow": "Draft Plan, Add before point 1 (withFront)", "issue": "The new Leg 1 gets depart_at == finish_at == the old departure (zero-length leg, e.g. 19/11 06:00-06:00). The old Leg 1 (now Leg 2) has path:null and is not re-routed, because rerouting([0]) only routes the new leg. Its sea route round land is lost, and it is drawn and measured straight until a pin is moved.", "affected_selectors": ["quick-plan-miles"]},
+      {"flow": "Draft Plan, slotting stops in", "issue": "Placeholder names are saved as text ('Point 1', 'Point 3'). When stops shift, they no longer match their number. For example, after adding before point 1 the trip reads 'Point 1 to Point 1', and the old 'Point 3' end becomes point 4. The confirm popup also titled the new mid stop 'POINT 3' while the old end was also 'Point 3'. This is cosmetic, but confusing when the place-name lookup returns nothing (sea taps).", "affected_selectors": ["route-start-input", "quick-plan-miles-leg-0"]}
+    ],
+    "design_issues": [
+      {"screen": "Quick Draft Plan button row at 390px", "issues": ["Fits on one row with no overflow. 'Undo Last Pin' and 'Done Quick Draft Plan' wrap to 2 lines inside their 48px buttons. Acceptable, just noting."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/seed_addleg_208.py"],
+  "action_items": [
+    "LOW: AddLegPosition DialogContent should use guard={false}, so that Cancel after toggling a radio doesn't show 'Discard your changes?'",
+    "LOW: No Draft Plan + Add before point 1: prefill the new leg's departure, or keep the trip Departure, so weather.depart_at isn't wiped to ''",
+    "LOW: withFront: give the new first leg a non-zero duration, and re-route (or keep the path of) the old first leg, i.e. rerouting([0,1]) or don't null its path",
+    "LOW (optional): renumber or avoid saving 'Point n' placeholder names when stops shift"
+  ],
+  "critical_code_review_comments": [
+    "PlannedLegs.pick(-1): depart_at:'' and finish_at=first.depart_at. After insert, putLegs sets weather.depart_at to the new leg's empty value.",
+    "QuickPlanDialog.withFront: {...ls[0], path:null} drops the routed path, and confirm() front-case only reroutes leg 0.",
+    "QuickPlanDialog undo after a slotted or front stop returns to idle (wait=null), not 'tap again'. That's consistent with the code comment, and fine."
+  ],
+  "updated_files": ["/app/tests/seed_addleg_208.py (new test helper only; no app code changed)"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% of requested scenarios pass; 4 low-priority findings"},
+  "seed_data_creation": "Temporarily overwrote Model Vessel (test-user-pro/model_vessel) Route Planning: TEST_ legs, then empty, then a Quick Draft Plan. Backup at /app/test_reports/backup/model_vessel_208.json was restored via `python /app/tests/seed_addleg_208.py restore` (route empty, weather {}, timestamps bumped). user_cd2a5bd996a9 not touched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Helper /app/tests/seed_addleg_208.py [seed|empty|show|restore]. 'seed' sets a non-draft TEST_Mana->TEST_ShipCove + 2 legs (December 2026 dates; past finish dates trigger a 'Route Planning has finished' archive prompt, so tap 'Not now'). 'empty' makes quick-plan-btn open the map directly. Navigation: cookie session_token=test_session_pro_1, then training-shrink-btn, list-selector, list-option-routeHazards. Map taps: page.mouse.click on stops-map-canvas, then quick-plan-confirm-btn / quick-plan-end-btn. Cancel on dirty dialogs shows discard-changes-dialog (discard-changes-confirm-btn). Done stays disabled while sea routing runs (poll up to ~30s)."
+}

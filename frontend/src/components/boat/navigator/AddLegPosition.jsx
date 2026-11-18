@@ -21,7 +21,7 @@ export const AddLegPosition = ({ open, points, onPick, onClose }) => {
     : `The new stop goes between ${name(at)} and ${name(at + 1)}.`;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="add-leg-position-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="add-leg-position-dialog" guard={false} onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-lg font-extrabold">Position the Leg To Add</DialogTitle>
           <DialogDescription>Tap a point, then pick whether the new stop goes after or before it.</DialogDescription>
