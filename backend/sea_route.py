@@ -187,29 +187,78 @@ async def _route(a: list, b: list, grow: float) -> list | None:
     return [_ll((c + 0.5) * f + tx0 * 256, (r + 0.5) * f + ty0 * 256, z) for r, c in keep]
 
 
+async def _water_path(a: list, b: list) -> tuple:
+    """(waypoints between a and b over the water, still touches land?); ([], False) when the straight line is clear, (None, True) when no way round was found."""
+    if not (await _crosses([a, b]))[0]:
+        return [], False
+    best = None
+    for grow in (0.35, 1.0):
+        pts = await _route(a, b, grow)
+        if not pts or len(pts) < 3:
+            continue
+        # Checked like the map does; the first and last bits may touch land when a pin sits on a marina or beach.
+        inner = (await _crosses([a, *pts[1:-1], b]))[1:-1]
+        if not any(inner):
+            return pts[1:-1], False
+        if best is None or sum(inner) < best[1]:
+            best = (pts[1:-1], sum(inner))
+    return (best[0], True) if best else (None, True)
+
+
 @router.post("/sea-route")
 async def sea_route(body: LineIn, user: dict = Depends(get_current_user)):
     """Waypoints that take a leg from its first to last point over the water (none needed when the straight line is clear)."""
     _limit(user)
-    a, b = body.line[0], body.line[-1]
-    best = None
     try:
-        if not (await _crosses([a, b]))[0]:
-            return {"path": []}
-        for grow in (0.35, 1.0):
-            pts = await _route(a, b, grow)
-            if not pts or len(pts) < 3:
-                continue
-            # Checked like the map does; the first and last bits may touch land when a pin sits on a marina or beach.
-            wet = await _crosses([a, *pts[1:-1], b])
-            inner = wet[1:-1]
-            if not any(inner):
-                return {"path": pts[1:-1], "land": False}
-            if best is None or sum(inner) < best[1]:
-                best = (pts[1:-1], sum(inner))
+        path, land = await _water_path(body.line[0], body.line[-1])
     except httpx.HTTPError:
         raise HTTPException(status_code=503, detail="Couldn't load the map to plan around land. Try again shortly.")
-    return {"path": best[0], "land": True} if best else {"path": None}
+    return {"path": []} if path == [] else {"path": path, "land": land} if path else {"path": None}
+
+
+async def _shore_water(lat: float, lon: float) -> list | None:
+    """The nearest open water (a little off the shore) to a spot on land, searched out to a few km."""
+    async with httpx.AsyncClient(headers=HEADERS, timeout=15) as client:
+        for z in (15, 13, 11):
+            x, y = _px(lat, lon, z)
+            tx, ty = int(x) // 256, int(y) // 256
+            got = await asyncio.gather(*[_tile(client, z, tx + dx, ty + dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1)])
+            grid = np.vstack([np.hstack(got[k:k + 3]) for k in (0, 3, 6)])
+            water = ~_grow(~(~_grow(~_grow(grid, 3), 3)), 4)  # labels and bridges closed up, then kept 4 px off the shore
+            rs, cs = np.nonzero(water)
+            if len(rs):
+                r0, c0 = y - (ty - 1) * 256, x - (tx - 1) * 256
+                k = int(np.argmin((rs - r0) ** 2 + (cs - c0) ** 2))
+                return [float(v) for v in _ll(float(cs[k]) + (tx - 1) * 256 + 0.5, float(rs[k]) + (ty - 1) * 256 + 0.5, z)]
+    return None
+
+
+class MendIn(BaseModel):
+    line: list[list[float]] = Field(min_length=2, max_length=80)
+    seg: int = Field(ge=0, le=78)
+    tap: list[float] = Field(min_length=2, max_length=2)
+
+
+@router.post("/sea-mend")
+async def sea_mend(body: MendIn, user: dict = Depends(get_current_user)):
+    """A tap on a red (over land) part of a leg: a waypoint goes on the nearest water by the shore,
+    and the line either side of it is re-drawn round any land. Returns the leg's new waypoints."""
+    _limit(user)
+    line, j = body.line, body.seg
+    if j >= len(line) - 1:
+        raise HTTPException(status_code=400, detail="That part of the line wasn't found")
+    try:
+        w = await _shore_water(*body.tap)
+        if not w:
+            raise HTTPException(status_code=404, detail="No water found near that tap. Drag a handle out over the water instead.")
+        before, _ = await _water_path(line[j], w)
+        after, _ = await _water_path(w, line[j + 1])
+    except httpx.HTTPError:
+        raise HTTPException(status_code=503, detail="Couldn't load the map to plan around land. Try again shortly.")
+    out = line[:j + 1] + (before or []) + [w] + (after or []) + line[j + 1:]
+    if len(out) > 80:
+        raise HTTPException(status_code=400, detail="This leg has too many waypoints. Double-tap some to remove them first.")
+    return {"path": out[1:-1]}
 
 
 _names: OrderedDict = OrderedDict()

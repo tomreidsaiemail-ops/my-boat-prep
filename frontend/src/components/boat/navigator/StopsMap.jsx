@@ -3,7 +3,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Loader2, MapPin, RefreshCw, X } from "lucide-react";
 import useGps from "@/hooks/useGps";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, apiError } from "@/lib/api";
 import { drawRoute } from "@/lib/routeDraw";
 import { legLines, legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
@@ -81,10 +82,24 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
     drawRoute(map.current, g, { stops, lines, miles, land: landOf, badges: quick, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
       tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; },
       // A tap on a line adds a bend there to drag, unless a stop is waiting for its pin (then the map tap drops it).
-      onLineTap: pick < 0 ? (k, j, ll) => { const bends = lines[k].slice(1, -1); if (bends.length >= 78) return; const next = [...bends]; next.splice(j, 0, r5(ll)); live.current.onPath(k, next); } : null });
+      // On a red part the bend goes on the nearest water and the line either side is re-drawn round the land.
+      onLineTap: pick < 0 ? (k, j, ll) => {
+        const bends = lines[k].slice(1, -1);
+        if (bends.length >= 78) return;
+        if (landOf[k]?.[j]) { mend(k, j, ll); return; }
+        const next = [...bends]; next.splice(j, 0, r5(ll)); live.current.onPath(k, next);
+      } : null });
     drawHandles(map.current, g, lines, (k, pts) => live.current.onPath(k, pts));
   };
-  live.current = { pick, stops, onPlace, onPath, onPrepare, onPinTap, draw };
+  const mend = (k, j, ll) => {
+    const key = JSON.stringify(lines[k]);
+    setDrawing((n) => n + 1);
+    api.post("/sea-mend", { line: lines[k], seg: j, tap: [ll.lat, ll.lng] }, { timeout: 90000 })
+      .then(({ data }) => { if (JSON.stringify(legLines(live.current.legs)[k]) === key) live.current.onPath(k, data.path); })
+      .catch((e) => toast.error(apiError(e, "Couldn't re-draw that part over the water. Drag a handle instead.")))
+      .finally(() => setDrawing((n) => n - 1));
+  };
+  live.current = { pick, stops, legs, onPlace, onPath, onPrepare, onPinTap, draw };
 
   useEffect(() => {
     const m = L.map(el.current, { doubleClickZoom: false });
@@ -149,7 +164,7 @@ export const StopsMap = ({ legs, onPlace, onPath, onRedraw, onPrepare = () => {}
         {drawing > 0 && <span className="absolute bottom-2 left-2 z-[500] flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[var(--navy)] shadow" data-testid="stops-map-drawing"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking the route stays on the water...</span>}
       </div>
       {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Tap a line, or drag a faint handle on it, to add a waypoint, drag a white one to move it, double-tap to remove it. Not for navigation.</p>}
-      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Tap the red part to add a handle, then drag it out over the water to put a kink in the line.</p>}
+      {onLand && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="stops-map-land-warning">Red parts of the route cross land. Tap a red part: a handle goes on the nearest water and the line is re-drawn round the land. Drag any handle to fine-tune it.</p>}
       {!quick && <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" onClick={onRedraw} disabled={drawing > 0 || !lines.some(Boolean)} data-testid="stops-map-redraw-btn"><RefreshCw className="h-4 w-4" /> Straighten all legs</button>}
       {!quick && <ol className="flex flex-col gap-1.5">
         {stops.map((s, i) => (
