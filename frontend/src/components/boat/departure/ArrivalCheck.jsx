@@ -23,7 +23,7 @@ const Used = ({ label, value, testId }) => (
 );
 
 // Matches the Leaving the Dock check: levels on arrival, then fuel, water and gas used since the last departure.
-export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog, onNewDeparture }) => {
+export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog, onNewArrival, onNewDeparture }) => {
   const depart = boat.depart || {};
   const arrive = boat.arrive || {};
   const setArrive = (patch) => onBoatChange("arrive", { ...arrive, ...patch });
@@ -46,7 +46,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
               {collapsed ? <>Show <ChevronDown className="h-3.5 w-3.5" /></> : <>Hide <ChevronUp className="h-3.5 w-3.5" /></>}
             </button>
           )}
-          <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("arrive", arrive.leg ? { leg: arrive.leg } : {})} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
+          <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={onNewArrival} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
           {onNewDeparture && <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={onNewDeparture} data-testid="arrival-new-departure-btn"><Navigation className="h-3.5 w-3.5" /> New departure...</button>}
         </div>
       </div>

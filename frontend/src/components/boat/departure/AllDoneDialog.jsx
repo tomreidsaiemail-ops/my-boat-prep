@@ -36,7 +36,7 @@ const ActualFinish = ({ plan, onFinish }) => (
 );
 
 // What DEPART or ARRIVED is about to tick and log, shown before anything changes.
-export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish }) => {
+export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndTrip }) => {
   const depart = plan?.kind === "depart";
   return (
     <Dialog open={!!plan} onOpenChange={(o) => !o && !busy && onClose()}>
@@ -51,9 +51,15 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish }) => {
               ? <p role="alert" className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="all-done-blocked"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{plan.blocked}</p>
               : (
                 <ul className="flex flex-col gap-2" data-testid="all-done-steps">
-                  {plan.steps.map((s) => <li key={s.id} className="flex items-start gap-2 text-sm" data-testid={`all-done-step-${s.id}`}>{ICON[s.tone || "ok"]}<span className="whitespace-pre-line">{s.text}</span></li>)}
+                  {plan.steps.filter((s) => s.id !== "fold" || plan.endTrip).map((s) => <li key={s.id} className="flex items-start gap-2 text-sm" data-testid={`all-done-step-${s.id}`}>{ICON[s.tone || "ok"]}<span className="whitespace-pre-line">{s.text}</span></li>)}
                 </ul>
               )}
+            {!plan.blocked && plan.canFold && (
+              <label className="flex items-start gap-2 rounded-lg border-2 border-[var(--navy)] px-3 py-2 text-sm font-bold" data-testid="all-done-end-trip">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={!!plan.endTrip} onChange={(e) => onEndTrip(e.target.checked)} data-testid="all-done-end-trip-checkbox" />
+                <span>End of trip: fold the trip&apos;s Ship&apos;s Log entries into one trip entry{plan.listId === "returningDock" ? "" : ". Ticked when no planned legs are left in the Route Plan"}</span>
+              </label>
+            )}
             {!plan.blocked && !depart && <ActualFinish plan={plan} onFinish={onFinish} />}
             {!plan.blocked && !depart && plan.finish?.length !== 16 && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="all-done-actual-error">Enter the actual finish date and time to log your arrival.</p>}
             {!plan.blocked && plan.choices && <Choices choices={plan.choices} busy={busy} disabled={plan.finish?.length !== 16} onPick={onConfirm} />}

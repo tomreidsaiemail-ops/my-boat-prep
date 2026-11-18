@@ -34,10 +34,11 @@ import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { DepartRoute } from "@/components/boat/departure/RoutePlanCard";
 import { ArrivedCard } from "@/components/boat/departure/ArrivedCard";
 import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
+import { LevelsConfirmDialog } from "@/components/boat/departure/LevelsConfirmDialog";
 import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
-import { legBoat, liveLog, withTripLog } from "@/lib/tripFold";
+import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
 import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";
@@ -192,16 +193,6 @@ const useWarn = () => {
 const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
 
-// The next planned Route Planning leg after the legs already sailed on this trip (Leg 1 is the Route Plan itself).
-const nextLeg = (boat, trip) => {
-  if (!trip) return null;
-  const tb = tripBoat(boat, trip.id);
-  const w = tb.weather || {};
-  const planned = [{ route_start: tb.route_start, route_dest: tb.route_dest, depart_at: w.depart_at, finish_at: w.finish_at, arrive_type: w.arrive_type }, ...(w.legs || [])];
-  const n = (boat.legs?.[trip.id] || []).length;
-  const leg = planned[n];
-  return leg && (leg.route_start || leg.route_dest) ? { ...leg, n: n + 1 } : null;
-};
 
 export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
@@ -1040,7 +1031,8 @@ export default function BoatPrep({ boatId, boats }) {
   const engineType = [...(state.engine_log || [])].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).find((e) => e.engine_type)?.engine_type || "";
   const logDeparture = (text, kind) => {
     const id = Date.now();
-    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id, label: text.slice(0, 2000), checked: false }] } }));
+    const label = `${allDone.head(kind)} - ${text}`;
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), { id, label: label.slice(0, 2000), checked: false }] } }));
     toast.success(`${kind} status copied to the Ship's Log`);
     return id;
   };
@@ -1055,7 +1047,8 @@ export default function BoatPrep({ boatId, boats }) {
     return true;
   };
   const relogDeparture = (id, text, kind) => {
-    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: text.slice(0, 2000) } : i)) } }));
+    const label = `${allDone.head(kind)} - ${text}`;
+    mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).map((i) => (i.id === id ? { ...i, label: label.slice(0, 2000) } : i)) } }));
     toast.success(`Ship's Log ${kind.toLowerCase()} entry updated`);
   };
   const unlogDeparture = (id) => mutate((s) => ({ ...s, data: { ...s.data, shipsLog: (s.data.shipsLog || []).filter((i) => i.id !== id) } }));
@@ -1240,7 +1233,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
         <ArrivalCheck boat={liveLog(legBoat(boat), state.data.shipsLog)} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
-          onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && setInterim(true) : undefined} />
+          onNewArrival={allDone.newArrival} onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && allDone.newDeparture(() => setInterim(true)) : undefined} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
@@ -1345,7 +1338,8 @@ export default function BoatPrep({ boatId, boats }) {
       <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); await allDone.interimDepart(kind, leg); }} />
-      <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onConfirm={allDone.confirm} onClose={allDone.close} />
+      <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onConfirm={allDone.confirm} onClose={allDone.close} />
+      <LevelsConfirmDialog ask={allDone.levelsAsk.ask} boat={boat} onConfirm={allDone.levelsAsk.confirm} onClose={allDone.levelsAsk.close} />
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}

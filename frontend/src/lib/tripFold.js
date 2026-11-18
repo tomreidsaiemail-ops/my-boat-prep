@@ -1,4 +1,5 @@
 import { LEG_KINDS, dmyt, headingItems } from "@/lib/allDone";
+import { tripBoat } from "@/lib/trips";
 
 // How each stop on a trip was reached on Arriving at Destination; each ticks its own If... group.
 export const ARRIVE_KINDS = [
@@ -18,14 +19,36 @@ const local = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime(
 const LEFT = { dock: "Leaving Dock", ...Object.fromEntries(LEG_KINDS.map((k) => [k.key, k.label])) };
 const CAME = { dock: "Returning to Dock", ...Object.fromEntries(ARRIVE_KINDS.map((k) => [k.key, k.done])) };
 
-// The current leg's START and DESTINATION, for arrival checks part way through a trip.
+// The current leg's START and DESTINATION, and its departure levels, for arrival checks part way through a trip.
 export const legBoat = (b = {}) => {
   const legs = b.legs?.[b.underway?.trip_id] || [];
   const last = legs[legs.length - 1];
-  if (last && last.kind !== "dock" && (last.start || last.dest)) return { ...b, route_start: last.start, route_dest: last.dest };
+  if (last && last.kind !== "dock" && (last.start || last.dest)) return { ...b, route_start: last.start, route_dest: last.dest, ...(last.levels ? { depart: { levels: last.levels } } : {}) };
   // After ARRIVED (no longer underway) the logged arrival keeps the leg it ended.
   const leg = b.arrive?.leg;
-  return leg ? { ...b, route_start: leg.start, route_dest: leg.dest } : b;
+  return leg ? { ...b, route_start: leg.start, route_dest: leg.dest, ...(leg.levels ? { depart: { levels: leg.levels } } : {}) } : b;
+};
+
+// "Mana Marina to Ship Cove, departure 19/11/2026 09:00": the first words of every departure and arrival log.
+export const tripHead = (start, dest, departAt, at = "") => `${[start, dest].filter(Boolean).join(" to ") || "Route not set"}, departure ${dmyt(departAt) || local(at) || "not set"}`;
+// The leg being sailed now (or just arrived from).
+export const legHead = (b = {}) => {
+  const legs = b.legs?.[b.underway?.trip_id || b.route_trip] || [];
+  const last = legs[legs.length - 1];
+  if (last) return tripHead(last.start, last.dest, last.depart_at, last.at);
+  const lb = legBoat(b);
+  return tripHead(lb.route_start, lb.route_dest, "");
+};
+
+// The next planned Route Planning leg after the legs already sailed on this trip (Leg 1 is the Route Plan itself).
+export const nextLeg = (boat, trip) => {
+  if (!trip) return null;
+  const tb = tripBoat(boat, trip.id);
+  const w = tb.weather || {};
+  const planned = [{ route_start: tb.route_start, route_dest: tb.route_dest, depart_at: w.depart_at, finish_at: w.finish_at, arrive_type: w.arrive_type }, ...(w.legs || [])];
+  const n = (boat.legs?.[trip.id] || []).length;
+  const leg = planned[n];
+  return leg && (leg.route_start || leg.route_dest) ? { ...leg, n: n + 1 } : null;
 };
 
 // A Ship's Log entry typed during a trip (underway, or stopped between legs) is kept with the latest leg, so it is folded with the trip.
@@ -57,7 +80,7 @@ export const foldTrip = (log, legs, tripName, when) => {
   const detail = [...legs.map(legLine), "", "Ship's Log entries folded into this trip:", ...folded.map((i) => `- ${i.label}${i.detail ? `\n${i.detail}` : ""}`)].join("\n");
   return {
     ids,
-    entry: { id: Date.now() + 2, checked: false, label: `Trip - Route Plan: ${tripName}${route ? ` - ${route}` : ""}${dates ? `, ${dates}` : ""} - ${legs.length} leg${legs.length === 1 ? "" : "s"} - ${when}`,
+    entry: { id: Date.now() + 2, checked: false, label: `${tripHead(first.start, last.dest, first.depart_at, first.at)} - Trip - Route Plan: ${tripName}${route ? ` - ${route}` : ""}${dates ? `, ${dates}` : ""} - ${legs.length} leg${legs.length === 1 ? "" : "s"} - ${when}`,
       detail, ...(photos.length ? { weather_photos: photos } : {}) },
   };
 };

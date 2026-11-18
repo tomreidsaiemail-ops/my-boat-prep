@@ -1,4 +1,4 @@
-import { batteriesOf, batteryName, isLow } from "@/lib/telemetry";
+import { batteriesOf, batteryName, isLow, levelLabel } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
 
 const TANKS = [["fuel", "Fuel"], ["gas", "LPG"], ["water", "Water"]];
@@ -8,6 +8,8 @@ export const dmyt = (v) => [dmy(v), (v || "").slice(11, 16)].filter(Boolean).joi
 export const missingLevels = (boat, levels = {}) => [...TANKS, ...batteriesOf(boat).map((b) => [`bat_${b.id}`, batteryName(b)])]
   .filter(([k]) => !levels[k]).map(([, n]) => n);
 export const levelsBlock = (boat, levels) => { const m = missingLevels(boat, levels); return m.length ? `Pick a level for ${m.join(", ")} first.` : ""; };
+// "Fuel 3/4, LPG Full, Water 1/2, House bank Full"
+export const levelsText = (boat, l = {}) => [...TANKS.map(([k, n]) => `${n} ${levelLabel(l[k])}`), ...batteriesOf(boat).map((b) => `${batteryName(b)} ${levelLabel(l[`bat_${b.id}`])}`)].join(", ");
 
 // "Adequate Fuel, LPG, Water." with any tank at 1/4 or empty called out as low.
 export const tankSummary = (levels = {}) => {
