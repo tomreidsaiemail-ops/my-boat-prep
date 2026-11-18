@@ -11,8 +11,8 @@ const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDat
 const blank = (next) => {
   if (!next) return { route_start: "", route_dest: "", weather: { depart_at: nowLocal(), finish_at: today(), meetup: "" } };
   const now = new Date();
-  const dep = new Date(next.depart_at || "");
-  const fin = new Date(next.finish_at || "");
+  const dep = new Date((next.depart_at || "").length >= 16 ? next.depart_at : "");
+  const fin = new Date((next.finish_at || "").length >= 16 ? next.finish_at : "");
   const finish = Number.isNaN(fin.getTime()) ? next.finish_at || today() : local(Number.isNaN(dep.getTime()) ? fin : new Date(fin.getTime() + (now.getTime() - dep.getTime())));
   return { route_start: next.route_start || "", route_dest: next.route_dest || "", weather: { depart_at: local(now), finish_at: finish, meetup: "", arrive_type: next.arrive_type || "" } };
 };
@@ -25,11 +25,11 @@ const missing = (w) => {
 
 const Body = ({ trip, next, boat, items, online, locked, onUpgrade, boatId, onDepart }) => {
   const [leg, setLeg] = useState(() => blank(next));
-  const planned = next && (next.depart_at || next.finish_at) && (
+  const planned = next && (next.depart_at || next.finish_at) ? (
     <p className="-mt-1 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900" data-testid="interim-departure-planned-times">
-      Planned Leg {next.n} times: Departure {dmyt(next.depart_at) || "not set"} · Estimated Finish {dmyt(next.finish_at) || "not set"}. Departure is now set to now and the finish moved to match.
+      Planned Leg {next.n} times: Departure {dmyt(next.depart_at) || "not set"} · Estimated Finish {dmyt(next.finish_at) || "not set"}. Departure is set to now and the finish moved to match.
     </p>
-  );
+  ) : null;
   const [error, setError] = useState("");
   const legBoat = { ...boat, route_start: leg.route_start, route_dest: leg.route_dest, weather: leg.weather };
   const go = (kind) => {

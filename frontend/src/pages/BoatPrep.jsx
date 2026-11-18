@@ -1168,8 +1168,13 @@ export default function BoatPrep({ boatId, boats }) {
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />
-        : <ArrivedCard underway={boat.underway} big label="Arrived, all arrival checks done" testId="vessel-arrived"
-            onArrive={() => { if (!doneGuard()) return; setActiveId("arrivingDest"); allDone.openArrive("arrivingDest", allLists.find((l) => l.id === "arrivingDest")?.name || "Arriving at Destination"); }} />)}
+        : <ArrivedCard underway={boat.underway} big label={active.id === "returningDock" ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+            onArrive={() => {
+              if (!doneGuard()) return;
+              // On Returning to Dock this ends the trip there; anywhere else it's an arrival at the next destination.
+              const id = active.id === "returningDock" ? "returningDock" : "arrivingDest";
+              setActiveId(id); allDone.openArrive(id, allLists.find((l) => l.id === id)?.name || (id === "returningDock" ? "Returning to Dock" : "Arriving at Destination"));
+            }} />)}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
       <ChecklistPeek peek={peek} list={peek ? state.data[peek.id] || [] : []} onToggle={peekToggle} onClose={() => setPeek(null)} />
       {/* Reset and Export live at the bottom; the "still loading" warning stays up here where the skipper is. */}
@@ -1223,8 +1228,8 @@ export default function BoatPrep({ boatId, boats }) {
           ))}
         </div>
       )}
-      {/* Underway / ARRIVED sits right under the Route Planning and Returning to Dock bubbles. */}
-      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
+      {/* Not underway: the ARRIVED card sits under the Route Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
+      {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
           onDepart={() => doneGuard() && allDone.openDepart()} />
