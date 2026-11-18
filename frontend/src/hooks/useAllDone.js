@@ -106,7 +106,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       statusStep(a, sig, "Arrival levels and what was used", tankSummary(a.levels), state.data.shipsLog),
       { id: "route", text: `Log your arrival${u.line ? `: ${u.line}` : ""}` },
       ...(u.trip_id ? [{ id: "underway", text: `Clear Underway from ${u.name}` }] : []),
-      ...(canFold ? [{ id: "fold", text: `Fold this trip's ${plural(legs.length, "leg")} and their Ship's Log entries into one tidy trip entry` }] : []),
+      ...(canFold ? [{ id: "fold", text: `Group this trip's Ship's Log entries into a trip folder, with a folder for each of its ${plural(legs.length, "leg")}` }] : []),
       { id: "shore", ...(!trackingOn ? { tone: "info", text: "Position sharing isn't on, so no shore contact message is sent" }
         : online ? { text: "Tell your shore contacts you arrived safely and stop sharing your position" }
           : { tone: "warn", text: "No signal, so shore contacts can't be told yet. Tap Arrived safely in Crew > Shore Contacts when you have signal." }) },
@@ -175,10 +175,10 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       }
       let shipsLog = [...log, entry];
       let keep = legs;
-      const trip = folded && legs.length ? foldTrip(shipsLog, legs, [u.name || "Route Plan", u.event].filter(Boolean).join(" - "), stamp()) : null;
+      const trip = folded && legs.length ? foldTrip(shipsLog, legs, [u.name || "Route Plan", u.event].filter(Boolean).join(" - ")) : null;
       // Once folded the status checks start fresh for the next trip.
       const fresh = trip ? { depart: {}, arrive: {} } : { arrive: arr };
-      if (trip) { shipsLog = [...shipsLog.filter((i) => !trip.ids.has(i.id)), trip.entry]; keep = []; }
+      if (trip) { shipsLog = trip; keep = []; }
       const list = s.data[listId] || [];
       const ticks = kind ? stampTicks(list, list.map((i) => ({ ...i, checked: arrivalTicks(list, kind.key).has(i.id) })), tickedBy) : tickAll(list, tickedBy, arriveSkip(listId, list));
       // The Route Plan keeps its estimate and shows the latest actual arrival under it.
@@ -186,7 +186,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         : { trips: { ...(b.trips || {}), [u.trip_id]: { ...(b.trips?.[u.trip_id] || {}), weather: { ...(b.trips?.[u.trip_id]?.weather || {}), actual_finish_at: finish } } } };
       return { ...s, boat: { ...b, ...actual, ...(u.trip_id ? { legs: { ...(b.legs || {}), [u.trip_id]: keep } } : {}), ...fresh, underway: {}, last_levels: a.levels || b.last_levels || {} }, data: { ...s.data, [listId]: ticks, shipsLog } };
     });
-    toast.success(folded ? "Trip folded into one Ship's Log entry" : "Arrival logged in the Ship's Log");
+    toast.success(folded ? "Arrival logged. The trip is grouped in the Ship's Log, with a folder per leg" : "Arrival logged in the Ship's Log");
     if (trackingOn && online) {
       setBusy(true);
       try {

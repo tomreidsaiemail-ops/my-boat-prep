@@ -21,7 +21,7 @@ export default function useLogFolders({ items, setItems, guard, crew, onEdit }) 
     toast(`Ungrouped "${item.label}"`, { duration: 6000, action: { label: "Undo", onClick: () => setItems(() => before) } });
   };
   const folderRow = (item) => (
-    <LogFolderRow key={item.id} item={item} depth={depth[item.id] || 0} count={counts[item.id] || 0} logs={item.folder === "year" ? logsIn(item.id) : null} readOnly={crew}
+    <LogFolderRow key={item.id} item={item} depth={depth[item.id] || 0} count={counts[item.id] || 0} logs={item.folder === "year" || item.trip ? logsIn(item.id) : null} readOnly={crew}
       onOpen={(o) => setOpen(item.id, o)} onEdit={() => onEdit(item)} onUngroup={() => unfold(item)} />
   );
   return { visible: rows.filter((r) => !r.hidden).map((r) => r.item), depthOf: (id) => depth[id] || 0, folderRow, hasFolders: folders.length > 0, anyOpen: shownFolders.some((f) => f.open), setAll };

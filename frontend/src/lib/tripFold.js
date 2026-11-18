@@ -60,29 +60,26 @@ export const withTripLog = (b, id) => {
   return { ...b, legs: { ...b.legs, [t]: [...legs.slice(0, -1), { ...last, logs: [...(last.logs || []), id] }] } };
 };
 
-const legLine = (l, n) => {
-  const route = [l.start, l.dest].filter(Boolean).join(" to ") || "Route not set";
-  // The Departure the skipper entered for the leg, else when DEPART was tapped.
-  const left = `departed ${dmyt(l.depart_at) || local(l.at) || "?"}${LEFT[l.kind] ? ` (${LEFT[l.kind]})` : ""}`;
-  const came = l.arrived_at ? `, arrived ${dmyt(l.actual_finish_at) || local(l.arrived_at)} (${CAME[l.arrival] || l.arrived_list || "arrived"})` : "";
-  return `Leg ${n + 1}: ${route}, ${left}${came}.${l.why ? ` Why: ${l.why}` : ""}`;
-};
+const day = (v, iso) => (/^\d{4}-\d{2}-\d{2}/.test(v || "") ? v.slice(0, 10) : iso ? (local(iso).split(" ")[0] || "").split("/").reverse().map((x) => x.padStart(2, "0")).join("-") : "");
 
-// Returning to Dock: every leg's Ship's Log entries become one tidy trip entry (nothing is lost; the old entries sit in its detail).
-export const foldTrip = (log, legs, tripName, when) => {
-  const ids = new Set(legs.flatMap((l) => l.logs || []));
-  const folded = log.filter((i) => ids.has(i.id));
-  if (!folded.length) return null;
+// End of trip: the trip's Ship's Log entries stay as they are, grouped like Group Passage into one trip folder
+// holding a folder per leg (e.g. "Leg 1: Mana Marina to Tawa Bay, departure 18/11/2026 06:00").
+export const foldTrip = (log, legs, tripName) => {
+  const owner = new Map();
+  legs.forEach((l, n) => (l.logs || []).forEach((id) => owner.set(id, n)));
+  const members = log.filter((i) => owner.has(i.id) && !i.in && !i.folder);
+  if (!members.length) return null;
+  const base = Date.now() + 10;
   const first = legs[0] || {}, last = legs[legs.length - 1] || {};
-  const route = [first.start, last.dest].filter(Boolean).join(" to ");
-  const dates = [...new Set([(dmyt(first.depart_at) || local(first.at)).split(" ")[0], (dmyt(last.actual_finish_at) || local(last.arrived_at || "")).split(" ")[0]].filter(Boolean))].join(" - ");
-  const photos = folded.flatMap((i) => i.weather_photos || []);
-  const detail = [...legs.map(legLine), "", "Ship's Log entries folded into this trip:", ...folded.map((i) => `- ${i.label}${i.detail ? `\n${i.detail}` : ""}`)].join("\n");
-  return {
-    ids,
-    entry: { id: Date.now() + 2, checked: false, label: `${tripHead(first.start, last.dest, first.depart_at, first.at)} - Trip - Route Plan: ${tripName}${route ? ` - ${route}` : ""}${dates ? `, ${dates}` : ""} - ${legs.length} leg${legs.length === 1 ? "" : "s"} - ${when}`,
-      detail, ...(photos.length ? { weather_photos: photos } : {}) },
-  };
+  const range = (a, b) => ({ from: day(a.depart_at, a.at), to: day(b.actual_finish_at, b.arrived_at) || day(a.depart_at, a.at) });
+  const trip = { id: base, folder: "passage", trip: true, open: false, checked: false, src: first.start || "", dst: last.dest || "", ...range(first, last),
+    label: `Trip: ${tripHead(first.start, last.dest, first.depart_at, first.at)} - ${tripName} - ${legs.length} leg${legs.length === 1 ? "" : "s"}` };
+  const legFolders = legs.map((l, n) => ({ id: base + 1 + n, in: base, folder: "passage", open: false, checked: false, src: l.start || "", dst: l.dest || "", ...range(l, l),
+    label: `Leg ${n + 1}: ${tripHead(l.start, l.dest, l.depart_at, l.at)}` })).filter((f, n) => members.some((m) => owner.get(m.id) === n));
+  const ids = new Set(members.map((m) => m.id));
+  const at = log.findIndex((i) => ids.has(i.id));
+  const moved = log.map((i) => (ids.has(i.id) ? { ...i, in: base + 1 + owner.get(i.id) } : i));
+  return [...moved.slice(0, at), trip, ...legFolders, ...moved.slice(at)];
 };
 
 // A status check counts as logged only while its Ship's Log entry is still there.

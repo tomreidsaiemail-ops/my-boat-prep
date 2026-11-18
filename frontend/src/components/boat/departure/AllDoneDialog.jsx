@@ -57,7 +57,7 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndT
             {!plan.blocked && plan.canFold && (
               <label className="flex items-start gap-2 rounded-lg border-2 border-[var(--navy)] px-3 py-2 text-sm font-bold" data-testid="all-done-end-trip">
                 <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={!!plan.endTrip} onChange={(e) => onEndTrip(e.target.checked)} data-testid="all-done-end-trip-checkbox" />
-                <span>End of trip: fold the trip&apos;s Ship&apos;s Log entries into one trip entry{plan.listId === "returningDock" ? "" : ". Ticked when no planned legs are left in the Route Plan"}</span>
+                <span>End of trip: group the trip&apos;s Ship&apos;s Log entries into a trip folder, with a folder per leg{plan.listId === "returningDock" ? "" : ". Ticked when no planned legs are left in the Route Plan"}</span>
               </label>
             )}
             {!plan.blocked && !depart && <ActualFinish plan={plan} onFinish={onFinish} />}
