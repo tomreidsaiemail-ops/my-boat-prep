@@ -34,8 +34,8 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
-// interim: the New departure window on Arriving at Destination (today's leg of the trip).
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, onLeaving, onArriving }) => {
+// interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -101,7 +101,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
       {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} />}
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg 1</h3>
+        <h3 className="font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
         {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
         {onArriving && <HopBubble icon={Flag} label="Arriving at Destination" onClick={onArriving} testId="route-arriving" />}
       </div>
@@ -127,7 +127,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />
       {photosOpen && <NavigatorReminders />}
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
-      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} />
+      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onDraft={draft ? (select) => setQuick({ select }) : undefined} />}
       {!interim && <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
         <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status

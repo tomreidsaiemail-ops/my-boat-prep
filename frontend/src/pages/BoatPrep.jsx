@@ -192,6 +192,17 @@ const useWarn = () => {
 const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home };
 
+// The next planned Route Planning leg after the legs already sailed on this trip (Leg 1 is the Route Plan itself).
+const nextLeg = (boat, trip) => {
+  if (!trip) return null;
+  const tb = tripBoat(boat, trip.id);
+  const w = tb.weather || {};
+  const planned = [{ route_start: tb.route_start, route_dest: tb.route_dest, depart_at: w.depart_at, finish_at: w.finish_at, arrive_type: w.arrive_type }, ...(w.legs || [])];
+  const n = (boat.legs?.[trip.id] || []).length;
+  const leg = planned[n];
+  return leg && (leg.route_start || leg.route_dest) ? { ...leg, n: n + 1 } : null;
+};
+
 export default function BoatPrep({ boatId, boats }) {
   const { user } = useAuth();
   const { askUpgrade } = useUpgrade();
@@ -1212,6 +1223,8 @@ export default function BoatPrep({ boatId, boats }) {
           ))}
         </div>
       )}
+      {/* Underway / ARRIVED sits right under the Route Planning and Returning to Dock bubbles. */}
+      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
           onDepart={() => doneGuard() && allDone.openDepart()} />
@@ -1224,7 +1237,6 @@ export default function BoatPrep({ boatId, boats }) {
         <ArrivalCheck boat={liveLog(legBoat(boat), state.data.shipsLog)} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
           onNewDeparture={active.id === "arrivingDest" ? () => doneGuard() && setInterim(true) : undefined} />
       )}
-      {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
         : active.isMedia ? <MediaList key={active.id} list={active} store={media[active.id]} admin={!!user.is_admin} online={online} />
@@ -1325,7 +1337,7 @@ export default function BoatPrep({ boatId, boats }) {
           help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
-      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} boat={boat} boatId={boats.current.boat_id}
+      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); await allDone.interimDepart(kind, leg); }} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onConfirm={allDone.confirm} onClose={allDone.close} />
