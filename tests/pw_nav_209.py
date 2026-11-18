@@ -1,0 +1,11 @@
+# Shared Playwright prelude for iteration 209 (paste-in reference): login as test-user-pro, open Route Planning on Model Vessel.
+await page.set_viewport_size({"width": 390, "height": 844})
+await page.context.add_cookies([{"name":"session_token","value":"test_session_pro_1","domain":"gemini-prototype.preview.emergentagent.com","path":"/","secure":True,"httpOnly":True,"sameSite":"None"}])
+await page.goto("https://gemini-prototype.preview.emergentagent.com/", wait_until="networkidle")
+await page.wait_for_timeout(2500)
+b = page.get_by_test_id("training-shrink-btn")
+if await b.count(): await b.first.click(); await page.wait_for_timeout(400)
+await page.get_by_test_id("list-selector").first.click()
+await page.wait_for_timeout(400)
+await page.get_by_test_id("list-option-routeHazards").first.click()
+await page.wait_for_timeout(1200)
