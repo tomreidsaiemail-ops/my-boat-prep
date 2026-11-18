@@ -54,14 +54,17 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
     start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, path: w.path ?? null }, ...(w.legs || [])];
   // The draft's first leg is the Route Plan (START, DESTINATION, times, pins); the rest become its planned legs.
-  const applyQuick = ([first, ...rest], fresh) => {
+  const putLegs = ([first, ...rest], extra = {}) => {
     onChange("route_start", first.route_start);
     onChange("route_dest", first.route_dest);
     const next = routeText(first.route_start, first.route_dest);
     setQuestion((q) => (q.startsWith(auto.current) ? next + q.slice(auto.current.length) : q || next).slice(0, 1024));
     auto.current = next;
-    onWeather({ ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true, depart_at: first.depart_at, finish_at: first.finish_at,
+    onWeather({ ...extra, depart_at: first.depart_at, finish_at: first.finish_at,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
+  };
+  const applyQuick = ([first, ...rest], fresh) => {
+    putLegs([first, ...rest], { ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true });
     toast.success(`${fresh ? QUICK_NAME : "Draft Plan"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Route Planning`);
   };
 
@@ -110,7 +113,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         )}
       </div>
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} />}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} />}
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
@@ -134,7 +137,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {photosOpen && <NavigatorReminders />}
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} />
-      {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onDraft={draft ? (select) => setQuick({ select }) : undefined} />}
+      {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
       {!interim && <button type="button" className="btn-solid min-h-12 w-full justify-center gap-2 text-center" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} data-testid="open-crew-status-btn">
         <Users className="h-4 w-4 shrink-0" /> Open Crew Registration and Trip Acceptance Status
       </button>}

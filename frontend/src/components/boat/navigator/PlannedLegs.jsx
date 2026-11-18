@@ -7,6 +7,7 @@ import { When } from "@/components/boat/navigator/NavigatorExtras";
 import { ArriveQuickPick, ArriveType, arriveType } from "@/components/boat/navigator/ArriveType";
 import { TripConfirm } from "@/components/boat/navigator/TripConfirm";
 import { firstLeg } from "@/components/boat/navigator/PlannedRouteView";
+import { AddLegPosition } from "@/components/boat/navigator/AddLegPosition";
 
 const Field = ({ id, label, value, onChange, placeholder }) => (
   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -25,6 +26,7 @@ const NowButton = ({ label, testId, onClick }) => (
 );
 
 const problem = (l) => {
+  if (!l.route_start.trim()) return "Add the START for this leg.";
   if (!l.route_dest.trim()) return "Add the DESTINATION for this leg.";
   if ((l.finish_at || "").length < 16) return "Enter the Estimated Finish date and time.";
   if (l.depart_at && l.finish_at < l.depart_at) return "The Estimated Finish is before the Departure. Check the times.";
@@ -71,17 +73,42 @@ const LegRow = ({ leg, n, onEdit, onType }) => (
 );
 
 // Route Planning: the Route Plan is Leg 1; further planned legs follow it in order.
-// onDraft(point): a Draft Plan exists, so adding or deleting a leg opens its map at that point.
-export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft }) => {
+// onDraft(point, add): a Draft Plan exists, so deleting a leg opens its map at that point, and adding one opens it ready to drop the new stop.
+// onLegs(all): replaces every leg, Leg 1 (the Route Plan) included.
+export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft, onLegs }) => {
   const legs = weather.legs || [];
   const [edit, setEdit] = useState(null);
   const [legDirty, setLegDirty] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [placing, setPlacing] = useState(false);
   const first = firstLeg(start, dest, weather);
-  const last = legs[legs.length - 1] || first;
-  const add = () => (onDraft ? onDraft(legs.length + 1) : setEdit({ at: legs.length, leg: { id: Date.now(), route_start: last.route_dest || "", route_dest: "", depart_at: last.finish_at || "", finish_at: "", arrive_type: "" } }));
+  const all = [first, ...legs];
+  const points = [start, dest, ...legs.map((l) => l.route_dest)];
+  // The new stop goes after point `at` (-1: a new START): a leg from that point, typed in by hand when there's no Draft Plan.
+  const pick = (at) => {
+    setPlacing(false);
+    if (onDraft) { onDraft(null, at); return; }
+    const leg = at < 0 ? { id: Date.now(), route_start: "", route_dest: start, depart_at: "", finish_at: first.depart_at || "", arrive_type: "" }
+      : { id: Date.now(), route_start: points[at] || "", route_dest: "", depart_at: (at === 0 ? first.depart_at : all[at - 1].finish_at) || "", finish_at: "", arrive_type: "" };
+    setEdit({ insert: at, leg });
+  };
+  // Slotted in at point `at`: the leg that left that point now leaves the new stop, once this leg finishes.
+  const insert = (leg, at) => {
+    if (at < 0) return [{ ...leg, id: "plan", start_pos: null, dest_pos: first.start_pos || null, path: null }, { ...first, id: Date.now() + 1 }, ...legs];
+    const next = all[at];
+    const moved = next && { ...next, id: at === 0 ? Date.now() + 1 : next.id, route_start: leg.route_dest, depart_at: leg.finish_at, start_pos: null, path: null };
+    const added = at === 0 ? { ...leg, id: "plan", start_pos: first.start_pos || null, dest_pos: null, path: null } : { ...leg, dest_pos: null, path: null };
+    return [...all.slice(0, at), added, ...(moved ? [moved] : []), ...all.slice(at + 1)];
+  };
   // An edited leg's DESTINATION and finish carry on to the next leg's START and departure, where they still matched.
   const save = (leg) => {
+    if (edit.insert !== undefined) {
+      onLegs(insert(leg, edit.insert));
+      setEdit(null);
+      setLegDirty(false);
+      if (leg.arrive_type === "dock") setConfirm(true);
+      return;
+    }
     const old = legs[edit.at];
     const follow = (x) => (!old ? x : { ...x, ...(x.route_start === old.route_dest ? { route_start: leg.route_dest } : {}), ...(x.depart_at === old.finish_at ? { depart_at: leg.finish_at } : {}) });
     onChange({ legs: old ? legs.map((x, n) => (n === edit.at ? leg : n === edit.at + 1 ? follow(x) : x)) : [...legs, leg] });
@@ -104,14 +131,16 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
       {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Draft Plan map.</p>}
       {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />)}</ul>}
-      <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={add} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
+      <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setPlacing(true)} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
+      <AddLegPosition open={placing} points={points} onPick={pick} onClose={() => setPlacing(false)} />
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) { setEdit(null); setLegDirty(false); } }}>
         <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="leg-dialog" onOpenAutoFocus={(e) => e.preventDefault()} dirty={legDirty}>
           <DialogHeader>
-            <DialogTitle className="font-display text-lg font-extrabold">{edit && edit.at < legs.length ? "Edit" : "Add"} Leg {(edit?.at ?? 0) + 2}</DialogTitle>
+            <DialogTitle className="font-display text-lg font-extrabold">{edit?.insert !== undefined ? `Add Leg ${Math.max(edit.insert, 0) + 1}` : `Edit Leg ${(edit?.at ?? 0) + 2}`}</DialogTitle>
             <DialogDescription>Plan this leg of the trip. Pick Returning to Dock for the last leg.</DialogDescription>
           </DialogHeader>
-          {edit && <LegForm onDirty={setLegDirty} leg={edit.leg} n={edit.at + 1} onSave={save} onDelete={edit.at < legs.length ? () => { const n = edit.at; setEdit(null); setLegDirty(false); remove(n); } : null} />}
+          {edit && <LegForm onDirty={setLegDirty} leg={edit.leg} n={edit.insert !== undefined ? Math.max(edit.insert, 0) : edit.at + 1} onSave={save}
+            onDelete={edit.insert === undefined ? () => { const n = edit.at; setEdit(null); setLegDirty(false); remove(n); } : null} />}
         </DialogContent>
       </Dialog>
       <TripConfirm open={confirm} legs={[first, ...legs]} name={name} onClose={() => setConfirm(false)} />

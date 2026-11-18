@@ -43,6 +43,9 @@ const withSlot = (ls, j) => {
   return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: "mooring" },
     { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: later(old.finish_at, 3), path: null }, ...ls.slice(j + 1)];
 };
+// A new START before point 1: the new first leg ends at the old START.
+const withFront = (ls) => [{ ...newLeg(1), route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, depart_at: ls[0].depart_at, finish_at: ls[0].depart_at },
+  { ...ls[0], id: Date.now(), path: null }, ...ls.slice(1)];
 // The trip ends where it started: the same name, or pins within about 300 m.
 const backHome = (ls) => {
   const [a, b] = [ls[0], ls[ls.length - 1]];
@@ -77,11 +80,13 @@ const TripMiles = ({ legs }) => {
 };
 
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
-// draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first).
-export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null }) => {
+// draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first;
+// add: a new stop goes after that point, -1 for a new START, and the map waits for its tap).
+export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null }) => {
+  const adding = draft && add !== null;
   const [fresh, setFresh] = useState(!draft);
-  const [legs, setLegs] = useState(() => draft || [newLeg(1)]);
-  const [wait, setWait] = useState(draft ? null : 0); // the point a tap on the chart drops
+  const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || [newLeg(1)]));
+  const [wait, setWait] = useState(adding ? add + 1 : draft ? null : 0); // the point a tap on the chart drops
   const [pending, setPending] = useState(null);
   const [sel, setSel] = useState(draft ? select : null);
   const [name, setName] = useState("");
@@ -90,10 +95,10 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const [times, setTimes] = useState({ depart_at: "", finish_at: "" });
   const latest = useRef(legs);
   latest.current = legs;
-  const snap = useRef(null); // the legs before a stop was slotted in, for Stop adding
+  const snap = useRef(adding && add < draft.length ? draft : null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
-  const known = useRef(new Set((draft || []).map((l) => l.id))); // legs already in Route Planning keep their arriving type
+  const known = useRef(new Set([...(draft || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : [])])); // legs already in Route Planning keep their arriving type
 
   const initial = useRef(null);
   if (initial.current === null) initial.current = JSON.stringify(legs);
@@ -142,15 +147,17 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     const clean = name.trim() || `Point ${i + 1}`;
     asking.current = null;
     const mid = i > 0 && i < latest.current.length;
-    const before = mid ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
+    const front = i === 0 && snap.current !== null; // a new START slotted in before the old one
+    const before = mid || front ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
     setUndo((u) => [...u, before]);
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
     if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
     setPending(null);
-    setWait(i === 0 ? 1 : !mid && !end ? i + 1 : null);
+    setWait(front ? null : i === 0 ? 1 : !mid && !end ? i + 1 : null);
     snap.current = null;
-    if (i > 0) await rerouting(mid ? [i - 1, i] : [i - 1]);
+    if (front) await rerouting([0]);
+    else if (i > 0) await rerouting(mid ? [i - 1, i] : [i - 1]);
   };
   const addAfter = (j) => { snap.current = j < latest.current.length ? latest.current : null; put(withSlot(latest.current, j)); setSel(null); setWait(j + 1); };
   const stopAdding = () => { put(snap.current || latest.current.slice(0, -1)); snap.current = null; setWait(null); };
@@ -195,10 +202,13 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           </DialogTitle>
           <DialogDescription data-testid="quick-plan-hint">{hint}</DialogDescription>
         </DialogHeader>
-        <div className="flex gap-2">
-          <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="quick-plan-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid h-11 flex-[2] justify-center gap-1.5" disabled={!idle || busy || placed < 2} onClick={finish} data-testid="quick-plan-done-btn">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : fresh ? <Zap className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+        <div className="flex gap-1.5">
+          <button type="button" className="btn-ghost h-12 shrink-0 justify-center px-3 text-sm" onClick={onClose} data-testid="quick-plan-cancel-btn">Cancel</button>
+          <button type="button" className="btn-ghost h-12 flex-1 justify-center gap-1 px-2 text-sm leading-tight" disabled={!undo.length || pending !== null} onClick={undoLast} data-testid="quick-plan-undo-btn">
+            <Undo2 className="h-4 w-4 shrink-0" /> Undo Last Pin
+          </button>
+          <button type="button" className="btn-solid h-12 flex-[1.4] justify-center gap-1 px-2 text-sm leading-tight" disabled={!idle || busy || placed < 2} onClick={finish} data-testid="quick-plan-done-btn">
+            {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : fresh ? <Zap className="h-4 w-4 shrink-0" /> : <Pencil className="h-4 w-4 shrink-0" />}
             {fresh ? `Done ${QUICK_NAME}` : "Done, update Route Planning"}
           </button>
         </div>
@@ -213,11 +223,6 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
         )}
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
           onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
-          overlay={undo.length > 0 && pending === null && (
-            <button type="button" onClick={undoLast} className="absolute right-2 top-2 z-[1050] flex h-10 items-center gap-1.5 rounded-full border-2 border-[var(--navy)] bg-white px-3 text-sm font-bold text-[var(--navy)] shadow-md [transition:background-color_.15s] active:bg-slate-100" data-testid="quick-plan-undo-btn">
-              <Undo2 className="h-4 w-4" /> Undo last point
-            </button>
-          )}
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
             <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} name={name} onConfirm={confirm}
               onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />
