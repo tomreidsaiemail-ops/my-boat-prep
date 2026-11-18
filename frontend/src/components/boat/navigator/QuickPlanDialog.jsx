@@ -199,7 +199,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           <button type="button" className="btn-ghost h-11 flex-1 justify-center" onClick={onClose} data-testid="quick-plan-cancel-btn">Cancel</button>
           <button type="button" className="btn-solid h-11 flex-[2] justify-center gap-1.5" disabled={!idle || busy || placed < 2} onClick={finish} data-testid="quick-plan-done-btn">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : fresh ? <Zap className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
-            {fresh ? "Done Quick Route Plan Draft" : "Done, update Route Planning"}
+            {fresh ? `Done ${QUICK_NAME}` : "Done, update Route Planning"}
           </button>
         </div>
         {!fresh && idle && !sure && (

@@ -1221,7 +1221,7 @@ export default function BoatPrep({ boatId, boats }) {
             <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
-          {active.id !== "leavingDock" && allLists.some((l) => l.id === hopTrip) && (
+          {allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
               weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
           )}
