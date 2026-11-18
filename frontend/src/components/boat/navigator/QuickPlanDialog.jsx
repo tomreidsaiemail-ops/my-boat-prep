@@ -86,10 +86,11 @@ const TripMiles = ({ legs }) => {
 // draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first;
 // add: a new stop goes after that point, -1 for a new START, and the map waits for its tap).
 // ret: a return trip, so the DESTINATION's tap also makes Leg 2 back to the START.
-export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false }) => {
+// seed: a typed-in return trip ({ legs: [Leg 1], back: its Leg 2 or null }); its names and times are kept, only the pins are tapped in.
+export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false, seed = null }) => {
   const adding = draft && add !== null;
-  const [fresh, setFresh] = useState(!draft);
-  const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || [newLeg(1)]));
+  const [fresh, setFresh] = useState(!draft && !seed);
+  const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || seed?.legs || [newLeg(1)]));
   const [wait, setWait] = useState(adding ? add + 1 : draft ? null : 0); // the point a tap on the chart drops
   const [pending, setPending] = useState(null);
   const [sel, setSel] = useState(draft ? select : null);
@@ -102,7 +103,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const snap = useRef(adding && add < draft.length ? draft : null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
-  const known = useRef(new Set([...(draft || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : [])])); // legs already in Route Planning keep their arriving type
+  const known = useRef(new Set([...(draft || seed?.legs || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : []), ...(seed?.back ? [seed.back.id] : [])])); // legs already in Route Planning keep their arriving type
 
   const initial = useRef(null);
   if (initial.current === null) initial.current = JSON.stringify(legs);
@@ -134,7 +135,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       if (pending === i) return;
       const ls = latest.current;
       setPending(i);
-      setName("");
+      setName(seed ? nameOf(ls, i) || "" : "");
       setTimes(i < ls.length ? { depart_at: ls[i].depart_at, finish_at: ls[i].finish_at } : { depart_at: at(i + 1, "06"), finish_at: at(i + 1, "09") });
       asking.current = pos;
       // A point confirmed before its name arrived is called "Point n" until the name comes in.
@@ -160,7 +161,10 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     const before = mid || front ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
     setUndo((u) => [...u, before]);
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
-    if (home) ls = [...ls, { ...newLeg(2, clean), route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: "dock" }];
+    if (home) {
+      const { start_pos, dest_pos, path, ...back } = seed?.back || {};
+      ls = [...ls, { ...newLeg(2, clean), ...back, route_start: clean, route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: back.arrive_type || "dock" }];
+    }
     else if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
     setPending(null);
@@ -201,8 +205,9 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const placed = stops.filter((s, k) => s.pos && k !== wait).length;
   const idle = wait === null && pending === null;
   const homing = ret && legs.length === 1;
-  const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? (ret ? "Return trip: tap where you'll depart from (green)." : "Tap where you'll depart from.")
-    : wait === 1 && homing ? "Return trip: tap the DESTINATION. The trip then comes back to the start (red)." : wait !== null ? "Tap the chart for the new stop."
+  const typed = wait !== null && wait < 2 ? nameOf(legs, wait) : "";
+  const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? (ret ? `Return trip: tap ${typed ? `START, ${typed}` : "where you'll depart from"} (green).` : "Tap where you'll depart from.")
+    : wait === 1 && homing ? `Return trip: tap ${typed ? `DESTINATION, ${typed}` : "the DESTINATION"}. The trip then comes back to the start (red).` : wait !== null ? "Tap the chart for the new stop."
     : sel !== null ? "Change this point in its popup, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin to move it, then tap Done."
       : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag a pin to move it, then tap Done.";
   return (
@@ -211,7 +216,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
         dirty={pending !== null || JSON.stringify(legs) !== initial.current}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold" data-testid="quick-plan-title">
-            {fresh ? <Zap className="h-5 w-5 text-amber-500" /> : <Pencil className="h-5 w-5 text-amber-500" />} {fresh ? QUICK_NAME : EDIT_NAME}
+            {fresh ? <Zap className="h-5 w-5 text-amber-500" /> : <Pencil className="h-5 w-5 text-amber-500" />} {fresh || seed ? QUICK_NAME : EDIT_NAME}
           </DialogTitle>
           <DialogDescription data-testid="quick-plan-hint">{hint}</DialogDescription>
         </DialogHeader>

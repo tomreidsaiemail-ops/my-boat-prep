@@ -113,13 +113,14 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
         {!interim && !sure && (
-          <button type="button" onClick={() => (draft ? setQuick({}) : hasRoute ? setSure(1) : setQuick({}))} className="btn-ghost h-11 min-w-0 flex-1 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
+          <button type="button" onClick={() => (draft ? setQuick({}) : ret ? setQuick({ seed: true }) : hasRoute ? setSure(1) : setQuick({}))} className="btn-ghost h-11 min-w-0 flex-1 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
             {draft ? <Pencil className="h-4 w-4 shrink-0 text-amber-500" /> : <Zap className="h-4 w-4 shrink-0 text-amber-500" />} <span className="truncate">{draft ? EDIT_NAME : QUICK_NAME}...</span>
           </button>
         )}
       </div>
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret} />}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret}
+        seed={quick.seed ? { legs: [{ ...current()[0], start_pos: null, dest_pos: null, path: null }], back: isReturn ? legsNow[0] : null } : null} />}
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
