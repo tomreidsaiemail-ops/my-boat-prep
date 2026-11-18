@@ -12,6 +12,7 @@ import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
+import { returnsToStart } from "@/lib/tripStops";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -50,6 +51,11 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const w = boat.weather || {};
   const hasRoute = !!(start || dest || w.start_pos || w.dest_pos || (w.legs || []).length);
   const draft = hasRoute && !!w.trip_draft;
+  // Return trip: ticked once START and DESTINATION are in. Only a 2-leg trip whose Leg 2 ends at START is one, and that can't be unticked.
+  const legsNow = w.legs || [];
+  const isReturn = returnsToStart([{ route_start: start }, ...legsNow]);
+  const canReturn = !!(start.trim() && dest.trim());
+  const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
   // Route Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
     start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, path: w.path ?? null }, ...(w.legs || [])];
@@ -60,7 +66,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     const next = routeText(first.route_start, first.route_dest);
     setQuestion((q) => (q.startsWith(auto.current) ? next + q.slice(auto.current.length) : q || next).slice(0, 1024));
     auto.current = next;
-    onWeather({ ...extra, depart_at: first.depart_at, finish_at: first.finish_at,
+    onWeather({ ...extra, ...(isReturn && !rest.length ? { return_trip: false } : {}), depart_at: first.depart_at, finish_at: first.finish_at,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
   };
   const applyQuick = ([first, ...rest], fresh) => {
@@ -113,10 +119,20 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         )}
       </div>
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} />}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret} />}
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
+        {!interim && (
+          <label className={`flex shrink-0 flex-col items-center gap-1 ${!canReturn || legsNow.length ? "opacity-60" : "cursor-pointer"}`} data-testid="return-trip"
+            title={isReturn ? "Leg 2 comes back to START, so this is a return trip" : legsNow.length ? "Only a 2-leg trip that comes back to START is a return trip" : canReturn ? "" : "Enter the START and DESTINATION first"}>
+            <span className="field-label text-center leading-tight">Return<br />trip</span>
+            <span className="flex h-11 items-center">
+              <input type="checkbox" className="h-6 w-6 accent-[var(--navy)]" checked={ret} disabled={!canReturn || legsNow.length > 0}
+                onChange={(e) => onWeather({ return_trip: e.target.checked })} data-testid="return-trip-checkbox" />
+            </span>
+          </label>
+        )}
       </div>
       <FoldHeader open={askOpen || state.busy || !!state.result} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>
       {(askOpen || state.busy || !!state.result) && (<>

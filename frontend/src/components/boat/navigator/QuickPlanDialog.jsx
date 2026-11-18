@@ -3,7 +3,7 @@ import { Loader2, Pencil, RotateCcw, Undo2, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
-import { legMiles, milesText, stopsOf } from "@/lib/tripStops";
+import { legMiles, milesText, returnsToStart, stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 
 export const QUICK_NAME = "Quick Draft Plan";
@@ -28,7 +28,9 @@ const nameOf = (legs, i) => (i === 0 ? legs[0].route_start : legs[i - 1].route_d
 const ll = (p) => [p.lat, p.lon];
 
 // Point j is leg j's START and leg j-1's DESTINATION.
-const renamed = (ls, j, v) => ls.map((l, n) => (n === j ? { ...l, route_start: v } : n === j - 1 ? { ...l, route_dest: v } : l));
+const renamedOne = (ls, j, v) => ls.map((l, n) => (n === j ? { ...l, route_start: v } : n === j - 1 ? { ...l, route_dest: v } : l));
+// A return trip's START and end point are the same place, so they're renamed together.
+const renamed = (ls, j, v) => (returnsToStart(ls) && (j === 0 || j === ls.length) ? renamedOne(renamedOne(ls, 0, v), ls.length, v) : renamedOne(ls, j, v));
 // Removing point j joins the legs either side of it (or leaves one point waiting for its next stop).
 const withoutPoint = (ls, j) => {
   if (ls.length === 1) return [j === 0 ? { ...ls[0], route_start: ls[0].route_dest, start_pos: ls[0].dest_pos, route_dest: "", dest_pos: null, path: null } : { ...ls[0], route_dest: "", dest_pos: null, path: null }];
@@ -83,7 +85,8 @@ const TripMiles = ({ legs }) => {
 // Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
 // draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first;
 // add: a new stop goes after that point, -1 for a new START, and the map waits for its tap).
-export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null }) => {
+// ret: a return trip, so the DESTINATION's tap also makes Leg 2 back to the START.
+export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false }) => {
   const adding = draft && add !== null;
   const [fresh, setFresh] = useState(!draft);
   const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || [newLeg(1)]));
@@ -121,7 +124,11 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   };
   const rerouting = async (ks) => { setBusy((b) => b + 1); for (const k of ks) await route(k); setBusy((b) => b - 1); };
   const onPlace = (i, pos) => {
-    put(setPos(latest.current, i, pos));
+    // A return trip's end point stays on its START, whichever of the two is moved.
+    const n = latest.current.length;
+    const twin = pos && (i === 0 || i === n) && returnsToStart(latest.current) ? (i === 0 ? n : 0) : null;
+    put(setPos(twin !== null ? setPos(latest.current, twin, pos) : latest.current, i, pos));
+    if (twin !== null && i !== wait) route(twin === 0 ? 0 : n - 1);
     if (!pos) return;
     if (i === wait) {
       if (pending === i) return;
@@ -149,15 +156,18 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     asking.current = null;
     const mid = i > 0 && i < latest.current.length;
     const front = i === 0 && snap.current !== null; // a new START slotted in before the old one
+    const home = ret && i === 1 && latest.current.length === 1; // return trip: Leg 2 back to the START comes with the DESTINATION
     const before = mid || front ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
     setUndo((u) => [...u, before]);
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
-    if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
+    if (home) ls = [...ls, { ...newLeg(2, clean), route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: "dock" }];
+    else if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
     setPending(null);
-    setWait(front ? null : i === 0 ? 1 : !mid && !end ? i + 1 : null);
+    setWait(front || home ? null : i === 0 ? 1 : !mid && !end ? i + 1 : null);
     snap.current = null;
     if (front) await rerouting([0]);
+    else if (home) await rerouting([0, 1]);
     else if (i > 0) await rerouting(mid ? [i - 1, i] : [i - 1]);
   };
   const addAfter = (j) => { snap.current = j < latest.current.length ? latest.current : null; put(withSlot(latest.current, j)); setSel(null); setWait(j + 1); };
@@ -190,7 +200,9 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const stops = stopsOf(legs);
   const placed = stops.filter((s, k) => s.pos && k !== wait).length;
   const idle = wait === null && pending === null;
-  const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? "Tap where you'll depart from." : wait !== null ? "Tap the chart for the new stop."
+  const homing = ret && legs.length === 1;
+  const hint = pending !== null ? "Confirm the point in the popup, or ignore the tap." : wait === 0 ? (ret ? "Return trip: tap where you'll depart from (green)." : "Tap where you'll depart from.")
+    : wait === 1 && homing ? "Return trip: tap the DESTINATION. The trip then comes back to the start (red)." : wait !== null ? "Tap the chart for the new stop."
     : sel !== null ? "Change this point in its popup, delete it, or add a stop after it." : fresh ? "Trip laid out. Drag any pin to move it, then tap Done."
       : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag a pin to move it, then tap Done.";
   return (
@@ -225,7 +237,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
           onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
-            <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} name={name} onConfirm={confirm}
+            <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} home={homing && pending === 1} name={name} onConfirm={confirm}
               onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />
           ) } : idle && sel !== null && posOf(legs, sel) ? { pos: posOf(legs, sel), node: (
             <PointPopup j={sel} last={legs.length} name={nameOf(legs, sel) || ""} setName={(v) => put(renamed(latest.current, sel, v))}

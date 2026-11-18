@@ -44,3 +44,7 @@ export const shoreRoute = (b = {}) => {
   if (stops.filter((s) => s.pos).length < 2) return null;
   return { stops: stops.map((s) => (s.pos ? { name: String(s.name).slice(0, 80), lat: s.pos.lat, lon: s.pos.lon, type: s.type || "" } : null)), lines: legLines(legs) };
 };
+
+const same = (a, b) => !!(a || "").trim() && (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+// A return trip: two legs, Leg 2's DESTINATION being Leg 1's START (legs: every leg, Leg 1 first).
+export const returnsToStart = (legs) => legs.length === 2 && same(legs[1].route_dest, legs[0].route_start);

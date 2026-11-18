@@ -122,7 +122,9 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
   };
   const remove = (n) => {
     if (onDraft) { onDraft(n + 2); return; }
-    onChange({ legs: legs.filter((_, k) => k !== n).map((l, k) => (k === n ? { ...l, path: null } : l)) });
+    // Deleting a return trip's Leg 2 unticks Return trip.
+    const back = legs.length === 1 && (legs[0].route_dest || "").trim().toLowerCase() === start.toLowerCase();
+    onChange({ legs: legs.filter((_, k) => k !== n).map((l, k) => (k === n ? { ...l, path: null } : l)), ...(back ? { return_trip: false } : {}) });
     toast(`Leg ${n + 2} deleted`, { duration: 6000, action: { label: "Undo", onClick: () => onChange({ legs }) } });
   };
   return (
