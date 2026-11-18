@@ -7,7 +7,8 @@ import { alongLine, milesText } from "@/lib/tripStops";
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 // Each arriving type's icon as markup, for the small badge on a pin's corner.
 const BADGE = Object.fromEntries(ARRIVE_TYPES.map((t) => [t.key, renderToStaticMarkup(createElement(t.Icon, { size: 11, strokeWidth: 2.5 }))]));
-const pin = (n, picked, kind, type) => L.divIcon({ className: "", iconSize: [24, 24], iconAnchor: [12, 12],
+// twin: the end pin of a trip that finishes where it started, drawn up and right of the start pin so both show at every zoom.
+const pin = (n, picked, kind, type, twin) => L.divIcon({ className: "", iconSize: [24, 24], iconAnchor: twin ? [-2, 26] : [12, 12],
   html: `<span class="route-pin${kind}${picked ? " route-pin-picked" : ""}">${n}${BADGE[type] ? `<span class="route-pin-badge" data-type="${type}">${BADGE[type]}</span>` : ""}</span>` });
 const tag = (cls, text, style = "") => L.divIcon({ className: "", html: `<span class="${cls}"${style ? ` style="${style}"` : ""}>${esc(text)}</span>`, iconSize: [0, 0] });
 
@@ -47,7 +48,8 @@ export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, o
   stops.forEach((s, i) => {
     if (!s?.pos) return;
     const kind = i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : "";
-    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind, badges && s.type), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
+    const twin = i > 0 && i === stops.length - 1 && stops[0]?.pos && stops[0].pos.lat === s.pos.lat && stops[0].pos.lon === s.pos.lon;
+    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind, badges && s.type, twin), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
     if (onPin) mk.on("click", () => onPin(i));
     if (onPinDrag) mk.on("dragend", (e) => { const ll = e.target.getLatLng(); onPinDrag(i, { lat: +ll.lat.toFixed(5), lon: +ll.lng.toFixed(5) }); });
     mk.addTo(g);
