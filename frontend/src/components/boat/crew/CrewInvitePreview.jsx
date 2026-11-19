@@ -11,9 +11,9 @@ export const CrewInvitePreview = ({ invite, boat, vessel, skipper, areas, online
   const [error, setError] = useState("");
   const [joined, setJoined] = useState(false);
   useEffect(() => {
-    api.get(`/boats/${boat.boat_id}/crew-preview`, { params: { roles: invite.roles }, paramsSerializer: { indexes: null }, timeout: 15000 })
+    api.get(`/boats/${boat.boat_id}/crew-preview`, { params: { roles: invite.roles, ...(invite.trip_id ? { trip_id: invite.trip_id } : {}) }, paramsSerializer: { indexes: null }, timeout: 15000 })
       .then(({ data: d }) => setData(d)).catch((e) => setError(apiError(e, "Couldn't load the preview, please try again")));
-  }, [boat.boat_id, invite.roles]);
+  }, [boat.boat_id, invite.roles, invite.trip_id]);
   const who = invite.name || invite.email;
   if (joined && data) return <CrewAgreementDialog preview={who} data={data} boat={boat} vessel={vessel} areas={areas} online={online} onSaved={() => {}} onRead={() => {}} onClose={onClose} />;
   return (

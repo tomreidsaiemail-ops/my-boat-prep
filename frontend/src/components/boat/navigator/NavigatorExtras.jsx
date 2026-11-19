@@ -53,20 +53,28 @@ const timingAnomaly = (w) => {
 export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => {
   const warn = timingAnomaly(weather);
   // Start follows Departure until the skipper sets a different Start.
-  const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
+  // An empty Estimated Finish takes the Departure date.
+  const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}), ...(!weather.finish_at && v ? { finish_at: v.slice(0, 10) } : {}) });
+  // Crew agree to the meet up explicitly once the skipper changes it from the default; the skipper can untick that.
+  const meetup = weather.meetup ?? MEETUP_DEFAULT;
+  const changed = (m) => !!m.trim() && m.trim() !== MEETUP_DEFAULT;
+  const agree = changed(meetup) && weather.meetup_agree !== false;
+  const setMeetup = (v) => onChange({ meetup: v, ...(changed(v) && !changed(meetup) ? { meetup_agree: true } : {}) });
+  const departField = <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} />;
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
   const noFinish = (weather.finish_at || "").length < 16;
   const noName = !interim && !String(weather.event_name || "").trim();
   return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
-    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} />
+    {interim && departField}
     <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
       <span className={`field-label ${noName ? "!text-[var(--red)]" : ""}`}>Event or Trip name{interim ? " (optional)" : ""}</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. The Yacht Club's Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className={`field-input text-base normal-case tracking-normal ${noName ? "!border-[var(--red)]" : ""}`} data-testid="navigator-event-name-input" />
     </label>
     {noName && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-event-name-required">Enter the Event or Trip name. It's needed before you depart.</p>}
+    {!interim && departField}
     {startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
       : <button type="button" onClick={() => onChange({ event_open: true })} className="flex items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 py-2 text-left text-sm" data-testid="navigator-event-at-expand-btn">
         <ChevronRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
@@ -78,11 +86,19 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => 
     {!interim && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
     {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
-    <label htmlFor="navigator-meetup" className="flex flex-col gap-1.5">
-      <span className="field-label">Meet up details</span>
-      <textarea id="navigator-meetup" value={weather.meetup ?? MEETUP_DEFAULT} maxLength={1000} rows={3} onChange={(e) => onChange({ meetup: e.target.value })}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <label htmlFor="navigator-meetup" className="field-label">Meet up details</label>
+        {!interim && (
+          <label className={`flex items-center gap-1.5 text-xs font-bold text-[var(--navy)] ${changed(meetup) ? "" : "opacity-50"}`} data-testid="navigator-meetup-agree">
+            <input type="checkbox" checked={agree} disabled={!changed(meetup)} onChange={(e) => onChange({ meetup_agree: e.target.checked })} className="h-4 w-4 accent-[var(--navy)]" data-testid="navigator-meetup-agree-checkbox" />
+            Crew member to agree to this explicitly
+          </label>
+        )}
+      </div>
+      <textarea id="navigator-meetup" value={meetup} maxLength={1000} rows={3} onChange={(e) => setMeetup(e.target.value)}
         className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-meetup-input" />
-    </label>
+    </div>
   </div>
   );
 };

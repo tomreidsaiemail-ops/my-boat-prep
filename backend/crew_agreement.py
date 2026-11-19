@@ -9,7 +9,7 @@ from db import db
 from auth import get_current_user, to_user_out
 import joincrew
 from briefing_fill import fill, shown, video_url
-from crew import SHORE_BRIEF, BoatPath, brief_hash, brief_read, owned_boat, role_briefings
+from crew import SHORE_BRIEF, BoatPath, brief_hash, brief_read, owned_boat, role_briefings, trips_of
 from crew_register import record_walkthrough
 from agreement_pdf import build_agreement_pdf
 
@@ -41,6 +41,32 @@ class AgreementIn(BaseModel):
     accept: bool = False
     quick: bool = False
     shore_ok: bool = False
+    terms_ok: bool = False
+    plan_ok: bool = False
+    meet_ok: bool = False
+
+
+MEETUP_DEFAULT = "Pier X, Berth YYY, be onboard no later than ONE HOUR before DEPARTURE, as that is when the crew briefing will begin."
+LEG_KEYS = ("route_start", "route_dest", "start_pos", "dest_pos", "path", "depart_at", "finish_at", "arrive_type")
+
+
+def trip_plan(doc: dict, trip_id: str) -> Optional[dict]:
+    """The Route Planning trip the crew member was invited to: where, when, why, the meet up and every leg (with pins for the map)."""
+    from crew import DEFAULT_TRIP
+    boat = doc.get("boat") or {}
+    src = boat if trip_id == DEFAULT_TRIP else (boat.get("trips") or {}).get(trip_id) or {}
+    w = src.get("weather") or {}
+    start, dest = (src.get("route_start") or "").strip(), (src.get("route_dest") or "").strip()
+    if not (start or dest or w.get("depart_at")):
+        return None
+    name = next((l.get("name") for l in doc.get("registry") or [] if l.get("id") == trip_id), "") or "Route Planning"
+    first = {"route_start": start, "route_dest": dest, **{k: w.get(k) for k in LEG_KEYS[2:] if w.get(k)}}
+    legs = [first] + [{k: l.get(k) for k in LEG_KEYS if l.get(k)} for l in (w.get("legs") or []) if isinstance(l, dict)]
+    meetup = (w.get("meetup") if w.get("meetup") is not None else MEETUP_DEFAULT).strip()
+    changed = bool(meetup) and meetup != MEETUP_DEFAULT
+    return {"trip_id": trip_id, "name": name, "event": (w.get("event_name") or "").strip(), "why": (w.get("why") or "").strip(),
+            "depart_at": w.get("depart_at") or "", "finish_at": w.get("finish_at") or "", "meetup": meetup,
+            "meetup_agree": changed and w.get("meetup_agree") is not False, "legs": legs[:30]}
 
 
 class WalkSkipIn(BaseModel):
@@ -123,7 +149,8 @@ async def save_boat_terms(boat_id: BoatPath, payload: TermsIn, user: dict = Depe
 
 async def crew_doc(user: dict, owner_id: str, boat_id: str) -> dict:
     doc = await db.user_boats.find_one({"owner_id": owner_id, "boat_id": boat_id, "crew": user["user_id"]},
-                                       {"_id": 0, "boat": 1, "boat_terms": 1, "zone_maps": 1, "areas": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1})
+                                       {"_id": 0, "boat": 1, "boat_terms": 1, "zone_maps": 1, "areas": 1, "walk_skip": 1, f"walk_skip_crew.{user['user_id']}": 1, f"crew_roles.{user['user_id']}": 1, f"agreements.{user['user_id']}": 1, "shore_ids": 1,
+                                        f"crew_trips.{user['user_id']}": 1, "registry": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="You're no longer crew on this boat")
     return doc
@@ -143,21 +170,22 @@ async def get_agreement(owner_id: OwnerQ, boat_id: BoatQ, user: dict = Depends(g
         return {"role": r, "briefing": text, "video": video, "read_at": at, "video_choice": (reads.get(r.lower()) or {}).get("video", "") if at and video else ""}
     return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [role_view(r) for r in roles],
             "agreement": (doc.get("agreements") or {}).get(user["user_id"]), "walkthrough": await last_walk(owner_id, boat_id, user),
-            "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [],
+            "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [], "trip": trip_plan(doc, trips_of(doc, user["user_id"])[0]),
             "joincrew_offer": not user.get("joincrew") and not to_user_out(user).has_subscription and await joincrew.live()}
 
 
 @router.get("/boats/{boat_id}/crew-preview")
-async def crew_preview(boat_id: str, roles: List[str] = Query(default=[]), user: dict = Depends(get_current_user)):
+async def crew_preview(boat_id: str, roles: List[str] = Query(default=[]), trip_id: str = Query(default="routeHazards", pattern=r"^[A-Za-z0-9_-]{1,60}$"), user: dict = Depends(get_current_user)):
     """Preview Crew Member Invite: the agreement a new crew member with these roles sees, as if nothing were read or ticked yet."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "boat_terms": 1, "shore_ids": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat": 1, "boat_terms": 1, "shore_ids": 1, "registry": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found")
     briefs = await role_briefings(user["user_id"], boat_id)
     view = lambda r: {"role": r, "briefing": fill(briefs.get(r.lower(), ""), doc.get("boat") or {})[0],  # noqa: E731
                       "video": fill(briefs.get(r.lower(), ""), doc.get("boat") or {})[1], "read_at": None, "video_choice": ""}
     return {"terms": await standard_terms(), "boat_terms": doc.get("boat_terms", ""), "roles": [view(r) for r in roles[:12]],
-            "agreement": None, "walkthrough": None, "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [], "joincrew_offer": False}
+            "agreement": None, "walkthrough": None, "shore_brief": SHORE_BRIEF if doc.get("shore_ids") else [], "joincrew_offer": False,
+            "trip": trip_plan(doc, trip_id)}
 
 
 async def last_walk(owner_id: str, boat_id: str, user: dict) -> Optional[dict]:
@@ -178,9 +206,17 @@ async def save_agreement(payload: AgreementIn, user: dict = Depends(get_current_
         raise HTTPException(status_code=400, detail="Tick every stop of the Boat Walk Through before you accept")
     if payload.accept and doc.get("shore_ids") and not payload.shore_ok:
         raise HTTPException(status_code=400, detail="Tick that you understand the shore contact alert instructions before you accept")
+    plan = trip_plan(doc, trips_of(doc, user["user_id"])[0])
+    if payload.accept and await standard_terms() and not payload.terms_ok:
+        raise HTTPException(status_code=400, detail="Tick that you've read the Standard Terms before you accept")
+    if payload.accept and plan and not payload.plan_ok:
+        raise HTTPException(status_code=400, detail="Tick that you've read and accepted the skipper's plan before you accept")
+    if payload.accept and plan and plan["meetup_agree"] and not payload.meet_ok:
+        raise HTTPException(status_code=400, detail="Confirm the meet up details before you accept")
     prev = (doc.get("agreements") or {}).get(user["user_id"]) or {}
     now = datetime.now(timezone.utc).isoformat()
-    rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now,
+    oks = {f"{k}_ok_at": prev.get(f"{k}_ok_at") or now for k, on in (("terms", payload.terms_ok), ("plan", payload.plan_ok), ("meet", payload.meet_ok)) if on}
+    rec = {"stops": ticked, "stops_total": len(all_stops), "updated_at": now, **oks,
            **({"accepted_at": now} if payload.accept else {"accepted_at": prev["accepted_at"]} if prev.get("accepted_at") else {}),
            **({"quick": True, "full_at": walk["full_at"]} if walk and payload.accept else {}),
            **({"shore_ok_at": now if payload.accept else prev.get("shore_ok_at") or now} if payload.shore_ok and doc.get("shore_ids")

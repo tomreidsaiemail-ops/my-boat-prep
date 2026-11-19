@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Footprints, Loader2, PlayCircle } from "lucide-react";
+import { Footprints, Loader2, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -8,6 +8,7 @@ import { localWhen, timeAgo } from "@/lib/timeAgo";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { AcceptButtons, AgreementWalkthrough, stopId } from "@/components/boat/agreement/AgreementParts";
 import { JoinCrewOffer, offerToast } from "@/components/boat/agreement/JoinCrewOffer";
+import { Done, ReadTick, TripPlanSection } from "@/components/boat/agreement/AgreementSections";
 
 const Section = ({ title, children, testId }) => (
   <section className="flex flex-col gap-1.5" data-testid={testId}>
@@ -39,14 +40,20 @@ const VideoChoices = ({ k, value, onChange }) => (
 const Role = ({ r, k, onRead, busy }) => {
   const [choice, setChoice] = useState("");
   const need = !!r.video && !choice;
+  // Once read, the briefing folds away to its name and tick.
+  if (r.briefing && r.read_at) return (
+    <div className="flex flex-col gap-1.5 rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
+      <b>{r.role}</b>
+      <ReadTick checked disabled onChange={() => {}} testId={`agreement-role-${k}-read`}>I&apos;ve read the {r.role} briefing</ReadTick>
+      <span className="text-xs text-[var(--muted)]">Read {new Date(r.read_at).toLocaleDateString()}{r.video_choice ? ` · ${videoChoiceText(r.video_choice)}` : ""}</span>
+    </div>
+  );
   return (
     <div className="flex flex-col gap-1.5 rounded-md bg-sky-50 p-2.5 text-sm" data-testid={`agreement-role-${k}`}>
       <b>{r.role}</b>
       <p className="whitespace-pre-wrap" data-testid={`agreement-role-${k}-briefing`}>{r.briefing || "No briefing from the skipper for this role yet."}</p>
       {r.video && <a href={r.video} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 self-start font-bold text-red-700 underline" data-testid={`agreement-role-${k}-video-link`}><PlayCircle className="h-4 w-4" /> Watch the briefing video</a>}
-      {r.briefing && (r.read_at
-        ? <span className="inline-flex flex-wrap items-center gap-1 self-start rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-900" data-testid={`agreement-role-${k}-read`}><Check className="h-3.5 w-3.5" strokeWidth={3} /> Read {new Date(r.read_at).toLocaleDateString()}{r.video_choice ? ` · ${videoChoiceText(r.video_choice)}` : ""}</span>
-        : <>
+      {r.briefing && (<>
             <label className={`flex items-center gap-2 self-start rounded-md border-[1.5px] border-[var(--navy)] bg-white px-2.5 py-1.5 text-sm font-bold ${need ? "opacity-60" : ""}`} data-testid={`agreement-role-${k}-read-btn`}>
               {busy === r.role ? <Loader2 className="h-5 w-5 animate-spin" /> : <input type="checkbox" checked={false} disabled={need} onChange={() => onRead(r.role, choice)} className="h-5 w-5 accent-emerald-700" data-testid={`agreement-role-${k}-read-checkbox`} />}
               I&apos;ve read the {r.role} briefing
@@ -94,6 +101,14 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
 
   const unread = (data.roles || []).filter((r) => r.briefing && !r.read_at);
   const [briefWarn, setBriefWarn] = useState(false);
+  const ag = data.agreement || {};
+  const [termsOk, setTermsOk] = useState(!!ag.terms_ok_at || accepted);
+  const [planOk, setPlanOk] = useState(!!ag.plan_ok_at || accepted);
+  const [meetOk, setMeetOk] = useState(!!ag.meet_ok_at || accepted);
+  const [showStops, setShowStops] = useState(false);
+  const [warn, setWarn] = useState("");
+  const trip = data.trip;
+  const stop = (msg, testId) => { setWarn(msg); document.querySelector(`[data-testid="${testId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); return false; };
   const shoreBrief = data.shore_brief || [];
   const [shoreOk, setShoreOk] = useState(!!data.agreement?.shore_ok_at);
   const [shoreWarn, setShoreWarn] = useState(false);
@@ -108,6 +123,8 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
     } catch (e) { toast.error(apiError(e, "Couldn't save that, please try again")); }
   };
   const briefingsDone = () => {
+    setWarn("");
+    if (data.terms.length && !termsOk) return stop("Please tick that you've read the Standard Terms before you accept.", "agreement-standard-terms");
     if (unread.length) {
       setBriefWarn(true);
       document.querySelector('[data-testid="agreement-roles"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -118,17 +135,19 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
       document.querySelector('[data-testid="agreement-shore-alerts"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
       return false;
     }
+    if (trip && (!planOk || (trip.meetup_agree && !meetOk))) return stop("Please tick that you've read and accepted the skipper's plan before you accept.", "agreement-trip-plan");
     return true;
   };
   const save = async (accept) => {
     if (accept && !briefingsDone()) return;
     if (preview) { toast.message(accept ? `Preview: this is where ${preview} accepts. Nothing was saved.` : "Preview closed. Nothing was saved."); onClose(); return; }
-    const same = !accept && shoreOk === !!data.agreement?.shore_ok_at && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
+    const same = !accept && shoreOk === !!data.agreement?.shore_ok_at && termsOk === !!ag.terms_ok_at && planOk === !!ag.plan_ok_at && meetOk === !!ag.meet_ok_at && ticked.length === (data.agreement?.stops || []).length && ticked.every((t) => data.agreement.stops.includes(t));
     if (accepted || (same && data.agreement)) { onClose(); return; }
     if (!online) { toast.error("Go online to save the agreement"); if (!accept) onClose(); return; }
     setBusy(accept ? "accept" : "later");
     try {
-      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick, shore_ok: shoreOk });
+      const { data: res } = await api.post("/crew/agreement", { owner_id: boat.owner_id, boat_id: boat.boat_id, stops: ticked, accept, quick: accept && quick, shore_ok: shoreOk,
+        terms_ok: termsOk, plan_ok: planOk, meet_ok: meetOk });
       onSaved(res.agreement);
       if (accept) toast.success(`Thanks! The skipper of ${vessel} can see you've read and accepted the agreement`);
       if (accept) window.dispatchEvent(new CustomEvent("mbp:agreement-accepted", { detail: { owner_id: boat.owner_id, boat_id: boat.boat_id } }));
@@ -150,7 +169,12 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
               : `Welcome aboard ${vessel}. Please read the terms and your role briefing, tick each stop of the Boat Walk Through, then accept.`}
           </DialogDescription>
         </DialogHeader>
-        {data.terms.length > 0 && <Section title="Standard terms" testId="agreement-standard-terms"><Lines lines={data.terms} testId="agreement-standard-lines" /></Section>}
+        {data.terms.length > 0 && (
+          <Section title="Standard terms" testId="agreement-standard-terms">
+            {!termsOk && <Lines lines={data.terms} testId="agreement-standard-lines" />}
+            <ReadTick checked={termsOk} disabled={accepted} onChange={(v) => { setTermsOk(v); setWarn(""); }} testId="agreement-terms-read">I&apos;ve read the Standard Terms</ReadTick>
+          </Section>
+        )}
         {boatLines.length > 0 && <Section title={`${vessel}'s terms`} testId="agreement-boat-terms"><Lines lines={boatLines} testId="agreement-boat-lines" /></Section>}
         <Section title="Your role briefing" testId="agreement-roles">
           <Roles roles={data.roles} onRead={read} busy={reading} />
@@ -174,13 +198,21 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
               <span>I will check with the skipper if anything has moved since I did the complete walkthrough <span className="block text-xs font-normal text-[var(--muted)]">You did it {timeAgo(fullAt)} ({localWhen(fullAt)}).</span></span>
             </label>
           )}
-          {steps.length > 0 && !accepted && !quick && (
+          {ready && steps.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Done testId="agreement-walkthrough-done">Boat walkthrough completed</Done>
+              <button type="button" className="text-xs font-bold text-[var(--navy)] underline" onClick={() => setShowStops((v) => !v)} data-testid="agreement-walkthrough-show-btn">{showStops ? "Hide stops" : "Show stops"}</button>
+            </div>
+          )}
+          {steps.length > 0 && !accepted && !quick && !ready && (
             <button type="button" className="btn-solid h-11 justify-center gap-2" onClick={() => setWalking(nextStop)} data-testid="agreement-start-walkthrough-btn">
               <Footprints className="h-4 w-4" /> {ready ? "Walk through again" : ticked.length ? "Carry on the walkthrough" : "Start the walkthrough"}
             </button>
           )}
-          <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />
+          {(!ready || showStops || !steps.length) && <AgreementWalkthrough steps={steps} areas={areas} boat={boat} ticked={ticked} onChange={accepted ? () => {} : setTicked} onOpenStop={accepted || quick ? undefined : setWalking} />}
         </Section>
+        {trip && <TripPlanSection trip={trip} ok={planOk} meetOk={meetOk} locked={accepted} onOk={(v) => { setPlanOk(v); setWarn(""); }} onMeetOk={setMeetOk} />}
+        {warn && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="agreement-tick-warning">{warn}</p>}
         {data.joincrew_offer && <JoinCrewOffer />}
         <AcceptButtons accepted={accepted} ready={ready} busy={busy} onTry={briefingsDone} onAccept={() => save(true)} onLater={() => save(false)} />
         {walking !== null && <CrewWalkthrough steps={steps} areas={areas} boat={boat} start={walking} ticked={ticked} onTick={tick} onSeen={seen} onClose={() => setWalking(null)} onOpenArea={() => {}} />}

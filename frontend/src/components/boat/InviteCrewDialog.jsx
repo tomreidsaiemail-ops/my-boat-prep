@@ -131,7 +131,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
     try {
       const { data: saved } = await api.post(`/boats/${boat.boat_id}/invites`, { name: crewName.trim(), email: email.trim(), roles, notes, briefings: mine, shopping, send_email: mode === "email", trip_id: trip, trip_name: cur.name, ...ownWalk }, { timeout: 30000 });
       const who = email.trim();
-      if (mode === "email" || mode === "message") setLastInvite({ name: crewName.trim(), email: who, roles, trip_name: cur.name, ...ownWalk });
+      if (mode === "email" || mode === "message") setLastInvite({ name: crewName.trim(), email: who, roles, trip_name: cur.name, trip_id: trip, ...ownWalk });
       sessionStorage.removeItem(INVITE_DRAFT);
       keepTrip();
       setSent((s) => ({ ...s, [who.toLowerCase()]: { email: who, toSend: mode === "message" || mode === "link" ? !(s[who.toLowerCase()]?.toSend === false) : false } }));
