@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test at 390x844 of the 5 requested changes. Everything works. (1) Racing weight: weight-panel starts collapsed (46px, aria-expanded=false, boat-weight-input missing). The toggle shows the fields (boat-weight, disp-total) and hides them again. (2) List selector with the Training strip (pro) and with admin + training strips (--mbp-top 28px / 56px): Boat Inventory (list-option-boatInventory) is the first option and is always fully visible. With the selector at y 399-699 (a test spacer pushed it into the lower half, because the natural max is y~399-427) the menu flips up and its top stays 12-118px below the strip. The point at the top of the first option hit-tests to that option, not the strip. (3) Map (Edit Draft Plan, stops-map-canvas) with a seeded TEST_A route: at ~42 m the red end pin sits ~15px right and 15px up of the green start pin at every zoom down to the whole of NZ. Green z-index 2202 vs red 802. Tapping the red pin opens the 'Point 2 (end of trip)' popup. At exactly the same spot it also shows 2 pins. At 101 m and 222 m there is no offset; when zoomed out they overlap with green on top. (4) Print Cards (QR): 'Also print folders and boxes (1)' is unchecked by default. The note says '21 cupboards' and the zone counts are cupboards only (Nav station 5). Ticking it changes the note to '22 cupboards, folders and boxes' and Nav station to 6. Unticking a zone updates the count. Reopening resets to cupboards only. The PDFs downloaded (21 and 22 cards, with matching toasts). Contents cards work (1 card, no boxes option or zone list). (5) Crew walkthrough: crew-walkthrough-btn is the last child of the zone-map section. For admin it is below 'Upload default map'; for pro on Model Vessel and TEST_Kia Ora it is below the boat-zone-map-upload button and its help text. It opens walkthrough-dialog. The crew-walkthrough-help-btn variant was not reached (both test boats have steps), but the code puts it in the same last spot.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ListSelector", "issue": "The gap below the strip is 12px, not the intended 16px, when the menu opens upward and is height-limited (admin case: menuTop 68, --mbp-top 56). The 'data-[side=top]:-translate-y-1' class in ui/select.jsx moves the menu 4px up after Radix applies collisionPadding. Still clear of the strip. Fix: add 4 in topClear (+20).", "selector": "[data-testid=list-selector-menu]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "List selector (menu opens down)", "issues": ["When the menu opens downward its bottom (y 836) sits under the shrunk training bar (y ~798-844), so the lowest visible option is partly hidden. It still scrolls. bottom collisionPadding of 12 does not allow for the training mini bar."]},
+      {"screen": "Print Cards - Contents note", "issues": ["Says 'your 1 folders and boxes' (plural with 1). This was there before."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/seed_twin_212.py"],
+  "action_items": [
+    "Optional: ListSelector topClear should add 4px for the side=top -translate-y-1, so the gap really is 16px.",
+    "Optional: bottom collisionPadding should allow for the training mini bar or wizard window (body.training-mini/open), so the end of the list menu isn't under it."
+  ],
+  "critical_code_review_comments": [
+    "routeDraw.js: twin uses a fixed 100 m distance. At 101-200 m the pins are still drawn almost on top of each other at normal zooms (7px apart at 101 m), so red is mostly hidden. The user only asked for 100 m, but a screen-pixel overlap check would be stronger.",
+    "routeDraw.js: a dragged twin end pin is drawn offset by the iconAnchor. If it is dropped more than 100 m away it will jump ~14px down-left on redraw, because the real latlng is under the anchor, not under the visible bubble. This is a UX nit.",
+    "ListSelector.jsx: topClear() is read when the component renders, not when the menu opens. It worked in every test because the strip is sticky and --mbp-top is set early, but it relies on a re-render after TrainingMode sets the variable.",
+    "FolderCardsButton.jsx: the QR PDF file is still named 'Cupboard QR cards.pdf' when folders and boxes are included. This is cosmetic."
+  ],
+  "updated_files": ["/app/tests/seed_twin_212.py"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100% (5/5 features pass; 1 low-priority 4px spacing nit)"},
+  "seed_data_creation": "Temporarily set test-user-pro/model_vessel boat.route_start TEST_A / route_dest TEST_B and a weather draft with start_pos/dest_pos (modes near/far/same/near101). It was backed up to /app/test_reports/backup/model_vessel_212.json and restored afterwards. No other data changed. Two QR PDFs and one contents PDF were generated (downloads only). For test-user-pro/main, the 'Route Planning has finished' and 'Arrived?' prompts were closed with Not now / Not yet; nothing was archived. users.last_boat for test-user-pro is back to model_vessel.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use /app/tests/seed_twin_212.py [backup|seed|far|same|near101|restore|show] for the twin-pin map (backup once before seed). Path: training-shrink-btn > list-selector > list-option-routeHazards > quick-plan-btn ('Edit Draft Plan...' when trip_draft is true) opens quick-plan-dialog. Read pin centres from '[data-testid=stops-map-canvas] .leaflet-marker-icon [class*=route-pin]' and z-index from the marker style. ConfirmDelete testIds end in -dialog/-note/-confirm-btn/-cancel-btn (e.g. print-cards-confirm-note); there is no bare print-cards-confirm element. If test-user-pro opens on 'main', it shows the trip-finish-dialog and the 'Arrived?' prompt: click Not now / Not yet, never Archive. On 390x844 the list selector's natural top is y~399 (pro) or ~427 (admin), so to put it in the lower half, insert a spacer div after training-mode-strip.",
+  "rca of the issue": "ListSelector 12px gap: the shadcn SelectContent popper class data-[side=top]:-translate-y-1 adds -4px after Radix applies collisionPadding.top (--mbp-top + 16)."
+}

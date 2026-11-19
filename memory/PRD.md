@@ -1054,3 +1054,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
   - Open (low): the trip map in the agreement uses the editable StopsMap with its edit hint; accepted agreements have no "Show terms/plan" toggle.
 - 2026-06: Zone window (ZoneDialog) has a Done button at the bottom. Training mode fix: TrainingMode measures the sticky Training/Admin strips into --mbp-top. The App.css training rules and a new index.css rule use it, so windows open below the strips and their X buttons are visible. Checked with screenshots (admin + training, wizard open and shut).
 - 2026-06: @@DOITFORME values turn "\n" into new lines (lib/doItForMe.js; a single @ is plain text). The Bulk Quick Reg box is labelled "BULK NAMES AND EMAIL" so DOITFORME can target it. Checked with a unit parse and a screenshot.
+- 2026-06 (iteration_212, 5/5):
+  - Racing weight panel is collapsed by default.
+  - The list selector menu stays clear of the training/admin strips (collisionPadding from --mbp-top) and of the training mini bar.
+  - Map: an end within 100 m of the start is drawn as an offset twin bubble, and the green start is always on top (zIndexOffset 2000).
+  - Print Cards QR prints cupboards only by default, with "Also print folders and boxes".
+  - The Crew walkthrough button moved to the bottom of ZONE MAPS.
