@@ -25,7 +25,8 @@ export const NavigatorReminders = () => (
 import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
 // Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
-export const When = ({ id, label, value, onChange, warn }) => {
+// onLeave: the date box lost focus (typing a date changes it a keystroke at a time).
+export const When = ({ id, label, value, onChange, warn, onLeave }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
   const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
@@ -33,7 +34,7 @@ export const When = ({ id, label, value, onChange, warn }) => {
     <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
       <label htmlFor={id} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</label>
       <div className="grid grid-cols-[3fr_2fr] gap-2">
-        <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
+        <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} onBlur={onLeave} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
         <input type="time" value={time} disabled={!date} onChange={(e) => join(date, e.target.value)} aria-label={`${label}: time`} className={`${box} disabled:opacity-50`} data-testid={`${id}-time-input`} />
       </div>
     </div>
@@ -53,14 +54,15 @@ const timingAnomaly = (w) => {
 export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => {
   const warn = timingAnomaly(weather);
   // Start follows Departure until the skipper sets a different Start.
-  // An empty Estimated Finish takes the Departure date.
-  const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}), ...(!weather.finish_at && v ? { finish_at: v.slice(0, 10) } : {}) });
+  const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
+  // An empty Estimated Finish takes the Departure date, once the date box is left (not on each keystroke).
+  const fillFinish = () => { if (!weather.finish_at && day(weather.depart_at)) onChange({ finish_at: day(weather.depart_at) }); };
   // Crew agree to the meet up explicitly once the skipper changes it from the default; the skipper can untick that.
   const meetup = weather.meetup ?? MEETUP_DEFAULT;
   const changed = (m) => !!m.trim() && m.trim() !== MEETUP_DEFAULT;
   const agree = changed(meetup) && weather.meetup_agree !== false;
   const setMeetup = (v) => onChange({ meetup: v, ...(changed(v) && !changed(meetup) ? { meetup_agree: true } : {}) });
-  const departField = <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} />;
+  const departField = <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} onLeave={fillFinish} />;
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
   const noFinish = (weather.finish_at || "").length < 16;

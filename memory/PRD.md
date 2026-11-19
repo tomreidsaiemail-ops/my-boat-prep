@@ -1046,3 +1046,9 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
   - Crew Prep shows clone bubbles: light red, green with a tick when complete. PrepBadge is a green pill when complete.
   - Cloned Crew Preps have Route Planning + Crew Prep hops (HOPS.crewPrepClone).
 - USER RULE: never change walkthroughs in prod on deploy without explicit instruction.
+- 2026-06: Crew agreement and Preview Invite (iteration_211, backend 17/17, all frontend flows):
+  - "I've read the Standard Terms" tick collapses the terms; read role briefings collapse; a completed walkthrough collapses with a "Show stops" toggle.
+  - New Trip Plan section (backend trip_plan(): the crew member's first trip, or the preview's trip_id) with an "Open map to see trip" button when pins exist. The "I've read and accepted the skipper's plan" tick opens the meet up modal when weather.meetup_agree is on.
+  - Accepting needs terms_ok, plan_ok and meet_ok (stored as *_ok_at).
+  - Route Planning: Event name now comes before Departure. An empty Estimated Finish takes the Departure date when the date box loses focus, not per keystroke. New "Crew member to agree to this explicitly" checkbox (weather.meetup_agree): auto-ticked once the meet up text changes from the default.
+  - Open (low): the trip map in the agreement uses the editable StopsMap with its edit hint; accepted agreements have no "Show terms/plan" toggle.

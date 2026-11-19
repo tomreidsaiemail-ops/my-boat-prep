@@ -1,0 +1,29 @@
+{
+  "summary": "Tested the crew agreement Trip Plan / collapsible ticks feature end to end on mobile (390x844). Backend: 17/17 pytest pass (crew-preview trip, the meetup_agree rules, trip null when there's no route, POST /crew/agreement 400s without terms_ok/plan_ok/meet_ok, stamps stored, ticks kept on non-accept saves, untick drops stamp). Route Planning UI: event name comes before departure; finish is prefilled from the departure date; the meet up agree checkbox goes disabled/unchecked -> enabled/checked -> untick stays off after more edits -> default disables -> change re-ticks, and it persists. Preview Invite (crew window > crew-invite-<id>-preview-btn > Join): Standard Terms tick collapses the lines; the role tick collapses to the name + ticked 'I've read the Anchor Lead briefing'; walking all 7 stops shows 'Boat walkthrough completed' and the Show/Hide stops toggle works; Trip Plan sits below the walkthrough with every field + 2 legs; the map button opens a Leaflet map with pins; the meetup modal's OK is disabled until ticked; Esc leaves the plan unticked; OK ticks it + shows agreement-meet-ok; the default meetup or agree-off ticks with no modal; the map button is hidden without pins; agreement-tick-warning shows for terms, then for the plan, and scrolls the section into view; preview accept/close saves nothing. Real crew flow (test-user-free on a TEST boat): terms tick persisted through 'Not now', the meetup modal was needed, accept stored terms_ok_at/plan_ok_at/meet_ok_at/accepted_at, and reopening shows locked ticks. No functional bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Trip map dialog (agreement-trip-map-dialog)", "issues": ["It reuses the skipper's editable StopsMap, so crew see 'Tap a stop below to drop or move its pin. Drag a pin to move a stop.' and pins/stops look draggable or tappable (onPlace is a no-op). It should be a read-only map with no edit hint."]},
+      {"screen": "Accepted agreement ('View agreement')", "issues": ["Once accepted (or ticked), the Standard Terms lines and the whole Trip Plan details (START/DEST/times/meet up/legs/map button) are hidden, and there's no 'Show' toggle like the walkthrough's agreement-walkthrough-show-btn. Crew can no longer re-read the plan or terms or open the trip map from the accepted agreement. Consider adding a Show terms / Show plan toggle."]},
+      {"screen": "Route Planning", "issues": ["The finish prefill only sets the date (no time), so the red 'Enter the Estimated Finish date and time' warning stays visible right after the prefill. That's expected given the spec, but it may look like the prefill failed."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_crew_trip_plan_211.py", "/app/tests/seed_trip_211.py", "/app/test_reports/pytest/pytest_211.xml"],
+  "action_items": [
+    "Optional: make the agreement trip map read-only (hide the StopsMap edit hint, disable dragging)",
+    "Optional: add Show terms / Show plan toggles so accepted crew can re-read the Standard Terms and Trip Plan"
+  ],
+  "critical_code_review_comments": [
+    "trip_plan() hides the trip only when START, DEST and depart_at are all empty. A route with only event_name/meetup returns null, which is fine per the spec.",
+    "TripPlanSection hides the whole details block when ok=true, which goes further than the spec (it only asked for terms, roles and walkthrough to collapse). Confirm this is wanted.",
+    "In the preview, ticking the plan with meetup_agree true and then unticking it resets meetOk, so ticking again re-opens the modal. Correct."
+  ],
+  "updated_files": ["/app/backend/tests/test_crew_trip_plan_211.py", "/app/tests/seed_trip_211.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary only, and all cleaned up: the Model Vessel route (backed up at /app/test_reports/backup/model_vessel_211.json and restored), the TEST boat test-user-pro/test_trip211 with test-user-free as crew (deleted), and the invite TEST_Preview Crew on model_vessel (cancelled).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use /app/tests/seed_trip_211.py [backup|seed|default|nopins|empty|restore|crewboat|dropcrewboat] (run 'crewboat' before the pytest file). Free user: dismiss the Crew Registration dialog with Escape, then boat-selector > boat-option-c_test-user-pro_test_trip211 > crew-agreement-bar. Clicking agreement-stop-N-checkbox opens the walkthrough dialog, so tick stops with agreement-start-walkthrough-btn > walkthrough-seen-checkbox / walkthrough-next-btn / walkthrough-done-btn. Model Vessel has 7 walkthrough stops. To preview, create an invite via POST /api/boats/model_vessel/invites {send_email:false} and use crew-invite-<id>-preview-btn after boat-crew-btn."
+}
