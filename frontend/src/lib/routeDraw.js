@@ -48,8 +48,9 @@ export const drawRoute = (m, g, { stops, lines, miles = [], land = [], tagFor, o
   stops.forEach((s, i) => {
     if (!s?.pos) return;
     const kind = i === 0 ? " route-pin-start" : i === stops.length - 1 ? " route-pin-end" : "";
-    const twin = i > 0 && i === stops.length - 1 && stops[0]?.pos && stops[0].pos.lat === s.pos.lat && stops[0].pos.lon === s.pos.lon;
-    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind, badges && s.type, twin), title: s.name, zIndexOffset: 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
+    // An end within 100 m of the start sits beside it (in screen pixels, so at every zoom), and the green start is always on top.
+    const twin = i > 0 && i === stops.length - 1 && !!stops[0]?.pos && L.latLng(stops[0].pos.lat, stops[0].pos.lon).distanceTo([s.pos.lat, s.pos.lon]) < 100;
+    const mk = L.marker([s.pos.lat, s.pos.lon], { icon: pin(i + 1, i === pick, kind, badges && s.type, twin), title: s.name, zIndexOffset: i === 0 ? 2000 : 600, draggable: !!onPinDrag }).bindTooltip(esc(`${i + 1}. ${s.name}`));
     if (onPin) mk.on("click", () => onPin(i));
     if (onPinDrag) mk.on("dragend", (e) => { const ll = e.target.getLatLng(); onPinDrag(i, { lat: +ll.lat.toFixed(5), lon: +ll.lng.toFixed(5) }); });
     mk.addTo(g);

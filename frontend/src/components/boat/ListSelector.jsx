@@ -25,6 +25,9 @@ const HomeToggle = ({ isHome, onSetHome }) => (
   </button>
 );
 
+// The open list stays clear of the top of the screen and the training/admin strips there (--mbp-top).
+const topClear = () => (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--mbp-top"), 10) || 0) + 16;
+
 export const ListSelector = ({ sections, activeId, activeColours, onChange, onCreate, onClone, onRename, homeId, onSetHome, updatedIds = [] }) => (
   <div className="flex items-stretch gap-2">
     <div className="relative min-w-0 flex-1">
@@ -33,7 +36,7 @@ export const ListSelector = ({ sections, activeId, activeColours, onChange, onCr
           className="h-14 w-full rounded-md border-2 border-l-[6px] border-[var(--navy)] bg-white pl-3 pr-3 text-left font-display text-lg font-bold text-[var(--navy)] shadow-none focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-100 [&>span]:min-w-0 [&>span]:overflow-hidden [&_.break-words]:block [&_.break-words]:truncate">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className="max-h-[min(65vh,var(--radix-select-content-available-height))] w-[min(calc(100vw-2rem),28rem)] border-2 border-[var(--navy)] bg-white" data-testid="list-selector-menu">
+        <SelectContent collisionPadding={{ top: topClear(), bottom: 12 }} className="max-h-[min(65vh,var(--radix-select-content-available-height))] w-[min(calc(100vw-2rem),28rem)] border-2 border-[var(--navy)] bg-white" data-testid="list-selector-menu">
           {sections.map((s, i) => (
             <SelectGroup key={s.key} data-testid={`list-section-${s.key}`}>
               {i > 0 && <SelectSeparator />}

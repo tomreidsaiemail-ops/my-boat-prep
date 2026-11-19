@@ -1,4 +1,5 @@
-import { Scale } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Scale } from "lucide-react";
 import { useWeights } from "@/components/boat/weights/WeightsContext";
 import { fmtKg } from "@/lib/weights";
 
@@ -24,11 +25,16 @@ const WeightInput = ({ id, label, value, unit, placeholder, onChange }) => (
 // Boat details - Additional details: baseline weight, on-deck gear total, crew weight and the All-Up Racing Displacement.
 export const WeightPanel = ({ boat, onChange }) => {
   const w = useWeights();
+  const [open, setOpen] = useState(false);
   if (!w) return null;
   const u = w.unit;
   return (
     <section className="col-span-2 flex flex-col gap-2.5 rounded-lg border-[1.5px] border-[var(--line)] bg-slate-50 p-3" data-testid="weight-panel">
-      <h3 className="flex items-center gap-2 text-sm font-extrabold"><Scale className="h-4 w-4" /> Racing weight</h3>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-2 text-left text-sm font-extrabold" data-testid="weight-panel-toggle">
+        <Scale className="h-4 w-4" /> <span className="flex-1">Racing weight</span>
+        <ChevronDown className={`h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <>
       <div className="grid grid-cols-2 items-end gap-2.5">
         <WeightInput id="boat-weight" label="Weight" value={boat.boat_weight} unit={u} placeholder="Boat only" onChange={(v) => onChange("boat_weight", v)} />
         <div className="flex min-w-0 flex-col gap-1">
@@ -55,6 +61,7 @@ export const WeightPanel = ({ boat, onChange }) => {
         <div className="mt-1 border-t-2 border-[var(--navy)] pt-1.5"><Row bold label="All-Up Racing Displacement" value={fmtKg(w.totalKg, u)} testId="disp-total" /></div>
       </div>
       <p className="text-xs text-[var(--muted)]">Fluids use your latest Leaving the Dock levels (tanks without a level count as full). Gear weights include the Magic Mariner&apos;s estimates until you change them.</p>
+      </>}
     </section>
   );
 };

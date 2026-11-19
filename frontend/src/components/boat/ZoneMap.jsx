@@ -188,16 +188,6 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </HelpPanel>
       )}
       {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
-      {steps.length > 0 && (
-        <button type="button" className="btn-solid h-10 justify-center gap-2 text-sm" onClick={() => setWalking(true)} data-testid="crew-walkthrough-btn">
-          <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
-        </button>
-      )}
-      {!steps.length && canEdit && (
-        <button type="button" className="btn-ghost h-10 justify-center gap-2 text-sm" onClick={() => setWalkHelp({ title: "Creating Crew Walkthroughs", items: walkHelpItems?.length ? walkHelpItems : [{ label: WALK_HELP_DEFAULT }] })} data-testid="crew-walkthrough-help-btn">
-          <Footprints className="h-4 w-4" /> I would like to create a Crew walkthrough
-        </button>
-      )}
       <HelpDialog help={walkHelp} onClose={() => setWalkHelp(null)} />
       {hasFoodPins && (
         <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
@@ -267,6 +257,16 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         stars={boat?.walk_stars || []} onStar={canEdit && boat && !boat.owner_id ? starStop : undefined} />}
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
+      {steps.length > 0 && (
+        <button type="button" className="btn-solid h-10 justify-center gap-2 text-sm" onClick={() => setWalking(true)} data-testid="crew-walkthrough-btn">
+          <Footprints className="h-4 w-4" /> Crew walkthrough ({steps.length} {steps.length === 1 ? "stop" : "stops"})
+        </button>
+      )}
+      {!steps.length && canEdit && (
+        <button type="button" className="btn-ghost h-10 justify-center gap-2 text-sm" onClick={() => setWalkHelp({ title: "Creating Crew Walkthroughs", items: walkHelpItems?.length ? walkHelpItems : [{ label: WALK_HELP_DEFAULT }] })} data-testid="crew-walkthrough-help-btn">
+          <Footprints className="h-4 w-4" /> I would like to create a Crew walkthrough
+        </button>
+      )}
     </section>
   );
 };

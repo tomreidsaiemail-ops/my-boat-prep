@@ -47,6 +47,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
   const [kind, setKind] = useState("qr");
   const [ask, setAsk] = useState(false);
   const [off, setOff] = useState([]);
+  const [boxes, setBoxes] = useState(false); // QR cards: cupboards only unless folders and boxes are asked for
   const subs = areas.filter((a) => a.parent_id && areas.some((p) => p.id === a.parent_id));
   if (!areas.length || !boat) return null;
   const parentOf = (a) => (a.parent_id ? areas.find((p) => p.id === a.parent_id) : null);
@@ -55,7 +56,7 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
     items: (s.items || []).slice(0, 400).map((i) => ({ name: String(i.name || "").slice(0, 200), qty: Math.max(0, Math.min(99999, Number(i.qty) || 1)), removed: !!i.removed })),
   }));
   const zoneOf = (a) => zones[a.id] || zones[a.parent_id];
-  const qrAreas = areas.filter((a) => !a.parent_id || parentOf(a));
+  const qrAreas = areas.filter((a) => !a.parent_id || (boxes && parentOf(a)));
   // Zones to choose from on the QR print screen, in boat order; cupboards with no zone are their own group.
   const zoneList = [...new Map(qrAreas.map((a) => { const z = zoneOf(a); return [z?.colour || "", z ? z.map : "No zone yet"]; })).entries()];
   const picked = qrAreas.filter((a) => !off.includes(zoneOf(a)?.colour || ""));
@@ -78,19 +79,29 @@ export const FolderCardsButton = ({ areas, zones, vessel, online, boat, ownerId 
   };
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid="inventory-print-cards">
-      <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { setOff([]); setAsk(true); }} disabled={busy} data-testid="inventory-folder-cards-btn">
+      <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={() => { setOff([]); setBoxes(false); setAsk(true); }} disabled={busy} data-testid="inventory-folder-cards-btn">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Print Cards
       </button>
       <div className="flex items-center gap-3" role="radiogroup" aria-label="Card type" data-testid="inventory-print-cards-kind">
         {[["qr", "QR Codes"], ["contents", "Contents"]].map(([v, label]) => (
-          <label key={v} className="flex min-h-11 cursor-pointer items-center gap-1.5 text-sm font-bold" title={v === "contents" ? "Contents cards for the folders and boxes inside your cupboards" : "A QR card for every cupboard, folder and box. Scan it to Magic Scan things into it."} data-testid={`inventory-print-cards-${v}`}>
+          <label key={v} className="flex min-h-11 cursor-pointer items-center gap-1.5 text-sm font-bold" title={v === "contents" ? "Contents cards for the folders and boxes inside your cupboards" : "A QR card for every cupboard (folders and boxes too if you choose). Scan it to Magic Scan things into it."} data-testid={`inventory-print-cards-${v}`}>
             <input type="radio" name="print-cards-kind" value={v} checked={kind === v} onChange={() => setKind(v)} className="h-4 w-4 accent-[var(--navy)]" data-testid={`inventory-print-cards-${v}-radio`} /> {label}
           </label>
         ))}
       </div>
       <ConfirmDelete item={ask ? {} : null} danger={false} testId="print-cards-confirm" title="This is a lengthy process, do you want to continue?" confirmLabel="Continue" cancelLabel="Not now"
-        note={kind === "qr" ? `Making a QR card for each of the ${Math.min(picked.length, 300)} cupboards, folders and boxes in the zones you pick can take a while.` : `Making contents cards for your ${Math.min(subs.length, 200)} folders and boxes can take a while.`}
-        body={kind === "qr" && zoneList.length > 1 ? <ZoneChoice zones={zoneList} off={off} setOff={setOff} count={(k) => qrAreas.filter((a) => (zoneOf(a)?.colour || "") === k).length} /> : null}
+        note={kind === "qr" ? `Making a QR card for each of the ${Math.min(picked.length, 300)} ${boxes ? "cupboards, folders and boxes" : "cupboards"} in the zones you pick can take a while.` : `Making contents cards for your ${Math.min(subs.length, 200)} folders and boxes can take a while.`}
+        body={kind === "qr" ? (
+          <div className="flex flex-col gap-3">
+            {subs.length > 0 && (
+              <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-bold text-[var(--navy)]" data-testid="print-cards-boxes">
+                <input type="checkbox" checked={boxes} onChange={(e) => setBoxes(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="print-cards-boxes-input" />
+                Also print folders and boxes ({subs.length})
+              </label>
+            )}
+            {zoneList.length > 1 && <ZoneChoice zones={zoneList} off={off} setOff={setOff} count={(k) => qrAreas.filter((a) => (zoneOf(a)?.colour || "") === k).length} />}
+          </div>
+        ) : null}
         onConfirm={(e) => { if (kind === "qr" && !picked.length) { e.preventDefault(); toast.error("Pick at least one zone to print QR cards for"); return; } setAsk(false); print(); }} onClose={() => setAsk(false)} />
     </div>
   );
