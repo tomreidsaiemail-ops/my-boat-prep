@@ -90,6 +90,13 @@ export default function useBoats(userId) {
     setBoats((list) => list.filter((x) => x.key !== b.key));
   }, []);
 
+  // A sold boat leaves this phone without asking the server (it's already gone there).
+  const forget = useCallback((b) => {
+    localStorage.removeItem(stateKey(b.key));
+    localStorage.removeItem(outboxKey(b.key));
+    setBoats((list) => { const rest = list.filter((x) => x.key !== b.key); setActiveId((rest[0] || MAIN[0]).key); return rest.length ? rest : MAIN.map(withKey); });
+  }, []);
+
   // Deleted boats wait 7 days on the server; bringing one back reloads the list and opens it.
   const restore = useCallback(async (boatId) => {
     const { data } = await api.post(`/me/deleted-boats/${boatId}/restore`, null, { timeout: 15000 });
@@ -98,5 +105,5 @@ export default function useBoats(userId) {
     return data;
   }, [refresh, select]);
 
-  return { boats, activeId: current, current: currentBoat, select, setVessel, patch, add, remove, restore, refresh };
+  return { boats, activeId: current, current: currentBoat, select, setVessel, patch, add, remove, forget, restore, refresh };
 }

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, FileUp, Fish, HelpCircle, Martini, Menu, MessageSquarePlus, QrCode, RefreshCw, ShoppingBasket, TableProperties } from "lucide-react";
+import { ArrowRightLeft, FileText, FileUp, Fish, Inbox, HelpCircle, Martini, Menu, MessageSquarePlus, QrCode, RefreshCw, ShoppingBasket, TableProperties } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
 import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 import { HelpDialog, HelpSubMenu, helpMenuItems } from "@/components/boat/HelpMenu";
 
-export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards }) => {
+export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -28,7 +28,12 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             {onSyncStores && <DropdownMenuItem onSelect={onSyncStores} data-testid="app-menu-sync-stores-item"><RefreshCw className="mr-2 h-4 w-4" />Sync Food &amp; Drink Cupboards Magically...</DropdownMenuItem>}
             {onBuilder && <DropdownMenuItem onSelect={onBuilder} data-testid="app-menu-builder-item"><TableProperties className="mr-2 h-4 w-4" />Custom Attribute List Builder...</DropdownMenuItem>}
             {onImport && <DropdownMenuItem onSelect={onImport} data-testid="app-menu-import-item"><FileUp className="mr-2 h-4 w-4" />Import Spreadsheet...</DropdownMenuItem>}
-            <DropdownMenuSeparator data-testid="app-menu-bartender-separator" />
+            <DropdownMenuSeparator className={onRequestTransfer ? "my-1.5 h-[2px] bg-[var(--navy)]" : ""} data-testid="app-menu-bartender-separator" />
+          </>}
+          {onRequestTransfer && <>
+            {onTransfer && <DropdownMenuItem onSelect={onTransfer} data-testid="app-menu-transfer-item"><ArrowRightLeft className="mr-2 h-4 w-4" />Transfer ownership...</DropdownMenuItem>}
+            <DropdownMenuItem onSelect={onRequestTransfer} className={onTransfer ? "pl-8" : ""} data-testid="app-menu-request-transfer-item"><Inbox className="mr-2 h-4 w-4" />Request Ownership Transfer...</DropdownMenuItem>
+            <DropdownMenuSeparator className="my-1.5 h-[2px] bg-[var(--navy)]" data-testid="app-menu-transfer-separator" />
           </>}
           <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} onModelWalkthrough={onModelWalkthrough} wizards={wizards} />
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>

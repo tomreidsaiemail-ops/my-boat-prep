@@ -421,6 +421,8 @@ async def save_boat(payload: BoatStateIn, user: dict = Depends(get_current_user)
         merged, crew_log = merge_crew(prev, payload.model_dump(), galley_crew((prev.get("crew_roles") or {}).get(user["user_id"])), str(by).strip())
         have = []
     else:
+        if not prev and await was_transferred(user["user_id"], boat_id, payload.boat.vessel or ""):
+            raise HTTPException(status_code=410, detail="This boat has been transferred to its new owner")
         if not prev and not to_user_out(user).premium and await db.user_boats.count_documents({"owner_id": user["user_id"], "model": {"$ne": True}}) >= 1 and boat_id != MODEL_BOAT_ID:
             raise HTTPException(status_code=403, detail="Upgrade to Pro to add more boats")
         inc = payload.model_dump()
@@ -617,6 +619,8 @@ async def log_images(log: dict) -> dict:
 app.include_router(api_router)
 from marine import router as marine_router  # noqa: E402
 app.include_router(marine_router)
+from ownership import router as ownership_router, was_transferred  # noqa: E402
+app.include_router(ownership_router)
 app.include_router(auth_router)
 app.include_router(payments_router)
 app.include_router(tips_router)
@@ -777,6 +781,8 @@ async def create_indexes():
     await quota.migrate_running_total()
     await seed_later_rows()
     await sync_rows_once()
+    from ownership import seed_transfer_list
+    await seed_transfer_list()
     from list_order import reorder_trip_planning_once
     await reorder_trip_planning_once()
     await seed_wizard_list()

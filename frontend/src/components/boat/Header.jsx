@@ -17,7 +17,7 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels, onModelWalkthrough, wizards }) => (
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer }) => (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
@@ -47,7 +47,7 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcas
           </div>
         )}
       </div>
-      <AppMenu onOpenFaq={onOpenFaq} onBartender={onBartender} onFish={onFish} onShopScan={onShopScan} onSyncStores={onSyncStores} onBuilder={onBuilder} onImport={onImport} helpPanels={helpPanels} onModelWalkthrough={onModelWalkthrough} wizards={wizards} />
+      <AppMenu onOpenFaq={onOpenFaq} onBartender={onBartender} onFish={onFish} onShopScan={onShopScan} onSyncStores={onSyncStores} onBuilder={onBuilder} onImport={onImport} helpPanels={helpPanels} onModelWalkthrough={onModelWalkthrough} wizards={wizards} onTransfer={onTransfer} onRequestTransfer={onRequestTransfer} />
       <AccountMenu />
     </div>
   </header>

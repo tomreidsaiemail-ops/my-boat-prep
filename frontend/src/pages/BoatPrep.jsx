@@ -53,6 +53,12 @@ import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField
 import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
+import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
+import { TransferWizard } from "@/components/boat/transfer/TransferWizard";
+import { TransferPanel } from "@/components/boat/transfer/TransferPanel";
+import { RequestTransferDialog } from "@/components/boat/transfer/RequestTransferDialog";
+import { NoticeDialog } from "@/components/boat/transfer/NoticeDialog";
+import { TRANSFER_LIST_ID, TRANSFER_LIST_NAME } from "@/lib/transfer";
 import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeatherPhotos, weatherUrl } from "@/components/boat/navigator/WeatherPhotos";
 import { DepartureLogDialog, departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
@@ -730,6 +736,21 @@ export default function BoatPrep({ boatId, boats }) {
     const info = online ? await api.get(`/boats/${boats.current.boat_id}/crew`, { timeout: 20000 }).then((r) => r.data).catch(() => null) : null;
     return [...out, { name: "Crew", rows: info ? crewRows(info) : [{ Note: "The crew list needs a signal. Export again when you're online to include it." }] }];
   };
+  // Transfer ownership: rules, then the cupboard review, then the "Transfer ownership" list with SELL MY BOAT.
+  const startTransfer = () => (online ? guard() && setDialog({ type: "transferStart" }) : toast.error("Transfer ownership needs a signal"));
+  const finishTransfer = async () => {
+    let lines = [];
+    try { lines = (await api.get("/ownership/checklist")).data.items; } catch { toast.error("Couldn't load the checklist. Try again with a signal."); return; }
+    if (!registry.some((l) => l.id === TRANSFER_LIST_ID)) {
+      const at = Date.now();
+      mutate((s) => ({ ...s, registry: [...s.registry, { id: TRANSFER_LIST_ID, name: TRANSFER_LIST_NAME, isSystem: false }],
+        data: { ...s.data, [TRANSFER_LIST_ID]: lines.map((label, n) => ({ id: at + n, label, checked: false })) } }));
+    }
+    setDialog(null);
+    setActiveId(TRANSFER_LIST_ID);
+    toast.success("Your Transfer ownership list is ready");
+  };
+  const soldBoat = () => { boats.forget(boats.current); boats.refresh(); };
   const exportLists = (current, zone) => guard(zone) && (current || needPro("Export All lists")) && setPrintMode(current ? "current" : "all");
   const addItem = (text) => {
     if (!guard("bottom")) return null;
@@ -1106,6 +1127,7 @@ export default function BoatPrep({ boatId, boats }) {
   const checks = (
     <>
       {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
+      {active.id === TRANSFER_LIST_ID && !crew && <TransferPanel boat={boats.current} vessel={boat.vessel} items={items} online={online} pending={pending} onExportAll={() => exportLists(false)} onSold={soldBoat} />}
       {premium && (tagging || filterAreas.length > 0) && !(hideArea && !crew) && (
         <AreaFilter areas={tagging ? areas : filterAreas} value={areaFilter} onChange={setAreaFilter} />
       )}
@@ -1166,6 +1188,7 @@ export default function BoatPrep({ boatId, boats }) {
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
+        onTransfer={crew || boats.current.model || boats.current.charter ? undefined : startTransfer} onRequestTransfer={() => setDialog({ type: "requestTransfer" })}
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
@@ -1335,6 +1358,10 @@ export default function BoatPrep({ boatId, boats }) {
         onApplyTargets={(t) => mutate((s) => ({ ...s, areas: applyTargets(s.areas || [], t) }))} />}
       {dialog?.type === "syncStores" && <SyncStoresDialog areas={areas} units={boat.units} params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} onDone={doneUsed} onClose={() => setDialog(null)} />}
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} online={online} onClose={() => setDialog(null)} />}
+      <TransferStartDialog open={dialog?.type === "transferStart"} vessel={boat.vessel} onStart={() => setDialog({ type: "transferWizard" })} onClose={() => setDialog(null)} />
+      {dialog?.type === "transferWizard" && <TransferWizard open boat={boats.current} areas={areas} online={online} onAreasChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} onFinish={finishTransfer} onClose={() => setDialog(null)} />}
+      <RequestTransferDialog open={dialog?.type === "requestTransfer"} online={online} onClose={() => setDialog(null)} />
+      <NoticeDialog online={online} onOpenBoat={(id) => boats.refresh().then(() => boats.select(id))} />
       {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}
       {dialog?.type === "moveItem" && <MoveItemDialog item={dialog.item} lists={registry.filter((l) => l.id !== active.id && !hiddenLists.includes(l.id))} onMove={(to) => moveImported(dialog.item, to)} onClose={() => setDialog(null)} />}
       {dialog?.type === "builder" && <CustomListBuilder master={maintDefs.filter((d, n, a) => a.findIndex((x) => x.key === d.key) === n)} names={registry.map((l) => l.name)}
