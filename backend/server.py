@@ -777,6 +777,8 @@ async def create_indexes():
     await quota.migrate_running_total()
     await seed_later_rows()
     await sync_rows_once()
+    from list_order import reorder_trip_planning_once
+    await reorder_trip_planning_once()
     await seed_wizard_list()
     await seed_wizards()
     await seed_special_users()
