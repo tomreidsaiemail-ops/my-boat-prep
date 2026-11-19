@@ -14,6 +14,7 @@ from db import db
 from land import HEADERS
 
 log = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)  # its request lines would print the WorldTides key
 router = APIRouter(prefix="/api")
 WORLDTIDES = "https://www.worldtides.info/api/v3"
 MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"

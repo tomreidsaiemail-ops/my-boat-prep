@@ -1075,3 +1075,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Typing a new START/DESTINATION clears that end's map pin (stale-pin safety fix).
 - Admin Analytics: per provider API Calls Total/Yesterday/Today + Fails Total/Yesterday/Today, WorldTides credits, last fail reason (db.api_calls).
 - Open findings (iteration_214): httpx INFO logs include WorldTides key in URL; failed geocodes not cached; geocode cache ignores 'near'; no negative cache when out of credits; TideNote uses phone tz vs station tz in Navigator.
+- 2026-06 deploy requested: includes features.sync_rows_once (migration disabled_features_sync_2026_06) making Prod 'Admin - disabled features' = Preview; httpx INFO logging silenced (key leak fixed).

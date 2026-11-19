@@ -88,3 +88,24 @@ async def seed_later_rows():
             nid = max([int(i["id"]) for i in tpl.get("items") or [] if str(i.get("id", "")).isdigit()] or [0]) + 1
             await db.list_templates.update_one(q, {"$push": {"items": {"id": nid, "label": label}}, "$set": {"updated_at": now}})
         await db.migrations.insert_one({"_id": mig, "at": now})
+
+
+# Production's list made identical to Preview's once (the admin asked for both to match on this deploy).
+SYNCED_ROWS = ["Speak Button Feature; enabled for nobody", "Sync Food & Drinks Cupboards Magically Feature; enabled for nobody",
+               "Charter Registrations Feature; charteruser@gmail.com", "Show Food areas only in ZONE MAPS; enabled for nobody",
+               "Add high level zone photo in ZONE MAPS; enabled for nobody", "Add Cupboards by zone at the bottom of Boat Inventory; enabled for nobody"]
+
+
+async def sync_rows_once():
+    mig = "disabled_features_sync_2026_06"
+    if await db.migrations.find_one({"_id": mig}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    q = {"custom": True, "name": {"$regex": rf"^\s*{re.escape(LIST_NAME)}\s*$", "$options": "i"}}
+    items = [{"id": n + 1, "label": label} for n, label in enumerate(SYNCED_ROWS)]
+    if await db.list_templates.find_one(q, {"_id": 1}):
+        await db.list_templates.update_one(q, {"$set": {"items": items, "updated_at": now, "updated_by": "system"}})
+    else:
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": LIST_NAME, "private": True,
+                                            "description": DESCRIPTION, "items": items, "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": mig, "at": now})
