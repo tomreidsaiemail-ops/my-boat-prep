@@ -15,6 +15,7 @@ import { MapNameField } from "@/components/boat/zone/MapNameField";
 import { ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { OverviewMap, OverviewView } from "@/components/boat/zone/OverviewMap";
 import useAdminLists from "@/hooks/useAdminLists";
+import { useFeature } from "@/lib/features";
 import { CreateOverviewButton } from "@/components/boat/zone/CreateOverviewButton";
 import { RemoveMapConfirm, SkipperComment } from "@/components/boat/zone/SkipperComment";
 
@@ -116,7 +117,9 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const [foodOnlyState, setFoodOnly] = useState(false);
   const foodIds = new Set(areas.filter((a) => a.food).map((a) => a.id));
   const hasFoodPins = (boat?.zone_maps || []).some((m) => (m.pins || []).some((p) => foodIds.has(p.area_id)));
-  const foodOnly = foodOnlyState && hasFoodPins;
+  const foodOn = useFeature("food_only");
+  const zonePhotoOn = useFeature("zone_photo");
+  const foodOnly = foodOnlyState && hasFoodPins && foodOn;
   useEffect(() => { if (!hasFoodPins) setFoodOnly(false); }, [hasFoodPins]);
   const pinsFor = (pins) => (foodOnly ? (pins || []).filter((p) => foodIds.has(p.area_id)) : pins);
   const [walking, setWalking] = useState(false);
@@ -189,7 +192,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       )}
       {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
       <HelpDialog help={walkHelp} onClose={() => setWalkHelp(null)} />
-      {hasFoodPins && (
+      {hasFoodPins && foodOn && (
         <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
           onClick={() => setFoodOnly((f) => !f)} aria-pressed={foodOnly} data-testid="zone-map-food-filter">
           <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-[1.5px] text-[11px] font-extrabold ${foodOnly ? "border-white" : "border-emerald-700 text-emerald-800"}`}>F</span>
@@ -237,7 +240,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       ))}
       {!pics.length && !overviews.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
       {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with cupboards, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that cupboard. You can do that after taking the boat inventory. You can rename cupboards later should the zone map photo have a better name.</p>}
-      {canEdit && <OwnerTools boat={boat} count={all.length} online={online} onMaps={onBoatMaps} />}
+      {canEdit && zonePhotoOn && <OwnerTools boat={boat} count={all.length} online={online} onMaps={onBoatMaps} />}
       {admin && (
         <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-2">
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Default map for skippers without their own</p>

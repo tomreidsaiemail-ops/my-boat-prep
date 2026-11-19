@@ -34,6 +34,12 @@ def feature_key(name: str):
         return "sync_stores"
     if "route" in n and "map" in n:
         return "route_map"
+    if "food" in n and "only" in n:
+        return "food_only"
+    if "zone photo" in n or "high level" in n:
+        return "zone_photo"
+    if "cupboard" in n and "zone" in n:
+        return "cupboards_by_zone"
     return None
 
 
@@ -62,7 +68,10 @@ async def my_features(user: dict = Depends(get_current_user)):
 
 # Features added after the list was first seeded: each row is added once on deploy (the admin can then edit or delete it).
 LATER_ROWS = [("disabled_feature_charter", "charter", "Charter Registrations Feature; enabled for nobody"),
-              ("disabled_feature_route_map", "route_map", "Planned route map tab Feature; enabled for nobody")]
+              ("disabled_feature_route_map", "route_map", "Planned route map tab Feature; enabled for nobody"),
+              ("disabled_feature_food_only", "food_only", "Show Food areas only in ZONE MAPS; enabled for nobody"),
+              ("disabled_feature_zone_photo", "zone_photo", "Add high level zone photo in ZONE MAPS; enabled for nobody"),
+              ("disabled_feature_cupboards_by_zone", "cupboards_by_zone", "Add Cupboards by zone at the bottom of Boat Inventory; enabled for nobody")]
 
 
 async def seed_later_rows():

@@ -62,7 +62,11 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => 
   const changed = (m) => !!m.trim() && m.trim() !== MEETUP_DEFAULT;
   const agree = changed(meetup) && weather.meetup_agree !== false;
   const setMeetup = (v) => onChange({ meetup: v, ...(changed(v) && !changed(meetup) ? { meetup_agree: true } : {}) });
-  const departField = <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn} onLeave={fillFinish} />;
+  const noDepart = !interim && (weather.depart_at || "").length < 16;
+  const departField = <>
+    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn || noDepart} onLeave={fillFinish} />
+    {noDepart && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-depart-required">Enter the Departure date and time. It's needed for the trip plan.</p>}
+  </>;
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
   const noFinish = (weather.finish_at || "").length < 16;

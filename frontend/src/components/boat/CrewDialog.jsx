@@ -211,6 +211,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
         )}
         <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
+        <button type="button" className="btn-solid h-12 shrink-0 justify-center" onClick={onClose} data-testid="crew-dialog-done-btn">Done</button>
         <InviteCrewDialog open={inviting} boat={boat} details={details} areas={areas} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {

@@ -31,6 +31,7 @@ import { clearQr, pendingQr, qrBoatKey } from "@/lib/qrScan";
 import { applyQr } from "@/lib/qrStock";
 import { useAuth } from "@/context/AuthContext";
 import useAdminLists from "@/hooks/useAdminLists";
+import { useFeature } from "@/lib/features";
 import { LinkedText } from "@/components/boat/LinkedText";
 import { AreaEditDialog } from "@/components/boat/inventory/AreaEditDialog";
 
@@ -303,6 +304,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [batchZone, setBatchZone] = useState(null);
   const [zonePrompt, setZonePrompt] = useState(false);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
+  const cupZonesOn = useFeature("cupboards_by_zone");
+  const zoneBatch = () => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"));
   const pickZones = boat ? boatZones(boat) : [];
   // Delete Zone: its photos and schematic spots go; its cupboards stay with their items, with no zone.
   const sameZone = (z) => (sw) => String(sw.label || sw.colour).trim().toLowerCase() === String(z.label).trim().toLowerCase();
@@ -546,7 +549,9 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} boat={boat} ownerId={user.user_id} />}
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
-        ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={() => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"))} /></ZonePicker>
+        ? (cupZonesOn
+          ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={zoneBatch} /></ZonePicker>
+          : <AddArea onAdd={addArea} onBatch={zoneBatch} />)
         : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
       <BatchZonePrompt open={zonePrompt} zones={boatZoneList} help={batchHelp} counts={zoneCounts} onClose={() => setZonePrompt(false)}
         onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
