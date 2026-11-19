@@ -39,7 +39,8 @@ export const BulkQuickReg = ({ open, onDone, onClose, boatId }) => {
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold"><Zap className="h-5 w-5 fill-amber-400 text-amber-600" /> Bulk Quick Reg</DialogTitle>
           <DialogDescription className="text-left text-sm">Paste one person per line, name then email, e.g. <b>Tom Smith, tom@email.com</b>. They&apos;re all registered straight away, and you can ask each one to add their own details later.</DialogDescription>
         </DialogHeader>
-        <textarea value={text} onChange={(e) => { setText(e.target.value); setResult(null); }} rows={7} className="field-input min-h-[150px] py-2 font-mono text-sm"
+        <label htmlFor="bulk-quick-text" className="field-label -mb-2">Bulk names and email</label>
+        <textarea id="bulk-quick-text" value={text} onChange={(e) => { setText(e.target.value); setResult(null); }} rows={7} className="field-input min-h-[150px] py-2 font-mono text-sm"
           placeholder={"Tom Smith, tom@email.com\nDick Jones, dick@email.com\nHarry Brown, harry@email.com"} data-testid="bulk-quick-text" />
         {people.length > 0 && (
           <ul className="flex flex-col gap-1 text-xs" data-testid="bulk-quick-preview">

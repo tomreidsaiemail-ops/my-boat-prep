@@ -1,5 +1,6 @@
 // "@@DOITFORME,START=Mana Marina,DESTINATION=Ship Cove, Marlborough Sounds" at the end of a wizard step:
 // the "Do it for me" button types each value into the box on screen labelled exactly with that name (or its aria-label).
+// "\n" in a value is a new line, e.g. BULK NAMES AND EMAIL=Tom Smith, tom@gmail.com\nDick Jones, dick@gmail.com (a single @ is plain text).
 const MARK = /@@DOITFORME/i;
 const norm = (s = "") => s.replace(/[*:]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -9,7 +10,7 @@ export const splitDoItForMe = (line) => {
   const rest = line.slice(at).replace(MARK, "");
   const parts = rest.split(/,\s*([A-Za-z][\w ]*?)\s*=/);
   const fill = [];
-  for (let n = 1; n < parts.length; n += 2) fill.push({ key: parts[n].trim(), value: parts[n + 1].trim().replace(/\.$/, "").trim() });
+  for (let n = 1; n < parts.length; n += 2) fill.push({ key: parts[n].trim(), value: parts[n + 1].trim().replace(/\.$/, "").trim().replace(/\\n/g, "\n") });
   return { text: line.slice(0, at), fill };
 };
 
