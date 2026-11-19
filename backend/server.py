@@ -377,7 +377,7 @@ def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
     out = BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
     if role == "crew":
         out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_enabled": False, "budget_notes": ""})
-        hidden = {l.get("id") for l in out.registry if l.get("kind") == "budget"}
+        hidden = {l.get("id") for l in out.registry if l.get("kind") == "budget" or l.get("id") == "transferOwnership"}
         out.registry = [l for l in out.registry if l.get("id") not in hidden]
         out.data = {k: v for k, v in out.data.items() if k not in hidden}
     return out

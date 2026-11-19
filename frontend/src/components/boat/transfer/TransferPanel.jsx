@@ -57,9 +57,9 @@ export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAl
       <button type="button" className="btn-solid h-11 justify-center" disabled={!online || busy === "email"} onClick={email} data-testid="transfer-email-checklist-btn">
         {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Email Transfer Ownership Checklist
       </button>
-      <Tick id="received" checked={received} onChange={setReceived}>Transfer Ownership checklist received</Tick>
+      <Tick id="received" checked={received} onChange={(v) => { setReceived(v); setError(""); }}>Transfer Ownership checklist received</Tick>
       <div className="flex items-stretch gap-2">
-        <div className="flex-1"><Tick id="exported" checked={exported} onChange={setExported}>Export and save all lists for your records</Tick></div>
+        <div className="flex-1"><Tick id="exported" checked={exported} onChange={(v) => { setExported(v); setError(""); }}>Export and save all lists for your records</Tick></div>
         <button type="button" className="btn-ghost shrink-0 px-3" onClick={onExportAll} data-testid="transfer-export-all-btn"><Download className="h-4 w-4" />Export All</button>
       </div>
       <p role="alert" className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="transfer-red-info">

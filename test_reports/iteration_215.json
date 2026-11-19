@@ -1,0 +1,38 @@
+{
+  "summary": "Transfer ownership feature tested end-to-end. Backend: 14/14 pytest pass (checklist has 14 lines, request own email 400 / bad email 422, upsert stops duplicates, status matches name ignoring case and spaces and email ignoring case, sell 409 with no request / 400 without both ticks / 200 with both, seller boat deleted, buyer copy has crew [] and no crew_names/shore, transferOwnership / Crew Prep - <name> / trip lists dropped, routeHazards unticked, Ship's Log crew names -> XXXXXXXXXX, F&D cupboards plus a box inside the Fridge emptied, non-F&D kept, notices + seen, request marked done, seller PUT -> 410). Frontend (390px mobile): hamburger shows Transfer ownership... and an indented Request Ownership Transfer... between thick navy dividers; a crew user sees only Request. The start dialog has 6 checkboxes and Start stays disabled until all 6 are ticked. The wizard skipped the F&D cupboards (3 stops: Port Locker, Nav Station, Nav Box including a child box). Back/Next work. Edit opened QrScanDialog: adding TEST_Binoculars and taking out TEST_Dividers both updated the step's list and saved to Mongo. The summary lists all 12 cupboards with the F&D ones tagged 'F&D · emptied on sale'. Finish created and opened the Transfer ownership list (14 items) with the panel on top. Seller F&D items were still there before the sale. Buyer request through the dialog: own email gave an error toast, then it was sent and shows in the 'mine' list. Seller reload: status names the buyer and SELL is enabled. SELL with nothing ticked or only one box ticked showed transfer-error. Email checklist toast 'Checklist emailed to test.user.pro@example.com' (1 real send). Both ticks -> confirm 1 -> confirm 2 -> 'Transfer successful' toast; after reload the boat is gone from the seller's switcher. Buyer: notice-dialog showed on load, Open the boat selected the new boat, and the notice did not come back after reload. All test data was cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ownership/sell", "issue": "A free-tier buyer who already has a boat gets a second own boat. This gets around the free 1-boat limit (save_boat only checks the limit on insert). It may be fine as a product choice, but it should be a deliberate decision."},
+      {"endpoint": "ownership.redactor", "issue": "Crew first names of 3+ letters are redacted everywhere as whole words (e.g. crew 'Beta Crew' -> every word 'beta' in the log becomes XXXXXXXXXX; a crew member called 'Mana' would also redact the place 'Mana'). Over-redaction risk for common words or place names."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TransferPanel", "issue": "The transfer-error message stays visible after the user ticks both checkboxes. It only clears when SELL is pressed again. It should clear when either checkbox changes.", "selector": "[data-testid='transfer-error']", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Crew privacy", "issue": "The 'Transfer ownership' list (14 checklist lines) syncs to crew like any normal list. Crew on the boat (GET /api/me/boat?boat_id=..&owner=.. as test_session_free_1) can see that the owner is preparing to sell. TransferPanel is hidden for crew, but the list itself is not. Consider hiding the transferOwnership list from crew (and shore) views.", "affected_selectors": ["list-option-transferOwnership"]}
+    ],
+    "design_issues": [
+      {"screen": "Buyer load", "issues": ["notice-dialog opens on top of the existing Crew Registration dialog for test-user-free, so two modals are stacked. A minor overlap from an existing prompt."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ownership_transfer.py", "/app/test_reports/pytest/pytest_ownership.xml"],
+  "action_items": [
+    "Hide the transferOwnership list from crew/shore boat views (privacy of the sale)",
+    "Clear transfer-error when a TransferPanel checkbox changes",
+    "Decide whether free buyers may receive a 2nd boat; consider only redacting full names, or skip first names that are common words"
+  ],
+  "critical_code_review_comments": [
+    "ownership.sell: no guard against two buyers requesting the same vessel name + email. pending_request takes the newest, so the seller sells to whoever asked last. The panel shows only one buyer name. Consider listing all pending requests or letting the seller choose.",
+    "ownership.sell is not atomic: insert buyer copy -> delete seller boat. A failure partway through could duplicate the boat. Acceptable, but the order is good (seller copy saved in boat_transfers).",
+    "During the first UI run, the app ignored the mbp_boats_active value set before load and opened 'main'. As a result, Transfer ownership created the transferOwnership list on test-user-pro/main. I removed it from Mongo straight after. Note: picking the boat with the boat switcher is reliable."
+  ],
+  "updated_files": ["/app/backend/tests/test_ownership_transfer.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested flows (1 low-priority UI nit, 1 privacy concern)"},
+  "seed_data_creation": "Temporary seller boats test-user-pro/tsell1 (TEST_SellBoat, UI) and tsellapi (TEST_SellBoatAPI, pytest fixture) were copied from main with extra TEST_ cupboards, a Crew Prep copy and a log entry. Both were sold and then cleaned up (buyer boats, notices, boat_transfers, ownership_requests). The stray transferOwnership list on test-user-pro/main was removed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_ownership_transfer.py builds its own seller boat 'tsellapi' from test-user-pro/main in Mongo and cleans up before and after, so it is safe to re-run. For UI, select boats with boat-selector -> boat-option-<id>; setting localStorage mbp_boats_active alone did not work. Pro user shows 'Route Planning has finished' (Not now) and the free user shows a Crew Registration dialog on load. One checklist email went to test.user.pro@example.com and one sale email to test.user.free@example.com per sell (2 UI/API sells done)."
+}
