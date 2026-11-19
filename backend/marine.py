@@ -67,6 +67,17 @@ async def geocode(place: str, near: Optional[dict] = None) -> Optional[dict]:
     return pos
 
 
+async def _get(url: str, params: dict, headers: Optional[dict] = None) -> httpx.Response:
+    """One retry when the connection can't be made (outbound links sometimes stall after a quiet spell)."""
+    for attempt in (1, 2):
+        try:
+            async with httpx.AsyncClient(headers=headers, timeout=httpx.Timeout(20, connect=5)) as c:
+                return await c.get(url, params=params)
+        except (httpx.ConnectTimeout, httpx.ConnectError):
+            if attempt == 2:
+                raise
+
+
 def _why(err: str, status) -> str:
     e = (err or "").lower()
     if "credit" in e:
@@ -85,8 +96,7 @@ async def _fetch_tides(lat: float, lon: float, start: datetime, end: datetime) -
     w1 = max(w0 + timedelta(days=WINDOW_DAYS), end.astimezone(timezone.utc) + timedelta(hours=1))
     params = {"extremes": "", "localtime": "", "lat": lat, "lon": lon, "start": int(w0.timestamp()), "length": int((w1 - w0).total_seconds()), "datum": "MSL", "key": key}
     try:
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(WORLDTIDES, params=params)
+        r = await _get(WORLDTIDES, params)
         body = r.json()
     except (httpx.HTTPError, ValueError) as e:
         await _count("worldtides", False, reason=f"Network error: {e.__class__.__name__}")
@@ -125,8 +135,7 @@ async def forecast(lat: float, lon: float, first: date, days: int, tz) -> Option
     if hit:
         return hit["data"]
     try:
-        async with httpx.AsyncClient(headers=HEADERS, timeout=15) as c:
-            r = await c.get(MET, params={"lat": lat, "lon": lon})
+        r = await _get(MET, {"lat": lat, "lon": lon}, HEADERS)
         body = r.json() if r.status_code == 200 else None
     except (httpx.HTTPError, ValueError) as e:
         await _count("met-norway", False, reason=f"Network error: {e.__class__.__name__}")
@@ -157,12 +166,15 @@ def _day(d) -> str:
     return d.strftime("%a %d %b").replace(" 0", " ")
 
 
-def tide_lines(place: str, t: dict, tz) -> str:
+def tide_lines(place: str, t: dict, tz, first: date, days: int) -> str:
     st = t["station"]
+    s = datetime(first.year, first.month, first.day, tzinfo=tz)
     where = f"station {st['name']}" if st.get("name") else "nearest prediction point"
     by_day = {}
     for x in t["extremes"]:
         at = _dt(x["time"]).astimezone(tz)
+        if not s <= at < s + timedelta(days=days):
+            continue
         by_day.setdefault(_day(at), []).append(f"{x['type'].capitalize()} {at.strftime('%H:%M')} ({x['height']:+.1f} m)")
     rows = "\n".join(f"{k}: {', '.join(v)}" for k, v in by_day.items())
     return f"Live tides at {place} (WorldTides, {where}; local time, heights from mean sea level):\n{rows}"
@@ -192,19 +204,21 @@ async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: 
     first = first if today <= first <= today + timedelta(days=14) else today
     places = [(start, sp), (dest, dp)] if (dest or "").strip().lower() != (start or "").strip().lower() else [(start, sp)]
     s = datetime(first.year, first.month, first.day, tzinfo=tz)
-    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s, s + timedelta(days=days)) if p else asyncio.sleep(0, None) for _, p in places])
+    # A day either side, then trimmed to midnights in the station's own time zone.
+    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s - timedelta(days=1), s + timedelta(days=days + 1)) if p else asyncio.sleep(0, None) for _, p in places])
     tz = _zone(next((t["timezone"] for t in tds if t and t.get("timezone")), tz_name))
     wx = await asyncio.gather(*[forecast(p["lat"], p["lon"], first, days, tz) if p else asyncio.sleep(0, None) for _, p in places])
     blocks, missing = [], []
     for (name, _), t in zip(places, tds):
         if t:
-            blocks.append(tide_lines(name, t, tz))
+            blocks.append(tide_lines(name, t, tz, first, days))
         else:
             missing.append(name)
             blocks.append(NO_TIDES.format(place=name))
     weather = [x for x in (weather_lines(name, w) for (name, _), w in zip(places, wx) if w) if x]
     weather = weather or [f"LIVE WEATHER FORECAST NOT AVAILABLE for {first.strftime('%d %b')} onwards. Check the official marine forecast before you sail."]
-    return {"text": "\n\n".join(blocks + weather), "tides_missing": missing}
+    when = f"Departure: {depart_at.replace('T', ' at ')} local time." if len(depart_at or "") >= 10 else "Departure date not set; the live data starts today."
+    return {"text": "\n\n".join(blocks + weather), "tides_missing": missing, "departure": when}
 
 
 @router.get("/marine/tides")

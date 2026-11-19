@@ -1067,3 +1067,11 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Route Planning: Departure date and time red + alert until both date and time set (navigator-depart-required).
 - ON NEXT DEPLOY: make Prod "Admin - disabled features" list identical to Preview's (Preview currently: Speak; Sync Food & Drinks Cupboards Magically; Charter Registrations; charteruser@gmail.com; the 3 new rows; no Planned route map row).
 - Tested: iteration_213 (100%).
+
+## 2026-06 Live tides & weather (Preview only, NOT deployed)
+- backend/marine.py: WorldTides v3 tides (WORLDTIDES_API_KEY, cached per 2-dec lat/lon, 8-day window, 1 retry on connect fail), MET Norway wind forecast (free, commercial OK, 3h cache), Nominatim geocode (cached). Stormglass + Open-Meteo dropped (non-commercial terms).
+- Navigator (/api/ai/navigator-ask): live tides at START/DEST + 5-day wind injected into prompt (AI must only use them), deterministic live block appended to the answer, departure line in prompt, tides_missing -> red note.
+- GET /api/marine/tides: TideNote under Departure (START) and Estimated Finish (DESTINATION) in Route Planning + planned leg forms.
+- Typing a new START/DESTINATION clears that end's map pin (stale-pin safety fix).
+- Admin Analytics: per provider API Calls Total/Yesterday/Today + Fails Total/Yesterday/Today, WorldTides credits, last fail reason (db.api_calls).
+- Open findings (iteration_214): httpx INFO logs include WorldTides key in URL; failed geocodes not cached; geocode cache ignores 'near'; no negative cache when out of credits; TideNote uses phone tz vs station tz in Navigator.

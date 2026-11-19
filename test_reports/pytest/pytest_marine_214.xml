@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="12" time="70.338" timestamp="2026-11-19T21:26:51.985829+00:00" hostname="agent-env-ff395138-5400-4f5d-8cb7-c2d2a469344d"><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_mana_marina_tides" time="17.348" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_lat_lon_direct" time="0.172" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_unknown_place" time="6.154" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_range_too_long" time="0.178" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_end_before_start" time="0.184" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_bad_date" time="0.123" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_unauthenticated" time="0.201" /><testcase classname="tests.test_marine_tides.TestMarineTides" name="test_free_user_allowed" time="1.162" /><testcase classname="tests.test_marine_tides.TestApiCallAnalytics" name="test_api_calls_shape" time="0.151" /><testcase classname="tests.test_marine_tides.TestApiCallAnalytics" name="test_non_admin_forbidden" time="0.223" /><testcase classname="tests.test_marine_tides.TestApiCallAnalytics" name="test_cached_lookup_does_not_count" time="0.534" /><testcase classname="tests.test_marine_tides.TestNavigatorLive" name="test_navigator_live_tides" time="43.804"><failure message="AssertionError: assert ['Ship Cove'] == []&#10;  &#10;  Left contains one more item: 'Ship Cove'&#10;  &#10;  Full diff:&#10;  - []&#10;  + [&#10;  +     'Ship Cove',&#10;  + ]">tests/test_marine_tides.py:97: in test_navigator_live_tides
+    assert d["tides_missing"] == []
+E   AssertionError: assert ['Ship Cove'] == []
+E     
+E     Left contains one more item: 'Ship Cove'
+E     
+E     Full diff:
+E     - []
+E     + [
+E     +     'Ship Cove',
+E     + ]</failure></testcase></testsuite></testsuites>

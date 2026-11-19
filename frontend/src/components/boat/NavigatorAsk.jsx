@@ -83,6 +83,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   // Keep the route at the front of the question, leaving anything the skipper added after it.
   const setRoute = (key, value) => {
     onChange(key, value);
+    // A typed place no longer matches its map pin, so the pin goes (tides and the Navigator then look the new name up).
+    const pin = key === "route_start" ? "start_pos" : "dest_pos";
+    if (w[pin]) onWeather({ [pin]: null, path: null });
     const next = routeText(key === "route_start" ? value : start, key === "route_dest" ? value : dest);
     const prev = auto.current;
     setQuestion((q) => (q.startsWith(prev) ? next + q.slice(prev.length) : q || next).slice(0, 1024));

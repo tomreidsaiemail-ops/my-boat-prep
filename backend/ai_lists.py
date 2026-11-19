@@ -646,7 +646,7 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
     prompt = (f"START: {body.start}\nDESTINATION: {body.destination}\n"
               f"Boat: {b.boat_type.strip() or 'type not given'}{', ' + dims if dims else ''}. Crew: {crew}. Trip: {b.trip_days or 'not set'} days.\n"
               f"The skipper's Route Planning checklist: {checks}\n"
-              f"LIVE DATA (the only tide and weather figures you may use):\n{live['text']}\n"
+              f"{live['departure']}\nLIVE DATA (the only tide and weather figures you may use):\n{live['text']}\n"
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
     result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
     result["answer"] = result["answer"].replace(f"\n\n{NAV_FOOTER}", f"\n\n{live['text']}\n\n{NAV_FOOTER}")

@@ -1,0 +1,42 @@
+{
+  "summary": "Tested live tides (WorldTides) and wind (MET Norway) end to end. Backend: 11 of 12 pytest tests pass. /api/marine/tides works: ok:true with station and alternating high/low extremes; unknown place gives ok:false reason 'place'; a range over 2 days, end before start, or a bad date gives 422; no auth gives 401. Repeat lookups at a cached place cost no credits. Admin api_calls stats are correct. Ran 2 navigator asks (1 API, 1 UI). Both had the live tides and MET Norway blocks, and the AI's tide times matched the live block. The API ask returned tides_missing ['Ship Cove'] because of a transient WorldTides ConnectTimeout. The AI then correctly said there was no tide data for Ship Cove. UI: depart-tides and finish-tides render, depart-tides-missing renders, the analytics tiles (6 per provider plus credits plus last fail) render, and nothing overflows at 390px. Found a SAFETY bug: an old map pin is used for tides after the START/DESTINATION text is changed, so tides from another place are shown under the new name.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "WorldTides outbound call (marine._fetch_tides)", "issue": "Intermittent httpx ConnectTimeout (20s): 3 of 7 WorldTides calls failed in this session (21:27:38, 21:29:46 x2), each one right after an idle gap. The next call a few seconds later worked, and curl/httpx from the shell connected in 0.2s each time (10 of 10). There is no retry, so the Navigator answer and TideNote say 'tide data not available' and the user waits 20s. Suggested fix: connect timeout of about 5s and 1 retry on httpx.ConnectTimeout/ConnectError.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "logging", "issue": "httpx INFO logging writes the full WorldTides URL, including key=<WORLDTIDES_API_KEY>, to /var/log/supervisor/backend.err.log (secret leak). Set logging.getLogger('httpx').setLevel(logging.WARNING) or move the key out of the logged URL."},
+      {"endpoint": "POST /api/ai/navigator-ask", "issue": "The prompt never gives the AI the departure date (depart_at). In the UI ask (depart Sat 21 Nov, browser tz UTC) the AI said 'On your departure day of Sunday 22 Nov' and quoted Sunday's tides. live_data starts the window at the phone's local midnight but shows times in the station's timezone, so the first day was cut short ('Sat 21 Nov: High 19:22' only) and the AI picked the first full day. Add 'DEPARTURE: <depart_at> <tz>' to the prompt and build the window from midnight in the station's timezone."},
+      {"endpoint": "marine.geocode", "issue": "Failed Nominatim lookups are not cached and are not counted in analytics. Repeated unknown places call Nominatim every time (usage policy is 1 req/s)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TideNote (depart-tides / finish-tides) and NavigatorAsk start_pos/dest_pos", "issue": "SAFETY: changing START or DESTINATION text does not clear weather.start_pos/dest_pos. Repro on test-user-pro/main: the pins were at Off Kurakura Point and Cook Strait. I typed START 'Mana Marina' and DEST 'Ship Cove'. The request went out with place=Mana Marina&lat=-41.19828&lon=174.21295, and the note read 'Tides at Mana Marina' with data from station Te Iro Bay. Typing 'Qwxyz Nowhere Land' showed 'Tides at Qwxyz Nowhere Land' with real Te Iro Bay times and no missing note. The Navigator answer also printed 'Live tides at Mana Marina (WorldTides, station Te Iro Bay ...)'. Real Mana times are different (Sat 21 Nov NZDT: Low 01:53, High 08:10, Low 14:26, High 20:38). Fix: clear the pin when the place text changes, or keep the name the pin was set for and fall back to geocoding when they differ.", "selector": "[data-testid=route-start-input], [data-testid=depart-tides], [data-testid=navigator-answer-text]", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Route Planning tide notes vs Navigator", "issues": ["TideNote shows times in the phone's timezone, but the Navigator block uses the station's local time. On a phone set to a different timezone, the two show different clock times for the same tide. This follows the brief, but consider adding the timezone label (e.g. NZDT)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_marine_tides.py", "/app/test_reports/pytest/pytest_marine_214.xml"],
+  "action_items": [
+    "CRITICAL: Clear weather.start_pos/dest_pos (and leg pins) when the START/DESTINATION text changes, or check that the pin matches the name before using it for tides and the Navigator live data",
+    "Add a short connect timeout plus 1 retry to the WorldTides (and MET Norway) httpx calls",
+    "Stop httpx INFO logs from leaking WORLDTIDES_API_KEY",
+    "Pass depart_at and tz into the Navigator prompt and start the live tide window at midnight in the station's timezone, so the AI uses the right departure day"
+  ],
+  "critical_code_review_comments": [
+    "marine.live_data: the tide window starts at midnight in the user's tz, then tz is switched to the station timezone for display, so the first day is partial when the two differ",
+    "marine.tides returns None when the cached window has no extremes in the range. That is fine, but the UI branch 'No high or low tide that day.' can never show",
+    "geocode cache key ignores the 'near' viewbox, so the same name near different starts always gives the first cached result",
+    "Failed WorldTides calls are not cached (good for outages), but while credits are exhausted every TideNote render costs a call. Consider a short negative cache"
+  ],
+  "updated_files": ["/app/backend/tests/test_marine_tides.py"],
+  "success_rate": {"backend": "92% (11/12; the 1 failure is the transient ConnectTimeout, which caused tides_missing ['Ship Cove'])", "frontend": "80% (all elements render and the missing and analytics paths work, but stale pins give wrong-place tides)"},
+  "seed_data_creation": "Backed up test-user-pro user_boats (main and model_vessel) to /tmp/bk214/user_boats.json. I changed main's route_start/route_dest/depart/finish in the UI and unset boat.weather.start_pos once. Restored with mongoimport --mode=upsert and checked: route_start 'Off Kurakura Point', dest 'Te Moana-o-Raukawa / Cook Strait', depart 2026-11-19T06:00, finish 2026-11-19T09:00, pins intact. WorldTides credits used: 3 by me (Ship Cove, Kurakura pin, Cook Strait pin). The tide_cache, api_calls and geocode_cache docs I created were left in place as app data. 2 navigator asks used AI quota for test-user-pro.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "tide_cache now covers (-41.1,174.87 Mana) to 2026-11-27, and (-41.1,174.25 Ship Cove), (-41.2,174.21 Te Iro/Kurakura pin) and (-41.47,174.34 Cook Strait pin) to 2026-11-26 UTC, so lookups inside those windows are free. Run the navigator test with RUN_NAV_ASK=1 (it is skipped by default). The pro main boat shows trip-finish-dialog on load: click trip-finish-cancel-btn. The browser is UTC, so TideNote dates use UTC midnight. To reproduce the stale pin bug: on Route Planning type a new START; the /api/marine/tides request still carries the old lat/lon.",
+  "rca of the issue": "Stale pin: TideNote is given pos={weather.start_pos} and that pos takes priority over place. The START/DESTINATION inputs only update route_start/route_dest and never reset weather.start_pos/dest_pos. NavigatorAsk also sends w.start_pos/dest_pos, and live_data uses start_pos before geocoding. So any pin set earlier is used for a place with a different name. ConnectTimeout: probably the cluster's outbound egress after an idle gap (similar connect timeouts to integrations.emergentagent.com appear in backend.err.log). With no retry, the user gets 'not available'."
+}

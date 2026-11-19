@@ -44,7 +44,7 @@ const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
         <Field id="leg-start" label="START" value={l.route_start} onChange={(v) => set({ route_start: v })} placeholder="e.g. Picton" />
-        <Field id="leg-dest" label="DESTINATION" value={l.route_dest} onChange={(v) => set({ route_dest: v })} placeholder="e.g. Ship Cove" />
+        <Field id="leg-dest" label="DESTINATION" value={l.route_dest} onChange={(v) => set({ route_dest: v, dest_pos: null, path: null })} placeholder="e.g. Ship Cove" />
       </div>
       <When id="leg-depart-at" label="Departure date and time" value={l.depart_at} onChange={(v) => set({ depart_at: v })} />
       <TideNote place={l.route_start} date={(l.depart_at || "").slice(0, 10)} testId="leg-depart-tides" />
