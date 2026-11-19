@@ -1052,3 +1052,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
   - Accepting needs terms_ok, plan_ok and meet_ok (stored as *_ok_at).
   - Route Planning: Event name now comes before Departure. An empty Estimated Finish takes the Departure date when the date box loses focus, not per keystroke. New "Crew member to agree to this explicitly" checkbox (weather.meetup_agree): auto-ticked once the meet up text changes from the default.
   - Open (low): the trip map in the agreement uses the editable StopsMap with its edit hint; accepted agreements have no "Show terms/plan" toggle.
+- 2026-06: Zone window (ZoneDialog) has a Done button at the bottom. Training mode fix: TrainingMode measures the sticky Training/Admin strips into --mbp-top. The App.css training rules and a new index.css rule use it, so windows open below the strips and their X buttons are visible. Checked with screenshots (admin + training, wizard open and shut).

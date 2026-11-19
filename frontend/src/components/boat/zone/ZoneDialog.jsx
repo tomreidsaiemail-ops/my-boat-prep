@@ -113,6 +113,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
         {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} />}
         {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} {areaCount === 1 ? "cupboard" : "cupboards"} already in {zone.label}</p>}
         {onDeleteZone && <DeleteZone zone={zone} summary={deleteSummary} onDelete={onDeleteZone} t={t} />}
+        <button type="button" className="btn-solid h-12 shrink-0 justify-center" disabled={!!busy} onClick={onClose} data-testid={`${t}-done-btn`}>Done</button>
       </DialogContent>
     </Dialog>
   );

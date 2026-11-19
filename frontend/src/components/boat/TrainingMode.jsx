@@ -93,10 +93,23 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   };
   const move = (n, p, a) => { go(n); setPath(p); setAnswers(a); localStorage.setItem(k.path, JSON.stringify(p)); localStorage.setItem(k.answers, JSON.stringify(a)); };
   const close = (v) => { setShut(v); localStorage.setItem(k.shut, JSON.stringify(v)); };
+  // Windows open below the training (and admin) strip, so their X close buttons are never hidden under it.
+  const strip = useRef(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    const put = () => { const b = Math.max(0, Math.round(strip.current?.getBoundingClientRect().bottom || 0)); root.style.setProperty("--mbp-top", `${b}px`); };
+    put();
+    const ro = new ResizeObserver(put);
+    if (strip.current) ro.observe(strip.current);
+    window.addEventListener("scroll", put, { passive: true });
+    window.addEventListener("resize", put);
+    root.setAttribute("data-training-top", "");
+    return () => { ro.disconnect(); window.removeEventListener("scroll", put); window.removeEventListener("resize", put); root.removeAttribute("data-training-top"); root.style.removeProperty("--mbp-top"); };
+  }, []);
   const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };
   return (
     <>
-      <div data-training-window className={`pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 ${admin ? "bg-orange-700" : "bg-emerald-700"} px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden`} role="status" data-testid="training-mode-strip">
+      <div ref={strip} data-training-window className={`pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 ${admin ? "bg-orange-700" : "bg-emerald-700"} px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden`} role="status" data-testid="training-mode-strip">
         <GraduationCap className="h-4 w-4 shrink-0" /> &ldquo;Model Vessel&rdquo; Training Mode
         {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>

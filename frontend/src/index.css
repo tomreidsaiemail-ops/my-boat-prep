@@ -113,3 +113,9 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* Training mode: windows sit below the sticky training/admin strip so their X close buttons stay visible. */
+html[data-training-top] body:not(.training-open):not(.training-mini):not(.training-finish) .mbp-dialog {
+  top: calc(50% + var(--mbp-top, 0px) / 2) !important;
+  max-height: calc(100dvh - var(--mbp-top, 0px) - 12px) !important;
+}
