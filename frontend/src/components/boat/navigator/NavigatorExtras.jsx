@@ -1,6 +1,7 @@
 import useAdminLists from "@/hooks/useAdminLists";
 import { AlertTriangle, BellRing, ChevronRight } from "lucide-react";
 import { ArriveType } from "@/components/boat/navigator/ArriveType";
+import { TideNote } from "@/components/boat/navigator/TideNote";
 
 // Paragraphs come from the private admin list "Admin - Help Panel - MMN Routing Guidance" (cached for offline use).
 const GUIDANCE = "admin - help panel - mmn routing guidance";
@@ -51,7 +52,7 @@ const timingAnomaly = (w) => {
 };
 
 // Departure, optional race/event and where crew meet, kept with the passage plan. interim: the New departure window (today's leg).
-export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => {
+export const TripTiming = ({ weather = {}, onChange, interim, note = null, start = "", dest = "" }) => {
   const warn = timingAnomaly(weather);
   // Start follows Departure until the skipper sets a different Start.
   const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
@@ -66,6 +67,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => 
   const departField = <>
     <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn || noDepart} onLeave={fillFinish} />
     {noDepart && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-depart-required">Enter the Departure date and time. It's needed for the trip plan.</p>}
+    <TideNote place={start} pos={weather.start_pos} date={day(weather.depart_at)} testId="depart-tides" />
   </>;
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
@@ -90,6 +92,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null }) => 
     <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
     {note}
     {!interim && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
+    <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" />
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
     {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <div className="flex flex-col gap-1.5">

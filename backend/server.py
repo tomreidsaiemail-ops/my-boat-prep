@@ -615,6 +615,8 @@ async def log_images(log: dict) -> dict:
 
 
 app.include_router(api_router)
+from marine import router as marine_router  # noqa: E402
+app.include_router(marine_router)
 app.include_router(auth_router)
 app.include_router(payments_router)
 app.include_router(tips_router)

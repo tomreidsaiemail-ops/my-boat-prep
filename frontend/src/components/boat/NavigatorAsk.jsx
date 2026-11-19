@@ -23,6 +23,11 @@ const AnswerCard = ({ result, boat, left, onClose }) => (
       <span className="flex flex-1 items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide"><Compass className="h-4 w-4" /> The Magic Marine Navigator suggests</span>
       <button type="button" className="icon-btn h-8 w-8" aria-label="Close answer" onClick={onClose} data-testid="navigator-answer-close-btn"><X className="h-4 w-4" /></button>
     </div>
+    {result.tides_missing?.length > 0 && (
+      <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-tides-missing">
+        Live tide data isn't available for {result.tides_missing.join(" and ")}. No tide times are given for it. Check the official tide tables before you sail.
+      </p>
+    )}
     <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
     <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
     {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left</span>}
@@ -93,7 +98,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     const details = { boat_type: boat.boat_type, units: boat.units, loa: boat.loa, beam: boat.beam, draft: boat.draft, mast_height: boat.mast_height,
       pob: boat.pob, children: boat.children, trip_days: boat.trip_days };
     const route = { start: start.trim(), dest: dest.trim() };
-    api.post("/ai/navigator-ask", { question: question.trim(), start: route.start, destination: route.dest, boat: details, items: items.slice(0, 150) }, { timeout: 90000 })
+    api.post("/ai/navigator-ask", { question: question.trim(), start: route.start, destination: route.dest, boat: details, items: items.slice(0, 150),
+      start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, depart_at: w.depart_at || "", tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "" }, { timeout: 90000 })
       .then(({ data }) => {
         setState((s) => ({ ...s, busy: false, result: { ...data, ...route }, left: data.asks_left }));
         // Kept for the Departure decision in the Ship's Log.
@@ -161,7 +167,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />
       {photosOpen && <NavigatorReminders />}
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
-      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} />
+      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
     </div>
   );

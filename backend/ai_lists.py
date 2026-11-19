@@ -17,6 +17,7 @@ from photos import APP_NAME, get_object, put_object
 import quota
 from usage import KIND_FEATURE, record_usage
 from youtube_links import check_links, wants_youtube
+from marine import live_data
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
@@ -548,6 +549,10 @@ NAVIGATOR = ("You are the Magic Marine Navigator in the My Boat Prep app: an exp
              "Suggest a sensible route from START to DESTINATION as a short numbered list of legs with approximate distances in nautical miles, "
              "key waypoints or headlands, hazards to keep clear of, tidal gates or current to time, and good anchorages or shelter on the way. "
              "Take the boat's draft, mast height and size into account (bridges, shallows) and the crew on board. Keep the answer under 300 words. "
+             "SAFETY: the prompt has a LIVE DATA section with real tides and the real weather forecast. Use ONLY those numbers for tides and weather. "
+             "Never state tide times, tide heights, wind, wave or forecast figures that are not in LIVE DATA, even if the skipper asks; never guess them. "
+             "Do not copy out the whole tide table or forecast (the app adds it under your answer), but use it to time bar crossings and tidal gates, quoting the exact times you rely on. "
+             "If LIVE DATA says tide data is not available for a place, say clearly that live tide data is not available there and the skipper must check the official tide tables, and give no tide times for it. "
              "The answer is plain text only: no markdown, headings or asterisks; put each numbered leg on its own line using \\n line breaks. "
              "Also give the route as waypoints with approximate latitude and longitude in decimal degrees, starting at START and ending at DESTINATION, "
              "each in navigable water and in order along the route (2 to 20 waypoints), plus the total distance and an estimated passage time for this boat. "
@@ -569,12 +574,21 @@ class NavBoat(BaseModel):
     trip_days: int = Field(default=0, ge=0, le=365)
 
 
+class NavPos(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
 class NavigatorAskIn(BaseModel):
     question: str = Field(default="", max_length=1024)
     start: str = Field(default="", max_length=80, validate_default=True)
     destination: str = Field(default="", max_length=80, validate_default=True)
     boat: NavBoat = Field(default_factory=NavBoat)
     items: List[str] = Field(default_factory=list, max_length=150)
+    start_pos: Optional[NavPos] = None
+    dest_pos: Optional[NavPos] = None
+    depart_at: str = Field(default="", max_length=20)
+    tz: str = Field(default="", max_length=60)
 
     @field_validator("start", "destination")
     @classmethod
@@ -625,12 +639,18 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
     kids = min(b.children, b.pob)
     crew = f"{b.pob} on board ({b.pob - kids} adults, {kids} children)" if kids else f"{b.pob} on board"
     checks = "; ".join(str(i).strip()[:120] for i in body.items if str(i).strip()) or "(none listed)"
+    if await quota.left(user["user_id"]) <= 0:
+        raise quota.QuotaExceeded(await quota.status(user["user_id"]))
+    live = await live_data(body.start, body.destination, body.start_pos.model_dump() if body.start_pos else None,
+                           body.dest_pos.model_dump() if body.dest_pos else None, body.depart_at, body.tz)
     prompt = (f"START: {body.start}\nDESTINATION: {body.destination}\n"
               f"Boat: {b.boat_type.strip() or 'type not given'}{', ' + dims if dims else ''}. Crew: {crew}. Trip: {b.trip_days or 'not set'} days.\n"
               f"The skipper's Route Planning checklist: {checks}\n"
+              f"LIVE DATA (the only tide and weather figures you may use):\n{live['text']}\n"
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
     result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
-    return {**result, "asks_left": left}
+    result["answer"] = result["answer"].replace(f"\n\n{NAV_FOOTER}", f"\n\n{live['text']}\n\n{NAV_FOOTER}")
+    return {**result, "asks_left": left, "tides_missing": live["tides_missing"]}
 
 
 BUDGETER = ("You are the Magic Mariner in the My Boat Prep app: an experienced boat owner helping a skipper budget for owning their boat. "

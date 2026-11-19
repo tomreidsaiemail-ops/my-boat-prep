@@ -60,6 +60,17 @@ const PricingForm = ({ pricing, onSaved }) => {
   );
 };
 
+const CALLS = [["total", "API Calls Total"], ["yesterday", "API Calls Yesterday"], ["today", "API Calls Today"], ["fails_total", "API Calls Fails Total"], ["fails_yesterday", "API Calls Fails Yesterday"], ["fails_today", "API Calls Fails Today"]];
+
+// Live tide and weather lookups: a rise in fails usually means the tide service is out of credits.
+const ApiCalls = ({ rows }) => rows.map((r) => (
+  <Section key={r.code} title={r.name} testId={`analytics-api-${r.code}`}>
+    {CALLS.map(([k, label]) => <Tile key={k} label={label} value={r[k] ?? 0} testId={`tile-api-${r.code}-${k.replace("_", "-")}`} />)}
+    {r.code === "worldtides" && <Tile label="Credits used today" value={r.credits_today ?? 0} sub={`${r.credits_yesterday ?? 0} yesterday · ${r.credits_total ?? 0} in total`} testId={`tile-api-${r.code}-credits`} />}
+    {r.last_fail && <Tile label="Last fail" value={new Date(r.last_fail.at).toLocaleString("en-NZ", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} sub={r.last_fail.reason || "Unknown reason"} testId={`tile-api-${r.code}-last-fail`} />}
+  </Section>
+));
+
 export default function AdminAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -110,6 +121,7 @@ export default function AdminAnalytics() {
                 sub={`${plural(t.users, "person")} opened · ${plural(t.opens, "open")} · ${t.finished} finished · ${t.first_at ? `first opened ${new Date(t.first_at).toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "not opened yet"}`} />
             ))}
           </Section>
+          <ApiCalls rows={data.api_calls || []} />
           <PricingForm pricing={data.pricing} onSaved={load} />
           <UsersTodayDialog open={!!today} day={today || "today"} onClose={() => setToday(null)} />
         </>

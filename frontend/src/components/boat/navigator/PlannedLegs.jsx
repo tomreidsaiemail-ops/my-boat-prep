@@ -8,6 +8,7 @@ import { ArriveQuickPick, ArriveType, arriveType } from "@/components/boat/navig
 import { TripConfirm } from "@/components/boat/navigator/TripConfirm";
 import { firstLeg } from "@/components/boat/navigator/PlannedRouteView";
 import { AddLegPosition } from "@/components/boat/navigator/AddLegPosition";
+import { TideNote } from "@/components/boat/navigator/TideNote";
 
 const Field = ({ id, label, value, onChange, placeholder }) => (
   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -46,8 +47,10 @@ const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
         <Field id="leg-dest" label="DESTINATION" value={l.route_dest} onChange={(v) => set({ route_dest: v })} placeholder="e.g. Ship Cove" />
       </div>
       <When id="leg-depart-at" label="Departure date and time" value={l.depart_at} onChange={(v) => set({ depart_at: v })} />
+      <TideNote place={l.route_start} date={(l.depart_at || "").slice(0, 10)} testId="leg-depart-tides" />
       <NowButton label="Set Now - 15 Minutes" testId="leg-depart-now-btn" onClick={() => { set({ depart_at: nowPlus(-15) }); focusTime("leg-depart-at"); }} />
       <When id="leg-finish-at" label="Estimated Finish date and time" value={l.finish_at} onChange={(v) => set({ finish_at: v })} warn={error.includes("Finish") ? error : ""} />
+      <TideNote place={l.route_dest} pos={l.dest_pos} date={(l.finish_at || "").slice(0, 10)} testId="leg-finish-tides" />
       <NowButton label="Set Now + 2 hours" testId="leg-finish-now-btn" onClick={() => { set({ finish_at: nowPlus(120) }); focusTime("leg-finish-at"); }} />
       <ArriveType id="leg-arrive-type" value={l.arrive_type} onChange={(v) => set({ arrive_type: v })} warn={error.includes("Type")} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="leg-error">{error}</p>}
