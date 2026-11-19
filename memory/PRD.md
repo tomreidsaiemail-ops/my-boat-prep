@@ -1060,3 +1060,10 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
   - Map: an end within 100 m of the start is drawn as an offset twin bubble, and the green start is always on top (zIndexOffset 2000).
   - Print Cards QR prints cupboards only by default, with "Also print folders and boxes".
   - The Crew walkthrough button moved to the bottom of ZONE MAPS.
+
+## 2026-06 Disabled features batch (Preview only, NOT deployed yet)
+- Added 3 rows to "Admin - disabled features" (keys food_only, zone_photo, cupboards_by_zone via features.py LATER_ROWS; frontend DEFAULT updated): Show Food areas only in ZONE MAPS; Add high level zone photo in ZONE MAPS; Add Cupboards by zone at the bottom of Boat Inventory — all enabled for nobody.
+- Done button at bottom of photo and crew dialog (crew-dialog-done-btn).
+- Route Planning: Departure date and time red + alert until both date and time set (navigator-depart-required).
+- ON NEXT DEPLOY: make Prod "Admin - disabled features" list identical to Preview's (Preview currently: Speak; Sync Food & Drinks Cupboards Magically; Charter Registrations; charteruser@gmail.com; the 3 new rows; no Planned route map row).
+- Tested: iteration_213 (100%).

@@ -1,0 +1,24 @@
+{
+  "summary": "Tested 3 new disabled features (food_only, zone_photo, cupboards_by_zone), the Done button in the photo and crew dialog, and the red Departure date and time required state on Route Planning. Pro and admin users, 390x844 viewport. All requested checks PASS. No code changes. I did not change the Admin disabled features list.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Batch zone prompt (++ in Boat Inventory)", "issues": ["Its title is still 'ADD CUPBOARDS BY ZONE' and its help text says 'label the cupboard on your high level galley photo'. Both point to features that are now off (cupboards_by_zone, zone_photo). Low priority: consider rewording while the features are disabled."]},
+      {"screen": "Route Planning When fields", "issues": ["The red state sets 'bg-red-50' but the computed background stays white, because field-input overrides it. Only the red border and red label show. Event name and Estimated Finish behave the same way, so this was not introduced by this change."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": ["Optional: reword the BatchZonePrompt title and help text while cupboards_by_zone and zone_photo are disabled"],
+  "critical_code_review_comments": [
+    "NavigatorExtras noDepart = !interim && depart_at.length < 16 is correct: a value with only a date ('YYYY-MM-DD') stays red, and the interim dialog is excluded.",
+    "InventoryList: when cupZonesOn is false, boats with zones fall back to <AddArea onBatch={zoneBatch}>, so ++ still opens BatchZonePrompt. Correct."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (GET /api/me/features recheck, admin and pro)", "frontend": "100%"},
+  "seed_data_creation": "Added the cupboard TEST_Cupboard213 and changed depart_at on test-user-pro/main. Afterwards restored the whole doc from a mongoexport backup (/tmp/pro_main_bk213.json) with mongoimport --mode=upsert. Verified: 9 areas, depart_at 2026-11-19T06:00, finish_at 2026-11-19T09:00.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Pro opens on either Model Vessel or main (TEST_Kia Ora). On main, the trip-finish-dialog and the Arrived? prompt show: click Not now / Not yet in a loop. Boat Inventory: list-selector > list-option-boatInventory. Route Planning: list-option-routeHazards; the depart inputs are navigator-depart-at-input / -time-input (the time input is disabled until a date is set). Wait about 5s after a field change before reload, or the debounced sync is lost. Back up test-user-pro/main with mongoexport before any writes."
+}
