@@ -111,7 +111,7 @@ import { MagicPanel } from "@/components/boat/MagicPanel";
 import { MagicDoctorIcon } from "@/components/boat/MagicDoctorIcon";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
-import { CheckCircle2, ClipboardCheck, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
+import { CheckCircle2, Navigation2, ClipboardCheck, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
@@ -1132,6 +1132,8 @@ export default function BoatPrep({ boatId, boats }) {
   const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
   // A list's checks (Select All .. Ask The Magic Mariner); on Trip Planning they sit below Archived Trips.
   // Hop bubbles (Trip Planning, Route...); on Crew Roles they sit under the list instead of above it.
+  const transitNow = allDone.transitLeg();
+  const TRIP_HOPS = new Set(["leavingDock", "arrivingDest", "returningDock"]);
   const hopRow = !crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
@@ -1278,6 +1280,11 @@ export default function BoatPrep({ boatId, boats }) {
         <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
+      )}
+      {!crew && transitNow && (TRIP_HOPS.has(active.id) || isTripList(active)) && (
+        <button type="button" className="btn-solid h-12 justify-center" onClick={allDone.passTransit} data-testid="transit-passed-btn">
+          <Navigation2 className="h-4 w-4" /> Passed {transitNow.route_dest || `Point ${transitNow.n + 1}`}
+        </button>
       )}
       {hopKey !== "crewRoles" && hopRow}
       {!crew && prepClones.length > 0 && (

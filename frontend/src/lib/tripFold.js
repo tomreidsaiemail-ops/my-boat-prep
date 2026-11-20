@@ -16,8 +16,8 @@ export const generalIds = (list) => {
 export const arrivalTicks = (list, key) => new Set([...generalIds(list), ...headingItems(list, ARRIVE_KINDS.find((k) => k.key === key)?.heading || "")]);
 
 const local = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-const LEFT = { dock: "Leaving Dock", ...Object.fromEntries(LEG_KINDS.map((k) => [k.key, k.label])) };
-const CAME = { dock: "Returning to Dock", ...Object.fromEntries(ARRIVE_KINDS.map((k) => [k.key, k.done])) };
+const LEFT = { dock: "Leaving Dock", transit: "Transiting", ...Object.fromEntries(LEG_KINDS.map((k) => [k.key, k.label])) };
+const CAME = { dock: "Returning to Dock", transit: "Passed", ...Object.fromEntries(ARRIVE_KINDS.map((k) => [k.key, k.done])) };
 
 // The current leg's START and DESTINATION, and its departure levels, for arrival checks part way through a trip.
 export const legBoat = (b = {}) => {
@@ -49,6 +49,16 @@ export const nextLeg = (boat, trip) => {
   const n = (boat.legs?.[trip.id] || []).length;
   const leg = planned[n];
   return leg && (leg.route_start || leg.route_dest) ? { ...leg, n: n + 1 } : null;
+};
+
+// The planned leg being sailed now (underway), with its number; a Transiting one gets a "Passed" button.
+export const sailingLeg = (boat, trip) => {
+  const n = (boat.legs?.[trip?.id] || []).length;
+  if (!trip || !n || boat.underway?.trip_id !== trip.id) return null;
+  const tb = tripBoat(boat, trip.id);
+  const w = tb.weather || {};
+  const leg = [{ route_start: tb.route_start, route_dest: tb.route_dest, arrive_type: w.arrive_type }, ...(w.legs || [])][n - 1];
+  return leg ? { ...leg, n } : null;
 };
 
 // A Ship's Log entry typed during a trip (underway, or stopped between legs) is kept with the latest leg, so it is folded with the trip.

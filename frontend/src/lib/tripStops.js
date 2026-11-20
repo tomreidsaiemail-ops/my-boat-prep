@@ -45,6 +45,16 @@ export const shoreRoute = (b = {}) => {
   return { stops: stops.map((s) => (s.pos ? { name: String(s.name).slice(0, 80), lat: s.pos.lat, lon: s.pos.lon, type: s.type || "" } : null)), lines: legLines(legs) };
 };
 
+// A Day Trip ends where it started: the same name, or pins within about 300 m (legs: every leg, Leg 1 first).
+export const isDayTrip = (legs) => {
+  const [a, b] = [legs[0], legs[legs.length - 1]];
+  if (!a || !b) return false;
+  const p = a.start_pos;
+  const q = b.dest_pos;
+  const near = p && q && Math.hypot((q.lat - p.lat) * 111320, (q.lon - p.lon) * 111320 * Math.cos((p.lat * Math.PI) / 180)) < 300;
+  return !!(same(a.route_start, b.route_dest) || near);
+};
+
 const same = (a, b) => !!(a || "").trim() && (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 // A return trip: two legs, Leg 2's DESTINATION being Leg 1's START (legs: every leg, Leg 1 first).
 export const returnsToStart = (legs) => legs.length === 2 && same(legs[1].route_dest, legs[0].route_start);

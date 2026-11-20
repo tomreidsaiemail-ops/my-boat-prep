@@ -13,7 +13,7 @@ import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
-import { returnsToStart } from "@/lib/tripStops";
+import { isDayTrip, returnsToStart } from "@/lib/tripStops";
 import { useAuth } from "@/context/AuthContext";
 import { TideNote } from "@/components/boat/navigator/TideNote";
 import { TideWarning, localDay } from "@/components/boat/navigator/TideWarning";
@@ -92,6 +92,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const legsNow = w.legs || [];
   const isReturn = returnsToStart([{ route_start: start }, ...legsNow]);
   const canReturn = !!(start.trim() && dest.trim());
+  const dayTrip = canReturn && isDayTrip([{ route_start: start, route_dest: dest, start_pos: w.start_pos, dest_pos: w.dest_pos }, ...legsNow]);
   const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
   // Trip Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
@@ -172,7 +173,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
-        {!interim && (
+        {!interim && dayTrip && (
+          <span className="flex shrink-0 flex-col items-center gap-1" title="Ends where it starts. Pin points on the Edit Draft Plan map to pass on the way round." data-testid="day-trip-flag">
+            <span className="field-label text-center leading-tight">Day<br />trip</span>
+            <span className="flex h-11 items-center rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">Day Trip</span>
+          </span>
+        )}
+        {!interim && !dayTrip && (
           <label className={`flex shrink-0 flex-col items-center gap-1 ${!canReturn || legsNow.length ? "opacity-60" : "cursor-pointer"}`} data-testid="return-trip"
             title={isReturn ? "Leg 2 comes back to START, so this is a return trip" : legsNow.length ? "Only a 2-leg trip that comes back to START is a return trip" : canReturn ? "" : "Enter the START and DESTINATION first"}>
             <span className="field-label text-center leading-tight">Return<br />trip</span>

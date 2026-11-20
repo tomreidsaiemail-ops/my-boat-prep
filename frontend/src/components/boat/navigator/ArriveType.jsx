@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Anchor, Check, HelpCircle, Home, LifeBuoy, Sailboat } from "lucide-react";
+import { Anchor, Check, HelpCircle, Home, LifeBuoy, Navigation2, Sailboat } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // How a planned leg ends; each opens its own arrival checklist from the trip plan.
@@ -7,6 +7,8 @@ export const ARRIVE_TYPES = [
   { key: "anchor", label: "Anchoring", prep: "Prepare to anchor", leave: "Weigh Anchor", list: "arrivingDest", Icon: Anchor },
   { key: "berth", label: "Berthing", prep: "Prepare to berth", leave: "Leave Berth", list: "arrivingDest", Icon: Sailboat },
   { key: "mooring", label: "Mooring", prep: "Prepare to pick up buoy", leave: "Leave Mooring", list: "arrivingDest", Icon: LifeBuoy },
+  // Sailing past a point without stopping (Day Trips, channels): a "Passed" tap logs the time, no arrival checklist.
+  { key: "transit", label: "Transiting", prep: "Transit point", leave: "Carry on", list: null, Icon: Navigation2 },
   { key: "dock", label: "Returning to Dock", prep: "Prepare to return to Dock", leave: "Leave Dock", list: "returningDock", Icon: Home },
 ];
 export const arriveType = (key) => ARRIVE_TYPES.find((t) => t.key === key);

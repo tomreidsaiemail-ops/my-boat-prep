@@ -7,7 +7,7 @@ import { logBlock } from "@/components/boat/departure/DepartureCheck";
 import { departureDecision } from "@/components/boat/navigator/DepartureLogDialog";
 import { arrivalSummary, arrivalUsage, departureSummary, passagePlan } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
-import { ARRIVE_KINDS, arrivalTicks, foldTrip, legBoat, legHead, nextLeg, tripHead } from "@/lib/tripFold";
+import { ARRIVE_KINDS, arrivalTicks, foldTrip, legBoat, legHead, nextLeg, sailingLeg, tripHead } from "@/lib/tripFold";
 import { allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { LEG_KINDS, dmyt, headingItems, legIds, legTrip, levelsText, pickTrip, routeTrips, shorePlan, tankSummary, today, tripIssue, tripLine, tripTimes } from "@/lib/allDone";
 
@@ -245,6 +245,32 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     return true;
   };
 
+  // A Transiting point: "Passed" logs the time, closes that leg and sets off on the next one (no checklists, still underway).
+  const transitLeg = () => { const l = sailingLeg(state.boat || {}, interimTrip()); return l?.arrive_type === "transit" ? l : null; };
+  const passTransit = () => {
+    const trip = interimTrip();
+    const cur = transitLeg();
+    if (!cur) return;
+    const next = nextLeg(state.boat || {}, trip);
+    const now = new Date();
+    const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const point = cur.route_dest || `Point ${cur.n + 1}`;
+    mutate((s) => {
+      const b = s.boat;
+      const legs = b.legs?.[trip.id] || [];
+      const last = legs[legs.length - 1];
+      const entry = { id: Date.now(), checked: false, label: `Passed ${point} at ${hm} - Route Plan: ${trip.name}${next ? ` - next ${next.route_dest || "point"}` : ""} - ${stamp()}` };
+      const closed = { ...last, arrived_at: now.toISOString(), arrival: "transit", arrived_list: "Passed", logs: [...(last?.logs || []), entry.id] };
+      const rec = next && { id: entry.id + 1, kind: "transit", start: next.route_start || point, dest: next.route_dest || "", depart_at: localNow, finish_at: next.finish_at || "",
+        arrive_type: next.arrive_type || "", at: now.toISOString(), logs: [] };
+      const underway = rec ? { ...b.underway, line: `${rec.start} to ${rec.dest}` } : b.underway;
+      return { ...s, boat: { ...b, legs: { ...(b.legs || {}), [trip.id]: [...legs.slice(0, -1), closed, ...(rec ? [rec] : [])] }, underway },
+        data: { ...s.data, shipsLog: [...(s.data.shipsLog || []), entry] } };
+    });
+    toast.success(`Passed ${point} at ${hm}, logged in the Ship's Log`);
+  };
+
   const setFinish = (v) => setPlan((p) => (p ? { ...p, finish: v } : p));
   const setEndTrip = (v) => setPlan((p) => (p ? { ...p, endTrip: v } : p));
   // Arriving at Destination: New arrival and New departure... start by confirming the latest levels.
@@ -258,6 +284,6 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     return t ? tripHead(t.start, t.dest, t.departAt) : tripHead(b.route_start, b.route_dest, "");
   };
   const levelsAsk = { ask, confirm: (v) => { const then = ask?.then; setAsk(null); then?.(v); }, close: () => setAsk(null) };
-  return { plan, busy, setFinish, setEndTrip, openDepart, openArrive, interimTrip, interimDepart, newArrival, newDeparture, head, levelsAsk,
+  return { plan, busy, setFinish, setEndTrip, openDepart, openArrive, interimTrip, interimDepart, transitLeg, passTransit, newArrival, newDeparture, head, levelsAsk,
     confirm: (how) => (plan?.kind === "depart" ? depart() : arrive(how)), close: () => setPlan(null) };
 }
