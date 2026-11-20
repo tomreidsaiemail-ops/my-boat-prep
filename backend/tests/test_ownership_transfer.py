@@ -88,7 +88,7 @@ class TestOwnership:
 
     def test_status_none(self):
         r = requests.get(f"{BASE_URL}/api/ownership/status", headers=SELLER, params={"boat_id": BOAT_ID})
-        assert r.status_code == 200 and r.json()["request"] is None
+        assert r.status_code == 200 and r.json()["requests"] == []
 
     def test_request_and_list(self):
         # case/space-insensitive name, gmail-ish email case
@@ -103,7 +103,9 @@ class TestOwnership:
 
     def test_status_shows_request(self):
         r = requests.get(f"{BASE_URL}/api/ownership/status", headers=SELLER, params={"boat_id": BOAT_ID})
-        req = r.json()["request"]
+        reqs = r.json()["requests"]
+        assert len(reqs) == 1
+        req = reqs[0]
         assert req and req["buyer_email"] == "test.user.free@example.com"
 
     def test_status_other_user_404(self):

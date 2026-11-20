@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 const STEPS = {
   buyer: ["Sign in to My Boat Prep with your own account.", "Open the menu ☰ at the top and choose Request Ownership Transfer...",
     "Enter the boat's name exactly as the seller has it (capitals and spaces don't matter) and the seller's email (the one they sign in with).",
-    "Tap Send request. You can do this at any time, even before the seller starts; the request is held until they're ready."],
+    "Tap Request transfer. You can do this at any time, even before the seller starts; the request is held until they're ready."],
   start: ["Open the boat, then the menu ☰ and choose Transfer ownership...", "Tick each statement to confirm what the new owner will and won't receive, then tap Start."],
   wizard: ["The wizard goes through every cupboard, box and folder that still has items in it. Food & Drink cupboards are skipped (they're emptied on sale).",
     "Tap Add or remove items to update each one in the normal cupboard window. Use Next and Back to move between them.",

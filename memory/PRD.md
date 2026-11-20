@@ -1084,3 +1084,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Transfer ownership list hidden from crew (to_out). Tested iteration_215 (100%).
 - Open: free buyers can get a 2nd boat via transfer; first-name redaction may over-redact place names; several buyers requesting the same boat -> newest wins.
 - 2026-06: Crew agreement 'Shore contact alerts' lines fold away once 'I understand how the shore contact is alerted' is ticked (like Standard Terms).
+- 2026-06: Transfer extras (Preview, not deployed): handover.py Handover Pack email (At a glance summary then zones/cupboards/items + maintenance logs & Boat Maintenance lists) replaces the plain buyer email; buyer's Ship's Log ends "Boat sold to new owner on <date>" (seller tz); seller picks buyer when several requested (status returns requests[], sell needs request_id), unpicked buyers emailed + requests deleted; /transfer-guide printable signed-in page linked from start dialog, panel and request dialog. Tested iteration_216 (100%).
+- Open: sell not idempotent under concurrent double submit; unpicked-buyer emails sent inline; guide checklist shows empty if fetch fails.

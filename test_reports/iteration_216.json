@@ -1,0 +1,33 @@
+{
+  "summary": "Tested the 4 Transfer ownership additions. Backend: 22/22 pytest pass (8 new in test_ownership_multibuyer.py plus 14 regression tests in test_ownership_transfer.py, updated to the new {requests:[...]} status shape). GET /ownership/status returns requests[] with exactly request_id/buyer_name/buyer_email/created_at, oldest first. With 2 requests, sell without request_id returns 409 'More than one person has asked for this boat. Pick the new owner first.'; an unknown request_id gives 409 and a badly formed one 422. With request_id and tz Pacific/Auckland it returns 200: the chosen buyer (beta) gets the boat, the free user doesn't, the unpicked request is DELETED from Mongo and the chosen one is marked done. The last Ship's Log entry reads 'Boat sold to new owner on Fri 20 Nov 2026, 14:13', which is correct NZDT (UTC was 01:13) and has no names. A single request needs no request_id. An invalid tz falls back to UTC with no 500. Calling handover_pack directly: the subject is 'Welcome aboard <vessel>: your handover pack', and the body runs At a glance (all 7 counts) -> Zones and cupboards -> Maintenance history (Engine service log (1), Boat Maintenance lists) and includes the sale time. Mail-provider 422s to example.com are logged and caught; the sale still succeeds. Frontend at 390px: the panel shows '2 people have asked for this boat. Pick the new owner:' and transfer-buyer-picker with 2 radios. SELL with both ticks but no pick shows transfer-error 'Pick which buyer gets the boat first.' and no confirm dialog opens. After picking Beta, confirm 1 reads 'Sell TEST_SellBoat to Beta Tester?', then confirm 2, then SELL MY BOAT -> toast 'Transfer successful. TEST_SellBoat now belongs to Beta Tester...', the selector switches to the seller's main boat, and Mongo matches (beta has the boat, free's request is gone, log entry in browser tz UTC). Guide: transfer-guide-link (panel), transfer-start-guide-link (start dialog, which closes) and request-transfer-guide-link all open /transfer-guide. The page has Parts A-E and guide-checklist has 14 items. The print button calls window.print and Back returns to /. Signed out, /transfer-guide redirects to /login. No horizontal overflow at 390px on the guide or the picker (scrollWidth 390). The desktop layout is clean and Part D has 2 columns.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ownership/sell", "issue": "Not atomic or idempotent: two concurrent SELL calls for the same boat could both pass pending_requests before the delete_one, creating 2 buyer copies. The emails to unpicked buyers are also sent one after another inside the request, so many buyers or a slow provider could approach the 30s client timeout."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "TransferGuide Part A step 4", "issues": ["The guide says 'Tap Send request' but the button in RequestTransferDialog is labelled 'Request transfer'."]},
+      {"screen": "TransferGuide Part E", "issues": ["If GET /ownership/checklist fails, the Checklist heading shows with an empty list and no error or fallback."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ownership_multibuyer.py", "/app/backend/tests/test_ownership_transfer.py", "/app/backend/tests/ui_setup_tsell1.py", "/app/test_reports/pytest/pytest_ownership_v2.xml"],
+  "action_items": [
+    "Optional: change the guide text 'Tap Send request' to 'Tap Request transfer'",
+    "Optional: make sell idempotent (e.g. find_one_and_update the chosen request from pending to processing before copying) and send the unpicked-buyer emails in a background task"
+  ],
+  "critical_code_review_comments": [
+    "ownership.sell: no guard against double submit or concurrent sells (see minor backend issue)",
+    "TransferGuide.jsx: checklist fetch catch sets [] silently",
+    "TransferPanel: if a buyer's request vanishes between load and SELL, the 409 shows but the list doesn't refresh"
+  ],
+  "updated_files": ["/app/backend/tests/test_ownership_transfer.py (status key request -> requests)", "/app/backend/tests/test_ownership_multibuyer.py (new)", "/app/backend/tests/ui_setup_tsell1.py (new UI setup/cleanup helper)"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Temporary boats tsell1/tsellmb/tsellmb2/tsellapi (copies of test-user-pro/main) and ownership_requests for free/beta; all removed afterwards (0 leftovers verified). test-user-pro/main untouched.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run pytest with -n 0 (module fixtures create and clean seller boats). For UI: python /app/backend/tests/ui_setup_tsell1.py setup creates tsell1 + 2 pending requests (free+beta) and prints the request_ids; 'cleanup' removes everything. Reach the panel with boat-selector -> boat-option-tsell1 -> list-selector -> list-option-transferOwnership. Emails to example.com are rejected by the provider (422 undeliverable) and caught, which is expected."
+}
