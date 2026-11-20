@@ -1053,14 +1053,19 @@ export default function BoatPrep({ boatId, boats }) {
   const shoreNow = useRef("");
   // Welcome answers of "I am not interested" hide those features (sell, trip, find, fish, provision).
   const notFor = (topic) => (user.welcome_no || []).includes(topic);
-  // First visit (or when admin raises "Force Welcome screen visit" in Global Config): open Welcome, once per sign-in session.
+  // Skippers (not invited crew) get Welcome at sign-in, on their own boat, until every section is done (or admin raises "Force Welcome screen visit").
   useEffect(() => {
-    if (!online || !loaded || sessionStorage.getItem("mbp_welcome_checked")) return;
+    if (!online || !loaded) return;
+    const go = sessionStorage.getItem("mbp_welcome_go");
+    if (!go && sessionStorage.getItem("mbp_welcome_checked")) return;
     sessionStorage.setItem("mbp_welcome_checked", "1");
+    sessionStorage.removeItem("mbp_welcome_go");
     api.get("/welcome").then(({ data }) => {
-      if (!data.due) return;
+      if (!data.auto) return;
+      const own = boats.boats.find((b) => !b.crew && !b.model);
+      if ((crew || boats.current.model) && own && !go) { sessionStorage.setItem("mbp_welcome_go", "1"); boats.select(own.key); return; }
       setActiveId("welcome");
-      if (data.first && !crew && !boat.home_list) changeBoatField("home_list", "welcome");
+      if (!crew && !boats.current.model && !data.home_set) { changeBoatField("home_list", "welcome"); api.put("/welcome", { home_set: true }).catch(() => {}); }
       api.post("/welcome/visited").catch(() => {});
     }).catch(() => {});
   }, [online, loaded]); // eslint-disable-line react-hooks/exhaustive-deps

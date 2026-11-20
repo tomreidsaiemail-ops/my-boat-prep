@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(PICK_KEY);
     localStorage.removeItem("mbp_invites_later");
     sessionStorage.removeItem("mbp_invites_later");
+    ["mbp_welcome_checked", "mbp_welcome_go", "mbp_session_boat"].forEach((k) => sessionStorage.removeItem(k));
     setUser(null);
   }, [setUser]);
 

@@ -99,13 +99,28 @@ def questions(lines: list) -> list:
     return out
 
 
+async def is_skipper(user: dict) -> bool:
+    """Invited crew (crew on someone's boat, no named boat of their own) and shore-only contacts aren't skippers."""
+    if user.get("shore_only"):
+        return False
+    uid = user["user_id"]
+    if await db.user_boats.find_one({"owner_id": uid, "model": {"$ne": True}, "boat.vessel": {"$regex": r"\S"}}, {"_id": 1}):
+        return True
+    return not await db.user_boats.find_one({"crew": uid}, {"_id": 1})
+
+
 @router.get("/welcome")
 async def get_welcome(user: dict = Depends(get_current_user)):
     w = user.get("welcome") or {}
     n = await force_number()
     visits = w.get("visits") or []
-    return {"questions": questions(await _lines(LIST_NAME)), "force": n, "due": n not in visits, "first": not visits,
-            "answers": w.get("answers") or {}, "mv_ack": bool(w.get("mv_ack"))}
+    qs = questions(await _lines(LIST_NAME))
+    answers = w.get("answers") or {}
+    complete = bool(w.get("mv_ack")) and all(q["key"] in answers for q in qs)
+    skipper = await is_skipper(user)
+    return {"questions": qs, "force": n, "due": n not in visits, "first": not visits, "answers": answers, "mv_ack": bool(w.get("mv_ack")),
+            "section": w.get("section") or "", "complete": complete, "skipper": skipper, "home_set": bool(w.get("home_set")),
+            "auto": skipper and (not complete or n not in visits)}
 
 
 @router.post("/welcome/visited")
@@ -118,6 +133,8 @@ async def welcome_visited(user: dict = Depends(get_current_user)):
 class WelcomeIn(BaseModel):
     answers: Optional[Dict[str, Literal["yes", "no"]]] = Field(default=None, max_length=30)
     mv_ack: Optional[bool] = None
+    section: Optional[str] = Field(default=None, pattern=r"^[a-z0-9_]{0,20}$")
+    home_set: Optional[bool] = None
 
 
 @router.put("/welcome")
@@ -125,6 +142,10 @@ async def save_welcome(p: WelcomeIn, user: dict = Depends(get_current_user)):
     sets = {f"welcome.answers.{k}": v for k, v in (p.answers or {}).items() if re.fullmatch(r"[a-z0-9_]{1,20}", k)}
     if p.mv_ack is not None:
         sets["welcome.mv_ack"] = p.mv_ack
+    if p.section is not None:
+        sets["welcome.section"] = p.section
+    if p.home_set is not None:
+        sets["welcome.home_set"] = p.home_set
     if sets:
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": sets})
     return {"ok": True}

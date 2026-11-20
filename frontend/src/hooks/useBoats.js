@@ -41,8 +41,16 @@ export default function useBoats(userId) {
       const merged = [...firstBoat, ...server.filter((b) => !b.model), ...localOnly, ...server.filter((b) => b.model)].map((b) => ({ ...b, vessel: read(stateKey(b.key), null)?.boat?.vessel?.trim() || b.vessel }));
       return merged.length ? merged : MAIN;
     });
-    // Open the boat this skipper last used, on whichever phone that was.
-    if (firstFetch.current && data.last && data.boats.some((b) => boatKey(b) === data.last)) setActiveId(data.last);
+    // Open the boat this skipper last used, on whichever phone that was, but never start a sign-in session on the Model Vessel.
+    if (firstFetch.current) {
+      const fresh = !sessionStorage.getItem("mbp_session_boat");
+      sessionStorage.setItem("mbp_session_boat", "1");
+      const model = data.boats.find((b) => b.model && !b.crew);
+      const own = data.boats.find((b) => !b.model && !b.crew);
+      const last = data.last && data.boats.some((b) => boatKey(b) === data.last) ? data.last : null;
+      if (fresh && model) setActiveId((cur) => ((last || cur) === boatKey(model) ? (own ? boatKey(own) : "main") : last || cur));
+      else if (last) setActiveId(last);
+    }
     firstFetch.current = false;
   }).catch(() => {}), []);
 

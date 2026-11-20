@@ -21,8 +21,8 @@ const Choice = ({ on, label, onPick, testId }) => (
 );
 
 // One question: its bullets light up one by one when it first appears; once answered it folds, green (interested) or light red.
-const Question = ({ q, answer, onAnswer }) => {
-  const [open, setOpen] = useState(!answer);
+const Question = ({ q, answer, onAnswer, focus, onOpen }) => {
+  const [open, setOpen] = useState(!answer || focus);
   const ran = useRef(false);
   useEffect(() => {
     if (answer || ran.current) return;
@@ -33,7 +33,7 @@ const Question = ({ q, answer, onAnswer }) => {
   const tone = answer === "yes" ? "border-emerald-600 bg-emerald-50" : answer === "no" ? "border-red-300 bg-red-50" : "border-[var(--navy)] bg-white";
   return (
     <div className={`flex flex-col gap-2 rounded-md border-[1.5px] p-3 ${tone}`} data-testid={`welcome-q-${q.key}`}>
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex items-start gap-2 text-left text-sm font-extrabold" aria-expanded={open} data-testid={`welcome-q-${q.key}-toggle`}>
+      <button type="button" onClick={() => { if (!open) onOpen(); setOpen((o) => !o); }} className="flex items-start gap-2 text-left text-sm font-extrabold" aria-expanded={open} data-testid={`welcome-q-${q.key}-toggle`}>
         {answer === "yes" ? <Check className="h-5 w-5 shrink-0 text-emerald-700" /> : answer === "no" ? <X className="h-5 w-5 shrink-0 text-red-700" /> : null}
         <span className="flex-1">{q.text}</span>
         <ChevronDown className={`h-5 w-5 shrink-0 ${open ? "rotate-180" : ""}`} />
@@ -53,14 +53,14 @@ const Question = ({ q, answer, onAnswer }) => {
 };
 
 // The questions one at a time (the next shows once this one is answered), then what we recommend.
-export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeHome }) => {
+export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeHome, focus, onOpen }) => {
   const next = questions.findIndex((q) => !answers[q.key]);
   const shown = next < 0 ? questions : questions.slice(0, next + 1);
   const rec = recommendations(questions, answers);
   return (
     <section className="flex flex-col gap-3" data-testid="welcome-questions">
       <p className="text-sm">My Boat Prep would like to know what you would like from it, so we don&apos;t clutter up your session with features you have no interest in. You can always turn them on later: when getting started, less is more.</p>
-      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => onAnswer(q.key, v)} />)}
+      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => onAnswer(q.key, v)} focus={focus === q.key} onOpen={() => onOpen(q.key)} />)}
       {(rec.tutorials.length > 0 || rec.home) && (
         <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-emerald-600 bg-white p-3" data-testid="welcome-recommend">
           <p className="text-sm font-extrabold uppercase tracking-wide">Recommended for you</p>
