@@ -160,3 +160,4 @@ body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + var(--m
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 .do-it-flash { animation: do-it-flash 1.6s ease-out; }
+.mbp-glow { background-color: #fde68a !important; box-shadow: 0 0 0 4px #f59e0b !important; transition: background-color 0.2s, box-shadow 0.2s; }

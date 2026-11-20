@@ -57,6 +57,7 @@ class UserOut(BaseModel):
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
+    welcome_no: list = []
     has_password: bool = False
     auth_provider: str = "email"
 
@@ -86,6 +87,7 @@ def to_user_out(u: dict) -> UserOut:
         show_sundowners=bool((u.get("features") or {}).get("show_sundowners")),
         tide_datum="MSL" if (u.get("prefs") or {}).get("tide_datum") == "MSL" else "CD",
         show_tides=bool((u.get("prefs") or {}).get("show_tides")), tide_ack_date=str((u.get("prefs") or {}).get("tide_ack_date") or ""),
+        welcome_no=[k for k, v in ((u.get("welcome") or {}).get("answers") or {}).items() if v == "no"],
     )
 
 

@@ -38,6 +38,7 @@ const upgradePob = (data) => {
 const RADIO_WAIT = "Wait for a response from either Coastguard Radio or Maritime Radio or nearby vessel. They will then ask for more information and confirm assistance is being sent to you as soon as possible. In addition, relay calls will be issued to alert any nearby vessels to your position - this is the benefit of making your Mayday call on the VHF.";
 
 export const DEFAULT_REGISTRY = [
+  { id: "welcome", name: "Welcome", isSystem: true },
   { id: "leavingDock", name: "Leaving Dock", isSystem: true },
   { id: "returningDock", name: "Returning to Dock", isSystem: true },
   { id: "arrivingDest", name: "Arriving at Destination", isSystem: true },
@@ -58,6 +59,7 @@ export const DEFAULT_REGISTRY = [
 ];
 
 export const DEFAULT_DATA = {
+  welcome: [],
   mealPlan: mk(3000, MEAL_PLAN_ITEMS),
   leavingDock: mk(1, ["Tidy lines", "Free up head sail furler", "Secure Dinghy", "Remove main sail cover", "Drop lazy jacks", "Attach main halyard", "Fenders", "Wind direction check", "Boat hooks ready", "Assign crew life jackets", "Brief crew on exit plan", "Turn on instruments", "Set route on Navionics, and ready backup device if needed", "Text friend route, destination and ETA", "Lodge trip report with Coast Guard", "Set timer to close trip report"]),
   returningDock: mk(17, ["Fenders out", "Mooring lines ready", "Engine revs checked", "Crew briefed on docking", "Ready boat hooks", "Prepare crew with arrival plan", "Clear arrival timer"]),
@@ -145,7 +147,7 @@ const addMissingLists = (s) => {
   const registry = [...s.registry];
   const data = { ...s.data };
   const deleted = s.deleted_lists || [];
-  ["head", "engineService", "electricalService", "myTodo", "riggingChecks", "mealPlan"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
+  ["welcome", "head", "engineService", "electricalService", "myTodo", "riggingChecks", "mealPlan"].filter((id) => !deleted.includes(id)).forEach((id) => insertDefaultList(registry, data, id));
   return { ...s, registry, data, deleted_lists: deleted };
 };
 

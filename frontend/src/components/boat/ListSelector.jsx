@@ -1,4 +1,5 @@
 import { Check, Copy, Home, Pencil, Plus, User, X } from "lucide-react";
+import useHomePreview from "@/hooks/useHomePreview";
 import { CategoryIcon } from "@/components/boat/CategoryIcon";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -15,7 +16,10 @@ const Row = ({ row, updated }) => (
 );
 
 // The house with a tick: this list is the boat's home list; with a cross: tap to make it home.
-const HomeToggle = ({ isHome, onSetHome }) => (
+const HomeToggle = ({ isHome: real, onSetHome }) => {
+  const preview = useHomePreview();
+  const isHome = preview ? preview.mark === "tick" : real;
+  return (
   <button type="button" data-testid="set-home-list-btn" onClick={onSetHome} aria-pressed={isHome}
     title={isHome ? "This is your home list" : "Make this your home list"} aria-label={isHome ? "This is your home list" : "Make this your home list"} className={`${BTN} relative`}>
     <Home className="h-6 w-6" strokeWidth={2.5} />
@@ -23,7 +27,8 @@ const HomeToggle = ({ isHome, onSetHome }) => (
       {isHome ? <Check className="h-3 w-3" strokeWidth={4} /> : <X className="h-3 w-3" strokeWidth={4} />}
     </span>
   </button>
-);
+  );
+};
 
 // The open list stays clear of the top of the screen and the training/admin strips there (--mbp-top).
 const topClear = () => (parseInt(getComputedStyle(document.documentElement).getPropertyValue("--mbp-top"), 10) || 0) + 20;

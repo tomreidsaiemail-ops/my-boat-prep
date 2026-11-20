@@ -621,6 +621,8 @@ from marine import router as marine_router  # noqa: E402
 app.include_router(marine_router)
 from ownership import router as ownership_router, was_transferred  # noqa: E402
 app.include_router(ownership_router)
+from welcome import router as welcome_router  # noqa: E402
+app.include_router(welcome_router)
 app.include_router(auth_router)
 app.include_router(payments_router)
 app.include_router(tips_router)
@@ -783,6 +785,8 @@ async def create_indexes():
     await sync_rows_once()
     from ownership import seed_transfer_list
     await seed_transfer_list()
+    from welcome import seed_welcome
+    await seed_welcome()
     from list_order import reorder_trip_planning_once, rename_trip_planning_once, rename_trip_archives_once
     await reorder_trip_planning_once()
     await rename_trip_planning_once()

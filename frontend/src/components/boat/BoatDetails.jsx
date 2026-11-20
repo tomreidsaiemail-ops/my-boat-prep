@@ -2,6 +2,7 @@ import { phoneError } from "@/lib/phone";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import useHomePreview from "@/hooks/useHomePreview";
 import { ChevronDown, ChevronRight, ChevronUp, Fish, Home, Luggage, Martini, Search, Ship } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
@@ -106,6 +107,8 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
     focused.current = false;
     if (complete) setOpen(false);
   };
+  const homePreview = useHomePreview();
+  const shownHome = homePreview?.name || homeName;
   const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-1.5 px-2 py-2 !text-left text-[13px] font-bold leading-tight";
   const magicIcon = "btn-ghost h-11 min-h-11 w-10 shrink-0 justify-center p-0";
   const navigate = useNavigate();
@@ -115,8 +118,8 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
         <ArrangeIcon /> <span>Lists</span>
       </button>}
-      {onHome && <button type="button" onClick={onHome} className={`${pill} max-w-[8.5rem]`} title={`Home (${homeName})`} aria-label={`Home (${homeName})`} data-testid="boat-details-home-btn">
-        <Home className="h-5 w-5 shrink-0" /> <span className="line-clamp-2 break-words" data-testid="boat-details-home-name">{homeName}</span>
+      {onHome && <button type="button" onClick={onHome} className={`${pill} max-w-[8.5rem]`} title={`Home (${shownHome})`} aria-label={`Home (${shownHome})`} data-testid="boat-details-home-btn">
+        <Home className="h-5 w-5 shrink-0" /> <span className="line-clamp-2 break-words" data-testid="boat-details-home-name">{shownHome}</span>
       </button>}
       {admin && <button type="button" onClick={() => navigate("/admin/templates")} className={pill} data-testid="boat-details-templates-btn"><span>Template<br />Lists</span></button>}
       {onTrip && <button type="button" onClick={onTrip} className={magicIcon} title="Trip Planning" aria-label="Trip Planning" data-testid="boat-details-trip-btn"><Luggage className="h-5 w-5" /></button>}

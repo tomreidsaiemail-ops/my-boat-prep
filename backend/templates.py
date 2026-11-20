@@ -493,8 +493,9 @@ DISABLED_FEATURES = [
 
 GLOBAL_CONFIG = [
     ("Admin - Global Config", "App-wide settings, one per line. \"Starting Model Vessel Wizard, <walkthrough list name>\": the walkthrough a new Model Vessel opens with "
-     "until the skipper has finished it; after that a new Model Vessel opens their last used walkthrough.",
-     ["Starting Model Vessel Wizard, Admin - Model Vessel - Basic Introduction Walkthrough"]),
+     "until the skipper has finished it; after that a new Model Vessel opens their last used walkthrough. "
+     "\"Force Welcome screen visit, <number>\": raise the number to send every skipper back to the Welcome screen once at their next visit.",
+     ["Starting Model Vessel Wizard, Admin - Model Vessel - Basic Introduction Walkthrough", "Force Welcome screen visit, 1"]),
 ]
 
 BOAT_TYPES_ADMIN = [
