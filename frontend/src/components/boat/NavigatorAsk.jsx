@@ -28,7 +28,7 @@ const NavigatorAdvice = ({ result, boat }) => {
   const openSettings = () => window.dispatchEvent(new Event("mbp:open-settings"));
   return <>
     <p className="rounded-md border-[1.5px] border-orange-500 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-800" data-testid="navigator-apps-advice">
-      The Magic Marine Navigator recommends Navionics and PredictWind for weather and routing.
+      The Magic Marine Navigator recommends the use of local tidal charts, Navionics and PredictWind for weather and routing.
     </p>
     {!user?.show_tides ? (
       <label className="flex cursor-pointer items-start gap-3 rounded-md border-2 border-[var(--red)] bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-tides-off">

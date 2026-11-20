@@ -47,8 +47,11 @@ export const organiseLists = (lists, cats) => {
     const linked = user && typeof l.category === "string";
     const hit = linked ? (catIdx.has(normName(l.category)) ? [catIdx.get(normName(l.category)), 1e6 + order] : null)
       : byName.get(normName(l.name)) || byName.get(DEFAULT_NAMES[l.id]);
-    const cat = hit ? hit[0] : -1;
-    return { list: l, user, cat, rank: hit ? hit[1] : order, colours: cat >= 0 ? cats[cat].colours : user ? USER_PURPLE : WHITE };
+    // Trip Planning copies ("Trip Planning - 2") sit straight after Trip Planning, unless the skipper linked them elsewhere.
+    const trip = !hit && !linked && (l.trip || /^route planning\b/.test(normName(l.name))) ? byName.get("route planning") : null;
+    const at = hit || trip;
+    const cat = at ? at[0] : -1;
+    return { list: l, user, cat, rank: hit ? hit[1] : trip ? trip[1] + 0.5 + order / 1e6 : order, colours: cat >= 0 ? cats[cat].colours : user ? USER_PURPLE : WHITE };
   });
   return {
     groups: cats.map((c, i) => ({ name: c.name, colours: c.colours, rows: placed.filter((p) => p.cat === i).sort((a, b) => a.rank - b.rank) })),

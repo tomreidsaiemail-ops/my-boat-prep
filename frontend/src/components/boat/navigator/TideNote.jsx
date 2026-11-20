@@ -10,7 +10,7 @@ export const tideHeight = (h, datum) => (datum === "MSL" ? `${h >= 0 ? "+" : ""}
 const dayName = (d) => new Date(`${d}T12:00`).toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" });
 
 // High and low tides at a Route Planning place on one day, from the live tide service (never guessed).
-export const TideNote = ({ place, pos, near, date, testId }) => {
+export const TideNote = ({ place, pos, near, date, testId, noWarning = false }) => {
   const [s, setS] = useState(null);
   const { user } = useAuth();
   const datum = user?.tide_datum || "CD";
@@ -30,7 +30,7 @@ export const TideNote = ({ place, pos, near, date, testId }) => {
     return () => { live = false; clearTimeout(t); };
   }, [name, pos?.lat, pos?.lon, near?.lat, near?.lon, date, datum, show, acked]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!show) return null;
-  if (!acked) return <TideWarning testId={`${testId}-warning`} />;
+  if (!acked) return noWarning ? null : <TideWarning testId={`${testId}-warning`} />;
   if (!s) return null;
   if (!s.ok) return (
     <p role="alert" className="-mt-1 flex gap-2 rounded-md bg-red-50 px-3 py-2 text-xs font-bold text-[var(--red)]" data-testid={`${testId}-missing`}>

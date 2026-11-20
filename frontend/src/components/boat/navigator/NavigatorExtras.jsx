@@ -92,7 +92,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
     <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
     {note}
     {!interim && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
-    <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" />
+    <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
     {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <div className="flex flex-col gap-1.5">
