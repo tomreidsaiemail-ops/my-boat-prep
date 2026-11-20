@@ -14,8 +14,38 @@ import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { returnsToStart } from "@/lib/tripStops";
+import { useAuth } from "@/context/AuthContext";
+import { TideNote } from "@/components/boat/navigator/TideNote";
+import { TideWarning, localDay } from "@/components/boat/navigator/TideWarning";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
+
+// After every answer: the apps we recommend, then tides (off: a shortcut to turn them on; turned on since: the day's approximations).
+const NavigatorAdvice = ({ result, boat }) => {
+  const { user } = useAuth();
+  const w = boat.weather || {};
+  const day = (v) => (v || "").slice(0, 10) || new Date().toLocaleDateString("en-CA");
+  const openSettings = () => window.dispatchEvent(new Event("mbp:open-settings"));
+  return <>
+    <p className="rounded-md border-[1.5px] border-orange-500 bg-orange-50 px-3 py-2 text-sm font-bold text-orange-800" data-testid="navigator-apps-advice">
+      The Magic Marine Navigator recommends Navionics and PredictWind for weather and routing.
+    </p>
+    {!user?.show_tides ? (
+      <label className="flex cursor-pointer items-start gap-3 rounded-md border-2 border-[var(--red)] bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-tides-off">
+        <input type="checkbox" checked={false} onChange={openSettings} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--red)]" data-testid="navigator-tides-off-checkbox" />
+        <span>WorldTides tides are available. User Preference "Show high and low tide approximations" is off.{" "}
+          <button type="button" onClick={(e) => { e.preventDefault(); openSettings(); }} className="underline" data-testid="navigator-tides-settings-link">Open My settings to read the warnings and turn it on</button></span>
+      </label>
+    ) : result.tides_off && (
+      <div className="flex flex-col gap-2" data-testid="navigator-tides-section">
+        <p className="text-xs font-extrabold uppercase tracking-wide">Tides - rough approximations</p>
+        {user.tide_ack_date !== localDay() ? <TideWarning testId="navigator-tides-warning" /> : <>
+        <TideNote place={result.start} pos={w.start_pos} date={day(w.depart_at)} testId="navigator-start-tides" />
+        <TideNote place={result.dest} pos={w.dest_pos} near={w.start_pos} date={day(w.finish_at || w.depart_at)} testId="navigator-dest-tides" /></>}
+      </div>
+    )}
+  </>;
+};
 
 const AnswerCard = ({ result, boat, left, onClose }) => (
   <div className="flex flex-col gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] px-3 py-2" data-testid="navigator-answer-card">
@@ -29,6 +59,7 @@ const AnswerCard = ({ result, boat, left, onClose }) => (
       </p>
     )}
     <p className="whitespace-pre-line text-sm" data-testid="navigator-answer-text">{result.answer}</p>
+    <NavigatorAdvice result={result} boat={boat} />
     <CoastGuardReport text={coastGuardReport(boat, result.start, result.dest, result)} />
     {left !== null && <span className="text-xs text-[var(--muted)]" data-testid="navigator-asks-left">{left} Magic generations left</span>}
   </div>

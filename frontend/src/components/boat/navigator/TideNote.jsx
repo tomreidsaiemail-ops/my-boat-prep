@@ -42,7 +42,7 @@ export const TideNote = ({ place, pos, near, date, testId }) => {
     <div className="-mt-1 flex gap-2 rounded-md bg-sky-50 px-3 py-2 text-xs text-[var(--navy)]" data-testid={testId}>
       <Waves className="h-4 w-4 shrink-0" />
       <div className="min-w-0">
-        <p className="font-bold">Tides at {name || "this place"}, {dayName(date)}</p>
+        <p className="font-bold">Tides - rough approximations: {name || "this place"}, {dayName(date)}</p>
         <p data-testid={`${testId}-times`}>{s.extremes.length ? s.extremes.map((x) => `${x.type === "high" ? "High" : "Low"} ${hm(x.time)} (${tideHeight(x.height, st.datum)})`).join(" · ") : "No high or low tide that day."}</p>
         <p className="text-[11px] text-[var(--muted)]">WorldTides{st.name ? ` · station ${st.name}` : ""} · this phone's time · {st.note || "heights from Mean Sea Level (MSL)"} · not for navigation, check official tide tables</p>
       </div>

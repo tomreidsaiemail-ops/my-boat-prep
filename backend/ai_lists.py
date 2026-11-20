@@ -651,7 +651,7 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
     result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
     result["answer"] = result["answer"].replace(f"\n\n{NAV_FOOTER}", f"\n\n{live['shown']}\n\n{NAV_FOOTER}")
-    return {**result, "asks_left": left, "tides_missing": live["tides_missing"]}
+    return {**result, "asks_left": left, "tides_missing": live["tides_missing"], "tides_off": not tides_on(user)}
 
 
 BUDGETER = ("You are the Magic Mariner in the My Boat Prep app: an experienced boat owner helping a skipper budget for owning their boat. "

@@ -201,7 +201,7 @@ def tide_lines(place: str, t: dict, tz, first: date, days: int) -> str:
             continue
         by_day.setdefault(_day(at), []).append(f"{x['type'].capitalize()} {at.strftime('%H:%M')} ({height(x['height'], st.get('datum') or 'MSL')})")
     rows = "\n".join(f"{k}: {', '.join(v)}" for k, v in by_day.items())
-    return f"Live tides at {place} (WorldTides, {where}; local time, {st.get('note') or 'heights from Mean Sea Level (MSL)'}):\n{rows}"
+    return f"Tides - rough approximations at {place} (WorldTides, {where}; local time, {st.get('note') or 'heights from Mean Sea Level (MSL)'}):\n{rows}"
 
 
 def weather_lines(place: str, w: dict) -> str:
