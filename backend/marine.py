@@ -88,6 +88,10 @@ def _why(err: str, status) -> str:
     return f"WorldTides error {status}: {err}"[:200]
 
 
+def tides_on(user: dict) -> bool:
+    return bool((user.get("prefs") or {}).get("show_tides"))
+
+
 def datum_of(user: dict) -> str:
     return "MSL" if (user.get("prefs") or {}).get("tide_datum") == "MSL" else "CD"
 
@@ -208,10 +212,12 @@ def weather_lines(place: str, w: dict) -> str:
     return f"Live wind forecast at {place} (MET Norway, daily max):\n" + "\n".join(rows) if rows else ""
 
 
+TIDES_OFF = ("TIDES SWITCHED OFF: the skipper doesn't show tides in My Boat Prep. Give no tide times or heights at all; "
+             "tell them to check the official tide tables for any tidal gates or bar crossings.")
 NO_TIDES = "LIVE TIDE DATA NOT AVAILABLE for {place}. No tide times are given. Check the official tide tables before you sail."
 
 
-async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: Optional[dict], depart_at: str, tz_name: str, days: int = 5, datum: str = "CD") -> dict:
+async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: Optional[dict], depart_at: str, tz_name: str, days: int = 5, datum: str = "CD", with_tides: bool = True) -> dict:
     """Real tides at START and DESTINATION and the wind forecast for the trip's first days, as text for the Navigator."""
     sp = start_pos or await geocode(start)
     dp = dest_pos or await geocode(dest, sp)
@@ -225,11 +231,11 @@ async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: 
     places = [(start, sp), (dest, dp)] if (dest or "").strip().lower() != (start or "").strip().lower() else [(start, sp)]
     s = datetime(first.year, first.month, first.day, tzinfo=tz)
     # A day either side, then trimmed to midnights in the station's own time zone.
-    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s - timedelta(days=1), s + timedelta(days=days + 1), datum) if p else asyncio.sleep(0, None) for _, p in places])
+    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s - timedelta(days=1), s + timedelta(days=days + 1), datum) if p and with_tides else asyncio.sleep(0, None) for _, p in places])
     tz = _zone(next((t["timezone"] for t in tds if t and t.get("timezone")), tz_name))
     wx = await asyncio.gather(*[forecast(p["lat"], p["lon"], first, days, tz) if p else asyncio.sleep(0, None) for _, p in places])
-    blocks, missing = [], []
-    for (name, _), t in zip(places, tds):
+    blocks, missing = ([], []) if with_tides else ([TIDES_OFF], [])
+    for (name, _), t in zip(places, tds) if with_tides else ():
         if t:
             blocks.append(tide_lines(name, t, tz, first, days))
         else:
@@ -250,6 +256,8 @@ async def marine_tides(start: str, end: str, place: str = Query(default="", max_
         s, e = _dt(start), _dt(end)
     except ValueError:
         raise HTTPException(status_code=422, detail="Bad date")
+    if not tides_on(user):
+        return {"ok": False, "reason": "off"}
     if not timedelta(0) < e - s <= timedelta(days=2):
         raise HTTPException(status_code=422, detail="Ask for one day of tides at a time")
     near = {"lat": near_lat, "lon": near_lon} if near_lat is not None and near_lon is not None else None

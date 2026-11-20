@@ -6,6 +6,7 @@ import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import useAdminLists from "@/hooks/useAdminLists";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TIDE_WARNING } from "@/components/boat/navigator/TideWarning";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
 
@@ -44,6 +45,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
   };
   const toggle = (on) => save("/me/privacy", { ignore_300: on }, on ? "Broadcasting to your shore contact on or near land too" : "Positions on or near land are kept private again");
   const datum = user?.tide_datum || "CD";
+  const showTides = (on) => save("/me/preferences", { show_tides: on }, on ? "High and low tides will show" : "Tides are hidden");
   const tides = (d) => d !== datum && save("/me/preferences", { tide_datum: d }, d === "MSL" ? "Tides now show from Mean Sea Level (MSL)" : "Tides now show above Chart Datum (CD)");
   const sundowners = (on) => save("/me/features", { show_sundowners: on }, on ? "Sundowner time will show from sunset" : "Sundowner time is hidden");
   return (
@@ -62,6 +64,12 @@ export const MySettingsDialog = ({ open, onClose }) => {
         <TabsContent value="prefs" className="mt-0">
         <section className="flex flex-col gap-3" data-testid="user-preferences">
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">User Preferences</h3>
+          <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-tides-label">
+            <input type="checkbox" checked={!!user?.show_tides} disabled={busy || !online} onChange={(e) => showTides(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-tides-checkbox" />
+            <span><b>Show high and low tides</b> <span className="block text-xs text-[var(--muted)]">In Route Planning and the Magic Marine Navigator.</span></span>
+          </label>
+          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="tide-settings-warning">{TIDE_WARNING}</p>
+          {user?.show_tides && <>
           {[["CD", "Show High and Low Tides as CD (Chart Datum / Lowest Astronomical Tide)", "e.g. High 03:59 (2.72 m above CD)"], ["MSL", "Show High and Low Tides as MSL (Mean Sea Level)", "e.g. High 03:59 (+0.7 m MSL)"]].map(([d, label, eg]) => (
             <label key={d} className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`tide-datum-${d.toLowerCase()}-label`}>
               <input type="checkbox" checked={datum === d} disabled={busy || !online} onChange={(e) => tides(e.target.checked ? d : d === "CD" ? "MSL" : "CD")} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`tide-datum-${d.toLowerCase()}-checkbox`} />
@@ -69,6 +77,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
             </label>
           ))}
           <p className="text-xs text-[var(--muted)]">Pick one. Where a tide station doesn't publish Chart Datum, heights show as MSL and say so.</p>
+          </>}
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>

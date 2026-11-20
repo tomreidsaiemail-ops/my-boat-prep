@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from auth import get_current_user, signed_in_user
 from db import db
@@ -39,13 +39,18 @@ async def set_features(f: FeaturesIn, user: dict = Depends(get_current_user)):
 
 
 class PrefsIn(BaseModel):
-    tide_datum: Literal["CD", "MSL"]
+    tide_datum: Optional[Literal["CD", "MSL"]] = None
+    show_tides: Optional[bool] = None
+    tide_ack_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 @router.put("/me/preferences")
 async def set_preferences(p: PrefsIn, user: dict = Depends(get_current_user)):
-    """My Settings > User Preferences: tide heights above Chart Datum (default) or from Mean Sea Level."""
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"prefs.tide_datum": p.tide_datum}})
+    """My Settings > User Preferences: tides on or off (off by default), heights above Chart Datum (default) or from Mean Sea Level,
+    and the day the tide warning was last ticked (it comes back the next day)."""
+    sets = {f"prefs.{k}": v for k, v in p.model_dump(exclude_none=True).items()}
+    if sets:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": sets})
     return await signed_in_user(user["user_id"])
 
 

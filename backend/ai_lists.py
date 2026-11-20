@@ -17,7 +17,7 @@ from photos import APP_NAME, get_object, put_object
 import quota
 from usage import KIND_FEATURE, record_usage
 from youtube_links import check_links, wants_youtube
-from marine import datum_of, live_data
+from marine import datum_of, live_data, tides_on
 
 router = APIRouter(prefix="/api")
 log = logging.getLogger(__name__)
@@ -642,7 +642,7 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
     if await quota.left(user["user_id"]) <= 0:
         raise quota.QuotaExceeded(await quota.status(user["user_id"]))
     live = await live_data(body.start, body.destination, body.start_pos.model_dump() if body.start_pos else None,
-                           body.dest_pos.model_dump() if body.dest_pos else None, body.depart_at, body.tz, datum=datum_of(user))
+                           body.dest_pos.model_dump() if body.dest_pos else None, body.depart_at, body.tz, datum=datum_of(user), with_tides=tides_on(user))
     prompt = (f"START: {body.start}\nDESTINATION: {body.destination}\n"
               f"Boat: {b.boat_type.strip() or 'type not given'}{', ' + dims if dims else ''}. Crew: {crew}. Trip: {b.trip_days or 'not set'} days.\n"
               f"The skipper's Route Planning checklist: {checks}\n"

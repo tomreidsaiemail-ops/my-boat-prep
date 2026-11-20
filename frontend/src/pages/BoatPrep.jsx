@@ -415,6 +415,12 @@ export default function BoatPrep({ boatId, boats }) {
     window.addEventListener("mbp:agreement-accepted", f);
     return () => window.removeEventListener("mbp:agreement-accepted", f);
   }); // eslint-disable-line react-hooks/exhaustive-deps
+  // Small notes from deep inside the app (e.g. the daily tide warning tick) go into the Ship's Log.
+  useEffect(() => {
+    const f = (e) => mutate((st) => ({ ...st, data: { ...st.data, shipsLog: [...(st.data.shipsLog || []), { id: Date.now(), label: String(e.detail), checked: false }] } }));
+    window.addEventListener("mbp:log", f);
+    return () => window.removeEventListener("mbp:log", f);
+  }, [mutate]);
   // Trip names on crew cards open their Route Planning list.
   useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Trip plan Prepare to... boxes: that arrival's checklist pops up over the plan, if this boat has the list.
