@@ -1,0 +1,21 @@
+{
+  "summary": "Tested the Welcome sign-in rules on the backend and frontend, at a 390x844 mobile viewport. Backend: 13 new pytest checks in test_welcome_signin.py plus the 6 earlier checks in test_welcome_screen.py, all 19 passing. GET /api/welcome returns skipper, complete, auto, section and home_set. The new skipper gets skipper=true and auto=true. Invited crew and shore-only users get skipper=false and auto=false. complete becomes true only after the Model Vessel 'Thanks' tick and all 8 answers. auto stays true while Welcome is unfinished or a forced visit is due. PUT accepts section and home_set and rejects bad sections with 422. A crew member who names their own boat counts as a skipper. Frontend: every requested flow passed. (1) A new session that starts on the Model Vessel opens on the user's own boat instead (mbp_boats_active=main, no training-mode class). The Welcome screen opens and welcome-home-made shows. (2) Reloading on the Model Vessel in the same session stays there. (3) After the tick and the first answer (find=yes), a new session reopens Welcome with the answer kept and scrolls to the saved section 'crew'. Opening the help or the 'find' section saves that section, and the next session reopens it. (4) After all 8 answers, welcome-complete-note appears and the next new session does not open Welcome. (5) Invited crew are not shown Welcome at sign-in but can pick 'Welcome' from list-selector. (6) Signing out clears mbp_welcome_checked, mbp_welcome_go and mbp_session_boat. The /api/auth/logout call was stubbed in the browser so the test session tokens were not deleted.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [{"screen": "Boat panel quick buttons (mobile)", "issues": ["The home quick button label breaks awkwardly as 'Wel' / 'co...' at 390px width"]}]
+  },
+  "test_report_links": ["/app/backend/tests/test_welcome_signin.py", "/app/backend/tests/test_welcome_screen.py", "/app/test_reports/pytest/welcome_signin.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "BoatPrep welcome effect: if the session still starts on the Model Vessel, the effect switches to the user's own boat and returns. Welcome then only opens if the effect runs again when 'loaded' changes. useBoats now avoids this case, but the fallback depends on 'loaded' going false and then true after a boat switch.",
+    "Signing in as invited crew (test_session_welcome_crew) made the frontend save an unnamed 'main' boat for that user in user_boats. is_skipper ignores unnamed boats, so this is harmless, but it changes the 'no own boat' setup in the test credentials. The tester deleted the doc afterwards."
+  ],
+  "updated_files": ["/app/backend/tests/test_welcome_signin.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. A temporary TEST_own user_boats doc for test-welcome-crew was inserted and deleted inside the test. The auto-created unnamed main boat for test-welcome-crew was deleted. test-welcome-new welcome state has been reset ($unset welcome). test-welcome-new last_boat may be 'model_vessel' after the tests (harmless: a new session moves off it).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use new browser contexts to simulate new sign-in sessions (sessionStorage is per session). Signing out shows a phone-reminder dialog first: click phone-reminder-skip-btn. Stub **/api/auth/logout with page.route, otherwise the test session tokens are deleted from the DB."
+}
