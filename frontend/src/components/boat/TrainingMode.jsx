@@ -20,7 +20,9 @@ const reset = (k, which) => {
 };
 
 // Help > Model Vessel > <walkthrough>: that wizard from step 1, open.
-export const restartWalkthrough = (uid, which = BASIC) => { reset(keys(uid), which); window.dispatchEvent(new Event(RESTART)); };
+// Remembered for the switch to the Model Vessel, so a first-ever copy there doesn't swap in the starting walkthrough.
+const PENDING = "mbp_wizard_pending";
+export const restartWalkthrough = (uid, which = BASIC) => { reset(keys(uid), which); sessionStorage.setItem(PENDING, "1"); window.dispatchEvent(new Event(RESTART)); };
 
 // Model Vessel: a green page with a Training Mode strip and the chosen "Admin - Model Vessel - *" wizard.
 // The wizard and step are remembered; X hides it until Show steps.
@@ -31,7 +33,11 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const start = startingWizard(useAdminLists(CONFIG, online)) || BASIC;
   const finished = useWizardsDone(uid, online);
   // A freshly made copy of the Model Vessel starts again at step 1.
-  useState(() => { if (copy && read(k.copy, "") !== copy) { reset(k); localStorage.setItem(k.copy, JSON.stringify(copy)); } });
+  useState(() => {
+    const pending = sessionStorage.getItem(PENDING);
+    sessionStorage.removeItem(PENDING);
+    if (copy && read(k.copy, "") !== copy) { reset(k, pending ? read(k.which, BASIC) : undefined); localStorage.setItem(k.copy, JSON.stringify(copy)); }
+  });
   const [which, setWhich] = useState(() => read(k.which, ""));
   const [fresh, setFresh] = useState(() => read(k.fresh, false));
   const [step, setStep] = useState(() => read(k.step, 0));
@@ -43,7 +49,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const [mini, setMini] = useState(() => read(k.mini, false));
   const opened = useRef("");
   useEffect(() => {
-    const again = () => { opened.current = ""; sessionStorage.removeItem(openKey(read(k.which, BASIC))); setWhich(read(k.which, BASIC)); setFresh(false); setStep(0); setPath([]); setAnswers({}); setShut(false); setMini(false); };
+    const again = () => { sessionStorage.removeItem(PENDING); opened.current = ""; sessionStorage.removeItem(openKey(read(k.which, BASIC))); setWhich(read(k.which, BASIC)); setFresh(false); setStep(0); setPath([]); setAnswers({}); setShut(false); setMini(false); };
     window.addEventListener(RESTART, again);
     return () => window.removeEventListener(RESTART, again);
   }, [k.which]);
