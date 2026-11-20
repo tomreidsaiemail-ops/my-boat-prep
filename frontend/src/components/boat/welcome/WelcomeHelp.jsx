@@ -8,7 +8,7 @@ const ShowMe = ({ onClick, testId }) => (
   <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>Show me</button>
 );
 const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
-const showCross = () => { const done = previewList("Boat Inventory", 5000); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
+const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, pulse === true); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
 // The Home button and Model Vessel help: a short yellow-highlight tour, then folded into one line once the skipper ticks "Thanks".
 export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
@@ -41,10 +41,9 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
               <P testId="welcome-home-made">The Welcome screen has been made your home screen.<ShowMe onClick={showHome} testId="welcome-show-home-btn" /></P>
               <P testId="welcome-home-cross">Selecting Boat Inventory the home icon would get a cross.<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
               <P testId="welcome-home-remains">Welcome remains your home screen.<ShowMe onClick={() => glow("boat-details-home-btn", 5000)} testId="welcome-show-remains-btn" /></P>
-              <P testId="welcome-home-set-new">If cross icon showing, click it sets new home.<ShowMe onClick={showCross} testId="welcome-show-set-new-btn" /></P>
+              <P testId="welcome-home-set-new">If cross icon showing, click it sets new home.<ShowMe onClick={() => showCross(true)} testId="welcome-show-set-new-btn" /></P>
             </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
-          <P>This is how to make My Boat Prep more aligned to what you want from it. Here is a preview: the home button showing Boat Inventory, then Trip Planning, each with the Home icon with a cross.</P>
         </div>}
         <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b> The crew button (highlighted) is where you can register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails. Take the Model Vessel tutorial &quot;Crew Registration and Invites&quot;: any changes, even crew registrations, happen only on the Model Vessel.</P>
         <P>The Model Vessel is available, just like another boat you own. This is how you switch to it: pick it in the boat list at the top (highlighted).</P>

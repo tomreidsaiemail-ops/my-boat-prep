@@ -23,7 +23,7 @@ const HomeToggle = ({ isHome: real, onSetHome }) => {
   <button type="button" data-testid="set-home-list-btn" onClick={onSetHome} aria-pressed={isHome}
     title={isHome ? "This is your home list" : "Make this your home list"} aria-label={isHome ? "This is your home list" : "Make this your home list"} className={`${BTN} relative`}>
     <Home className="h-6 w-6" strokeWidth={2.5} />
-    <span className={`absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-white ${isHome ? "bg-emerald-600" : "bg-[var(--red)]"}`} data-testid={isHome ? "set-home-list-tick" : "set-home-list-cross"}>
+    <span className={`absolute bottom-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-white ${isHome ? "bg-emerald-600" : "bg-[var(--red)]"} ${preview?.pulse && !isHome ? "mbp-pulse" : ""}`} data-testid={isHome ? "set-home-list-tick" : "set-home-list-cross"}>
       {isHome ? <Check className="h-3 w-3" strokeWidth={4} /> : <X className="h-3 w-3" strokeWidth={4} />}
     </span>
   </button>
