@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import useAdminLists from "@/hooks/useAdminLists";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
 
@@ -42,6 +43,8 @@ export const MySettingsDialog = ({ open, onClose }) => {
     setBusy(false);
   };
   const toggle = (on) => save("/me/privacy", { ignore_300: on }, on ? "Broadcasting to your shore contact on or near land too" : "Positions on or near land are kept private again");
+  const datum = user?.tide_datum || "CD";
+  const tides = (d) => d !== datum && save("/me/preferences", { tide_datum: d }, d === "MSL" ? "Tides now show from Mean Sea Level (MSL)" : "Tides now show above Chart Datum (CD)");
   const sundowners = (on) => save("/me/features", { show_sundowners: on }, on ? "Sundowner time will show from sunset" : "Sundowner time is hidden");
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -50,6 +53,26 @@ export const MySettingsDialog = ({ open, onClose }) => {
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-black text-[var(--navy)]"><Settings className="h-5 w-5" /> My settings</DialogTitle>
           <DialogDescription className="text-sm text-slate-700">Settings for you, on every boat.</DialogDescription>
         </DialogHeader>
+        <Tabs defaultValue="prefs" className="flex flex-col gap-3">
+        <TabsList className="grid h-auto grid-cols-3 gap-1 bg-[var(--navy)]/10 p-1" data-testid="my-settings-tabs">
+          {[["prefs", "User Preferences"], ["privacy", "Privacy Settings"], ["features", "Feature Settings"]].map(([v, l]) => (
+            <TabsTrigger key={v} value={v} className="whitespace-normal px-1 py-1.5 text-[11px] font-extrabold uppercase leading-tight data-[state=active]:bg-[var(--navy)] data-[state=active]:text-white" data-testid={`my-settings-tab-${v}`}>{l}</TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value="prefs" className="mt-0">
+        <section className="flex flex-col gap-3" data-testid="user-preferences">
+          <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">User Preferences</h3>
+          {[["CD", "Show High and Low Tides as CD (Chart Datum / Lowest Astronomical Tide)", "e.g. High 03:59 (2.72 m above CD)"], ["MSL", "Show High and Low Tides as MSL (Mean Sea Level)", "e.g. High 03:59 (+0.7 m MSL)"]].map(([d, label, eg]) => (
+            <label key={d} className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`tide-datum-${d.toLowerCase()}-label`}>
+              <input type="checkbox" checked={datum === d} disabled={busy || !online} onChange={(e) => tides(e.target.checked ? d : d === "CD" ? "MSL" : "CD")} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`tide-datum-${d.toLowerCase()}-checkbox`} />
+              <span><b>{label}</b> <span className="block text-xs text-[var(--muted)]">{eg}</span></span>
+            </label>
+          ))}
+          <p className="text-xs text-[var(--muted)]">Pick one. Where a tide station doesn't publish Chart Datum, heights show as MSL and say so.</p>
+          {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
+        </section>
+        </TabsContent>
+        <TabsContent value="privacy" className="mt-0">
         <section className="flex flex-col gap-3" data-testid="privacy-settings">
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">Privacy Settings</h3>
           <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="ignore-300-label">
@@ -60,6 +83,8 @@ export const MySettingsDialog = ({ open, onClose }) => {
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
           <Ignore300Warning online={online} />
         </section>
+        </TabsContent>
+        <TabsContent value="features" className="mt-0">
         <section className="flex flex-col gap-3" data-testid="feature-settings">
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">Feature Settings</h3>
           <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-sundowners-label">
@@ -68,6 +93,8 @@ export const MySettingsDialog = ({ open, onClose }) => {
           </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
+        </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

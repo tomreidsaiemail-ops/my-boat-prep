@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -34,6 +35,17 @@ class FeaturesIn(BaseModel):
 async def set_features(f: FeaturesIn, user: dict = Depends(get_current_user)):
     """My Settings > Feature Settings, for this person on every boat."""
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"features.show_sundowners": f.show_sundowners}})
+    return await signed_in_user(user["user_id"])
+
+
+class PrefsIn(BaseModel):
+    tide_datum: Literal["CD", "MSL"]
+
+
+@router.put("/me/preferences")
+async def set_preferences(p: PrefsIn, user: dict = Depends(get_current_user)):
+    """My Settings > User Preferences: tide heights above Chart Datum (default) or from Mean Sea Level."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"prefs.tide_datum": p.tide_datum}})
     return await signed_in_user(user["user_id"])
 
 

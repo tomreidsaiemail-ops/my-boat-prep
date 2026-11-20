@@ -88,14 +88,31 @@ def _why(err: str, status) -> str:
     return f"WorldTides error {status}: {err}"[:200]
 
 
-async def _fetch_tides(lat: float, lon: float, start: datetime, end: datetime) -> Optional[dict]:
+def datum_of(user: dict) -> str:
+    return "MSL" if (user.get("prefs") or {}).get("tide_datum") == "MSL" else "CD"
+
+
+def height(h: float, datum: str) -> str:
+    """CD (and LAT) heights are depths of water above the datum; MSL is plus or minus the mean."""
+    if datum == "MSL":
+        return f"{h:+.1f} m MSL"
+    return f"{abs(h):.2f} m {'below' if h < 0 else 'above'} {datum}"
+
+
+def datum_note(asked: str, got: str) -> str:
+    if got == "MSL":
+        return "heights from Mean Sea Level (MSL)" + (", Chart Datum isn't available here" if asked != "MSL" else "")
+    return "heights above Chart Datum (CD)" if got == "CD" else f"heights above {got} (Chart Datum isn't published here)"
+
+
+async def _fetch_tides(lat: float, lon: float, start: datetime, end: datetime, datum: str) -> Optional[dict]:
     key = os.environ.get("WORLDTIDES_API_KEY")
     if not key:
         await _count("worldtides", False, reason="No WorldTides API key set")
         return None
     w0 = start.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
     w1 = max(w0 + timedelta(days=WINDOW_DAYS), end.astimezone(timezone.utc) + timedelta(hours=1))
-    params = {"extremes": "", "localtime": "", "lat": lat, "lon": lon, "start": int(w0.timestamp()), "length": int((w1 - w0).total_seconds()), "datum": "MSL", "key": key}
+    params = {"extremes": "", "localtime": "", "lat": lat, "lon": lon, "start": int(w0.timestamp()), "length": int((w1 - w0).total_seconds()), "datum": datum, "key": key}
     try:
         r = await _get(WORLDTIDES, params)
         body = r.json()
@@ -107,25 +124,27 @@ async def _fetch_tides(lat: float, lon: float, start: datetime, end: datetime) -
         await _count("worldtides", False, status, _why(body.get("error", "") if isinstance(body, dict) else "", status))
         return None
     await _count("worldtides", True, 200, credits=int(body.get("callCount") or 0))
-    doc = {"lat": lat, "lon": lon, "from": w0.isoformat(), "to": w1.isoformat(), "at": datetime.now(timezone.utc).isoformat(),
+    doc = {"lat": lat, "lon": lon, "datum": datum, "from": w0.isoformat(), "to": w1.isoformat(), "at": datetime.now(timezone.utc).isoformat(),
            "timezone": body.get("timezone") or "", "copyright": body.get("copyright") or "",
-           "station": {"name": str(body.get("station") or ""), "datum": body.get("responseDatum") or "MSL"},
+           "station": {"name": str(body.get("station") or ""), "datum": body.get("responseDatum") or datum, "asked": datum},
            "extremes": [{"time": datetime.fromtimestamp(int(x["dt"]), timezone.utc).isoformat(), "type": str(x.get("type", "")).lower(), "height": _r(x.get("height", 0))}
                         for x in body.get("extremes") or [] if x.get("dt") is not None]}
     await db.tide_cache.insert_one(dict(doc))
     return doc
 
 
-async def tides(lat: float, lon: float, start: datetime, end: datetime) -> Optional[dict]:
+async def tides(lat: float, lon: float, start: datetime, end: datetime, datum: str = "CD") -> Optional[dict]:
     """High and low tides between start and end, from the cache when a stored window covers them. None when unavailable."""
     lat, lon = _r(lat), _r(lon)
     s, e = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
-    hit = await db.tide_cache.find_one({"lat": lat, "lon": lon, "from": {"$lte": s.isoformat()}, "to": {"$gte": e.isoformat()}}, {"_id": 0})
-    hit = hit or await _fetch_tides(lat, lon, s, e)
+    same = {"datum": datum} if datum != "MSL" else {"datum": {"$in": ["MSL", None]}}
+    hit = await db.tide_cache.find_one({"lat": lat, "lon": lon, **same, "from": {"$lte": s.isoformat()}, "to": {"$gte": e.isoformat()}}, {"_id": 0})
+    hit = hit or await _fetch_tides(lat, lon, s, e, datum)
     if not hit:
         return None
     got = [x for x in hit["extremes"] if s <= _dt(x["time"]) < e]
-    return {"station": hit["station"], "timezone": hit.get("timezone", ""), "copyright": hit.get("copyright", ""), "extremes": got} if got else None
+    station = {**hit["station"], "asked": datum, "note": datum_note(datum, hit["station"].get("datum") or "MSL")}
+    return {"station": station, "timezone": hit.get("timezone", ""), "copyright": hit.get("copyright", ""), "extremes": got} if got else None
 
 
 async def forecast(lat: float, lon: float, first: date, days: int, tz) -> Optional[dict]:
@@ -176,9 +195,9 @@ def tide_lines(place: str, t: dict, tz, first: date, days: int) -> str:
         at = _dt(x["time"]).astimezone(tz)
         if not s <= at < s + timedelta(days=days):
             continue
-        by_day.setdefault(_day(at), []).append(f"{x['type'].capitalize()} {at.strftime('%H:%M')} ({x['height']:+.1f} m)")
+        by_day.setdefault(_day(at), []).append(f"{x['type'].capitalize()} {at.strftime('%H:%M')} ({height(x['height'], st.get('datum') or 'MSL')})")
     rows = "\n".join(f"{k}: {', '.join(v)}" for k, v in by_day.items())
-    return f"Live tides at {place} (WorldTides, {where}; local time, heights from mean sea level):\n{rows}"
+    return f"Live tides at {place} (WorldTides, {where}; local time, {st.get('note') or 'heights from Mean Sea Level (MSL)'}):\n{rows}"
 
 
 def weather_lines(place: str, w: dict) -> str:
@@ -192,7 +211,7 @@ def weather_lines(place: str, w: dict) -> str:
 NO_TIDES = "LIVE TIDE DATA NOT AVAILABLE for {place}. No tide times are given. Check the official tide tables before you sail."
 
 
-async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: Optional[dict], depart_at: str, tz_name: str, days: int = 5) -> dict:
+async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: Optional[dict], depart_at: str, tz_name: str, days: int = 5, datum: str = "CD") -> dict:
     """Real tides at START and DESTINATION and the wind forecast for the trip's first days, as text for the Navigator."""
     sp = start_pos or await geocode(start)
     dp = dest_pos or await geocode(dest, sp)
@@ -206,7 +225,7 @@ async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: 
     places = [(start, sp), (dest, dp)] if (dest or "").strip().lower() != (start or "").strip().lower() else [(start, sp)]
     s = datetime(first.year, first.month, first.day, tzinfo=tz)
     # A day either side, then trimmed to midnights in the station's own time zone.
-    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s - timedelta(days=1), s + timedelta(days=days + 1)) if p else asyncio.sleep(0, None) for _, p in places])
+    tds = await asyncio.gather(*[tides(p["lat"], p["lon"], s - timedelta(days=1), s + timedelta(days=days + 1), datum) if p else asyncio.sleep(0, None) for _, p in places])
     tz = _zone(next((t["timezone"] for t in tds if t and t.get("timezone")), tz_name))
     wx = await asyncio.gather(*[forecast(p["lat"], p["lon"], first, days, tz) if p else asyncio.sleep(0, None) for _, p in places])
     blocks, missing = [], []
@@ -225,7 +244,7 @@ async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: 
 @router.get("/marine/tides")
 async def marine_tides(start: str, end: str, place: str = Query(default="", max_length=80), lat: Optional[float] = Query(default=None, ge=-90, le=90),
                        lon: Optional[float] = Query(default=None, ge=-180, le=180), near_lat: Optional[float] = None, near_lon: Optional[float] = None,
-                       _: dict = Depends(get_current_user)):
+                       user: dict = Depends(get_current_user)):
     """High and low tides at a Route Planning place for one day (start and end are the phone's midnights)."""
     try:
         s, e = _dt(start), _dt(end)
@@ -237,7 +256,7 @@ async def marine_tides(start: str, end: str, place: str = Query(default="", max_
     pos = {"lat": lat, "lon": lon} if lat is not None and lon is not None else await geocode(place, near)
     if not pos:
         return {"ok": False, "reason": "place"}
-    t = await tides(pos["lat"], pos["lon"], s, e)
+    t = await tides(pos["lat"], pos["lon"], s, e, datum_of(user))
     return {"ok": True, **t} if t else {"ok": False, "reason": "tides"}
 
 
