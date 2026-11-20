@@ -39,7 +39,8 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
           {welcomeHome
             ? <>
               <P testId="welcome-home-made">The Welcome screen has been made your home screen.<ShowMe onClick={showHome} testId="welcome-show-home-btn" /></P>
-              <P testId="welcome-home-cross">If you were to select Boat Inventory the home icon would get a cross.<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
+              <P testId="welcome-home-cross">Selecting Boat Inventory the home icon would get a cross.<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
+              <P testId="welcome-home-remains">Welcome remains your home screen.<ShowMe onClick={() => glow("boat-details-home-btn", 5000)} testId="welcome-show-remains-btn" /></P>
             </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
           <P>This is how to make My Boat Prep more aligned to what you want from it. Here is a preview: the home button showing Boat Inventory, then Trip Planning, each with the Home icon with a cross.</P>
