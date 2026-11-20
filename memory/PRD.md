@@ -1083,3 +1083,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Frontend: AppMenu Transfer ownership... / Request Ownership Transfer... between thick dividers; components/boat/transfer/* (StartDialog 6 ticks, Wizard over non-empty non-F&D cupboards with QrScanDialog + expanded ZoneSummary, TransferPanel with email, 2 ticks, red info, double-confirmed SELL MY BOAT, RequestTransferDialog, NoticeDialog); useBoats.forget.
 - Transfer ownership list hidden from crew (to_out). Tested iteration_215 (100%).
 - Open: free buyers can get a 2nd boat via transfer; first-name redaction may over-redact place names; several buyers requesting the same boat -> newest wins.
+- 2026-06: Crew agreement 'Shore contact alerts' lines fold away once 'I understand how the shore contact is alerted' is ticked (like Standard Terms).

@@ -183,7 +183,7 @@ export const CrewAgreementDialog = ({ data: given, boat, vessel, areas, online, 
         </Section>
         {shoreBrief.length > 0 && (
           <Section title="Shore contact alerts" testId="agreement-shore-alerts">
-            <Lines lines={shoreBrief.map((label) => ({ label }))} testId="agreement-shore-lines" />
+            {!shoreOk && <Lines lines={shoreBrief.map((label) => ({ label }))} testId="agreement-shore-lines" />}
             <label className={`flex items-start gap-3 rounded-md border-[1.5px] p-2.5 text-sm font-bold ${shoreOk ? "border-emerald-600 bg-emerald-50" : "border-[var(--navy)]"}`} data-testid="agreement-shore-understood">
               <input type="checkbox" checked={shoreOk} disabled={accepted && shoreOk} onChange={(e) => { if (accepted) { confirmShore(); return; } setShoreOk(e.target.checked); setShoreWarn(false); }} className="mt-0.5 h-5 w-5 shrink-0 accent-emerald-700" data-testid="agreement-shore-understood-checkbox" />
               I understand how the shore contact is alerted and how to stand them down
