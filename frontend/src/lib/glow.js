@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 // Yellow highlight on an on-screen element for a moment (Welcome screen tours); resolves when it ends.
 export const glow = (testId, ms = 1000) => new Promise((done) => {
   const els = [...document.querySelectorAll(`[data-testid="${testId}"]`)];
@@ -17,3 +19,11 @@ export const previewList = (list, ms = 5000, pulse = false) => {
   window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: { mark: "cross", list, pulse } }));
   return wait(ms).then(() => window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: null })));
 };
+
+// Opens the app menu ("menu"), its Help drop-down ("help") or Help > Model Vessel ("model") for a Welcome "Show me".
+export const openMenu = (what) => window.dispatchEvent(new CustomEvent("mbp:menu-open", { detail: what }));
+export const useMenuOpen = (what, setOpen) => useEffect(() => {
+  const f = (e) => { if (e.detail === what) setOpen(true); };
+  window.addEventListener("mbp:menu-open", f);
+  return () => window.removeEventListener("mbp:menu-open", f);
+}, [what, setOpen]);

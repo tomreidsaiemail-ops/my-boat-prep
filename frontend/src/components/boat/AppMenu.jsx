@@ -5,15 +5,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { FeedbackDialog } from "@/components/boat/FeedbackDialog";
 import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 import { HelpDialog, HelpSubMenu, helpMenuItems } from "@/components/boat/HelpMenu";
+import { useMenuOpen } from "@/lib/glow";
 
 export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [help, setHelp] = useState(null);
+  const [open, setOpen] = useState(false);
+  useMenuOpen("menu", setOpen);
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label="Menu" data-testid="app-menu-btn"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] [transition:background-color_.15s,transform_.1s] hover:bg-slate-50 active:scale-95">

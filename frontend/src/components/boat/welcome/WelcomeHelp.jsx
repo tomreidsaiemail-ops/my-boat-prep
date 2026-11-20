@@ -1,12 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { Ship } from "lucide-react";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
-import { glow, previewHome, previewList, wait } from "@/lib/glow";
+import { glow, openMenu, previewHome, previewList, wait } from "@/lib/glow";
 
 const P = ({ children, testId }) => <p className="text-sm" data-testid={testId}>{children}</p>;
 const ShowMe = ({ onClick, testId }) => (
   <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>Show me</button>
 );
+// Help drop-down highlighted, then Help > Model Vessel, then its "Crew Registration and Invites" tutorial.
+const showTutorial = async () => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  await wait(400);
+  openMenu("menu");
+  await wait(200);
+  openMenu("help");
+  await wait(100);
+  await glow("app-menu-help-item", 2000);
+  openMenu("model");
+  await wait(2000);
+  const item = document.querySelector('[data-testid^="app-menu-help-model-wizard-crew-registration"]');
+  if (!item) return;
+  item.scrollIntoView({ block: "nearest" });
+  await glow(item.dataset.testid, 2000);
+};
 const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
 const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, pulse === true); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
@@ -45,7 +61,12 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
             </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
         </div>}
-        <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b> The crew button (highlighted) is where you can register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails. Take the Model Vessel tutorial &quot;Crew Registration and Invites&quot;: any changes, even crew registrations, happen only on the Model Vessel.</P>
+        <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b><br />
+          Register and invite crew<ShowMe onClick={() => glow("boat-crew-btn", 5000)} testId="welcome-show-crew-btn" /><br />
+          Register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails.<br />
+          Take the Model Vessel tutorial<br />
+          Crew Registration and Invites<ShowMe onClick={showTutorial} testId="welcome-show-crew-tutorial-btn" /><br />
+          Any changes, even crew registrations, stay with the Model Vessel.</P>
         <P>The Model Vessel is available, just like another boat you own. This is how you switch to it: pick it in the boat list at the top (highlighted).</P>
         {mvNote && <P testId="welcome-mv-green">The Model Vessel is green themed so you will know you are working with it and not your own boat.</P>}
         <P>The Model Vessel tutorials are very quick to go through, and you don&apos;t even have to type in route details: they have a &quot;Do It For Me&quot; feature that fills in what it wants. The Model Vessel comes with a boat schematic showing the galley, saloon and cabin layouts, so it is a great starting point to see how to organise your own schematic, and it can do magic scanning without you taking a photo, as the photos already exist.</P>
