@@ -1,0 +1,41 @@
+{
+  "summary": "Tested the home row icons, the Boat Inventory search window and the Route Planning -> Trip Planning rename. Home row at 390px, pro user: Lists, Boat Inventory, suitcase, search, fish, bartender in that order. scrollWidth equals clientWidth (358) and the page is 390 wide, so nothing overflows. Admin row: Lists, Boat Inventory, Template Lists, suitcase, search, with no fish or bartender. The search window opens with the cursor in the box. 'lettuce' gives '15 found in 2 places' (Fridge, Pantry). 'winch' gives the removed TEST_Winch handle struck through with '(removed for now)'. 'TEST_port' (a cupboard name) shows all of that cupboard's items. A nonsense word gives 'Nothing matches'. Tapping a result closes the window, switches to Boat Inventory and scrolls that cupboard to the top. FIXED 1 BUG: the window never showed the zone in 'zone > cupboard > box'. It read zones[id].label, but areaZones() returns the zone name as .map. Changed to .map, then checked with a mocked zone and sub-box (no data saved): it now shows 'TEST Cockpit > TEST_Port Locker > TEST_Flare Box', the same path as the Boat Inventory search. Suitcase opens Trip Planning. On the admin boat the Trip Planning heading lists Trip Planning, Leaving Dock, Arriving at Destination, Returning to Dock, Crew Roles, Crew Prep in that order. The selector menu has no 'Route Planning' text. The copy shows as 'Trip Planning - 2'. The Leaving Dock hop bubble reads 'Trip Planning'. The Invite crew dialog shows 'Which trip (Trip Planning list)?' with the options Trip Planning and Trip Planning - 2. The Trip Planning finished prompt reads 'Trip Planning has finished'. My settings tide text reads 'In Trip Planning and the Magic Marine Navigator'. Backend: new test_trip_planning_rename.py passes 9/9 (the migration ran; no registry names or invite trip_names start with Route Planning; the pro copies are renamed; charter.norm treats Trip and Route Planning as the same; GET /api/charters handover_lists includes 'Trip Planning'; ownership.is_trip works). Quick Draft texts were checked in the code only, not on screen.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "trip_archives collection", "issue": "The migration renamed only user_boats.registry and crew_invites.trip_name. 9 trip_archives docs still have name 'Route Planning', and one has invites[].trip_name 'Route Planning' (users user_6349c12cdee9, user_cd2a5bd996a9). Archived trips will still show 'Route Planning'. Decide whether to rename these too."},
+      {"endpoint": "tests/test_crew_trips.py", "issue": "Old regression test still expects trip_name 'Route Planning' / 'Route Planning - 2' (lines 28-29, 80). It now fails because the rename worked. It needs updating. The free user's trips list now also includes custom_trip2 (data drift). test_charter_round1::test_handover_before_user_exists_then_claim fails with KeyError 'claim' because it depends on test order, not because of this change."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "InventorySearchDialog", "issue": "FIXED by testing agent: the zone was never shown in the result path, because the code used zones[id].label where areaZones() returns .map.", "selector": "[data-testid^=inventory-search-open-]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Search window vs Boat Inventory search", "issue": "The window ignores matches on items linked from other lists, which the Boat Inventory search counts. A search that only matches linked items finds them in Boat Inventory but says 'Nothing matches' in the window. Minor.", "affected_selectors": ["inventory-search-dialog-count"]}
+    ],
+    "design_issues": [
+      {"screen": "Home row at 390px (pro)", "issues": ["The Boat Inventory home pill is cut to 'Boat / Invent...' (max-w-[8.5rem] with line-clamp-2). The admin row fits 'Boat Inventory' because it has no fish or bartender. Consider a smaller font or a little less padding on the pills so the full name fits."]},
+      {"screen": "Photo and crew dialog / Invite crew", "issues": ["'Route Planning' text still shows, from the admin template 'Admin - Help Panel - Planning Routes and Inviting Crew' ('...tentative details in Route Planning', 'clone Route Planning and have a Route Planning - Sounds...'). It is a template, so it was left alone as the user asked, but the user should be told to edit it."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_trip_planning_rename.py", "/app/test_reports/pytest/trip_planning_rename.xml"],
+  "action_items": [
+    "Advise the user on these template lists that still say 'Route Planning' (do not change them): Admin - List Categories line 'Route Planning'; Admin - charter lists to hand over 'Route Planning'; Admin - Help Panel - Planning Routes and Inviting Crew (shown in the Photo and crew dialog); the built-in template name TEMPLATE_LISTS['routeHazards']='Route Planning' in templates.py; walkthrough finish lines like '$$$ Route Planning' / '$ Route Planning and Berthing...'; the 'Admin - Model Vessel - Route Planning' walkthrough",
+    "Decide whether to also rename trip_archives.name and trip_archives.invites[].trip_name ('Route Planning' in 9 docs)",
+    "Update tests/test_crew_trips.py to expect 'Trip Planning' / 'Trip Planning - 2'",
+    "Optional: let the Boat Inventory home pill fit at 390px; optionally match linked-list items in the search window"
+  ],
+  "critical_code_review_comments": [
+    "InventorySearchDialog used areaZones()[id].label, which does not exist; the correct field is .map (fixed)",
+    "onOpenArea scrolls after a fixed 500 ms setTimeout. It works, but on slow phones the inventory may not have rendered yet. InventoryList already has its own scroll-to-area logic, so a focus-area event would be sturdier",
+    "Copies like 'Trip Planning - 2' sit under YOUR LISTS rather than the Trip Planning heading. Category matching is by exact name. This was already the case before the change"
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/InventorySearchDialog.jsx", "/app/backend/tests/test_trip_planning_rename.py"],
+  "success_rate": {"backend": "100% (9/9 new)", "frontend": "95% (1 bug fixed, minor design notes)"},
+  "seed_data_creation": "None. The zone and sub-box check used a Playwright route mock of GET /api/me/boat, with writes blocked; no data was changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Pro boat test-user-pro/main has no leavingDock/arrivingDest/returningDock/crewPrep in its registry (they are not in deleted_lists either). Use the admin (test_session_admin_1, Model Vessel) to check category order and the Leaving Dock hop bubble (testid leavingDock-hop-routeHazards style; the text is 'Trip Planning'). The pro shows the 'Arrived?' (ashore-prompt-dialog) and 'Trip Planning has finished' prompts about 5-10 s after load; wait for ashore-prompt-dialog, then click 'Not yet' and 'Not now'. Pro areas have no zones; mock /api/me/boat to test the zone path. Field labels are uppercase in CSS, so innerText comes back uppercase.",
+  "rca of the issue": "Search window zone missing: areaZones() in lib/zoneColours.js returns {colour, hex, map, rank}, while InventorySearchDialog read .label, so zone was always ''. Repro: give a cupboard a zone, search for an item in it; the path lacked the zone. Fix: use .map."
+}

@@ -47,3 +47,17 @@ async def rename_trip_planning_once():
     async for i in db.crew_invites.find({"trip_name": {"$regex": r"^\s*route planning\b", "$options": "i"}}, {"_id": 1, "trip_name": 1}):
         await db.crew_invites.update_one({"_id": i["_id"]}, {"$set": {"trip_name": old.sub("Trip Planning", i["trip_name"])}})
     await db.migrations.insert_one({"_id": mig, "at": datetime.now(timezone.utc).isoformat()})
+
+
+async def rename_trip_archives_once():
+    """Archived trips keep their names too: "Route Planning..." became "Trip Planning..."."""
+    mig = "trip_planning_rename_archives_2026_06"
+    if await db.migrations.find_one({"_id": mig}):
+        return
+    old = re.compile(r"^\s*route planning\b", re.I)
+    fix = lambda n: old.sub("Trip Planning", n) if isinstance(n, str) and old.match(n) else n  # noqa: E731
+    async for a in db.trip_archives.find({"$or": [{"name": {"$regex": r"^\s*route planning\b", "$options": "i"}},
+                                                  {"invites.trip_name": {"$regex": r"^\s*route planning\b", "$options": "i"}}]}, {"_id": 1, "name": 1, "invites": 1}):
+        invites = [{**i, "trip_name": fix(i.get("trip_name"))} if isinstance(i, dict) else i for i in a.get("invites") or []]
+        await db.trip_archives.update_one({"_id": a["_id"]}, {"$set": {"name": fix(a.get("name")), "invites": invites}})
+    await db.migrations.insert_one({"_id": mig, "at": datetime.now(timezone.utc).isoformat()})

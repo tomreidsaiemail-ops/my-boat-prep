@@ -783,9 +783,10 @@ async def create_indexes():
     await sync_rows_once()
     from ownership import seed_transfer_list
     await seed_transfer_list()
-    from list_order import reorder_trip_planning_once, rename_trip_planning_once
+    from list_order import reorder_trip_planning_once, rename_trip_planning_once, rename_trip_archives_once
     await reorder_trip_planning_once()
     await rename_trip_planning_once()
+    await rename_trip_archives_once()
     await seed_wizard_list()
     await seed_wizards()
     await seed_special_users()

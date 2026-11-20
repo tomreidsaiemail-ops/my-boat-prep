@@ -1131,6 +1131,19 @@ export default function BoatPrep({ boatId, boats }) {
   // Crew members' own Crew Prep lists, as bubbles on Crew Prep: light red, green once they've ticked everything.
   const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
   // A list's checks (Select All .. Ask The Magic Mariner); on Trip Planning they sit below Archived Trips.
+  // Hop bubbles (Trip Planning, Route...); on Crew Roles they sit under the list instead of above it.
+  const hopRow = !crew && HOPS[hopKey] && (
+        <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
+          {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
+            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
+              departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
+          ))}
+          {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
+            <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
+              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
+          )}
+        </div>
+      );
   const checks = (
     <>
       {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
@@ -1266,18 +1279,7 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {!crew && HOPS[hopKey] && (
-        <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
-          {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
-            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
-              departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
-          ))}
-          {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
-            <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
-              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
-          )}
-        </div>
-      )}
+      {hopKey !== "crewRoles" && hopRow}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
           {prepClones.map((l) => {
@@ -1323,6 +1325,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {!isTripList(active) && checks}
+          {hopKey === "crewRoles" && hopRow}
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />

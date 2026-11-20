@@ -14,7 +14,7 @@ const searchAreas = (boat, areas, q) => {
     const whole = matches(a.name, q) || (parent && matches(parent.name, q));
     const items = (a.items || []).filter((i) => whole || matches(i.name, q));
     if (!items.length && !matches(a.name, q)) return [];
-    const zone = zones[a.id]?.label || (parent && zones[parent.id]?.label) || "";
+    const zone = zones[a.id]?.map || (parent && zones[parent.id]?.map) || "";
     return [{ area: a, parent, zone, items }];
   });
 };
