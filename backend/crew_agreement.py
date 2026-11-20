@@ -59,7 +59,7 @@ def trip_plan(doc: dict, trip_id: str) -> Optional[dict]:
     start, dest = (src.get("route_start") or "").strip(), (src.get("route_dest") or "").strip()
     if not (start or dest or w.get("depart_at")):
         return None
-    name = next((l.get("name") for l in doc.get("registry") or [] if l.get("id") == trip_id), "") or "Route Planning"
+    name = next((l.get("name") for l in doc.get("registry") or [] if l.get("id") == trip_id), "") or "Trip Planning"
     first = {"route_start": start, "route_dest": dest, **{k: w.get(k) for k in LEG_KEYS[2:] if w.get(k)}}
     legs = [first] + [{k: l.get(k) for k in LEG_KEYS if l.get(k)} for l in (w.get("legs") or []) if isinstance(l, dict)]
     meetup = (w.get("meetup") if w.get("meetup") is not None else MEETUP_DEFAULT).strip()

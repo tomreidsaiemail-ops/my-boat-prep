@@ -61,7 +61,7 @@ def norm(s: str) -> str:
 
 
 def is_trip(lst: dict) -> bool:
-    return lst.get("id") == "routeHazards" or bool(lst.get("trip")) or bool(re.match(r"^route planning\b", lst.get("name") or "", re.I))
+    return lst.get("id") == "routeHazards" or bool(lst.get("trip")) or bool(re.match(r"^(route|trip) planning\b", lst.get("name") or "", re.I))
 
 
 def is_crew_prep_copy(lst: dict) -> bool:

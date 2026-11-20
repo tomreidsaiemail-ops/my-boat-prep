@@ -21,8 +21,8 @@ const STEPS = {
 };
 const KEPT = ["The boat's name, details and photo", "Zones, zone maps and zone photos", "All non-food cupboards, boxes and folders with their contents",
   "Item photos and attached files", "Maintenance lists and logs", "The Ship's Log in full, with every crew member's name and email replaced by XXXXXXXXXX",
-  "Route Planning as a blank list (unticked, no route)"];
-const GONE = ["Crew registrations and all crew access", "Crew Prep lists made for individual crew members", "Previous trips, archived route plans and the current Route Planning details",
+  "Trip Planning as a blank list (unticked, no route)"];
+const GONE = ["Crew registrations and all crew access", "Crew Prep lists made for individual crew members", "Previous trips, archived route plans and the current Trip Planning details",
   "Shore contacts and their alerts", "The watch rota and crew invites", "All items in Food & Drink cupboards (even non-food items)", "The Transfer ownership checklist"];
 
 const Steps = ({ title, rows, start = 1, testId }) => (

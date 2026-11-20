@@ -7,7 +7,7 @@ import { LEG_KINDS, dmyt, nowLocal, today } from "@/lib/allDone";
 const ICONS = { berth: Sailboat, anchor: Anchor, mooring: LifeBuoy };
 const pad = (n) => String(n).padStart(2, "0");
 const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-// next: the next planned leg from Route Planning. It leaves now, and its finish moves by however early or late that is.
+// next: the next planned leg from Trip Planning. It leaves now, and its finish moves by however early or late that is.
 const blank = (next) => {
   if (!next) return { route_start: "", route_dest: "", weather: { depart_at: nowLocal(), finish_at: today(), meetup: "" } };
   const now = new Date();
@@ -64,7 +64,7 @@ export const InterimDepartureDialog = ({ open, onClose, ...props }) => (
     <DialogContent className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-lg overflow-y-auto rounded-lg" data-testid="interim-departure-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
       <DialogHeader>
         <DialogTitle className="font-display text-lg font-extrabold">New departure{props.trip ? ` · Route Plan: ${props.trip.name}` : ""}</DialogTitle>
-        <DialogDescription>{props.next ? `Leg ${props.next.n} from Route Planning is filled in, leaving now.` : "Fill in today's departure. Departure is set to now."} Then tap how you're leaving to tick those items and log it.</DialogDescription>
+        <DialogDescription>{props.next ? `Leg ${props.next.n} from Trip Planning is filled in, leaving now.` : "Fill in today's departure. Departure is set to now."} Then tap how you're leaving to tick those items and log it.</DialogDescription>
       </DialogHeader>
       {open && <Body {...props} />}
     </DialogContent>

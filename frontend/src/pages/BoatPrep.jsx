@@ -53,6 +53,7 @@ import { RoleBriefingField } from "@/components/boat/agreement/RoleBriefingField
 import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
+import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
 import { TransferWizard } from "@/components/boat/transfer/TransferWizard";
 import { TransferPanel } from "@/components/boat/transfer/TransferPanel";
@@ -196,7 +197,7 @@ const useWarn = () => {
   return [warn, show];
 };
 
-// One-tap hops between the trip lists ("trip" = the Route Planning in use).
+// One-tap hops between the trip lists ("trip" = the Trip Planning in use).
 const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck };
 const HOP_TONE = { crewPrep: "crew" };
@@ -421,7 +422,7 @@ export default function BoatPrep({ boatId, boats }) {
     window.addEventListener("mbp:log", f);
     return () => window.removeEventListener("mbp:log", f);
   }, [mutate]);
-  // Trip names on crew cards open their Route Planning list.
+  // Trip names on crew cards open their Trip Planning list.
   useEffect(() => { const f = (e) => pickList(e.detail); window.addEventListener("mbp:open-list", f); return () => window.removeEventListener("mbp:open-list", f); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Trip plan Prepare to... boxes: that arrival's checklist pops up over the plan, if this boat has the list.
   const [peek, setPeek] = useState(null);
@@ -869,7 +870,7 @@ export default function BoatPrep({ boatId, boats }) {
     toast.success(isNew ? `${role} added to Crew Roles${text.trim() ? " with its briefing" : ""}` : text.trim() ? `${role} briefing saved to Crew Roles` : `${role} briefing removed from Crew Roles`);
   };
   useEffect(() => {
-    // hop: the Roles bubble on Route Planning, so there's no invite to go back to.
+    // hop: the Roles bubble on Trip Planning, so there's no invite to go back to.
     const openRoles = (e) => {
       const hop = !!e?.detail?.hop;
       const list = crewRolesList(state);
@@ -1064,7 +1065,7 @@ export default function BoatPrep({ boatId, boats }) {
     updateBoat(key, value);
   };
   const patchWeather = (patch) => mutate((s) => ({ ...s, boat: { ...s.boat, weather: { ...(s.boat.weather || {}), ...patch } } }), { count: false });
-  // A Route Planning copy keeps its own start, destination and timings in boat.trips.
+  // A Trip Planning copy keeps its own start, destination and timings in boat.trips.
   const patchTrip = (id, fn) => mutate((s) => { const all = s.boat.trips || {}; return { ...s, boat: { ...s.boat, trips: { ...all, [id]: fn(all[id] || {}) } } }; }, { count: false });
   const tripChange = (id) => (id === DEFAULT_TRIP ? updateBoat : (k, v) => patchTrip(id, (t) => ({ ...t, [k]: v })));
   const tripWeather = (id) => (id === DEFAULT_TRIP ? patchWeather : (p) => patchTrip(id, (t) => ({ ...t, weather: { ...(t.weather || {}), ...p } })));
@@ -1124,12 +1125,12 @@ export default function BoatPrep({ boatId, boats }) {
 
   const helpNamed = (n) => helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ").trim() === n)?.items;
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
-  // Leaving Dock's "Route Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Route Planning.
+  // Leaving Dock's "Trip Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Trip Planning.
   const hopTrip = boat.underway?.trip_id || boat.route_trip || DEFAULT_TRIP;
   const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : crewPrepName(active.name) ? "crewPrepClone" : active.id;
   // Crew members' own Crew Prep lists, as bubbles on Crew Prep: light red, green once they've ticked everything.
   const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
-  // A list's checks (Select All .. Ask The Magic Mariner); on Route Planning they sit below Archived Trips.
+  // A list's checks (Select All .. Ask The Magic Mariner); on Trip Planning they sit below Archived Trips.
   const checks = (
     <>
       {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
@@ -1206,7 +1207,7 @@ export default function BoatPrep({ boatId, boats }) {
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onFish={openFish} onBartender={crew ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={() => pickList(hopTrip)} onSearch={() => setDialog({ type: "invSearch" })} onFish={openFish} onBartender={crew ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
             onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
@@ -1268,7 +1269,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
-            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Route Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
+            <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
@@ -1286,7 +1287,7 @@ export default function BoatPrep({ boatId, boats }) {
           })}
         </div>
       )}
-      {/* Not underway: the ARRIVED card sits under the Route Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
+      {/* Not underway: the ARRIVED card sits under the Trip Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
       {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
@@ -1366,6 +1367,8 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} online={online} onClose={() => setDialog(null)} />}
       <TransferStartDialog open={dialog?.type === "transferStart"} vessel={boat.vessel} onStart={() => setDialog({ type: "transferWizard" })} onClose={() => setDialog(null)} />
       {dialog?.type === "transferWizard" && <TransferWizard open boat={boats.current} areas={areas} online={online} onAreasChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} onFinish={finishTransfer} onClose={() => setDialog(null)} />}
+      {dialog?.type === "invSearch" && <InventorySearchDialog open boat={boats.current} areas={areas} onClose={() => setDialog(null)}
+        onOpenArea={(id) => { setDialog(null); pickList(INVENTORY_LIST.id); setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 500); }} />}
       <RequestTransferDialog open={dialog?.type === "requestTransfer"} online={online} onClose={() => setDialog(null)} />
       <NoticeDialog online={online} onOpenBoat={(id) => boats.refresh().then(() => boats.select(id))} />
       {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}

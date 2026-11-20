@@ -46,7 +46,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
   const [trip, setTrip] = useState(DEFAULT_TRIP);
   const [walkSkip, setWalkSkip] = useState(null);
   const ownWalk = walkSkip ? { walk_skip: walkSkip } : {};
-  const cur = trips.find((t) => t.id === trip) || { id: trip, name: "Route Planning", plan };
+  const cur = trips.find((t) => t.id === trip) || { id: trip, name: "Trip Planning", plan };
   const savedFor = (id) => (id === DEFAULT_TRIP ? info.voyage_notes : info.trip_notes?.[id]) || "";
   const planFor = (id) => (trips.find((t) => t.id === id) || { plan }).plan || "";
   const tripPlan = cur.plan ?? plan;
@@ -78,7 +78,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
   const asking = queue[0] || "";
   const nextPrompt = () => setQueue((q) => q.slice(1));
   // The draft from "Change available" stays until the invite is sent or closed, so a second run of this effect still finds it.
-  // Notes stick with the boat between invites; with none saved yet they're suggested from Route Planning.
+  // Notes stick with the boat between invites; with none saved yet they're suggested from Trip Planning.
   useEffect(() => {
     if (!open) return;
     setQueue([]); setSent({}); setCheck(null); setWalkSkip(null); setChoosing(!sessionStorage.getItem(pickedKey));
@@ -174,7 +174,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
         )}
         {trips.length > 1 && choosing && (
           <label className="flex flex-col gap-1.5">
-            <span className="field-label">Which trip (Route Planning list)?</span>
+            <span className="field-label">Which trip (Trip Planning list)?</span>
             <select value={trip} data-no-dirty onChange={(e) => pickTrip(e.target.value)} className="field-input text-base normal-case tracking-normal" data-testid="crew-invite-trip-select">
               {trips.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
@@ -182,7 +182,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
         )}
         <RegisterPicker open={open} online={online} boatId={boat.boat_id} email={email} onPick={(c) => {
           const w = waitingOn(c.email || "");
-          if (w) { toast.warning(`${c.name || c.email} has yet to respond to the first join request (${w.trip_name || "Route Planning"}). Once they join, you can ask them to join another trip.`, { duration: 7000 }); return; }
+          if (w) { toast.warning(`${c.name || c.email} has yet to respond to the first join request (${w.trip_name || "Trip Planning"}). Once they join, you can ask them to join another trip.`, { duration: 7000 }); return; }
           setCrewName(c.name.slice(0, 60)); setEmail(c.email); setError(""); setAskClear(""); setPicked(c); }} />
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-[2fr_3fr] items-end gap-2" data-testid="crew-invite-who-row">
@@ -233,7 +233,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
           <textarea id="voyage-notes" data-no-dirty value={notes} onChange={(e) => editNotes(e.target.value)} onBlur={saveNotes} maxLength={1000} rows={6}
             placeholder="Tentative dates, planned crew, crew confirmation status, extra crew needed"
             className="field-input !h-auto min-h-[9rem] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="voyage-notes-input" />
-          <p className="text-xs text-[var(--muted)]">Suggested from Route Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>
+          <p className="text-xs text-[var(--muted)]">Suggested from Trip Planning and saved with the boat, so your next invite starts with the same notes. Crew who have joined see these notes and can reply.</p>
         </div>
         <RsvpSummary crew={(info.crew || []).filter((m) => (m.trips || [DEFAULT_TRIP]).includes(trip)).map((m) => ({ ...m, rsvp: m.trip_rsvp?.[trip] || null }))} title={trips.length > 1 ? `${cur.name} replies` : undefined} />
         {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="crew-invite-error">{error}</div>}

@@ -265,14 +265,14 @@ async def invite_crew(boat_id: BoatPath, payload: InviteIn, request: Request, us
     if key == email_key(user["email"]):
         raise HTTPException(status_code=400, detail="That's your own email address")
     crew = await db.users.find({"user_id": {"$in": doc.get("crew") or []}}, {"_id": 0, "user_id": 1, "email": 1}).to_list(100)
-    trip_name = payload.trip_name.strip() or "Route Planning"
+    trip_name = payload.trip_name.strip() or "Trip Planning"
     if any(email_key(m.get("email", "")) == key and payload.trip_id in trips_of(doc, m["user_id"]) for m in crew):
         raise HTTPException(status_code=400, detail=f"They're already crew on {trip_name}")
     waiting = [i async for i in db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key, "declined_at": None,
                                                       "quick": {"$ne": True}, "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()}}, {"_id": 0, "name": 1, "trip_id": 1, "trip_name": 1})]
     first = next((i for i in waiting if (i.get("trip_id") or DEFAULT_TRIP) != payload.trip_id), None)
     if first:
-        raise HTTPException(status_code=409, detail=f"{first.get('name') or 'They'} has yet to respond to the first join request ({first.get('trip_name') or 'Route Planning'}). "
+        raise HTTPException(status_code=409, detail=f"{first.get('name') or 'They'} has yet to respond to the first join request ({first.get('trip_name') or 'Trip Planning'}). "
                                                     "Once they join, you can ask them to join another trip.")
     if await db.invite_sends.count_documents({"owner_id": user["user_id"], "at": {"$gte": datetime.now(timezone.utc) - timedelta(days=1)}}) >= DAILY_INVITE_LIMIT:
         raise HTTPException(status_code=429, detail="Daily invite limit reached, try again tomorrow")
@@ -473,7 +473,7 @@ async def crew_voyage(owner_id: Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,
     names = {lst.get("id"): lst.get("name") for lst in reg}
     order = {lst.get("id"): n for n, lst in enumerate(reg)}
     rs, notes, quick = trip_rsvps(doc, uid), trip_notes(doc), trip_quick(doc, uid)
-    trips = [{"trip_id": t, "name": names.get(t) or "Route Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t), "rsvp_quick": bool(quick.get(t))}
+    trips = [{"trip_id": t, "name": names.get(t) or "Trip Planning", "notes": notes.get(t, ""), "rsvp": rs.get(t), "rsvp_quick": bool(quick.get(t))}
              for t in sorted(trips_of(doc, uid), key=lambda t: order.get(t, len(order)))]
     return {"notes": doc.get("voyage_notes", ""), "rsvp": rs[DEFAULT_TRIP], "rota": doc.get("watch_rota"), "trips": trips}
 

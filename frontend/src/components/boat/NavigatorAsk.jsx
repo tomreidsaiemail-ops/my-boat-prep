@@ -49,7 +49,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const auto = useRef(routeText(start, dest));
   const [question, setQuestion] = useState(auto.current);
   const [state, setState] = useState({ busy: false, error: "", result: null, left: null });
-  // Both start closed to keep Route Planning short.
+  // Both start closed to keep Trip Planning short.
   const [askOpen, setAskOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
   const [quick, setQuick] = useState(false);
@@ -62,7 +62,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const isReturn = returnsToStart([{ route_start: start }, ...legsNow]);
   const canReturn = !!(start.trim() && dest.trim());
   const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
-  // Route Planning as the draft's legs, with any name or time changes made here.
+  // Trip Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
     start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, path: w.path ?? null }, ...(w.legs || [])];
   // The draft's first leg is the Route Plan (START, DESTINATION, times, pins); the rest become its planned legs.
@@ -77,7 +77,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   };
   const applyQuick = ([first, ...rest], fresh) => {
     putLegs([first, ...rest], { ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true });
-    toast.success(`${fresh ? QUICK_NAME : "Draft Plan"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Route Planning`);
+    toast.success(`${fresh ? QUICK_NAME : "Draft Plan"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Trip Planning`);
   };
 
   // Keep the route at the front of the question, leaving anything the skipper added after it.

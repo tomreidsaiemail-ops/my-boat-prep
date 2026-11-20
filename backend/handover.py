@@ -94,7 +94,7 @@ async def handover_pack(doc: dict, seller: str, when: str, app_url: str) -> tupl
             f"<h1 style=\"color:#0B1F3A\">Welcome aboard {e(vessel)}</h1>"
             f"<p>{e(seller)} transferred {e(vessel)} to you on My Boat Prep on {e(when)}. Here's your handover pack.</p>"
             f"<h2 style=\"{H2}\">At a glance</h2><table>{summary}</table>"
-            "<p>The boat comes with no crew, an empty Route Planning, and empty Food &amp; Drink cupboards. "
+            "<p>The boat comes with no crew, an empty Trip Planning, and empty Food &amp; Drink cupboards. "
             f"Crew names in the Ship's Log are hidden. Open <a href=\"{app_url}\">My Boat Prep</a> and pick {e(vessel)} from your boats.</p>"
             f"<div style=\"page-break-before:always\"></div><h2 style=\"{H2}\">Zones and cupboards</h2>{zones_html or '<p>No cupboards yet.</p>'}"
             f"<h2 style=\"{H2}\">Maintenance history</h2>{''.join(log_html(t, r) for t, r in logs) or '<p>No maintenance logs recorded.</p>'}"

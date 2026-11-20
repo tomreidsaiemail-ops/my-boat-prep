@@ -47,7 +47,7 @@ export const PendingInvitePrompt = ({ boats }) => {
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">{inv.aboard ? `Join ${inv.trip_name || "another trip"} on ${inv.vessel}?` : `Join the crew of ${inv.vessel}?`}</DialogTitle>
           <DialogDescription className="text-left text-sm" data-testid="pending-invite-text">
-            {inv.aboard ? `${inv.skipper} has asked you to join another trip on ${inv.vessel}: ${inv.trip_name || "Route Planning"}.`
+            {inv.aboard ? `${inv.skipper} has asked you to join another trip on ${inv.vessel}: ${inv.trip_name || "Trip Planning"}.`
               : `${inv.skipper} has invited you aboard ${inv.vessel}${inv.trip_name ? ` for ${inv.trip_name}` : ""}. You'll see the boat's checklists on your phone and can tick items as you go.`}
           </DialogDescription>
         </DialogHeader>

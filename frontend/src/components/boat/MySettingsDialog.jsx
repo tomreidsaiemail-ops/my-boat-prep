@@ -66,7 +66,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
           <h3 className="font-display text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]">User Preferences</h3>
           <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-tides-label">
             <input type="checkbox" checked={!!user?.show_tides} disabled={busy || !online} onChange={(e) => showTides(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-tides-checkbox" />
-            <span><b>Show high and low tides</b> <span className="block text-xs text-[var(--muted)]">In Route Planning and the Magic Marine Navigator.</span></span>
+            <span><b>Show high and low tides</b> <span className="block text-xs text-[var(--muted)]">In Trip Planning and the Magic Marine Navigator.</span></span>
           </label>
           <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="tide-settings-warning">{TIDE_WARNING}</p>
           {user?.show_tides && <>

@@ -5,7 +5,7 @@ export const TRANSFER_LIST_NAME = "Transfer ownership";
 export const TRANSFER_RULES = [
   ["crew", "Crew registrations are not carried over."],
   ["prep", "Crew Prep lists for crew members are not carried over."],
-  ["trips", "Previous trips, archived route plans and the current Route Planning are not carried over."],
+  ["trips", "Previous trips, archived route plans and the current Trip Planning are not carried over."],
   ["log", "The Ship's Log is carried over in full, but every crew member mention is redacted with XXXXXXXXXX."],
   ["food", "All F and D (Food & Drink) cupboards are emptied automatically, even if they hold non-food items."],
   ["shore", "Your shore contacts and the watch rota are removed too."],

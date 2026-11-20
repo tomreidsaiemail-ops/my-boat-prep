@@ -33,3 +33,17 @@ async def reorder_trip_planning_once():
     if doc:
         await db.list_templates.update_one(q, {"$set": {"items": reorder(doc.get("items") or []), "updated_at": datetime.now(timezone.utc).isoformat()}})
     await db.migrations.insert_one({"_id": MIG, "at": datetime.now(timezone.utc).isoformat()})
+
+
+async def rename_trip_planning_once():
+    """Route Planning (and its "Route Planning - 2" copies) became Trip Planning on every boat and invite."""
+    mig = "trip_planning_rename_2026_06"
+    if await db.migrations.find_one({"_id": mig}):
+        return
+    old = re.compile(r"^\s*route planning\b", re.I)
+    async for d in db.user_boats.find({"registry.name": {"$regex": r"^\s*route planning\b", "$options": "i"}}, {"_id": 1, "registry": 1}):
+        reg = [{**r, "name": old.sub("Trip Planning", r.get("name") or "")} if old.match(r.get("name") or "") else r for r in d.get("registry") or []]
+        await db.user_boats.update_one({"_id": d["_id"]}, {"$set": {"registry": reg}})
+    async for i in db.crew_invites.find({"trip_name": {"$regex": r"^\s*route planning\b", "$options": "i"}}, {"_id": 1, "trip_name": 1}):
+        await db.crew_invites.update_one({"_id": i["_id"]}, {"$set": {"trip_name": old.sub("Trip Planning", i["trip_name"])}})
+    await db.migrations.insert_one({"_id": mig, "at": datetime.now(timezone.utc).isoformat()})

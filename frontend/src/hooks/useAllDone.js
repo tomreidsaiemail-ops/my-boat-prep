@@ -207,7 +207,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
   };
   const interimDepart = async (kind, leg) => {
     const trip = interimTrip();
-    if (!trip) { toast.error("Add a Route Planning list first"); return false; }
+    if (!trip) { toast.error("Add a Trip Planning list first"); return false; }
     const k = LEG_KINDS.find((x) => x.key === kind);
     const lt = legTrip(trip, leg);
     const w = leg.weather || {};

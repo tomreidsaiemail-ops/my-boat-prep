@@ -18,7 +18,8 @@ export const WHITE = C("#FFFFFF", "#0B1F3A", "#FFFFFF");
 export const USER_PURPLE = C("#CDBBF2", "#2E1A5C", "#F5F0FD");
 
 const COLOUR_LINE = /^\*\s*([a-z ]+?)\s*\*$/i;
-export const normName = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, " ").trim();
+// "Trip Planning" lists still match a "Route Planning" line in the admin lists (and the other way round).
+export const normName = (s) => String(s || "").toLowerCase().replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, " ").trim().replace(/^trip planning\b/, "route planning");
 const headText = (s) => s.replace(/^\s*\d+\s*[.)]\s*/, "").trim();
 
 export const parseCategories = (items = []) => {

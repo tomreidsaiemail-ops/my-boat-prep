@@ -2,7 +2,7 @@ import { phoneError } from "@/lib/phone";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, ChevronUp, Fish, Home, Martini, Ship } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Fish, Home, Luggage, Martini, Search, Ship } from "lucide-react";
 import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
@@ -53,7 +53,7 @@ const Summary = ({ boat, onExpand, tone }) => (
   </button>
 );
 
-export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
+export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onTrip, onSearch, onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -106,19 +106,21 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
     focused.current = false;
     if (complete) setOpen(false);
   };
-  const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-2 px-3 py-2 !text-left text-[13px] font-bold leading-tight";
-  const magicIcon = "btn-ghost h-11 min-h-11 w-11 shrink-0 justify-center p-0";
+  const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-1.5 px-2 py-2 !text-left text-[13px] font-bold leading-tight";
+  const magicIcon = "btn-ghost h-11 min-h-11 w-10 shrink-0 justify-center p-0";
   const navigate = useNavigate();
   const batchBtn = (speak || onOrganise) && (
     <div className="flex flex-nowrap items-center gap-1" data-testid="boat-details-magic-row">
       {speak && <SpeakButton plan={speak.plan} onConfirm={speak.onConfirm} className={`${pill} mr-1`} testId="home-speak" />}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
-        <ArrangeIcon /> <span>List<br />Categories</span>
+        <ArrangeIcon /> <span>Lists</span>
       </button>}
       {onHome && <button type="button" onClick={onHome} className={`${pill} max-w-[8.5rem]`} title={`Home (${homeName})`} aria-label={`Home (${homeName})`} data-testid="boat-details-home-btn">
         <Home className="h-5 w-5 shrink-0" /> <span className="line-clamp-2 break-words" data-testid="boat-details-home-name">{homeName}</span>
       </button>}
       {admin && <button type="button" onClick={() => navigate("/admin/templates")} className={pill} data-testid="boat-details-templates-btn"><span>Template<br />Lists</span></button>}
+      {onTrip && <button type="button" onClick={onTrip} className={magicIcon} title="Trip Planning" aria-label="Trip Planning" data-testid="boat-details-trip-btn"><Luggage className="h-5 w-5" /></button>}
+      {onSearch && <button type="button" onClick={onSearch} className={magicIcon} title="Search Boat Inventory" aria-label="Search Boat Inventory" data-testid="boat-details-search-btn"><Search className="h-5 w-5" /></button>}
       {!admin && onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
       {!admin && onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}
     </div>

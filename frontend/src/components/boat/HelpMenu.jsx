@@ -13,7 +13,7 @@ const titleOf = (name) => {
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 const GROUPS = [
-  { title: "Route Planning and getting underway", icon: Route, names: ["mmn routing guidance", "planning routes and inviting crew", "ignore 300 metre warning", "ships log passage folders", "ships log", "creating crew walkthroughs"] },
+  { title: "Trip Planning and getting underway", icon: Route, names: ["mmn routing guidance", "planning routes and inviting crew", "ignore 300 metre warning", "ships log passage folders", "ships log", "creating crew walkthroughs"] },
   { title: "Magic Features", icon: Sparkles, names: ["batch magic scan button", "magic bartender", "magic fish whisperer"] },
   { title: "Boat Inventory", icon: Package, names: ["how to make a zone map", "how to take your boat inventory", "zone map selection"] },
 ];

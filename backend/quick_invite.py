@@ -60,7 +60,7 @@ async def quick_invite(boat_id: BoatPath, payload: QuickIn, user: dict = Depends
     key = email_key(email)
     if key == email_key(user["email"]):
         raise HTTPException(status_code=400, detail="That's your own email address")
-    trip_name = payload.trip_name.strip() or "Route Planning"
+    trip_name = payload.trip_name.strip() or "Trip Planning"
     roles = [r.strip()[:40] for r in payload.roles if r.strip()]
     walk = list(dict.fromkeys(payload.walk_skip)) if payload.walk_skip is not None else None
     now = datetime.now(timezone.utc)
@@ -71,7 +71,7 @@ async def quick_invite(boat_id: BoatPath, payload: QuickIn, user: dict = Depends
         raise HTTPException(status_code=400, detail=f"{name or email} is already Quick Invited to {trip_name}")
     other = next((p for p in pending if not p.get("quick") and (p.get("trip_id") or DEFAULT_TRIP) != payload.trip_id), None)
     if other:
-        raise HTTPException(status_code=409, detail=f"{name or email} has yet to respond to the first join request ({other.get('trip_name') or 'Route Planning'}). Once they join, you can ask them to join another trip.")
+        raise HTTPException(status_code=409, detail=f"{name or email} has yet to respond to the first join request ({other.get('trip_name') or 'Trip Planning'}). Once they join, you can ask them to join another trip.")
     found = await _user_for(email)
     if found and found["user_id"] in (doc.get("crew") or []) and payload.trip_id in trips_of(doc, found["user_id"]):
         raise HTTPException(status_code=400, detail=f"{name or email} is already crew on {trip_name}")

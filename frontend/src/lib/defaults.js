@@ -43,7 +43,7 @@ export const DEFAULT_REGISTRY = [
   { id: "arrivingDest", name: "Arriving at Destination", isSystem: true },
   { id: "safety", name: "Safety", isSystem: true },
   { id: "riggingChecks", name: "Rigging Checks", isSystem: true },
-  { id: "routeHazards", name: "Route Planning", isSystem: true },
+  { id: "routeHazards", name: "Trip Planning", isSystem: true },
   { id: "crewPrep", name: "Crew Prep", isSystem: true },
   { id: "provisions", name: "Provisions", isSystem: true },
   { id: "mealPlan", name: "Meal Plan", isSystem: true },
@@ -223,11 +223,15 @@ const upgradeMealPlan = (data) => {
   return { ...data, mealPlan: [...typed, ...DEFAULT_DATA.mealPlan.slice(MEAL_PLAN_BASE_LEN)] };
 };
 
+// "Route Planning" (and its "Route Planning - 2" copies) became "Trip Planning".
+const isOldTripName = (l) => /^\s*route planning\b/i.test(l.name || "");
+
 export const migrateState = (s) => s && addMissingLists({
   ...s,
   data: autoTypeData(upgradeMealPlan(upgradePob(s.data))),
   registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" }
-    : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Route Planning" } : l))),
+    : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Trip Planning" }
+    : isOldTripName(l) ? { ...l, name: l.name.replace(/^\s*route planning/i, "Trip Planning") } : l))),
 });
 
 const petWords = (pets = []) => {

@@ -82,8 +82,8 @@ const TripMiles = ({ legs }) => {
   );
 };
 
-// Tap the departure point and each stop on a chart, confirm each, and the legs fill in Route Planning.
-// draft: the Route Planning legs of an existing Draft Plan, opened for editing (select: the point to show first;
+// Tap the departure point and each stop on a chart, confirm each, and the legs fill in Trip Planning.
+// draft: the Trip Planning legs of an existing Draft Plan, opened for editing (select: the point to show first;
 // add: a new stop goes after that point, -1 for a new START, and the map waits for its tap).
 // ret: a return trip, so the DESTINATION's tap also makes Leg 2 back to the START.
 // seed: a typed-in return trip ({ legs: [Leg 1], back: its Leg 2 or null }); its names and times are kept, only the pins are tapped in.
@@ -103,7 +103,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const snap = useRef(adding && add < draft.length ? draft : null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
-  const known = useRef(new Set([...(draft || seed?.legs || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : []), ...(seed?.back ? [seed.back.id] : [])])); // legs already in Route Planning keep their arriving type
+  const known = useRef(new Set([...(draft || seed?.legs || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : []), ...(seed?.back ? [seed.back.id] : [])])); // legs already in Trip Planning keep their arriving type
 
   const initial = useRef(null);
   if (initial.current === null) initial.current = JSON.stringify(legs);
@@ -228,7 +228,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           </button>
           <button type="button" className="btn-solid h-12 flex-[1.4] justify-center gap-1 px-2 text-sm leading-tight" disabled={!idle || busy || placed < 2} onClick={finish} data-testid="quick-plan-done-btn">
             {busy ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : fresh ? <Zap className="h-4 w-4 shrink-0" /> : <Pencil className="h-4 w-4 shrink-0" />}
-            {fresh ? `Done ${QUICK_NAME}` : "Done, update Route Planning"}
+            {fresh ? `Done ${QUICK_NAME}` : "Done, update Trip Planning"}
           </button>
         </div>
         {!fresh && idle && !sure && (

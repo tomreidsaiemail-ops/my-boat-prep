@@ -4,9 +4,9 @@ import { DEFAULT_TRIP, openList } from "@/lib/trips";
 
 const tripOf = (i) => i.trip_id || DEFAULT_TRIP;
 
-// Crew and invites under each Route Planning trip; trips no longer in the lists keep the name the invite was sent with.
+// Crew and invites under each Trip Planning trip; trips no longer in the lists keep the name the invite was sent with.
 export const tripGroups = (trips, crew, invites) => {
-  const all = [...(trips.length ? trips : [{ id: DEFAULT_TRIP, name: "Route Planning" }])];
+  const all = [...(trips.length ? trips : [{ id: DEFAULT_TRIP, name: "Trip Planning" }])];
   const add = (id, name) => { if (!all.some((t) => t.id === id)) all.push({ id, name: name || "Removed trip" }); };
   invites.forEach((i) => add(tripOf(i), i.trip_name));
   crew.forEach((m) => (m.trips || [DEFAULT_TRIP]).forEach((id) => add(id)));

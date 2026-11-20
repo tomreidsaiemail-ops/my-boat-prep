@@ -43,7 +43,8 @@ DEFAULT_IDS = ("leavingDock", "returningDock", "arrivingDest", "safety", "riggin
 
 
 def norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").strip().lstrip("*").strip()).lower()
+    # "Trip Planning" lists still match a "Route Planning" line in the admin list.
+    return re.sub(r"^trip planning\b", "route planning", re.sub(r"\s+", " ", (s or "").strip().lstrip("*").strip()).lower())
 
 
 def ymd(v: str) -> str:

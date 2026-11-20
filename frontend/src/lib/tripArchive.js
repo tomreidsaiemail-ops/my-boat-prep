@@ -31,7 +31,7 @@ const withDetails = (boat, id, d) => {
 };
 
 export const archivePayload = (s, id) => {
-  const list = s.registry.find((l) => l.id === id) || { name: "Route Planning" };
+  const list = s.registry.find((l) => l.id === id) || { name: "Trip Planning" };
   const w = tripBoat(s.boat, id).weather || {};
   return { trip_id: id, name: list.name, description: list.description || "", items: s.data[id] || [], details: tripDetails(s.boat, id),
     depart_at: w.depart_at || "", finish_at: w.finish_at || "", window: { start: iso(day(w.depart_at, "00:00")), end: iso(day(w.finish_at, "23:59")) } };

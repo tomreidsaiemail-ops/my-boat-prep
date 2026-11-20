@@ -88,7 +88,7 @@ export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAl
       </button>
       <ConfirmDelete item={ask === 1 ? { name: vessel } : null} onClose={() => setAsk(0)} onConfirm={(e) => { e.preventDefault(); setAsk(2); }} testId="transfer-confirm-1"
         title={`Sell ${vessel || "this boat"} to ${request?.buyer_name || request?.buyer_email || "the new owner"}?`} confirmLabel="Yes, continue" cancelLabel="Not yet"
-        note="The boat moves to the new owner's account and leaves yours." warning="Crew, trips, Route Planning, shore contacts, the watch rota, Crew Prep copies and this checklist are removed. Food & Drink cupboards are emptied and crew names in the Ship's Log are replaced with XXXXXXXXXX." />
+        note="The boat moves to the new owner's account and leaves yours." warning="Crew, trips, Trip Planning, shore contacts, the watch rota, Crew Prep copies and this checklist are removed. Food & Drink cupboards are emptied and crew names in the Ship's Log are replaced with XXXXXXXXXX." />
       <ConfirmDelete item={ask === 2 ? { name: vessel } : null} onClose={() => setAsk(0)} onConfirm={sell} testId="transfer-confirm-2"
         title="Are you absolutely sure?" confirmLabel="SELL MY BOAT" cancelLabel="Cancel" note={`This can't be undone. You will no longer see ${vessel || "this boat"} in My Boat Prep.`} />
     </section>

@@ -2,7 +2,7 @@ import { routeNotes, when } from "@/lib/routeNotes";
 
 // Each Route Planning list (the original and its copies) is a trip with its own details, crew and replies.
 export const DEFAULT_TRIP = "routeHazards";
-export const isTripList = (l) => !!l && (l.id === DEFAULT_TRIP || !!l.trip || /^route planning\b/i.test(l.name || ""));
+export const isTripList = (l) => !!l && (l.id === DEFAULT_TRIP || !!l.trip || /^(route|trip) planning\b/i.test(l.name || ""));
 export const tripLists = (registry = []) => registry.filter(isTripList).map((l) => ({ id: l.id, name: l.name }));
 export const tripBoat = (boat = {}, id) => {
   if (id === DEFAULT_TRIP) return boat;
