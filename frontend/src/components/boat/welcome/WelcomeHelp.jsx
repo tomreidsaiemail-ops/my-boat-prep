@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Ship } from "lucide-react";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
-import { glow, previewHome, wait } from "@/lib/glow";
+import { glow, previewHome, previewList, wait } from "@/lib/glow";
 
 const P = ({ children, testId }) => <p className="text-sm" data-testid={testId}>{children}</p>;
+const ShowMe = ({ onClick, testId }) => (
+  <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>Show me</button>
+);
+const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
+const showCross = () => { const done = previewList("Boat Inventory", 5000); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
 // The Home button and Model Vessel help: a short yellow-highlight tour, then folded into one line once the skipper ticks "Thanks".
 export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
@@ -32,10 +37,12 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
         <FoldHeader open={homeOpen} onToggle={() => setHomeOpen((o) => !o)} testId="welcome-home-toggle">HOME button setting</FoldHeader>
         {homeOpen && <div className="flex flex-col gap-2 border-l-4 border-amber-400 pl-3" data-testid="welcome-home-help">
           {welcomeHome
-            ? <P testId="welcome-home-made">The Welcome screen has been made your home screen.</P>
+            ? <>
+              <P testId="welcome-home-made">The Welcome screen has been made your home screen.<ShowMe onClick={showHome} testId="welcome-show-home-btn" /></P>
+              <P testId="welcome-home-cross">If you were to select Boat Inventory the home icon would get a cross.<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
+            </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
           <P>This is how to make My Boat Prep more aligned to what you want from it. Here is a preview: the home button showing Boat Inventory, then Trip Planning, each with the Home icon with a cross.</P>
-          <button type="button" className="btn-ghost h-10 self-start" onClick={tour} data-testid="welcome-replay-btn">Show me again</button>
         </div>}
         <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b> The crew button (highlighted) is where you can register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails. Take the Model Vessel tutorial &quot;Crew Registration and Invites&quot;: any changes, even crew registrations, happen only on the Model Vessel.</P>
         <P>The Model Vessel is available, just like another boat you own. This is how you switch to it: pick it in the boat list at the top (highlighted).</P>

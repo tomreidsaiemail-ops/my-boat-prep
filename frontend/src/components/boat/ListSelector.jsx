@@ -35,9 +35,17 @@ const topClear = () => (parseInt(getComputedStyle(document.documentElement).getP
 // ...and clear of the shrunk training bar at the bottom.
 const bottomClear = () => (document.body.classList.contains("training-mini") ? 60 : 12);
 
+// A pretend list name over the picker (Welcome "Show me"), so the real list is never opened.
+const ListOverlay = () => {
+  const preview = useHomePreview();
+  if (!preview?.list) return null;
+  return <div className="pointer-events-none absolute inset-0 z-10 flex items-center rounded-md border-2 border-l-[6px] border-[var(--navy)] bg-white pl-3 font-display text-lg font-bold text-[var(--navy)]" data-testid="list-selector-preview"><span className="truncate">{preview.list}</span></div>;
+};
+
 export const ListSelector = ({ sections, activeId, activeColours, onChange, onCreate, onClone, onRename, homeId, onSetHome, updatedIds = [] }) => (
   <div className="flex items-stretch gap-2">
     <div className="relative min-w-0 flex-1">
+      <ListOverlay />
       <Select value={activeId} onValueChange={onChange}>
         <SelectTrigger data-testid="list-selector" aria-label="Choose a list" style={{ backgroundColor: activeColours?.shade, borderLeftColor: activeColours?.bg }}
           className="h-14 w-full rounded-md border-2 border-l-[6px] border-[var(--navy)] bg-white pl-3 pr-3 text-left font-display text-lg font-bold text-[var(--navy)] shadow-none focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-100 [&>span]:min-w-0 [&>span]:overflow-hidden [&_.break-words]:block [&_.break-words]:truncate">

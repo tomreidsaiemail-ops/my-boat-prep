@@ -11,3 +11,9 @@ export const previewHome = (name, mark, ms = 1000) => {
   window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: { name, mark } }));
   return wait(ms).then(() => window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: null })));
 };
+
+// The list picker shows another list and the Home toggle a cross for a moment; the open list and home stay as they are.
+export const previewList = (list, ms = 5000) => {
+  window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: { mark: "cross", list } }));
+  return wait(ms).then(() => window.dispatchEvent(new CustomEvent("mbp:home-preview", { detail: null })));
+};
