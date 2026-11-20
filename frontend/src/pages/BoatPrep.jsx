@@ -54,7 +54,6 @@ import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
-import { wait } from "@/lib/glow";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
 import { TransferWizard } from "@/components/boat/transfer/TransferWizard";
@@ -241,8 +240,7 @@ export default function BoatPrep({ boatId, boats }) {
     return () => setPendingPhone(null);
   }, [phoneMissing]); // eslint-disable-line react-hooks/exhaustive-deps
   const trips = useTripArchives({ boat: boats.current, state, mutate, online, enabled: loaded && !crew && !boats.current.charter_lock && !boats.current.charter?.returned_at });
-  const [activeId, setActiveId] = useState(() => sessionStorage.getItem("mbp_open_list") || (premium ? "boatInventory" : "leavingDock"));
-  useEffect(() => { sessionStorage.removeItem("mbp_open_list"); }, []);
+  const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);
   const openDistress = (id) => {
@@ -392,11 +390,6 @@ export default function BoatPrep({ boatId, boats }) {
     if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
     if (boats.current.key === modelBoat.key) restartWalkthrough(user.user_id, w.key);
     else setModelAsk(w);
-  };
-  // Welcome "Show me": the Model Vessel for 2 seconds, then back to this boat's Welcome screen.
-  const previewModel = (back) => {
-    boats.select(modelBoat.key);
-    return wait(2000).then(() => { sessionStorage.setItem("mbp_open_list", "welcome"); boats.select(back); });
   };
   const switchToModel = () => { restartWalkthrough(user.user_id, modelAsk.key); setModelAsk(null); boats.select(modelBoat.key); };
   const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
@@ -1359,8 +1352,7 @@ export default function BoatPrep({ boatId, boats }) {
         <>
           {active.id === "welcome" && <WelcomeScreen online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => { changeBoatField("home_list", id); toast.success("Home list changed"); }}
-            onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined}
-            onPreviewModel={modelBoat && !boats.current.model ? () => previewModel(boats.current.key) : undefined} />}
+            onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
           {active.id !== "welcome" && !isTripList(active) && checks}
           {hopKey === "crewRoles" && hopRow}
           {!crew && isTripList(active) && (
