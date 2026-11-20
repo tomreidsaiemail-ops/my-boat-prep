@@ -22,8 +22,11 @@ export const previewList = (list, ms = 5000, pulse = false) => {
 
 // Opens the app menu ("menu"), its Help drop-down ("help") or Help > Model Vessel ("model") for a Welcome "Show me".
 export const openMenu = (what) => window.dispatchEvent(new CustomEvent("mbp:menu-open", { detail: what }));
+export const closeMenu = (what) => window.dispatchEvent(new CustomEvent("mbp:menu-close", { detail: what }));
 export const useMenuOpen = (what, setOpen) => useEffect(() => {
   const f = (e) => { if (e.detail === what) setOpen(true); };
+  const g = (e) => { if (e.detail === what) setOpen(false); };
   window.addEventListener("mbp:menu-open", f);
-  return () => window.removeEventListener("mbp:menu-open", f);
+  window.addEventListener("mbp:menu-close", g);
+  return () => { window.removeEventListener("mbp:menu-open", f); window.removeEventListener("mbp:menu-close", g); };
 }, [what, setOpen]);

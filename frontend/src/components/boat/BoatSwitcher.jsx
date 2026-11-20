@@ -6,6 +6,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMenuOpen } from "@/lib/glow";
 import { TextDialog } from "@/components/boat/TextDialog";
 import { DeletedBoats } from "@/components/boat/DeletedBoats";
 import { BoatPhoto } from "@/components/boat/BoatPhoto";
@@ -35,6 +36,8 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const [deleting, setDeleting] = useState(false);
   const [typed, setTyped] = useState("");
   const [crewOpen, setCrewOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  useMenuOpen("boats", setListOpen);
   const [startInvite, setStartInvite] = useState(false);
   // "Back to Invite crew" after changing the available roles reopens the invite where the skipper left it.
   useEffect(() => {
@@ -96,7 +99,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
 
   return (
     <div className="flex items-center gap-2" data-testid="boat-switcher">
-      <Select value={cur.key} onValueChange={boats.select}>
+      <Select value={cur.key} onValueChange={boats.select} open={listOpen} onOpenChange={setListOpen}>
         <SelectTrigger className="h-14 min-w-0 flex-1 rounded-md border-2 border-[var(--navy)] bg-white pl-2 font-display text-base font-bold text-[var(--navy)]" data-testid="boat-selector" aria-label="Boat">
           <SelectValue />
         </SelectTrigger>
