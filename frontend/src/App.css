@@ -164,3 +164,4 @@ body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + var(--m
 
 .mbp-pulse { animation: mbp-pulse 1s ease-in-out infinite; }
 @keyframes mbp-pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); } 50% { transform: scale(1.35); box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); } }
+.mbp-glow-soft { background-color: #eef0f3; transition: background-color 0.3s; }

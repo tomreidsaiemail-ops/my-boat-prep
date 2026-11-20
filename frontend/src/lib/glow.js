@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
 // Yellow highlight on an on-screen element for a moment (Welcome screen tours); resolves when it ends.
-export const glow = (testId, ms = 1000) => new Promise((done) => {
+export const glow = (testId, ms = 1000, cls = "mbp-glow") => new Promise((done) => {
   const els = [...document.querySelectorAll(`[data-testid="${testId}"]`)];
-  els.forEach((e) => e.classList.add("mbp-glow"));
-  setTimeout(() => { els.forEach((e) => e.classList.remove("mbp-glow")); done(); }, ms);
+  els.forEach((e) => e.classList.add(cls));
+  setTimeout(() => { els.forEach((e) => e.classList.remove(cls)); done(); }, ms);
 });
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

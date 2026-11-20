@@ -27,7 +27,7 @@ const Question = ({ q, answer, onAnswer, focus, onOpen }) => {
   useEffect(() => {
     if (answer || ran.current) return;
     ran.current = true;
-    (async () => { for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 1000); })();
+    (async () => { for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft"); })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (v) => { onAnswer(v); setOpen(false); };
   const tone = answer === "yes" ? "border-emerald-600 bg-emerald-50" : answer === "no" ? "border-red-300 bg-red-50" : "border-[var(--navy)] bg-white";
