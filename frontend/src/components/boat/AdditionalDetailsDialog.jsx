@@ -27,7 +27,7 @@ export const pobText = (boat) => {
   return children ? `${pob} POB (${plural(adults, "adult", "adults")}, ${plural(children, "child", "children")})` : `${pob} POB`;
 };
 
-const BoatTypeField = ({ value, onChange }) => {
+export const BoatTypeField = ({ value, onChange }) => {
   const types = useBoatTypes();
   const [other, setOther] = useState(!!value && !types.includes(value));
   useEffect(() => { if (value) setOther(!types.includes(value)); }, [value, types]);
@@ -64,7 +64,7 @@ const IntField = ({ id, label, value, min, max, onChange, placeholder }) => {
   );
 };
 
-const TextField = ({ id, label, value, placeholder, onChange }) => (
+export const TextField = ({ id, label, value, placeholder, onChange }) => (
   <label htmlFor={id} className="flex min-w-0 flex-col gap-1">
     <span className="field-label">{label}</span>
     <input id={id} type="text" value={value || ""} maxLength={60} placeholder={placeholder} data-testid={`${id}-input`} className="field-input" onChange={(e) => onChange(e.target.value)} />

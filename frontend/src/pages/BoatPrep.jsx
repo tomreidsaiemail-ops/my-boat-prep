@@ -54,6 +54,8 @@ import { fillDetails } from "@/lib/briefingFill";
 import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
+import { InventorySetupWizard } from "@/components/boat/welcome/InventorySetupWizard";
+import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
 import { TransferWizard } from "@/components/boat/transfer/TransferWizard";
@@ -391,6 +393,15 @@ export default function BoatPrep({ boatId, boats }) {
     if (boats.current.key === modelBoat.key) restartWalkthrough(user.user_id, w.key);
     else setModelAsk(w);
   };
+  // Welcome's recommended tutorials: straight onto the Model Vessel at step 1.
+  const launchTutorial = (title) => {
+    const w = wizards.find((x) => x.title.toLowerCase() === title.toLowerCase());
+    if (!w) { toast.error(`The "${title}" tutorial isn't available yet`); return; }
+    if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
+    restartWalkthrough(user.user_id, w.key);
+    if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key);
+  };
+  const [setupOpen, setSetupOpen] = useState(false);
   const switchToModel = () => { restartWalkthrough(user.user_id, modelAsk.key); setModelAsk(null); boats.select(modelBoat.key); };
   const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
   const hiddenLists = crew ? crewHidden : state.list_hidden || [];
@@ -1351,7 +1362,11 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {active.id === "welcome" && <WelcomeScreen online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
-            onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => { changeBoatField("home_list", id); toast.success("Home list changed"); }}
+            onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => {
+              changeBoatField("home_list", id); toast.success("Home list changed");
+              if (id === "boatInventory" && !boats.current.model && !identityFull(boat)) setSetupOpen(true);
+            }}
+            onTutorial={launchTutorial}
             onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
           {active.id !== "welcome" && !isTripList(active) && checks}
           {hopKey === "crewRoles" && hopRow}
@@ -1377,7 +1392,9 @@ export default function BoatPrep({ boatId, boats }) {
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
-      <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />
+      {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
+        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={() => { setSetupOpen(false); setActiveId("boatInventory"); }} />}
+      {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}

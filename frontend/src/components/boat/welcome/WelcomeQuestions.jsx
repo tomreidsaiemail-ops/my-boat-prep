@@ -53,7 +53,7 @@ const Question = ({ q, answer, onAnswer, focus, onOpen }) => {
 };
 
 // The questions one at a time (the next shows once this one is answered), then what we recommend.
-export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeHome, focus, onOpen }) => {
+export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeHome, focus, onOpen, onTutorial }) => {
   const next = questions.findIndex((q) => !answers[q.key]);
   const shown = next < 0 ? questions : questions.slice(0, next + 1);
   const rec = recommendations(questions, answers);
@@ -65,8 +65,11 @@ export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeH
         <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-emerald-600 bg-white p-3" data-testid="welcome-recommend">
           <p className="text-sm font-extrabold uppercase tracking-wide">Recommended for you</p>
           {rec.tutorials.length > 0 && <>
-            <p className="text-sm">Model Vessel tutorials to take (switch to the Model Vessel, then open them from the ? help menu):</p>
-            <ul className="list-disc pl-5 text-sm" data-testid="welcome-recommend-tutorials">{rec.tutorials.map((t) => <li key={t} title={MV + t}>{t}</li>)}</ul>
+            <p className="text-sm">Model Vessel tutorials to take (tap one to switch to the Model Vessel and start it):</p>
+            <ul className="list-disc pl-5 text-sm" data-testid="welcome-recommend-tutorials">{rec.tutorials.map((t) => (
+              <li key={t} title={MV + t}><button type="button" onClick={() => onTutorial(t)} className="text-left font-bold text-[var(--navy)] underline underline-offset-2 hover:text-[var(--blue)]"
+                data-testid={`welcome-tutorial-${t.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{t}</button></li>
+            ))}</ul>
           </>}
           {rec.home && (rec.home[0] === homeId
             ? <p className="text-sm font-bold text-emerald-700" data-testid="welcome-recommend-home-done">{rec.home[1]} is your home list.</p>

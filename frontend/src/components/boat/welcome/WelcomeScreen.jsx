@@ -6,7 +6,7 @@ import { WelcomeQuestions } from "@/components/boat/welcome/WelcomeQuestions";
 
 // The Welcome list: Home button and Model Vessel help, then the questions that trim the app to what the skipper wants.
 // The section the skipper was last on is remembered (on any device) and opened again.
-export const WelcomeScreen = ({ online, welcomeHome, homeId, onMakeHome, onSwitchModel }) => {
+export const WelcomeScreen = ({ online, welcomeHome, homeId, onMakeHome, onSwitchModel, onTutorial }) => {
   const { setUser } = useAuth();
   const [w, setW] = useState(null);
   const place = useRef("");
@@ -33,7 +33,7 @@ export const WelcomeScreen = ({ online, welcomeHome, homeId, onMakeHome, onSwitc
   return (
     <div className="flex flex-col gap-4" data-testid="welcome-screen">
       <WelcomeHelp welcomeHome={welcomeHome} ack={w.mv_ack} onAck={ack} onSwitchModel={onSwitchModel} startOpen={place.current === "help"} onOpen={() => at("help")} />
-      {w.mv_ack && <WelcomeQuestions questions={w.questions} answers={w.answers} onAnswer={answer} homeId={homeId} onMakeHome={onMakeHome} focus={place.current} onOpen={at} />}
+      {w.mv_ack && <WelcomeQuestions questions={w.questions} answers={w.answers} onAnswer={answer} homeId={homeId} onMakeHome={onMakeHome} focus={place.current} onOpen={at} onTutorial={onTutorial} />}
       {complete && <p className="rounded-md border-[1.5px] border-emerald-600 bg-emerald-50 p-3 text-sm font-bold text-emerald-900" data-testid="welcome-complete-note">
         You&apos;ve been through every section. Welcome won&apos;t open by itself at sign-in any more: pick it from the list picker any time.</p>}
     </div>

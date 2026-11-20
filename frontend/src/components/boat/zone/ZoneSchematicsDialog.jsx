@@ -28,7 +28,7 @@ const Thumb = ({ r, picked, onPick }) => (
 
 // Web image search for the boat's schematic ("schematic overhead image line drawing YEAR MAKE MODEL"); the skipper taps the right one
 // and it becomes a Zone Map Overview, kept private to the boat with its source link. One Magic use per search.
-export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClose }) => {
+export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClose, extra = null }) => {
   const [search, setSearch] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -127,6 +127,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           <ImagePlus className="h-4 w-4" /> Upload My Own Diagram
         </button>
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="zone-search-upload-input" />
+        {extra}
         {search && !againUsed && (
           <button type="button" className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--muted)] underline" disabled={loading || busy} onClick={again} data-testid="zone-search-again-btn">
             <RefreshCw className="h-3.5 w-3.5" /> Search again

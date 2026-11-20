@@ -15,7 +15,7 @@ export const OverviewView = ({ src, swatches = [], testId = "zone-overview-full"
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
-export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour, onZoneDefaults }) => {
+export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour, onZoneDefaults, autoStart = false }) => {
   const [swatches, setSwatches] = useState(map.swatches || []);
   const [selected, setSelected] = useState(null);
   const [armed, setArmed] = useState(null);
@@ -81,6 +81,13 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't place the colours")); }
     finally { setPlacing(false); }
   };
+  // Set Up Wizard: press "Magically Place Colours" once the colours are ready, if none are placed yet.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoRan.current || !presets.length || swatches.length) return;
+    autoRan.current = true;
+    autoPlace();
+  }, [autoStart, presets.length]); // eslint-disable-line react-hooks/exhaustive-deps
   // Drag a palette square onto the plan; a tap arms it so the next tap on the plan drops it there.
   const dragNew = (e, p) => {
     e.preventDefault();
@@ -201,9 +208,9 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             </button>
           )}
           </>}
-          <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
+          {onRemove && <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
             {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this overview
-          </button>
+          </button>}
         </>
       )}
       </>)}
