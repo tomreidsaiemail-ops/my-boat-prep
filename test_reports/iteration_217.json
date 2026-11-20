@@ -1,0 +1,35 @@
+{
+  "summary": "Tested the 'Show high and low tides' user preference and the daily WorldTides warning. Backend: 13/13 pass in the new test_show_tides_pref.py. /auth/me returns show_tides false, tide_ack_date '' and tide_datum CD by default. PUT /me/preferences changes only the fields sent. Bad dates (2026/11/19, 'yesterday', 26-11-19, '') and the datum LAT all give 422, and an empty body changes nothing. /marine/tides returns {ok:false, reason:'off'} when tides are off (bad dates still give 422) and real Mana extremes when on. Navigator, 2 LLM calls: with tides off, tides_missing is [], there is no 'Live tides' text and no 'above CD' heights. With tides on, the answer has 'Live tides at Mana Marina / Porirua Harbour' with 'm above CD' heights. Frontend at 390px: User Preferences shows show-tides-checkbox (unticked by default) and the red tide-settings-warning (rgb 220,38,38) with the exact text. The CD/MSL checkboxes appear only after ticking, with CD chosen. In Route Planning (Mana Marina to Porirua Harbour, 21 Nov): tides on but not acknowledged shows depart-tides-warning and finish-tides-warning with the exact text and no times. Ticking one hides both and shows depart-tides-times / finish-tides. prefs.tide_ack_date became 2026-11-20 and a Ship's Log entry 'Tide warning acknowledged by Pro Tester on 20 Nov 2026, 01:57 am: Tides are provided by WorldTides...' was added and shows in the Ship's Log list. After a reload the warning stays hidden. With tide_ack_date set to yesterday via the API, both warnings come back. With tides off, no depart-tides/finish-tides elements and no 'WorldTides' text. No horizontal overflow (scrollWidth 390). The feature works; there are 2 minor issues in the Navigator answer when tides are off, and the old regression test needs updating.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/navigator-ask (show_tides false)", "issue": "The answer shown to the skipper contains the instruction written for the AI: 'TIDES SWITCHED OFF: the skipper doesn't show tides in My Boat Prep. Give no tide times or heights at all; tell them to check the official tide tables...'. Cause: ai_lists.py navigator_ask adds live['text'] to the answer, and when tides are off live_data() puts TIDES_OFF into blocks. Fix: add only the weather blocks to the visible answer (or return the TIDES_OFF note separately) and keep TIDES_OFF in the prompt only."},
+      {"endpoint": "POST /api/ai/navigator-ask (show_tides false)", "issue": "The AI still wrote a 'Tidal Gates: Live tide data is not available for this location...' line. That is misleading: tides are switched off, not unavailable, and the user asked for tides to be left out completely. The NAVIGATOR system prompt says 'the prompt has a LIVE DATA section with real tides' and tells the AI to say 'live tide data is not available', which pushes it toward that wording. Make the tides-off rule override this (e.g. 'say only: check the official tide tables')."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ship's Log entry", "issues": ["The tide entry time shows as '01:57 am' (en-NZ, hour12) but other log entries use 24h ('11:00'). Consider hour12:false for consistency."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_show_tides_pref.py", "/app/test_reports/pytest/show_tides.xml"],
+  "action_items": [
+    "Leave the TIDES_OFF instruction out of the visible Navigator answer when tides are off (ai_lists.py navigator_ask answer.replace uses live['text'], which includes TIDES_OFF).",
+    "Change the NAVIGATOR prompt so that when tides are off it does not say 'live tide data is not available' or produce a tide section, only 'check official tide tables'.",
+    "Update /app/backend/tests/test_marine_tides.py. It now fails (e.g. test_mana_marina_tides gets {ok:false, reason:'off'}) because show_tides defaults to false. Set show_tides true in a module fixture and reset it after."
+  ],
+  "critical_code_review_comments": [
+    "TideWarning.ack: if the PUT fails it still logs the acknowledgement and sets tide_ack_date only locally, so the warning comes back on the next load while the log says it was acknowledged. That is acceptable offline, but the log entry is then written before the acknowledgement is saved.",
+    "The mbp:log listener adds the entry to whichever boat is open (fine for crew), but if TideNote is ever shown outside BoatPrep the entry would be lost silently.",
+    "PlannedLegs leg-depart-tides / leg-finish-tides use the same TideNote, so they get the same gating. These were not checked in the UI."
+  ],
+  "updated_files": ["/app/backend/tests/test_show_tides_pref.py"],
+  "success_rate": {"backend": "100% (13/13); 2 minor answer-content issues", "frontend": "100%"},
+  "seed_data_creation": "None kept. test-user-pro/main was backed up with mongoexport (/tmp/bk/pro_main.json), changed for the test (route Mana Marina to Porirua Harbour, 21 Nov), then restored by upsert: shipsLog is back to 19 entries and route_start is 'Off Kurakura Point'. test-user-pro prefs were reset to show_tides false, tide_ack_date '', tide_datum CD.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest with -n 0. test_show_tides_pref.py makes 2 navigator LLM calls (Mana Marina to Porirua Harbour, depart 2026-11-21); the WorldTides cache for those places covers about 20-26 Nov 2026 in CD. For UI: cookie session_token=test_session_pro_1; the main boat is named 'TEST_Kia Ora'. Open Route Planning with list-selector -> list-option-routeHazards. The browser runs in UTC, so localDay is the UTC date.",
+  "test_credentials": "test_session_pro_1 (pro) from /app/memory/test_credentials.md"
+}

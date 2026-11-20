@@ -13,7 +13,7 @@ export const TideWarning = ({ testId }) => {
     setBusy(true);
     const day = localDay();
     try { setUser((await api.put("/me/preferences", { tide_ack_date: day })).data); } catch { setUser({ ...user, tide_ack_date: day }); }
-    const when = new Date().toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const when = new Date().toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
     window.dispatchEvent(new CustomEvent("mbp:log", { detail: `Tide warning acknowledged by ${user?.name || "the skipper"} on ${when}: ${TIDE_WARNING}` }));
   };
   return (

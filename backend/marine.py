@@ -212,8 +212,8 @@ def weather_lines(place: str, w: dict) -> str:
     return f"Live wind forecast at {place} (MET Norway, daily max):\n" + "\n".join(rows) if rows else ""
 
 
-TIDES_OFF = ("TIDES SWITCHED OFF: the skipper doesn't show tides in My Boat Prep. Give no tide times or heights at all; "
-             "tell them to check the official tide tables for any tidal gates or bar crossings.")
+TIDES_OFF = ("TIDES SWITCHED OFF: the skipper has chosen not to see tides. Do not write a tides or tidal gates section, do not say tide data "
+             "is unavailable, and give no tide times or heights. Only say once: check the official tide tables.")
 NO_TIDES = "LIVE TIDE DATA NOT AVAILABLE for {place}. No tide times are given. Check the official tide tables before you sail."
 
 
@@ -244,7 +244,8 @@ async def live_data(start: str, dest: str, start_pos: Optional[dict], dest_pos: 
     weather = [x for x in (weather_lines(name, w) for (name, _), w in zip(places, wx) if w) if x]
     weather = weather or [f"LIVE WEATHER FORECAST NOT AVAILABLE for {first.strftime('%d %b')} onwards. Check the official marine forecast before you sail."]
     when = f"Departure: {depart_at.replace('T', ' at ')} local time." if len(depart_at or "") >= 10 else "Departure date not set; the live data starts today."
-    return {"text": "\n\n".join(blocks + weather), "tides_missing": missing, "departure": when}
+    shown = [b for b in blocks if b is not TIDES_OFF]
+    return {"text": "\n\n".join(blocks + weather), "shown": "\n\n".join(shown + weather), "tides_missing": missing, "departure": when}
 
 
 @router.get("/marine/tides")

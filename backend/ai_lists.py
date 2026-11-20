@@ -552,6 +552,7 @@ NAVIGATOR = ("You are the Magic Marine Navigator in the My Boat Prep app: an exp
              "SAFETY: the prompt has a LIVE DATA section with real tides and the real weather forecast. Use ONLY those numbers for tides and weather. "
              "Never state tide times, tide heights, wind, wave or forecast figures that are not in LIVE DATA, even if the skipper asks; never guess them. "
              "Do not copy out the whole tide table or forecast (the app adds it under your answer), but use it to time bar crossings and tidal gates, quoting the exact times you rely on. "
+             "If LIVE DATA says TIDES SWITCHED OFF, follow that instead and never mention tide data being unavailable. "
              "If LIVE DATA says tide data is not available for a place, say clearly that live tide data is not available there and the skipper must check the official tide tables, and give no tide times for it. "
              "The answer is plain text only: no markdown, headings or asterisks; put each numbered leg on its own line using \\n line breaks. "
              "Also give the route as waypoints with approximate latitude and longitude in decimal degrees, starting at START and ending at DESTINATION, "
@@ -649,7 +650,7 @@ async def navigator_ask(body: NavigatorAskIn, user: dict = Depends(require_premi
               f"{live['departure']}\nLIVE DATA (the only tide and weather figures you may use):\n{live['text']}\n"
               f'The skipper adds:\n"""{body.question.strip().replace(chr(34) * 3, chr(39) * 3) or "(nothing)"}"""')
     result, left = await _run(user, "navigator", prompt, parse_navigator, {"question": f"{body.start} to {body.destination}"[:200]}, NAVIGATOR, "Magic Marine Navigator answer")
-    result["answer"] = result["answer"].replace(f"\n\n{NAV_FOOTER}", f"\n\n{live['text']}\n\n{NAV_FOOTER}")
+    result["answer"] = result["answer"].replace(f"\n\n{NAV_FOOTER}", f"\n\n{live['shown']}\n\n{NAV_FOOTER}")
     return {**result, "asks_left": left, "tides_missing": live["tides_missing"]}
 
 
