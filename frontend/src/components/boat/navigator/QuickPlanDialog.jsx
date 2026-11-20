@@ -200,7 +200,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     // A new last leg that comes back to the start is Returning to Dock rather than the Mooring default.
     if (end.arrive_type === "mooring" && !known.current.has(end.id) && backHome(ls)) ls[ls.length - 1] = { ...end, arrive_type: "dock" };
     // A Day Trip's points on the way round are Transiting unless the skipper picked another type.
-    if (backHome(ls)) ls.forEach((l, n) => { if (n < ls.length - 1 && l.arrive_type === "mooring" && !known.current.has(l.id)) ls[n] = { ...l, arrive_type: "transit" }; });
+    if (backHome(ls) && ls.length !== 2) ls.forEach((l, n) => { if (n < ls.length - 1 && l.arrive_type === "mooring" && !known.current.has(l.id)) ls[n] = { ...l, arrive_type: "transit" }; });
     onApply(ls, fresh);
     onClose();
   };

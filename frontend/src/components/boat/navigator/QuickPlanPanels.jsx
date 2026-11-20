@@ -71,4 +71,4 @@ export const PointPopup = ({ j, last, name, setName, type, setType, onDelete, on
     <DeleteBtn onClick={onDelete} testId="quick-plan-point-delete-btn" />
   </div>
 );
-const SHORT = { anchor: "Anchor", berth: "Berth", mooring: "Mooring", dock: "Dock" };
+const SHORT = { anchor: "Anchor", berth: "Berth", mooring: "Mooring", transit: "Transit", dock: "Dock" };

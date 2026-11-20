@@ -92,7 +92,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const legsNow = w.legs || [];
   const isReturn = returnsToStart([{ route_start: start }, ...legsNow]);
   const canReturn = !!(start.trim() && dest.trim());
-  const dayTrip = canReturn && isDayTrip([{ route_start: start, route_dest: dest, start_pos: w.start_pos, dest_pos: w.dest_pos }, ...legsNow]);
+  // A Day Trip: back at START with no stop on the way (one leg, transit points, or 3+ legs); a plain 2-leg out-and-back stays a Return trip.
+  const allLegs = [{ route_start: start, route_dest: dest, start_pos: w.start_pos, dest_pos: w.dest_pos, arrive_type: w.arrive_type }, ...legsNow];
+  const dayTrip = canReturn && isDayTrip(allLegs) && (allLegs.length !== 2 || allLegs.some((l) => l.arrive_type === "transit"));
   const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
   // Trip Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",

@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend testing of Day Trip and Transiting points at 390px. Pro user test-user-pro/main and admin Model Vessel were both backed up first, and both were restored with mongoimport upsert. PASS: (1) START = DESTINATION on a 1-leg plan shows day-trip-flag 'Day Trip'. The match ignores case and spaces. A different DESTINATION shows the Return trip checkbox. (2) 'Transiting' sits between Mooring and Returning to Dock in navigator-arrive-type, leg-arrive-type and the planned-leg-type menu, and as 'Transit' in the map popup quick-plan-point-type. (3) Edit Draft Plan on a Day Trip: adding 2 stops by pinning makes Leg 1 and Leg 2 Transiting. Leg 3 stays Returning to Dock. Planned legs show the Transiting icon and this was saved to the DB. (4) Underway with a Transiting leg: transit-passed-btn 'Passed TEST_Buoy B' shows on Trip Planning (pro) and on Leaving Dock, Arriving at Destination, Returning to Dock and Trip Planning (admin). Tapping it shows a toast and adds the Ship's Log entry 'Passed TEST_Buoy B at 20:40 - Route Plan: Trip Planning - next TEST_Buoy C - <stamp>'. It closes the leg (arrival:'transit', arrived_list:'Passed'), starts the next leg (kind 'transit') and updates the underway line. The second tap passes Buoy C and the button goes away. The Returning to Dock arrival then works: 'Tick all 7 Returning to Dock items' and 'Log arrival', and the trip is grouped into a folder with 3 leg folders. (5) A point slotted into a trip that does not come back to the start still defaults to Mooring. FAIL: 2 regressions on normal return trips (see action_items).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "NavigatorAsk return-trip vs day-trip-flag", "issue": "A normal 2-leg return trip (TEST_Mana->TEST_Picton, then TEST_Picton->TEST_Mana stored in weather.legs) shows the 'Day Trip' pill instead of 'Return trip' ticked. dayTrip = canReturn && isDayTrip([...]) is true for every trip whose last leg ends at START, and that includes returnsToStart(). The review brief said return trips must still show Return trip ticked.", "selector": "[data-testid=day-trip-flag] / [data-testid=return-trip-checkbox]", "priority": "HIGH"},
+      {"component": "QuickPlanDialog finish()", "issue": "If you draw a return trip on the map from scratch (Start New Draft, then tap START, then DESTINATION 'then return'), the DESTINATION pin shows Mooring in the dialog. After Done, Leg 1 is saved as 'transit' and the Day Trip flag shows. The backHome() forEach turns every unknown 'mooring' leg except the last into transit, so the out-and-back destination of a plain return trip is no longer a stop. known.current is cleared by startNew, and a fresh ret draft has no known ids.", "selector": "[data-testid=quick-plan-done-btn]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Edit Draft Plan point popup", "issues": ["FIXED: the Transiting type button had no label because the SHORT map in QuickPlanPanels.jsx had no transit key. Added transit: 'Transit'. Checked on screen: it now reads Anchor / Berth / Mooring / Transit / Dock."]},
+      {"screen": "Underway transit", "issues": ["transit-passed-btn has no confirm or debounce. Two quick taps pass two points in a row.", "The trip folder label still says 'Trip: Depart X, Away N day, Return X'. It could say Day Trip."]}
+    ]
+  },
+  "test_report_links": ["/app/tests/tp_set.py"],
+  "action_items": [
+    "NavigatorAsk.jsx: don't show the Day Trip flag for a plain return trip. For example: dayTrip = !isReturn && canReturn && isDayTrip(...), or only when there is a single leg, any Transiting leg, or 3 or more legs. Then Return trip shows ticked again for 2-leg trips back to START.",
+    "QuickPlanDialog.jsx finish(): don't turn Leg 1 into transit on a 2-leg return trip, i.e. when ret/home was used or returnsToStart(ls) with ls.length === 2. Or only turn legs into transit when they were slotted in by withSlot or tapped as middle points of a Day Trip.",
+    "Optional: guard passTransit against double taps."
+  ],
+  "critical_code_review_comments": [
+    "isDayTrip (tripStops.js) and backHome (QuickPlanDialog.jsx) repeat the same name and 300 m logic. backHome should reuse isDayTrip.",
+    "BoatPrep.jsx is 1441 lines. TRIP_HOPS is rebuilt on every render and could be a module constant.",
+    "passTransit labels the entry 'Route Plan: <trip>'. This matches older log wording, but the list is now called Trip Planning."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/navigator/QuickPlanPanels.jsx", "/app/tests/tp_set.py"],
+  "success_rate": {"backend": "N/A", "frontend": "85% (5 feature checks passed, 2 return-trip regressions)"},
+  "seed_data_creation": "None kept. test-user-pro/main and test-admin-1/model_vessel were set up with /app/tests/tp_set.py (modes day1/ret2/day3/nonday; TP_OWNER/TP_BOAT env) and restored from /tmp/pro_main_backup_219.json and /tmp/admin_mv_backup_219.json.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Auth: cookie session_token=test_session_pro_1 or test_session_admin_1 on the preview domain. Pro shows the ashore prompt about 5-10 s after load; click 'Not yet' and 'Not now'. Admin opens on Model Vessel with a training panel (training-close-btn). The pro boat has no leavingDock, arrivingDest or returningDock lists, so test transit-passed-btn on those lists with the admin. /app/tests/tp_set.py sets Trip Planning state directly in Mongo. day3 = underway on the Day Trip TEST_Mana -> TEST_Buoy B (transit) -> TEST_Buoy C (transit) -> TEST_Mana (dock), with boat.legs.routeHazards holding 1 record. Map: markers are '[data-testid=stops-map-canvas] .leaflet-marker-icon'. Tap a marker, then 'Add a stop after this', tap the map, then quick-plan-confirm-btn, then quick-plan-done-btn. Start New Draft needs quick-plan-start-new-yes-btn tapped twice. Always back up with mongoexport first and restore with mongoimport --mode=upsert."
+}
