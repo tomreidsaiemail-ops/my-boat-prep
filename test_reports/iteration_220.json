@@ -1,0 +1,34 @@
+{
+  "summary": "Tested the Welcome screen feature end to end. Backend: 7 of 7 pytest tests pass (GET /api/welcome returns 8 keyed questions and the trip note, force/due/first; visited; PUT answers and mv_ack; /auth/me welcome_no; a Global Config force line of 2 makes due true again; bad values give 422; bad keys are ignored). Frontend: on a free user's first sign-in, the app opens on Welcome, an empty home_list becomes Welcome and the full highlight tour runs in the right order and timing. For the pro user (home already Boat Inventory), Welcome is forced but the home is kept, the 'cross' text shows and the shorter tour runs. Also passed: the Thanks tick folds the help and highlights its toggle, questions show one at a time, bullets highlight, answers fold green or light red, Make Boat Inventory my home changes the home, and the 'not interested' hides work for fish, trip, search, bartender and both transfer items. Welcome can still be picked later, a reload or a new session doesn't force it again, Switch to the Model Vessel works, and there is no overflow at 390px. No JS errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AppMenu", "issue": "app-menu-bartender-item still shows after Provisioning is 'not interested'. BoatPrep passes onBartender={crew ? undefined : openBartender} to Header/AppMenu and does not check notFor('provision'). Only boat-details-bartender-btn is hidden.", "selector": "[data-testid=app-menu-bartender-item]", "priority": "MEDIUM"},
+      {"component": "WelcomeHelp", "issue": "After the Thanks tick, opening the help again shows the 'Thanks for the info...' checkbox unticked (checked={false} is hard-coded). Ticking it again calls onAck again. It should show ticked, or be hidden, when ack is true.", "selector": "[data-testid=welcome-mv-ack-checkbox]", "priority": "LOW"},
+      {"component": "WelcomeHelp tour", "issue": "The tour is not cancelled when the Thanks box is ticked or Welcome is left. Its highlights (e.g. set-home-list-btn) overlap the welcome-help-toggle highlight and the first question's bullet highlights.", "selector": ".mbp-glow", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Welcome (first sign-in, free user who is crew on the pro boat)", "issues": ["The Crew Registration prompt opens on top of the Welcome screen while the highlight tour plays behind it, so the user never sees the tour. Consider delaying the tour until no dialog is open, or deferring the prompt."]},
+      {"screen": "Welcome", "issues": ["Reset All / Export Current / Export All / Export to Excel buttons show under the Welcome screen, which has no list items to export."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_welcome_screen.py", "/app/test_reports/pytest/welcome.xml"],
+  "action_items": [
+    "Hide app-menu-bartender-item when notFor('provision') (BoatPrep Header onBartender prop)",
+    "WelcomeHelp: show the mv-ack checkbox as ticked (or hide it) when ack is true",
+    "Optional: cancel the running tour on ack or unmount; hold the tour while a dialog (Crew Registration) is open; hide the export/reset footer on the Welcome list",
+    "Optional: decide whether find='no' should also hide the Boat Inventory 'Find an item' search box (only boat-details-search-btn is hidden now)"
+  ],
+  "critical_code_review_comments": [
+    "welcome.py: seed_welcome is gated by a migrations doc, so if Admin - Global Config is created after the first startup, the force line is never added. force_number() falls back to 1, so this is safe.",
+    "WelcomeQuestions RECOMMEND only covers find, crew and trip. 'Yes' to other topics gives no recommendation (may be intended).",
+    "save() in WelcomeScreen swallows errors silently: there is no toast if PUT /welcome fails."
+  ],
+  "updated_files": ["/app/backend/tests/test_welcome_screen.py"],
+  "success_rate": {"backend": "100%", "frontend": "92% (1 medium and 2 low issues)"},
+  "seed_data_creation": "None. I reset users.welcome for test-user-pro, test-user-free and test-admin-1 with $unset, restored test-user-free/main boat.home_list to '' (it was '' before testing), and the Global Config line is back to 'Force Welcome screen visit, 1'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the backend tests with: pytest tests/test_welcome_screen.py -n 0 (it uses Mongo directly to change the force line and restores it). test-user-free/main had home_list '' before testing, so it shows Welcome becoming home. Free users get the Crew Registration dialog; close it with Escape. Pick Welcome with list-selector -> list-option-welcome. Reset with db.users.updateMany({user_id:{$in:[...]}},{$unset:{welcome:''}})."
+}

@@ -44,7 +44,7 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel }) => {
         <P>You can switch to the Model Vessel while going through the Welcome screen, or hop out to the Model Vessel or any list like Trip Planning. The Welcome screen comes back on your first visit, and after that you select it like any other list.</P>
         {onSwitchModel && <button type="button" className="btn-solid h-11 justify-center" onClick={onSwitchModel} data-testid="welcome-switch-model-btn"><Ship className="h-4 w-4" />Switch to the Model Vessel</button>}
         <label className="flex cursor-pointer items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm font-bold" data-testid="welcome-mv-ack">
-          <input type="checkbox" checked={false} onChange={thanks} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="welcome-mv-ack-checkbox" />
+          <input type="checkbox" checked={!!ack} disabled={!!ack} onChange={thanks} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="welcome-mv-ack-checkbox" />
           <span>Thanks for the info on the Model Vessel, I&apos;ll check it out later by switching to it as if it was another boat I own.</span>
         </label>
       </>}

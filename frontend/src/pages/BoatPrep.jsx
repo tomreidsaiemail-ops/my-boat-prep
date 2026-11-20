@@ -1220,7 +1220,7 @@ export default function BoatPrep({ boatId, boats }) {
     <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew ? undefined : openBartender} onFish={openFish}
+      <Header helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew || notFor("provision") ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
