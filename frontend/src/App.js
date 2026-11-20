@@ -15,6 +15,7 @@ import PaymentResult from "@/pages/PaymentResult";
 import { ForgotPassword, ResetPassword } from "@/pages/PasswordReset";
 import Terms from "@/pages/Terms";
 import JoinCrew, { JOIN_KEY } from "@/pages/JoinCrew";
+import TransferGuide from "@/pages/TransferGuide";
 import ShoreWatch from "@/pages/ShoreWatch";
 import { readPick } from "@/lib/shorePick";
 import ShoreJoin, { SHORE_JOIN_KEY } from "@/pages/ShoreJoin";
@@ -48,6 +49,7 @@ function AppRouter() {
       <Route path="/join/:token" element={<JoinCrew />} />
       <Route path="/shore/join/:token" element={<ShoreJoin />} />
       <Route path="/shore" element={<RequireAuth><ShoreWatch /></RequireAuth>} />
+      <Route path="/transfer-guide" element={<RequireAuth><TransferGuide /></RequireAuth>} />
       <Route path="/" element={<RequireAuth><UserBoat /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth admin><Admin /></RequireAuth>} />
       <Route path="/admin/templates" element={<RequireAuth admin><AdminTemplates /></RequireAuth>} />

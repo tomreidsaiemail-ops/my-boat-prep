@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { ArrowRightLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TRANSFER_RULES } from "@/lib/transfer";
@@ -24,6 +25,7 @@ export const TransferStartDialog = ({ open, vessel, onStart, onClose }) => {
             </li>
           ))}
         </ul>
+        <Link to="/transfer-guide" onClick={onClose} className="text-sm font-bold underline" data-testid="transfer-start-guide-link">Read the step-by-step guide first (printable, for your broker)</Link>
         <p className="text-sm text-[var(--muted)]">Next, you go through every cupboard that still has things in it, so the new owner gets an accurate inventory.</p>
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-ghost h-11 px-5" onClick={onClose} data-testid="transfer-start-cancel-btn">Cancel</button>

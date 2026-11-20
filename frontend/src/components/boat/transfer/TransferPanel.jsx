@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Download, Loader2, Mail } from "lucide-react";
+import { AlertTriangle, BookOpen, Download, Loader2, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { api, apiError } from "@/lib/api";
 
@@ -13,7 +14,8 @@ const Tick = ({ id, checked, onChange, children }) => (
 
 // Top of the "Transfer ownership" list: email the checklist, two ticks, then a double-confirmed SELL MY BOAT.
 export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAll, onSold }) => {
-  const [request, setRequest] = useState(undefined);
+  const [requests, setRequests] = useState(undefined);
+  const [picked, setPicked] = useState("");
   const [received, setReceived] = useState(false);
   const [exported, setExported] = useState(false);
   const [error, setError] = useState("");
@@ -21,7 +23,7 @@ export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAl
   const [ask, setAsk] = useState(0);
   useEffect(() => {
     if (!online) return;
-    api.get("/ownership/status", { params: { boat_id: boat.boat_id } }).then(({ data }) => setRequest(data.request)).catch(() => setRequest(null));
+    api.get("/ownership/status", { params: { boat_id: boat.boat_id } }).then(({ data }) => setRequests(data.requests)).catch(() => setRequests([]));
   }, [online, boat.boat_id]);
   const email = async () => {
     setBusy("email");
@@ -33,6 +35,7 @@ export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAl
   };
   const trySell = () => {
     if (!received || !exported) { setError("Tick Transfer Ownership checklist received and Export and save all lists for your records first."); return; }
+    if (!request) { setError("Pick which buyer gets the boat first."); return; }
     if (pending) { setError("Wait for your latest changes to sync, then try again."); return; }
     setError("");
     setAsk(1);
@@ -41,19 +44,33 @@ export const TransferPanel = ({ boat, vessel, items, online, pending, onExportAl
     setAsk(0);
     setBusy("sell");
     try {
-      const { data } = await api.post("/ownership/sell", { checklist_received: received, exported }, { params: { boat_id: boat.boat_id }, timeout: 30000 });
+      const { data } = await api.post("/ownership/sell", { checklist_received: received, exported, request_id: request.request_id, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "" }, { params: { boat_id: boat.boat_id }, timeout: 30000 });
       toast.success(`Transfer successful. ${vessel || "The boat"} now belongs to ${data.buyer_name || data.buyer_email}, and they've been told.`, { duration: 8000 });
       onSold();
     } catch (e) { setError(apiError(e, "Couldn't transfer the boat")); setBusy(""); }
   };
-  const ready = !!request && online;
+  const request = requests?.length === 1 ? requests[0] : requests?.find((r) => r.request_id === picked);
+  const ready = !!requests?.length && online;
   return (
     <section className="flex flex-col gap-3 rounded-lg border-2 border-[var(--navy)] bg-[var(--cream,#FFF8EE)] p-3" data-testid="transfer-panel">
       <p className="text-sm font-bold" data-testid="transfer-request-status">
-        {request === undefined ? "Checking for the new owner's request..." : request
+        {requests === undefined ? "Checking for the new owner's request..." : requests.length === 1
           ? <>New owner: <span className="text-emerald-700">{request.buyer_name || request.buyer_email}</span> ({request.buyer_email}) has requested this boat.</>
+          : requests.length > 1 ? `${requests.length} people have asked for this boat. Pick the new owner:`
           : <>Waiting for the new owner. They use the menu ☰ &gt; Request Ownership Transfer..., with the boat name <b>{vessel}</b> and your email.</>}
       </p>
+      {requests?.length > 1 && (
+        <div className="flex flex-col gap-1.5" role="radiogroup" data-testid="transfer-buyer-picker">
+          {requests.map((r) => (
+            <label key={r.request_id} className={`flex cursor-pointer items-start gap-3 rounded-md border-[1.5px] bg-white px-3 py-2 text-sm font-bold ${picked === r.request_id ? "border-[var(--navy)]" : "border-[var(--line)]"}`} data-testid={`transfer-buyer-${r.request_id}`}>
+              <input type="radio" name="transfer-buyer" checked={picked === r.request_id} onChange={() => { setPicked(r.request_id); setError(""); }} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`transfer-buyer-${r.request_id}-radio`} />
+              <span>{r.buyer_name || r.buyer_email} <span className="block text-xs font-normal text-[var(--muted)]">{r.buyer_email} · asked {new Date(r.created_at).toLocaleDateString()}</span></span>
+            </label>
+          ))}
+          <p className="text-xs text-[var(--muted)]">The others are told by email that the boat went to someone else, and their requests are removed.</p>
+        </div>
+      )}
+      <Link to="/transfer-guide" className="flex items-center gap-1.5 text-sm font-bold underline" data-testid="transfer-guide-link"><BookOpen className="h-4 w-4" />Step-by-step guide to print or share with your broker</Link>
       <button type="button" className="btn-solid h-11 justify-center" disabled={!online || busy === "email"} onClick={email} data-testid="transfer-email-checklist-btn">
         {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}Email Transfer Ownership Checklist
       </button>

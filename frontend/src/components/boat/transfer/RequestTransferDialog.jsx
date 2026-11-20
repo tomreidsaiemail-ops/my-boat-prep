@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRightLeft, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,6 +39,7 @@ export const RequestTransferDialog = ({ open, online, onClose }) => {
         <button type="button" className="btn-solid h-11 justify-center" disabled={busy || !online} onClick={send} data-testid="request-transfer-send-btn">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}{online ? "Request transfer" : "Needs a signal"}
         </button>
+        <Link to="/transfer-guide" onClick={onClose} className="text-center text-sm font-bold underline" data-testid="request-transfer-guide-link">How transferring ownership works (step-by-step guide)</Link>
         {mine.length > 0 && (
           <ul className="flex flex-col gap-1 border-t border-[var(--line)] pt-2" data-testid="request-transfer-mine">
             {mine.map((r) => (

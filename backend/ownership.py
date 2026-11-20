@@ -7,8 +7,10 @@ import html
 import logging
 import re
 import uuid
+import random
 from datetime import datetime, timezone
-from typing import Annotated, List
+from typing import Annotated, List, Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
@@ -18,6 +20,7 @@ from charter import EMPTY_BOAT, stocked_areas
 from crew import email_key, owned_boat
 from db import db
 from email_service import send_email
+from handover import handover_pack
 from urls import PUBLIC_APP_URL
 
 log = logging.getLogger(__name__)
@@ -114,8 +117,8 @@ def buyer_copy(src: dict, buyer: dict, scrub) -> dict:
     for lst in src.get("registry") or []:
         gone = lst.get("id") == LIST_ID or is_crew_prep_copy(lst) or (is_trip(lst) and lst.get("id") != "routeHazards")
         (dropped if gone else keep).append(lst)
-    ids = {lst["id"] for lst in keep}
-    data = {k: v for k, v in (src.get("data") or {}).items() if k in ids}
+    gone_ids = {lst.get("id") for lst in dropped}
+    data = {k: v for k, v in (src.get("data") or {}).items() if k not in gone_ids}
     if "shipsLog" in data:
         data["shipsLog"] = [redact_item(i, scrub) for i in data["shipsLog"] or []]
     if "routeHazards" in data:
@@ -141,13 +144,35 @@ class EmailIn(BaseModel):
 class SellIn(BaseModel):
     checklist_received: bool
     exported: bool
+    request_id: Optional[str] = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    tz: str = Field(default="", max_length=60)
 
 
-async def pending_request(user: dict, vessel: str):
+async def pending_requests(user: dict, vessel: str) -> list:
     if not user.get("email") or not norm(vessel):
-        return None
-    return await db.ownership_requests.find_one({"owner_key": email_key(user["email"]), "boat_key": norm(vessel), "status": "pending"},
-                                                {"_id": 0}, sort=[("created_at", -1)])
+        return []
+    return await db.ownership_requests.find({"owner_key": email_key(user["email"]), "boat_key": norm(vessel), "status": "pending"},
+                                            {"_id": 0}).sort("created_at", 1).to_list(50)
+
+
+def sold_when(tz_name: str) -> str:
+    try:
+        tz = ZoneInfo(tz_name) if tz_name else timezone.utc
+    except (KeyError, ValueError):
+        tz = timezone.utc
+    return datetime.now(tz).strftime("%a %-d %b %Y, %H:%M")
+
+
+async def tell_others(others: list, vessel: str):
+    """Buyers who weren't picked hear the boat went to someone else; their requests are removed."""
+    for r in others:
+        await db.ownership_requests.delete_one({"request_id": r["request_id"]})
+        try:
+            await send_email(to=[r["buyer_email"]], subject=f"{vessel}: ownership went to another buyer",
+                             html=f"<p>Hi {html.escape(r.get('buyer_name') or 'there')},</p><p>The owner of {html.escape(vessel)} has transferred it to another buyer on "
+                                  "My Boat Prep, so your Request Ownership Transfer has been removed.</p>")
+        except Exception:  # noqa: BLE001 - the sale is done; one missed courtesy email mustn't undo it
+            log.exception("Couldn't tell an unpicked buyer")
 
 
 @router.post("/ownership/requests")
@@ -178,8 +203,8 @@ async def checklist(_: dict = Depends(get_current_user)):
 @router.get("/ownership/status")
 async def status(boat_id: BoatQ, user: dict = Depends(get_current_user)):
     doc = await owned_boat(user, boat_id)
-    r = await pending_request(user, (doc.get("boat") or {}).get("vessel", ""))
-    return {"request": {k: r.get(k) for k in ("buyer_name", "buyer_email", "created_at")} if r else None}
+    rows = await pending_requests(user, (doc.get("boat") or {}).get("vessel", ""))
+    return {"requests": [{k: r.get(k) for k in ("request_id", "buyer_name", "buyer_email", "created_at")} for r in rows]}
 
 
 @router.post("/ownership/email-checklist")
@@ -204,15 +229,23 @@ async def sell(payload: SellIn, boat_id: BoatQ, user: dict = Depends(get_current
     if src.get("model") or (src.get("charter") or {}).get("charter_id"):
         raise HTTPException(status_code=400, detail="This boat can't be transferred")
     vessel = (src.get("boat") or {}).get("vessel", "")
-    req = await pending_request(user, vessel)
-    if not req:
+    reqs = await pending_requests(user, vessel)
+    if not reqs:
         raise HTTPException(status_code=409, detail="The new owner hasn't requested this boat yet. Ask them to use Request Ownership Transfer... with this boat's name and your email.")
+    req = next((r for r in reqs if r["request_id"] == payload.request_id), None) if payload.request_id else (reqs[0] if len(reqs) == 1 else None)
+    if not req:
+        raise HTTPException(status_code=409, detail="More than one person has asked for this boat. Pick the new owner first.")
     buyer = await db.users.find_one({"user_id": req["buyer_id"]}, {"_id": 0, "user_id": 1, "name": 1, "email": 1})
     if not buyer or buyer["user_id"] == user["user_id"]:
         raise HTTPException(status_code=409, detail="The new owner's account can't be found")
     names, emails = await crew_people(user["user_id"], boat_id, src)
     new_id = f"b{uuid.uuid4().hex[:10]}"
-    await db.user_boats.insert_one({"owner_id": buyer["user_id"], "boat_id": new_id, **buyer_copy(src, buyer, redactor(names, emails))})
+    when = sold_when(payload.tz)
+    copy = buyer_copy(src, buyer, redactor(names, emails))
+    stamp = int(datetime.now(timezone.utc).timestamp() * 1000) * 1000 + random.randint(0, 999)
+    copy["data"]["shipsLog"] = [*(copy["data"].get("shipsLog") or []),
+                                {"id": stamp, "label": f"Boat sold to new owner on {when}", "checked": False, "ts": datetime.now(timezone.utc).isoformat()}]
+    await db.user_boats.insert_one({"owner_id": buyer["user_id"], "boat_id": new_id, **copy})
     for coll in (db.item_photos, db.item_files):
         await coll.update_many({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"owner_id": buyer["user_id"], "boat_id": new_id}})
     now = datetime.now(timezone.utc).isoformat()
@@ -226,13 +259,12 @@ async def sell(payload: SellIn, boat_id: BoatQ, user: dict = Depends(get_current
     msg = f"{vessel or 'A boat'} is now yours. {user.get('name') or 'The previous owner'} transferred it to you on My Boat Prep."
     await db.user_notices.insert_one({"notice_id": uuid.uuid4().hex, "user_id": buyer["user_id"], "title": "Boat transferred to you", "text": msg,
                                       "boat_id": new_id, "seen": False, "created_at": now})
-    e = html.escape
     try:
-        await send_email(to=[buyer["email"]], subject=f"{vessel or 'Your boat'} is now yours on My Boat Prep",
-                         html=f"<p>{e(msg)}</p><p>It has no crew, the Ship's Log has crew names hidden, and the Food &amp; Drink cupboards are empty. "
-                              f"Open <a href=\"{PUBLIC_APP_URL}\">My Boat Prep</a> and pick it from your boats.</p>")
+        subject, body = await handover_pack(copy, user.get("name") or "The previous owner", when, PUBLIC_APP_URL)
+        await send_email(to=[buyer["email"]], subject=subject, html=body)
     except Exception:  # noqa: BLE001 - the transfer itself is done; the in-app message still tells them
-        log.exception("Transfer email to the new owner failed")
+        log.exception("Handover pack email to the new owner failed")
+    await tell_others([r for r in reqs if r["request_id"] != req["request_id"]], vessel or "the boat")
     return {"ok": True, "buyer_email": buyer["email"], "buyer_name": buyer.get("name") or ""}
 
 
