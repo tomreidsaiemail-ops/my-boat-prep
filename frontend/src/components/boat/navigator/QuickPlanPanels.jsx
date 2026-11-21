@@ -1,4 +1,4 @@
-import { Check, Flag, Plus, Trash2, X, Zap } from "lucide-react";
+import { Check, Flag, Plus, RotateCcw, Trash2, X, Zap } from "lucide-react";
 import { ARRIVE_TYPES } from "@/components/boat/navigator/ArriveType";
 
 // Two warnings before a draft can replace an existing route.
@@ -24,7 +24,7 @@ const DeleteBtn = ({ onClick, testId }) => (
 
 // A newly tapped point, shown right where it was tapped: confirm it, end the trip there, or ignore the tap.
 // mid: a stop slotted in between two others. Times take their defaults; tap the pin later to change them.
-// home: a return trip's DESTINATION, which also makes Leg 2 back to the start.
+// home: a return trip's DESTINATION, which also makes Leg 2 back to the start. Any new end point can also come back to the start.
 export const ConfirmPopup = ({ i, mid, home, name, onConfirm, onIgnore }) => (
   <div className="flex w-[min(250px,calc(100vw-56px))] flex-col gap-1.5 rounded-lg border-2 border-amber-500 bg-white p-2 shadow-lg" data-testid="quick-plan-confirm">
     <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">{i === 0 ? "Departing point" : `Point ${i + 1}`}</p>
@@ -35,6 +35,11 @@ export const ConfirmPopup = ({ i, mid, home, name, onConfirm, onIgnore }) => (
     {i > 0 && !mid && !home && (
       <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 px-2 text-sm !border-emerald-700 !text-emerald-800" onClick={() => onConfirm(true)} data-testid="quick-plan-end-btn">
         <Flag className="h-4 w-4 shrink-0" /> Arriving (End of Trip point)
+      </button>
+    )}
+    {i > 0 && !mid && !home && (
+      <button type="button" className="btn-ghost h-auto min-h-10 justify-center gap-1.5 px-2 py-1.5 text-sm !border-[var(--red)] !text-[var(--red)]" onClick={() => onConfirm(false, true)} data-testid="quick-plan-return-btn">
+        <RotateCcw className="h-4 w-4 shrink-0" /> {i === 1 ? "DESTINATION" : "Arriving"}, then return to start
       </button>
     )}
     <button type="button" className="btn-ghost h-9 min-h-0 justify-center gap-1.5 px-2 text-xs" onClick={onIgnore} data-testid="quick-plan-ignore-btn">

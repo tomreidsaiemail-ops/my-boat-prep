@@ -152,20 +152,22 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       if (i < latest.current.length && posOf(latest.current, i + 1)) route(i);
     }
   };
-  const confirm = async (end) => {
+  const confirm = async (end, back = false) => {
     const i = pending;
     const clean = name.trim() || `Point ${i + 1}`;
     asking.current = null;
     const mid = i > 0 && i < latest.current.length;
     const front = i === 0 && snap.current !== null; // a new START slotted in before the old one
-    const home = ret && i === 1 && latest.current.length === 1; // return trip: Leg 2 back to the START comes with the DESTINATION
+    const typedBack = ret && i === 1 && latest.current.length === 1; // return trip: Leg 2 back to the START comes with the DESTINATION
+    const home = typedBack || (back && i > 0 && !mid); // or the skipper chose to come back to the START from this point
     const before = mid || front ? { legs: snap.current, wait: null } : { legs: setPos(latest.current, i, null), wait: i };
     setUndo((u) => [...u, before]);
     let ls = latest.current.map((l, n) => (n === i ? { ...l, route_start: clean, ...times } : n === i - 1 ? { ...l, route_dest: clean } : l));
     if (home) {
-      const { start_pos, dest_pos, path, ...back } = seed?.back || {};
-      const out = ls[0].finish_at ? { depart_at: ls[0].finish_at, finish_at: later(ls[0].finish_at, 3) } : {}; // a new Leg 2 sets off when Leg 1 arrives
-      ls = [...ls, { ...newLeg(2, clean), ...out, ...back, route_start: clean, route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: back.arrive_type || "dock" }];
+      const { start_pos, dest_pos, path, ...kept } = (typedBack && seed?.back) || {};
+      const arrive = ls[i - 1].finish_at;
+      const out = arrive ? { depart_at: arrive, finish_at: later(arrive, 3) } : {}; // the leg home sets off when the leg before it arrives
+      ls = [...ls, { ...newLeg(i + 1, clean), ...out, ...kept, route_start: clean, route_dest: ls[0].route_start, dest_pos: ls[0].start_pos, arrive_type: kept.arrive_type || "dock" }];
     }
     else if (!mid && i > 0 && !end) ls = [...ls, { ...newLeg(i + 1, clean), ...times }];
     put(ls);
@@ -173,7 +175,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     setWait(front || home ? null : i === 0 ? 1 : !mid && !end ? i + 1 : null);
     snap.current = null;
     if (front) await rerouting([0]);
-    else if (home) await rerouting([0, 1]);
+    else if (home) await rerouting([i - 1, i]);
     else if (i > 0) await rerouting(mid ? [i - 1, i] : [i - 1]);
   };
   const addAfter = (j) => { snap.current = j < latest.current.length ? latest.current : null; put(withSlot(latest.current, j)); setSel(null); setWait(j + 1); };
