@@ -24,10 +24,10 @@ OWNER, BOAT = "test-user-pro", "main"
 
 @pytest.fixture(scope="module", autouse=True)
 def restore_boat():
-    snap = db.user_boats.find_one({"owner_id": OWNER, "boat_id": BOAT}, {"_id": 0, "crew_roles": 1, "crew_joined": 1, "crew": 1, "crew_names": 1, "data.tpl_test67crew": 1})
+    snap = db.user_boats.find_one({"owner_id": OWNER, "boat_id": BOAT}, {"_id": 0, "crew_roles": 1, "crew_joined": 1, "crew": 1, "crew_names": 1, "data.tpl_9f5620bc49": 1})
     yield
     s = {"crew_roles": snap.get("crew_roles") or {}, "crew": snap.get("crew") or [], "crew_names": snap.get("crew_names") or {},
-         "data.tpl_test67crew": (snap.get("data") or {}).get("tpl_test67crew") or []}
+         "data.tpl_9f5620bc49": (snap.get("data") or {}).get("tpl_9f5620bc49") or []}
     u = {"$set": s}
     if snap.get("crew_joined") is None:
         u["$unset"] = {"crew_joined": ""}
@@ -70,15 +70,15 @@ class TestBriefingRead:
         assert b["Port Trim"]["read_at"] and b["Port Trim"]["read_old"] is False
 
     def test_04_changed_briefing_goes_stale(self):
-        items = db.user_boats.find_one({"owner_id": OWNER, "boat_id": BOAT}, {"data.tpl_test67crew": 1})["data"]["tpl_test67crew"]
+        items = db.user_boats.find_one({"owner_id": OWNER, "boat_id": BOAT}, {"data.tpl_9f5620bc49": 1})["data"]["tpl_9f5620bc49"]
         new = [{**i, "briefing": i["briefing"] + " TEST changed"} if i.get("briefing") else i for i in items]
-        db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"data.tpl_test67crew": new}})
+        db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"data.tpl_9f5620bc49": new}})
         _, m = crew_member()
         b = {x["role"]: x for x in m["briefings"]}
         assert b["Port Trim"]["read_at"] is None and b["Port Trim"]["read_old"] is True
         ag = requests.get(f"{API}/crew/agreement", params={"owner_id": OWNER, "boat_id": BOAT}, headers=FREE).json()
         assert next(x for x in ag["roles"] if x["role"] == "Port Trim")["read_at"] is None
-        db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"data.tpl_test67crew": items}})
+        db.user_boats.update_one({"owner_id": OWNER, "boat_id": BOAT}, {"$set": {"data.tpl_9f5620bc49": items}})
         _, m = crew_member()
         assert next(x for x in m["briefings"] if x["role"] == "Port Trim")["read_at"]
 

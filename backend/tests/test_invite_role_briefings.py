@@ -31,14 +31,14 @@ def run(coro):
 
 @pytest.fixture(scope="module", autouse=True)
 def cleanup():
-    q = {"owner_id": "test-user-pro", "boat_id": "main", "data.tpl_test67crew.id": 10}  # Starboard Trim
+    q = {"owner_id": "test-user-pro", "boat_id": "main", "data.tpl_9f5620bc49.id": 10}  # Starboard Trim
     async def setb():
-        await _db().user_boats.update_one(q, {"$set": {"data.tpl_test67crew.$.briefing": "TEST brief: ease the jib on the bear away"}})
+        await _db().user_boats.update_one(q, {"$set": {"data.tpl_9f5620bc49.$.briefing": "TEST brief: ease the jib on the bear away"}})
     run(setb())
     yield
     async def c():
         d = _db()
-        await d.user_boats.update_one(q, {"$unset": {"data.tpl_test67crew.$.briefing": ""}})
+        await d.user_boats.update_one(q, {"$unset": {"data.tpl_9f5620bc49.$.briefing": ""}})
         await d.crew_invites.delete_many({"owner_id": "test-user-pro", "email": {"$in": EMAILS}})
         await d.user_boats.update_one({"owner_id": "test-user-pro", "boat_id": "main"}, {"$set": {"voyage_notes": ""}})
     run(c())

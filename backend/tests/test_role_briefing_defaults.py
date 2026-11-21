@@ -12,7 +12,7 @@ load_dotenv('/app/backend/.env')
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
 ADMIN = {"Authorization": "Bearer test_session_admin_1"}
 PRO = {"Authorization": "Bearer test_session_pro_1"}
-LID = "tpl_test67crew"
+LID = "tpl_9f5620bc49"
 TRIM = ("Watch out for the boom at all times! Re trimming, put 3 to 4 wraps clockwise on the drum, keep your thumbs out and palms facing the winch, "
         "and hold the tail clear of the pinch area without wrapping it around your hand or body.")
 
