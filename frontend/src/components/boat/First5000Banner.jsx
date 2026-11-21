@@ -4,6 +4,17 @@ import { api } from "@/lib/api";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const hideKey = (promo) => `mbp_${promo}_hidden_until`;
+const HIDE = "mbp:promo-hide";
+const STATE = "mbp:promo-state";
+let showing = false;
+// The Welcome screen asks the skipper to clear a showing promotion first (Continue hides it for 7 days).
+export const usePromoShowing = () => {
+  const [on, setOn] = useState(showing);
+  useEffect(() => { const f = (e) => setOn(e.detail); window.addEventListener(STATE, f); setOn(showing); return () => window.removeEventListener(STATE, f); }, []);
+  return on;
+};
+export const hidePromo = () => window.dispatchEvent(new Event(HIDE));
+const announce = (on) => { showing = on; window.dispatchEvent(new CustomEvent(STATE, { detail: on })); };
 
 const Close = ({ onClick }) => (
   <button type="button" className="icon-btn -mr-1 -mt-1" onClick={onClick} aria-label="Hide for 7 days" title="Hide for 7 days" data-testid="first5000-banner-close-btn">
@@ -18,9 +29,16 @@ export const First5000Banner = ({ variant = "app", onUpgrade, launchFree = true 
   const [hiddenAt, setHiddenAt] = useState(0);
   useEffect(() => { api.get(variant === "app" ? "/payments/offer" : "/payments/offer/public").then(({ data }) => setOffer(data)).catch(() => {}); }, [variant]);
   const promo = offer?.first200 ? (launchFree ? "first200" : null) : offer?.first5000 ? "first5000" : null;
-  if (!promo) return null;
-  if (variant === "app" && Math.max(hiddenAt, Number(localStorage.getItem(hideKey(promo)) || 0)) > Date.now()) return null;
+  const visible = !!promo && !(variant === "app" && Math.max(hiddenAt, Number(localStorage.getItem(hideKey(promo)) || 0)) > Date.now());
   const close = () => { const until = Date.now() + WEEK; localStorage.setItem(hideKey(promo), String(until)); setHiddenAt(until); };
+  useEffect(() => {
+    if (variant !== "app" || !visible) return undefined;
+    announce(true);
+    const f = () => { const until = Date.now() + WEEK; localStorage.setItem(hideKey(promo), String(until)); setHiddenAt(until); };
+    window.addEventListener(HIDE, f);
+    return () => { window.removeEventListener(HIDE, f); announce(false); };
+  }, [variant, visible, promo]);
+  if (!visible) return null;
   if (promo === "first200") {
     return (
       <aside className="mbp-pop flex items-start gap-3 rounded-lg border-2 border-emerald-400 bg-emerald-50 p-3 text-emerald-950" data-testid={`first200-banner-${variant}`}>

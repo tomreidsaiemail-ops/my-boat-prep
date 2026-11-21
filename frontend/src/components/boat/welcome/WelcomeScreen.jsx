@@ -3,11 +3,14 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { WelcomeHelp } from "@/components/boat/welcome/WelcomeHelp";
 import { WelcomeQuestions } from "@/components/boat/welcome/WelcomeQuestions";
+import { PromoFirst } from "@/components/boat/welcome/PromoFirst";
+import { usePromoShowing } from "@/components/boat/First5000Banner";
 
 // The Welcome list: Home button and Model Vessel help, then the questions that trim the app to what the skipper wants.
 // The section the skipper was last on is remembered (on any device) and opened again.
 export const WelcomeScreen = ({ online, welcomeHome, homeId, onMakeHome, onSwitchModel, onTutorial, guided = false }) => {
   const { setUser } = useAuth();
+  const promo = usePromoShowing();
   const [w, setW] = useState(null);
   const place = useRef("");
   useEffect(() => {
@@ -19,6 +22,7 @@ export const WelcomeScreen = ({ online, welcomeHome, homeId, onMakeHome, onSwitc
     const id = place.current === "help" ? "welcome-help" : `welcome-q-${place.current}`;
     setTimeout(() => document.querySelector(`[data-testid="${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
   }, [!w]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (promo) return <PromoFirst />;
   if (!w) return <p className="text-sm text-[var(--muted)]" data-testid="welcome-loading">{online ? "Loading the Welcome screen..." : "The Welcome screen needs a signal."}</p>;
   const save = (patch) => api.put("/welcome", patch).then(() => api.get("/auth/me")).then(({ data }) => setUser(data)).catch(() => {});
   const at = (section) => { if (section !== w.section) { setW((s) => ({ ...s, section })); api.put("/welcome", { section }).catch(() => {}); } };

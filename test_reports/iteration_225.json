@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only test of the Boat Budget year fixes, run as test-user-pro (cookie test_session_pro_1) at 390x844. The app clock year is 2026. All 8 requested checks passed. (1) budget-year-select has exactly 4 options: 2027, 2026 (this year), 2025, 2024. (2) There is no budget-total-all-card, no budget-colour-key, and no 'Year totals add up' or 'Total cost (all years)' text. The 3 remaining total cards use plain border-[var(--line)] bg-white with no tint. (3) There is no budget-locked-banner in 2025 or 2024. In 2024 a row's description, cost and date were all edited, and a new row was added and then deleted through the confirm dialog. In 2025 a row was added and its cost set. (4) budget-date-<id> min/max match the selected year (checked for 2024, 2025, 2026 and 2027). A 2025 date in 2026 showed the toast 'Pick a date in 2026 for the 2026 budget' and was not saved, and a 2026 date in 2024 was rejected the same way. A date in the right year saved. (5) Rows normally have data-tone='none'. I added 2 rows straight into Mongo: a year-2022 row, which showed under 2024, and a year-2026 row with paid 2025-02-02. Both had data-tone='red', background rgb(254,226,226), and the budget-mismatch note when expanded. Picking a 2024 date on the 2022 row turned it back to 'none'. (6) Quick apply is disabled when the row has no cost and enabled once a cost is set. The budget-quick-apply-dialog shows the right title and note. 'Not now' changed nothing (no row appeared in 2027). 'Apply to all years' showed a success toast. The existing 2025 row with the same description changed from 5 to 123.45, and new rows at 123.45 were added in 2027 and 2024. The 2026 row was not duplicated. (7) Change history recorded the cost, date and description changes and the 'Quick applied from the 2026 budget' creation. Everything survived a reload, so it persists through backend sync.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Mismatched rows still count in their table year's total and in the top total cards. Example: a row with year 2026 but paid 2025 adds to 'Total cost this year so far (2026)'. This matches the shownYear design, but you may want to confirm it is what the user wants.",
+    "applyCostAllYears matches rows by description only. A year that already holds several rows with the same description gets all of them updated. Mismatched old rows shown under 2024 (2023 or earlier) also get updated. This is acceptable but worth knowing.",
+    "update() checks a date only when patch.paid is set. Clearing a date still resets the row's year to the table year. That is fine, but it also quietly moves an old 2022 row into 2024 when its date is cleared."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "TEST_ rows were added on test-user-pro/main boatBudget through the UI, plus 2 rows (ids 9990000000001 and 9990000000002) pushed straight into Mongo user_boats.data.boatBudget. All of them were removed by id afterwards, leaving the 12 original template rows.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "test-user-pro has boatBudget on boats main and model_vessel. Boat data lives in Mongo user_boats {owner_id, boat_id}, under data.boatBudget, with list_ts.boatBudget as the sync timestamp. To inject rows, $push them and bump list_ts.boatBudget and updated_at. The 'Arrived?' dialog can show up several seconds after load, so keep dismissing in a loop. ConfirmDelete testIds are <testId>-dialog, -confirm-btn and -cancel-btn. Expanded rows stay open across year switches because openIds is kept, so check aria-expanded before clicking budget-expand."
+}
