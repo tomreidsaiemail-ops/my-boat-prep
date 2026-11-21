@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRightLeft, ChevronRight, Wrench, X } from "lucide-react";
 import { AttrField } from "@/components/boat/maint/AttrField";
+import { DatePopover } from "@/components/boat/DatePopover";
 import { DUE_KEY, LAST_KEY, attrText, dueTone, localDate, withAge } from "@/lib/maint";
 
 const TONES = { orange: "bg-orange-100", red: "bg-red-100" };
@@ -22,15 +23,15 @@ const Cell = ({ value, onSave, testId, bold, flagged, readOnly }) => {
   );
 };
 
-// Locale date (dd/mm/ccyy or mm/dd/ccyy) over an invisible native date picker; an inherited category date shows in grey italics.
-const DateCell = ({ value, inherited, onChange, label, testId, readOnly }) => (
-  <span className="relative block" title={inherited && value ? "From the category due date" : label}>
+// Locale date (dd/mm/ccyy or mm/dd/ccyy) that opens a calendar; an inherited category date shows in grey italics.
+const DateCell = ({ value, inherited, onChange, label, testId, readOnly }) => {
+  const text = (
     <span className={`budget-cell flex items-center overflow-hidden !px-1 font-mono !text-[12px] tracking-tighter ${!value ? "text-slate-400" : inherited ? "italic text-slate-500" : ""}`}
-      data-testid={`${testId}-text`}>{value ? localDate(value) : "Date"}</span>
-    {!readOnly && <input type="date" value={inherited ? "" : value || ""} onChange={(e) => onChange(e.target.value)} onClick={(e) => e.currentTarget.showPicker?.()} aria-label={label}
-      className="absolute inset-0 h-full w-full cursor-pointer opacity-0" data-testid={testId} />}
-  </span>
-);
+      title={inherited && value ? "From the category due date" : label} data-testid={`${testId}-text`}>{value ? localDate(value) : "Date"}</span>
+  );
+  if (readOnly) return text;
+  return <DatePopover value={inherited ? "" : value || ""} onChange={onChange} label={label} testId={testId}>{text}</DatePopover>;
+};
 
 export const MaintRow = ({ item, due, open, onOpen, onChange, onDelete, defs, ctx, number, tools, cols }) => {
   const id = item.id;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight, CopyCheck, Link2, X } from "lucide-react";
 import { mismatched, shortDate } from "@/lib/budget";
+import { DatePopover } from "@/components/boat/DatePopover";
 
 const COST_RE = /^\d{0,9}([.,]\d{0,2})?$/;
 const TONES = { red: "bg-red-100" };
@@ -15,13 +16,11 @@ const Cell = ({ value, onSave, testId, filter, className = "budget-cell", ...res
   );
 };
 
-// Compact dd/mm/yy text over an invisible native date picker, so the date column stays narrow on a phone.
+// Compact dd/mm/yy text that opens a calendar limited to the budget year, so the date column stays narrow on a phone.
 const DateCell = ({ value, onChange, testId, year }) => (
-  <span className="relative block">
-    <span className={`budget-cell flex items-center overflow-hidden !px-1 font-mono !text-[13px] tracking-tight ${value ? "" : "text-slate-400"}`}>{value ? shortDate(value).replace(/\/(\d{2})(\d{2})$/, "/$2") : "Date"}</span>
-    <input type="date" value={value || ""} min={`${year}-01-01`} max={`${year}-12-31`} onChange={(e) => onChange(e.target.value)} onClick={(e) => e.currentTarget.showPicker?.()} aria-label="Date paid"
-      className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed" data-testid={testId} />
-  </span>
+  <DatePopover value={value} onChange={onChange} min={`${year}-01-01`} max={`${year}-12-31`} label="Date paid" testId={testId}>
+    <span className={`budget-cell flex cursor-pointer items-center overflow-hidden !px-1 font-mono !text-[13px] tracking-tight ${value ? "" : "text-slate-400"}`}>{value ? shortDate(value).replace(/\/(\d{2})(\d{2})$/, "/$2") : "Date"}</span>
+  </DatePopover>
 );
 
 const when = (iso) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
