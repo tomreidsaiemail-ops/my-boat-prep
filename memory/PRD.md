@@ -1115,3 +1115,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Welcome "Do you want to make your crew safer?" is its own fold section (welcome-crew-toggle); the Model Vessel boat-list Show me collapses it.
 - 2026-06: Welcome help renamed "Home, Model Vessel and Safer Crew Help"; 3 mixed-case fold sub-sections (Home Button Setting / Do you want to make your crew safer? / Model Vessel, welcome-mv-toggle) via FoldHeader `mixed` prop; Thanks tick stays below them.
 - 2026-06: Set Up Wizard "Open Boat Inventory" expands Zone Maps and scrolls to the new overview (mbp:show-zone-map event with detail.mapId).
+- 2026-06: Set Up Wizard blank done panel adds note: cupboard definitions are kept; re-drag zones or use Magically Place Colours on the new schematic.

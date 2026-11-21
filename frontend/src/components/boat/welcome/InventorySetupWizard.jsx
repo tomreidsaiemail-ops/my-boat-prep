@@ -49,6 +49,7 @@ const DonePanel = ({ blank, onInventory, onClose }) => (
     <p className="flex items-start gap-2 text-sm font-bold text-emerald-800"><CheckCircle2 className="h-5 w-5 shrink-0" />
       {blank ? "You're set up using a blank schematic, with its colours on your Boat Inventory Zone Map Overview." : "You're set up. Your schematic and its colours are on your Boat Inventory Zone Map Overview."}</p>
     {blank && <p className="text-sm">When you have a schematic from your boat&apos;s operating manual, or an image of your own, add it in Boat Inventory with Create Zone Map Overview, then remove the blank one.</p>}
+    {blank && <p className="text-sm" data-testid="setup-done-keep-note">You won&apos;t lose any cupboard definitions: just drag and drop your zones onto the new schematic again, or choose Magically Place Colours, which will do it for you.</p>}
     <p className="text-sm">Next, tap each colour (start with the Galley) to take photos of that zone and scan its cupboards.</p>
     <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={onInventory} data-testid="setup-open-inventory-btn"><Package className="h-4 w-4" />Open Boat Inventory</button>
     <button type="button" className="btn-ghost h-11 justify-center" onClick={onClose} data-testid="setup-back-welcome-btn">Back to Welcome</button>
