@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { WHERE_MAX } from "@/components/boat/inventory/AreaEditDialog";
+import { glow } from "@/lib/glow";
 
 // Zone screen: quickly create empty cupboards (name + optional location) to Magic Scan later in a batch.
-export const QuickCupboards = ({ zone, onAdd, onDone, t }) => {
+export const QuickCupboards = ({ zone, onAdd, onDone, t, coach = false }) => {
   const [name, setName] = useState("");
   const [where, setWhere] = useState("");
   const [added, setAdded] = useState([]);
   const [error, setError] = useState("");
   useEffect(() => { setName(""); setWhere(""); setAdded([]); setError(""); }, [zone.label]);
+  // No cupboards on the boat yet: the whole section glows for 5 seconds, scrolled into view.
+  useEffect(() => {
+    if (!coach) return undefined;
+    const id = setTimeout(() => { document.querySelector(`[data-testid="${t}-quick"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); glow(`${t}-quick`, 5000); }, 400);
+    return () => clearTimeout(id);
+  }, [coach, t]);
   const save = () => {
     const n = name.trim();
     if (!n) { setError("Please enter the cupboard name"); return null; }
@@ -28,6 +35,7 @@ export const QuickCupboards = ({ zone, onAdd, onDone, t }) => {
     <form onSubmit={add} className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-[var(--panel)] p-3" data-testid={`${t}-quick`}>
       <b className="text-sm text-[var(--navy)]">Quick add {zone.label} cupboards</b>
       <span className="text-xs text-[var(--muted)]">Name each cupboard now and Magic Scan them later in a batch. Names only need to be unique within {zone.label}.</span>
+      {coach && <p className="rounded-md bg-yellow-200 px-2.5 py-2 text-sm font-bold text-[var(--navy)]" data-testid={`${t}-quick-coach`}>Add the cupboard and its location, and click Add, then click Done and you can Magic Scan the cupboard.</p>}
       {added.length > 0 && (
         <ul className="flex flex-wrap gap-1.5" data-testid={`${t}-quick-added`}>
           {added.map((a) => <li key={a.id} className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-900" data-testid={`${t}-quick-added-${a.id}`}><Check className="h-3 w-3" />{a.name}</li>)}

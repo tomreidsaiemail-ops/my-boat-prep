@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronsUpDown, HelpCircle, Info, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
@@ -355,8 +355,19 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     return { id };
   };
   // Done on quick-add: fold every other zone and open the first new cupboard.
+  // First cupboard coaching: shown once per boat; deleting every cupboard brings it back.
+  const coachKey = `mbp_cupboard_coach:${boat?.key || boat?.boat_id || "local"}`;
+  const [zoneCoach, setZoneCoach] = useState(false);
+  const [coach, setCoach] = useState(null);
+  useEffect(() => { setZoneCoach(!!zone && !readOnly && !areas.length && localStorage.getItem(coachKey) !== "1"); }, [zone]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hadAreas = useRef(areas.length > 0);
+  useEffect(() => {
+    if (areas.length) hadAreas.current = true;
+    else if (hadAreas.current) { hadAreas.current = false; localStorage.removeItem(coachKey); }
+  }, [areas.length, coachKey]);
   const quickDone = (z, firstId) => {
     setZone(null);
+    if (firstId && zoneCoach) { localStorage.setItem(coachKey, "1"); setCoach({ id: firstId, scan: !areas.some((a) => areaPhotos(a).length), sub: !areas.some((a) => a.parent_id) }); }
     if (!firstId) return;
     setFoldList([...new Set([...groupKeys, ...pickZones.map((x) => x.colour), "none"])].filter((k) => k !== z.colour));
     setFresh(firstId);
@@ -461,7 +472,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <InventoryArea key={a.id} area={a} sub={!!parent} expand={parent ? undefined : expand[a.id]} colour={zones[a.id]?.hex || (coloured ? "var(--line)" : undefined)} subCount={kids.length} subItems={kids.reduce((n, k) => n + (k.items || []).length + (linked[k.id] || []).length, 0)} readOnly={ro} onAdd={addItem(a)} query={q} visible={visible}
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
-        onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id}
+        onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id} coach={coach?.id === a.id ? coach : null}
         focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0}
         onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
         onToggle={(i) => toggleItem(a.id, i)}
@@ -477,7 +488,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         }} />}>
         {!parent && subs.length > 0 && <ul className="flex flex-col border-t border-[var(--line)] pt-2" data-testid={`inventory-subs-${a.id}`}>{subs.map((s) => renderArea(s, a))}</ul>}
         {!readOnly && !q && <SubAreaTools area={a} sub={!!parent} parentName={parent?.name} canMerge={!kids.length && tops.length > 1}
-          onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} />}
+          onAddSub={() => setDialog({ type: "sub", area: a })} onMerge={() => setDialog({ type: "merge", area: a })} onTakeOut={() => takeOut(a)} coach={coach?.id === a.id && coach.sub} />}
       </InventoryArea>
     );
   };
@@ -559,7 +570,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
         onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
-        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} />
+        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper

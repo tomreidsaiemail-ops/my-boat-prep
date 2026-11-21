@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Highlight } from "@/components/boat/Highlight";
+import { glow, wait } from "@/lib/glow";
 import { Check, ChevronDown, Folder, Link2, Loader2, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
@@ -60,11 +61,20 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, expand, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, expand, coach = null, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   // Expand all / Collapse all on the zone row.
   useEffect(() => { if (expand) setOpen(expand.open); }, [expand]);
+  // First cupboard: "Upload image for Magic Scan" then "Add a folder or box" each glow 5 seconds.
+  useEffect(() => {
+    if (!coach) return;
+    (async () => {
+      await wait(900);
+      if (coach.scan) { document.querySelector(`[data-testid="inventory-scan-btn-${area.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); await glow(`inventory-scan-btn-${area.id}`, 5000); }
+      if (coach.sub) { document.querySelector(`[data-testid="inventory-add-sub-${area.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }); await glow(`inventory-add-sub-${area.id}`, 5000); }
+    })();
+  }, [coach]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = openState || !!query;
   const items = area.items || [];
   const listed = visible || items;
@@ -117,6 +127,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
                 {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {scanning ? "Scanning..." : "Upload image for Magic Scan..."}
                 <input type="file" accept="image/*" className="hidden" disabled={scanning} onChange={(e) => onScan(e)} data-testid={`inventory-scan-input-${area.id}`} />
               </label>
+              {coach?.scan && <p className="basis-full rounded-md bg-yellow-200 px-2.5 py-2 text-sm font-bold text-[var(--navy)]" data-testid={`inventory-scan-coach-${area.id}`}>If this is your first Magic Scan, take a photo of a cutlery drawer or a group of objects, then click &quot;Upload image for Magic Scan&quot;.</p>}
               {onScanPhotos && <button type="button" className="btn-ghost h-11 px-3 text-sm" disabled={scanning} onClick={onScanPhotos} data-testid={`inventory-scan-photos-btn-${area.id}`}><Sparkles className="h-4 w-4" /> Magic Scan its {(area.photos || [area.photo]).filter(Boolean).length > 1 ? `${(area.photos || []).length} photos` : "photo"}</button>}
             </div>
           )}

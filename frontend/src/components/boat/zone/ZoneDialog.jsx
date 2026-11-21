@@ -51,7 +51,7 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 };
 
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
-export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary }) => {
+export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary, coach = false }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -110,7 +110,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
             <ScanLine className="h-5 w-5" /> Scan {zone.label} cupboards
           </button>
         )}
-        {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} />}
+        {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} coach={coach} />}
         {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} {areaCount === 1 ? "cupboard" : "cupboards"} already in {zone.label}</p>}
         {onDeleteZone && <DeleteZone zone={zone} summary={deleteSummary} onDelete={onDeleteZone} t={t} />}
         <button type="button" className="btn-solid h-12 shrink-0 justify-center" disabled={!!busy} onClick={onClose} data-testid={`${t}-done-btn`}>Done</button>
