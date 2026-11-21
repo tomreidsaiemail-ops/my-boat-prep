@@ -21,7 +21,11 @@ export const newBudgetItem = (id, label = "", product = "", year = new Date().ge
 // Year ledgers: every row belongs to one calendar year, so past years are never overwritten by this year's budget.
 export const thisYear = () => new Date().getFullYear();
 export const ledgerYear = (i) => Number(i.year) || yearOf(i) || thisYear();
-export const budgetYears = (items) => [...new Set([thisYear(), ...items.map(ledgerYear)])].sort((a, b) => b - a);
+// Budget years on offer: next year, this year and the 2 years before; older rows show (in red) under the oldest year.
+export const budgetYears = (now = thisYear()) => [now + 1, now, now - 1, now - 2];
+export const shownYear = (i, now = thisYear()) => Math.min(now + 1, Math.max(now - 2, ledgerYear(i)));
+// Red: the row is from another year, or its Date Paid isn't in the year it sits in.
+export const mismatched = (i, year) => ledgerYear(i) !== year || (!!yearOf(i) && yearOf(i) !== year);
 // Rows saved before year ledgers existed get their year from Date Paid (else this year).
 export const withYears = (items) => (items.every((i) => i.year) ? items : items.map((i) => (i.year ? i : { ...i, year: yearOf(i) || thisYear() })));
 const TRACKED = { label: "Description", product: "Product", url: "Web link", paid: "Date paid", cost: "Cost" };
@@ -32,7 +36,7 @@ export const tracked = (item, patch) => {
   return changes.length ? { ...patch, history: [...(item.history || []), ...changes].slice(-50) } : patch;
 };
 // "Start <year> budget": last year's rows copied as the new year's plan (costs kept as planned amounts, dates cleared).
-export const copyYear = (items, from, to, start = Date.now()) => items.filter((i) => ledgerYear(i) === from).map((i, n) => ({
+export const copyYear = (items, from, to, start = Date.now()) => items.filter((i) => shownYear(i) === from).map((i, n) => ({
   ...newBudgetItem(start + n, i.label, i.product, to), url: i.url || "", cost: i.cost || "",
   history: [{ at: new Date().toISOString(), field: "Created", from: "", to: `Copied from the ${from} budget` }],
 }));
@@ -58,13 +62,18 @@ export const budgetResetOption = (s) => ((s.deleted_lists || []).includes(BUDGET
 
 export const costOf = (i) => { const n = parseFloat(String(i.cost || "").replace(/,/g, "")); return Number.isFinite(n) ? n : 0; };
 export const yearOf = (i) => (/^\d{4}-\d{2}-\d{2}$/.test(i.paid || "") ? Number(i.paid.slice(0, 4)) : null);
-export const ageTone = (i, now = new Date().getFullYear()) => {
-  const y = yearOf(i);
-  if (!y) return "";
-  return y === now - 1 ? "orange" : y <= now - 2 ? "red" : "";
-};
 export const sumAll = (items) => items.reduce((t, i) => t + costOf(i), 0);
-export const sumYear = (items, year) => sumAll(items.filter((i) => ledgerYear(i) === year));
+export const sumYear = (items, year) => sumAll(items.filter((i) => shownYear(i) === year));
+const sameItem = (a, b) => (a.label || "").trim().toLowerCase() === (b.label || "").trim().toLowerCase();
+// Quick apply: this row's cost on the same item (by description) in every other budget year, adding it where missing.
+export const applyCostAllYears = (items, row, from, start = Date.now()) => {
+  const others = budgetYears().filter((y) => y !== from);
+  const next = items.map((i) => (i.id !== row.id && others.includes(shownYear(i)) && sameItem(i, row) ? { ...i, ...tracked(i, { cost: row.cost }) } : i));
+  const missing = others.filter((y) => !items.some((i) => shownYear(i) === y && sameItem(i, row)));
+  const added = missing.map((y, n) => ({ ...newBudgetItem(start + n, row.label, row.product, y), url: row.url || "", cost: row.cost,
+    history: [{ at: new Date().toISOString(), field: "Created", from: "", to: `Quick applied from the ${from} budget` }] }));
+  return [...next, ...added];
+};
 export const sumPaid = (items) => sumAll(items.filter((i) => yearOf(i)));
 
 export const money = (n, currency) => {

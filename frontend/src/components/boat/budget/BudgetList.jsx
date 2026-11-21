@@ -9,7 +9,6 @@ export const BudgetList = ({ items, setItems, boat, onBoatChange, premium, onlin
   const [editing, setEditing] = useState(false);
   const currency = budgetCurrency(boat);
   const [year, setYear] = useState(thisYear());
-  const years = budgetYears(items);
   useEffect(() => { if (items.some((i) => !i.year)) setItems(withYears); }, [items, setItems]);
   return (
     <section className="flex flex-col gap-4" data-testid="budget-list">
@@ -18,7 +17,7 @@ export const BudgetList = ({ items, setItems, boat, onBoatChange, premium, onlin
       <label className="flex items-center gap-2 self-start text-sm font-bold" htmlFor="budget-year">
         Budget year
         <select id="budget-year" value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input !h-10 !w-44 py-0 text-sm" data-testid="budget-year-select">
-          {[thisYear() + 1, ...years].filter((y, n, a) => a.indexOf(y) === n).sort((a, b) => b - a).map((y) => <option key={y} value={y}>{y}{y === thisYear() ? " (this year)" : ""}</option>)}
+          {budgetYears().map((y) => <option key={y} value={y}>{y}{y === thisYear() ? " (this year)" : ""}</option>)}
         </select>
       </label>
       <BudgetTable items={items} setItems={setItems} currency={currency} guard={guard} year={year} />

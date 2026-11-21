@@ -6,14 +6,12 @@ import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { BudgetRow } from "@/components/boat/budget/BudgetRow";
 import { BudgetTotals } from "@/components/boat/budget/BudgetTotals";
 import { OpeningStore } from "@/components/boat/budget/OpeningStore";
-import { Lock, LockOpen } from "lucide-react";
-import { copyYear, ledgerYear, money, newBudgetItem, storeUrl, sumAll, thisYear, tracked } from "@/lib/budget";
+import { applyCostAllYears, budgetYears, copyYear, costOf, money, newBudgetItem, shownYear, storeUrl, sumAll, tracked, yearOf } from "@/lib/budget";
 
 export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => {
-  const [unlocked, setUnlocked] = useState([]);
-  const items = all.filter((i) => ledgerYear(i) === year);
-  const locked = year < thisYear() && !unlocked.includes(year);
-  const prior = all.some((i) => ledgerYear(i) === year - 1);
+  const items = all.filter((i) => shownYear(i) === year);
+  const prior = all.some((i) => shownYear(i) === year - 1);
+  const [applying, setApplying] = useState(null);
   const [linkFor, setLinkFor] = useState(null);
   const [doomed, setDoomed] = useState(null);
   const [opening, setOpening] = useState(null);
@@ -21,9 +19,19 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
   const [openIds, setOpenIds] = useState([]);
   const allOpen = items.length > 0 && items.every((i) => openIds.includes(i.id));
   const toggleRow = (id) => setOpenIds((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]));
-  const update = (id, patch) => !locked && guard() && setItems((list) => list.map((i) => (i.id === id ? { ...i, ...tracked(i, patch) } : i)));
+  const update = (id, patch) => {
+    if (patch.paid && yearOf(patch) !== year) { toast.error(`Pick a date in ${year} for the ${year} budget`); return; }
+    if (guard()) setItems((list) => list.map((i) => (i.id === id ? { ...i, ...tracked(i, patch), ...("paid" in patch ? { year } : {}) } : i)));
+  };
+  const quickApply = () => {
+    const row = applying;
+    setApplying(null);
+    if (!guard()) return;
+    setItems((list) => applyCostAllYears(list, row, year));
+    toast.success(`${money(costOf(row), currency)} applied to "${row.label}" in every budget year`);
+  };
   const remove = (item) => {
-    if (locked || !guard()) return;
+    if (!guard()) return;
     const index = all.findIndex((i) => i.id === item.id);
     setItems((list) => list.filter((i) => i.id !== item.id));
     const undo = () => setItems((list) => (list.some((i) => i.id === item.id) ? list : [...list.slice(0, index), item, ...list.slice(index)]));
@@ -51,14 +59,7 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
   };
   return (
     <div className="flex flex-col gap-3">
-      {locked && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-slate-50 px-3 py-2 text-sm" data-testid="budget-locked-banner">
-          <Lock className="h-4 w-4 shrink-0 text-[var(--navy)]" /> <span className="min-w-0 flex-1"><b>{year}</b> is a past year, so it's locked to keep your records intact. Web links can still be changed.</span>
-          <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-3 text-xs" onClick={() => setUnlocked((u) => [...u, year])} data-testid="budget-unlock-btn"><LockOpen className="h-4 w-4" /> Unlock to correct</button>
-        </div>
-      )}
-      {!locked && year < thisYear() && <p className="text-xs font-bold text-amber-800" data-testid="budget-unlocked-note">{year} is unlocked. Every change is kept in each row's change history.</p>}
-      {!items.length && prior && !locked && (
+      {!items.length && prior && (
         <button type="button" className="btn-solid min-h-11 w-full" onClick={startYear} data-testid="budget-start-year-btn">Start {year} budget from {year - 1}</button>
       )}
       <div className="overflow-x-auto rounded-lg border-[1.5px] border-[var(--line)] bg-white" data-testid="budget-table-wrap">
@@ -79,10 +80,10 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
           </thead>
           <tbody>
             {items.map((item) => (
-              <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => !locked && setDoomed(item)} locked={locked}
+              <BudgetRow key={item.id} item={item} open={openIds.includes(item.id)} onOpen={() => toggleRow(item.id)} onChange={(p) => update(item.id, p)} onDelete={() => setDoomed(item)} year={year} onQuickApply={() => setApplying(item)}
                 onLink={() => (item.url ? setOpening(item) : guard() && setLinkFor(item))} />
             ))}
-            {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items in {year} yet.{locked ? "" : " Add one below."}</td></tr>}
+            {!items.length && <tr><td colSpan={4} className="p-4 text-center text-[var(--muted)]" data-testid="budget-empty">No budget items in {year} yet. Add one below.</td></tr>}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-[var(--navy)] bg-slate-50">
@@ -93,11 +94,15 @@ export const BudgetTable = ({ items: all, setItems, currency, guard, year }) => 
           </tfoot>
         </table>
       </div>
-      {!locked && <form onSubmit={add} className="flex gap-2" data-testid="budget-add-form">
+      <form onSubmit={add} className="flex gap-2" data-testid="budget-add-form">
         <input value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={200} placeholder="New budget item..." aria-label="New budget item" className="field-input" data-testid="budget-add-input" />
         <button type="submit" className="btn-solid shrink-0 gap-1 px-4" data-testid="budget-add-btn"><Plus className="h-4 w-4" /> Add</button>
-      </form>}
-      <BudgetTotals items={all} currency={currency} total={money(sumAll(all), currency)} />
+      </form>
+      <BudgetTotals items={all} currency={currency} />
+      <ConfirmDelete item={applying ? {} : null} danger={false} testId="budget-quick-apply" confirmLabel="Apply to all years" cancelLabel="Not now"
+        title={`Quick apply ${money(applying ? costOf(applying) : 0, currency)} to "${applying?.label || "this item"}"?`}
+        note={`The cost of "${applying?.label || "this item"}" becomes ${money(applying ? costOf(applying) : 0, currency)} in ${budgetYears().filter((y) => y !== year).join(", ")}. Years without this item get it added.`}
+        onClose={() => setApplying(null)} onConfirm={quickApply} />
       <TextDialog open={!!linkFor} title="Web link" testId="budget-url" inputType="url" placeholder="www.example.com/product" confirmLabel="Save"
         description={`Where do you buy ${linkFor?.product || linkFor?.label || "this"}? Leave it empty to remove the link.`} initial={linkFor?.url || ""}
         onConfirm={saveLink} onClose={() => setLinkFor(null)} />
