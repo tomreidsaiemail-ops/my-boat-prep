@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Ship } from "lucide-react";
+import { ArrowRight, Ship } from "lucide-react";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
 import { closeMenu, glow, openMenu, previewList, wait } from "@/lib/glow";
 
@@ -47,11 +47,21 @@ const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("s
 const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, pulse === true); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
 // Home, Model Vessel and Safer Crew help: one 5-second yellow highlight of the list picker, Home button and Home icon, then folded into one line once the skipper ticks "Thanks".
-export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
+// guided (brand new user): one sub-section at a time, each ending in a yellow Continue, then the "Thanks" tick glows.
+const GoOn = ({ onClick, testId }) => (
+  <button type="button" onClick={onClick} className="btn-solid mt-1 h-11 self-start gap-2 !border-2 !border-yellow-500 !bg-yellow-300 px-5 !text-[var(--navy)] hover:!bg-yellow-400" data-testid={testId}>
+    Continue <ArrowRight className="h-4 w-4" />
+  </button>
+);
+
+export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen, guided = false }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
+  const [stage, setStage] = useState(guided && !ack ? "home" : "");
   const [homeOpen, setHomeOpen] = useState(true);
-  const [crewOpen, setCrewOpen] = useState(true);
-  const [mvOpen, setMvOpen] = useState(true);
+  const [crewOpen, setCrewOpen] = useState(!stage);
+  const [mvOpen, setMvOpen] = useState(!stage);
+  const toCrew = () => { setHomeOpen(false); setCrewOpen(true); setStage("crew"); };
+  const toMv = () => { setCrewOpen(false); setMvOpen(true); setStage("mv"); };
   const [mvNote, setMvNote] = useState(false);
   const ran = useRef(false);
   const tour = async () => {
@@ -74,6 +84,7 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
               <P testId="welcome-home-set-new">If cross icon showing, click it sets new home.<ShowMe onClick={() => showCross(true)} testId="welcome-show-set-new-btn" /></P>
             </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
+          {stage === "home" && <GoOn onClick={toCrew} testId="welcome-home-continue-btn" />}
         </div>}
         <FoldHeader open={crewOpen} onToggle={() => setCrewOpen((o) => !o)} testId="welcome-crew-toggle" mixed>Do you want to make your crew safer?</FoldHeader>
         {crewOpen && <P testId="welcome-crew-help">
@@ -82,6 +93,7 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
           Take the Model Vessel tutorial<br />
           Crew Registration and Invites<ShowMe onClick={showTutorial} testId="welcome-show-crew-tutorial-btn" /><br />
           Any changes, even crew registrations, stay with the Model Vessel.</P>}
+        {crewOpen && stage === "crew" && <GoOn onClick={toMv} testId="welcome-crew-continue-btn" />}
         <FoldHeader open={mvOpen} onToggle={() => setMvOpen((o) => !o)} testId="welcome-mv-toggle" mixed>Model Vessel</FoldHeader>
         {mvOpen && <div className="flex flex-col gap-3" data-testid="welcome-mv-help">
         <P testId="welcome-mv-boat-list">The Model Vessel is like another boat you own<ShowMe onClick={() => { setCrewOpen(false); showBoats(); }} testId="welcome-show-boats-btn" /></P>
@@ -90,7 +102,7 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
         <P>You can switch to the Model Vessel while going through the Welcome screen, or hop out to the Model Vessel or any list like Trip Planning. The Welcome screen opens each time you sign in, right where you left off, until you have been through every section. After that you select it like any other list.</P>
         {onSwitchModel && <button type="button" className="btn-solid h-11 justify-center" onClick={onSwitchModel} data-testid="welcome-switch-model-btn"><Ship className="h-4 w-4" />Switch to the Model Vessel</button>}
         </div>}
-        <label className="flex cursor-pointer items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm font-bold" data-testid="welcome-mv-ack">
+        <label className={`flex cursor-pointer items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm font-bold ${stage === "mv" && !ack ? "bg-yellow-200" : ""}`} data-testid="welcome-mv-ack">
           <input type="checkbox" checked={!!ack} disabled={!!ack} onChange={thanks} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="welcome-mv-ack-checkbox" />
           <span>Thanks for the info on the Model Vessel, I&apos;ll check it out later by switching to it as if it was another boat I own.</span>
         </label>

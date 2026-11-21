@@ -1,6 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Home, X } from "lucide-react";
 import { glow } from "@/lib/glow";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+// "I am interested" in finding things: what happens after Welcome, before the question folds.
+const FindNoteDialog = ({ open, onContinue }) => (
+  <Dialog open={open} onOpenChange={(o) => { if (!o) onContinue(); }}>
+    <DialogContent className="max-w-md rounded-lg border-2 border-[var(--navy)]" guard={false} data-testid="welcome-find-note">
+      <DialogHeader>
+        <DialogTitle className="font-display text-lg font-extrabold text-[var(--navy)]">Finding things on your boat</DialogTitle>
+        <DialogDescription className="text-sm text-[var(--ink)]">At the end of the Welcome page, My Boat Prep will open Boat Inventory and guide you through creating your zones like Cockpit and Galley, help you create your first cupboard, and even a box in that cupboard.</DialogDescription>
+      </DialogHeader>
+      <button type="button" className="btn-solid h-11 justify-center" onClick={onContinue} data-testid="welcome-find-note-continue-btn">Continue with Welcome...</button>
+    </DialogContent>
+  </Dialog>
+);
 
 const MV = "Admin - Model Vessel - ";
 // What an "I am interested" answer recommends: Model Vessel tutorials, and a home list if none is recommended yet.
@@ -22,7 +36,7 @@ const Choice = ({ on, label, onPick, testId }) => (
 
 // One question; once answered it folds, green (interested) or light red.
 // A new question: the bold title of the one just answered (folded) glows 5s, then this one's title 5s, then its bullets go grey one by one.
-const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey }) => {
+const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) => {
   const [open, setOpen] = useState(!answer || focus);
   const ran = useRef(false);
   useEffect(() => {
@@ -34,7 +48,7 @@ const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey }) => {
       for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft");
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const pick = (v) => { onAnswer(v); setOpen(false); };
+  const pick = async (v) => { if (v === "yes" && beforeYes) await beforeYes(); onAnswer(v); setOpen(false); };
   const tone = answer === "yes" ? "border-emerald-600 bg-emerald-50" : answer === "no" ? "border-red-300 bg-red-50" : "border-[var(--navy)] bg-white";
   return (
     <div className={`flex flex-col gap-2 rounded-md border-[1.5px] p-3 ${tone}`} data-testid={`welcome-q-${q.key}`}>
@@ -63,10 +77,13 @@ export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeH
   const shown = next < 0 ? questions : questions.slice(0, next + 1);
   const rec = recommendations(questions, answers);
   const [justAnswered, setJustAnswered] = useState(null);
+  const [findNote, setFindNote] = useState(null);
   return (
     <section className="flex flex-col gap-3" data-testid="welcome-questions">
       <p className="text-sm">My Boat Prep would like to know what you would like from it, so we don&apos;t clutter up your session with features you have no interest in. You can always turn them on later: when getting started, less is more.</p>
-      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => { setJustAnswered(q.key); onAnswer(q.key, v); }} focus={focus === q.key} onOpen={() => onOpen(q.key)} prevKey={justAnswered} />)}
+      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => { setJustAnswered(q.key); onAnswer(q.key, v); }} focus={focus === q.key} onOpen={() => onOpen(q.key)} prevKey={justAnswered}
+        beforeYes={q.key === "find" ? () => new Promise((done) => setFindNote(() => done)) : undefined} />)}
+      <FindNoteDialog open={!!findNote} onContinue={() => { findNote(); setFindNote(null); }} />
       {(rec.tutorials.length > 0 || rec.home) && (
         <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-emerald-600 bg-white p-3" data-testid="welcome-recommend">
           <p className="text-sm font-extrabold uppercase tracking-wide">Recommended for you</p>
