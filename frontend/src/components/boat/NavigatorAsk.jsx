@@ -83,6 +83,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   // Both start closed to keep Trip Planning short.
   const [askOpen, setAskOpen] = useState(false);
   const [photosOpen, setPhotosOpen] = useState(false);
+  const { user: me } = useAuth();
+  const showAsk = interim || me?.show_nav_ask;
+  const showPhotos = interim || me?.show_weather_photos;
   const [quick, setQuick] = useState(false);
   const [sure, setSure] = useState(0);
   const w = boat.weather || {};
@@ -194,8 +197,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         )}
       </div>
       {/* Folds away the question and its answer too; asking opens it. */}
-      <FoldHeader open={askOpen || state.busy} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>
-      {(askOpen || state.busy) && (<>
+      {showAsk && <FoldHeader open={askOpen || state.busy} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>}
+      {showAsk && (askOpen || state.busy) && (<>
       <label htmlFor="navigator-question" className="sr-only">ASK THE MAGIC MARINE NAVIGATOR</label>
       <NavigatorIntro online={online} />
       <div className="flex items-start gap-2">
@@ -209,8 +212,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-error">{state.error}</p>}
       {state.result && <AnswerCard result={state.result} boat={boat} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
       </>)}
-      <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />
-      {photosOpen && <NavigatorReminders />}
+      {showPhotos && <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />}
+      {showPhotos && photosOpen && <NavigatorReminders />}
       <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
       <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}

@@ -10,6 +10,15 @@ import { TIDE_WARNING } from "@/components/boat/navigator/TideWarning";
 import { TrainingProgress } from "@/components/boat/TrainingProgress";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
+const SHOW_FEATURES = [
+  ["show_fish_icon", "\"Magic Fish Whisperer\" icon on home page", "The Magic Fish Whisperer is always in the menu."],
+  ["show_bar_icon", "\"Magic Bartender\" icon on home page", "The Magic Bartender is always in the menu."],
+  ["show_print_cards", "\"Print cards\" after zones on Boat Inventory", ""],
+  ["show_hide_area", "\"Hide Area filter\" checkbox at bottom of lists", "While this is off, the Area filter stays hidden."],
+  ["show_nav_ask", "\"ASK THE MAGIC MARINE NAVIGATOR\" after START and DESTINATION in Trip Planning", ""],
+  ["show_weather_photos", "\"WEATHER AND ROUTING PHOTOS\" after START and DESTINATION in Trip Planning", ""],
+  ["show_topup", "\"Ask The Magic Mariner what's missing from the list\" at the bottom of lists", ""],
+];
 
 // The warning text comes from the admin Help Panel list, so it can be edited without a new release.
 export const Ignore300Warning = ({ online }) => {
@@ -110,6 +119,12 @@ export const MySettingsDialog = ({ open, onClose }) => {
             <input type="checkbox" checked={!!user?.show_list_footer} disabled={busy || !online} onChange={(e) => footer(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-list-footer-checkbox" />
             <span><b>Reset All, Export button set List Footer.</b> Show Reset All..., Export Current, Export All and Export to Excel... at the bottom of every list. They are always in the menu under Reset all... and Export/Import...</span>
           </label>
+          {SHOW_FEATURES.map(([key, name, note]) => (
+            <label key={key} className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`feature-${key}-label`}>
+              <input type="checkbox" checked={!!user?.[key]} disabled={busy || !online} onChange={(e) => save("/me/features", { [key]: e.target.checked }, e.target.checked ? `${name} will show` : `${name} is hidden`)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`feature-${key}-checkbox`} />
+              <span><b>Show {name}.</b>{note && <span className="block text-xs text-[var(--muted)]">{note}</span>}</span>
+            </label>
+          ))}
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>

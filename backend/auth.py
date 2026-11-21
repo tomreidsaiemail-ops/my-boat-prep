@@ -55,12 +55,22 @@ class UserOut(BaseModel):
     ignore_300: bool = False
     show_sundowners: bool = False
     show_list_footer: bool = False
+    show_fish_icon: bool = False
+    show_bar_icon: bool = False
+    show_print_cards: bool = False
+    show_hide_area: bool = False
+    show_nav_ask: bool = False
+    show_weather_photos: bool = False
+    show_topup: bool = False
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
     welcome_no: list = []
     has_password: bool = False
     auth_provider: str = "email"
+
+
+HIDDEN_FEATURES = ("show_fish_icon", "show_bar_icon", "show_print_cards", "show_hide_area", "show_nav_ask", "show_weather_photos", "show_topup")
 
 
 def provider_of(u: dict) -> str:
@@ -87,6 +97,7 @@ def to_user_out(u: dict) -> UserOut:
         shore_contact=bool(u.get("shore_contact")), ignore_300=bool((u.get("privacy") or {}).get("ignore_300")),
         show_sundowners=bool((u.get("features") or {}).get("show_sundowners")),
         show_list_footer=bool((u.get("features") or {}).get("show_list_footer")),
+        **{k: bool((u.get("features") or {}).get(k)) for k in HIDDEN_FEATURES},
         tide_datum="MSL" if (u.get("prefs") or {}).get("tide_datum") == "MSL" else "CD",
         show_tides=bool((u.get("prefs") or {}).get("show_tides")), tide_ack_date=str((u.get("prefs") or {}).get("tide_ack_date") or ""),
         welcome_no=[k for k, v in ((u.get("welcome") or {}).get("answers") or {}).items() if v == "no"],

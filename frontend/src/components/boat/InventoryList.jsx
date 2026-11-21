@@ -565,7 +565,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         })}
       </ul>
       {qrArea && <QrScanDialog area={qrArea} zone={zones[qrArea.id] || zones[qrArea.parent_id]} boat={boat} crew={readOnly} online={online} onSave={saveQr} onClose={() => setQrArea(null)} onSyncStores={onSyncStores} />}
-      {!q && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} boat={boat} ownerId={user.user_id} />}
+      {!q && user.show_print_cards && <FolderCardsButton areas={areas} zones={zones} vessel={vessel} online={online} boat={boat} ownerId={user.user_id} />}
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
         ? (cupZonesOn

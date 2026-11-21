@@ -30,6 +30,13 @@ async def set_privacy(p: PrivacyIn, user: dict = Depends(get_current_user)):
 class FeaturesIn(BaseModel):
     show_sundowners: Optional[bool] = None
     show_list_footer: Optional[bool] = None
+    show_fish_icon: Optional[bool] = None
+    show_bar_icon: Optional[bool] = None
+    show_print_cards: Optional[bool] = None
+    show_hide_area: Optional[bool] = None
+    show_nav_ask: Optional[bool] = None
+    show_weather_photos: Optional[bool] = None
+    show_topup: Optional[bool] = None
 
 
 @router.put("/me/features")
