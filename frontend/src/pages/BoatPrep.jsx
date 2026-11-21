@@ -209,7 +209,7 @@ const useWarn = () => {
 const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck };
 const HOP_TONE = { crewPrep: "crew" };
-const HOP_LABEL = { arrivingDest: "Arriving" };
+const HOP_LABEL = { arrivingDest: "Arrive", returningDock: "Return" };
 const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone"];
 
 
@@ -1422,7 +1422,8 @@ export default function BoatPrep({ boatId, boats }) {
           {hopKey === "crewRoles" && hopRow}
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
-              onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+              onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
+              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (

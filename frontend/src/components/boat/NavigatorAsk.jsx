@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Anchor, ClipboardCheck, Compass, Flag, Loader2, Pencil, UserCog, Users, X, Zap } from "lucide-react";
+import { Anchor, ClipboardCheck, Compass, Flag, Home, Loader2, Pencil, UserCog, Users, X, Zap } from "lucide-react";
 import { openList } from "@/lib/trips";
 import { toast } from "sonner";
 import { EDIT_NAME, QUICK_NAME, QuickPlanDialog } from "@/components/boat/navigator/QuickPlanDialog";
@@ -74,7 +74,7 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
 );
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving }) => {
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -154,8 +154,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
       {!interim && (
         <div className="flex flex-wrap items-center gap-2" data-testid="route-hops">
-          {onLeaving && <HopBubble icon={Anchor} label="Leaving Dock" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
-          {onArriving && <HopBubble icon={Flag} label="Arriving" onClick={onArriving} testId="route-arriving" />}
+          {onLeaving && <HopBubble icon={Anchor} label="Leave" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
+          {onArriving && <HopBubble icon={Flag} label="Arrive" onClick={onArriving} testId="route-arriving" />}
+          {onReturning && <HopBubble icon={Home} label="Return" onClick={onReturning} testId="route-returning-dock" />}
           <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} />
         </div>
       )}
