@@ -5,11 +5,14 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from auth import get_current_user, require_admin
+from pymongo import ReturnDocument
+
+from auth import get_current_user, require_admin, to_user_out
 from db import db
 from templates import _keep_version, next_version
 
 router = APIRouter(prefix="/api")
+TRAINING_MAGIC = 10
 
 
 class WizardEvent(BaseModel):
@@ -24,14 +27,32 @@ async def wizard_event(payload: WizardEvent, user: dict = Depends(get_current_us
     upd = {"$setOnInsert": {"first_at": now}, "$set": {"last_at": now}, "$inc": {"opens": 1 if payload.event == "open" else 0}}
     if payload.event == "finish":
         upd["$min"] = {"finished_at": now}
-    await db.wizard_progress.update_one({"user_id": user["user_id"], "wizard": key}, upd, upsert=True)
-    return {"ok": True}
+    where = {"user_id": user["user_id"], "wizard": key}
+    before = await db.wizard_progress.find_one_and_update(where, upd, upsert=True, return_document=ReturnDocument.BEFORE)
+    credited = 0
+    # First finish while on Pro features: TRAINING_MAGIC extra magic, once per person per walkthrough.
+    if payload.event == "finish" and not (before or {}).get("finished_at") and to_user_out(user).premium:
+        r = await db.wizard_progress.update_one({**where, "credited": {"$exists": False}}, {"$set": {"credited": TRAINING_MAGIC, "credited_at": now}})
+        if r.modified_count:
+            await db.magic_quota.update_one({"user_id": user["user_id"]}, {"$inc": {"purchased_allowance": TRAINING_MAGIC}, "$setOnInsert": {"free_used": 0}}, upsert=True)
+            credited = TRAINING_MAGIC
+    return {"ok": True, "credited": credited}
 
 
 @router.get("/wizards/mine")
 async def my_wizards(user: dict = Depends(get_current_user)):
-    docs = await db.wizard_progress.find({"user_id": user["user_id"], "finished_at": {"$exists": True}}, {"_id": 0, "wizard": 1}).to_list(200)
-    return {"finished": [d["wizard"] for d in docs]}
+    docs = await db.wizard_progress.find({"user_id": user["user_id"], "finished_at": {"$exists": True}}, {"_id": 0, "wizard": 1, "finished_at": 1, "credited": 1}).to_list(200)
+    return {"finished": [d["wizard"] for d in docs], "credited": {d["wizard"]: d["credited"] for d in docs if d.get("credited")},
+            "finished_at": {d["wizard"]: d["finished_at"] for d in docs}, "total_credited": sum(d.get("credited", 0) for d in docs)}
+
+
+async def training_magic_stats() -> dict:
+    """Analytics: extra magic given for finished tutorials, and who got it last."""
+    total = await db.wizard_progress.aggregate([{"$match": {"credited": {"$gt": 0}}}, {"$group": {"_id": None, "magic": {"$sum": "$credited"}, "n": {"$sum": 1}}}]).to_list(1)
+    last = await db.wizard_progress.find_one({"credited": {"$gt": 0}}, {"_id": 0}, sort=[("credited_at", -1)])
+    who = await db.users.find_one({"user_id": last["user_id"]}, {"_id": 0, "email": 1, "name": 1}) if last else None
+    return {"magic": total[0]["magic"] if total else 0, "credits": total[0]["n"] if total else 0,
+            "latest": {"email": (who or {}).get("email", ""), "name": (who or {}).get("name", ""), "wizard": last["wizard"], "magic": last["credited"], "at": last["credited_at"]} if last else None}
 
 
 async def tutorial_stats() -> list:

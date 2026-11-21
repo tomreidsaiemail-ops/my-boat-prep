@@ -121,6 +121,14 @@ export default function AdminAnalytics() {
                 sub={`${plural(t.users, "person")} opened · ${plural(t.opens, "open")} · ${t.finished} finished · ${t.first_at ? `first opened ${new Date(t.first_at).toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "not opened yet"}`} />
             ))}
           </Section>
+          {data.training_magic && (
+            <Section title="Training Magic Credited" testId="analytics-training-magic">
+              <Tile label="Extra magic credited" value={data.training_magic.magic} testId="tile-training-magic"
+                sub={`${plural(data.training_magic.credits, "tutorial")} finished on Pro features, 10 magic each`} />
+              <Tile label="Latest to gain credits" value={data.training_magic.latest ? `+${data.training_magic.latest.magic}` : "-"} testId="tile-training-magic-latest"
+                sub={data.training_magic.latest ? `${data.training_magic.latest.name || data.training_magic.latest.email} (${data.training_magic.latest.email}) · ${data.training_magic.latest.wizard} · ${new Date(data.training_magic.latest.at).toLocaleString("en-NZ", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Nobody yet"} />
+            </Section>
+          )}
           <ApiCalls rows={data.api_calls || []} />
           <PricingForm pricing={data.pricing} onSaved={load} />
           <UsersTodayDialog open={!!today} day={today || "today"} onClose={() => setToday(null)} />

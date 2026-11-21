@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from db import db
 from auth import require_admin
 from usage import FEATURES
-from wizard_progress import tutorial_stats
+from wizard_progress import training_magic_stats, tutorial_stats
 from marine import api_call_stats
 
 router = APIRouter(prefix="/api")
@@ -110,6 +110,7 @@ async def analytics(since: Optional[str] = None, yesterday: Optional[str] = None
                       "tokens": feat_all.get(code, {}).get("total", 0), "cost": cost(p, feat_all.get(code, {}).get("input", 0), feat_all.get(code, {}).get("output", 0))}
                      for code, name in FEATURES.items()],
         "tutorials": await tutorial_stats(),
+        "training_magic": await training_magic_stats(),
         "api_calls": await api_call_stats(day_start(since), day_start(yesterday) if yesterday else day_before(since)[0]),
     }
 

@@ -67,7 +67,9 @@ export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, on
             <Cascade title="Model Vessel" icon={GraduationCap} testId="app-menu-help-model-vessel" tone="border-emerald-200" openOn="model">
               {wizards.map((w) => (
                 <DropdownMenuItem key={w.key} onSelect={() => onModelWalkthrough(w)} className="pl-3" data-testid={`app-menu-help-model-wizard-${slug(w.title)}`}>
-                  {w.title}...{w.done && <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-[var(--green)]" aria-label="Finished" data-testid={`app-menu-help-model-wizard-${slug(w.title)}-done`} />}
+                  {w.title}...
+                  {w.credited > 0 && <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-1.5 text-[10px] font-extrabold text-amber-800 ring-1 ring-amber-300" title={`Earned ${w.credited} extra magic`} data-testid={`app-menu-help-model-wizard-${slug(w.title)}-credit`}>+{w.credited} magic</span>}
+                  {w.done && <CheckCircle2 className={`${w.credited > 0 ? "" : "ml-auto"} h-4 w-4 shrink-0 text-[var(--green)]`} aria-label="Finished" data-testid={`app-menu-help-model-wizard-${slug(w.title)}-done`} />}
                 </DropdownMenuItem>
               ))}
             </Cascade>

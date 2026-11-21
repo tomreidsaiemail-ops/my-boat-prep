@@ -56,6 +56,8 @@ import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/Cr
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
 import { InventorySetupWizard } from "@/components/boat/welcome/InventorySetupWizard";
 import { ZoneTipDialog } from "@/components/boat/welcome/ZoneTipDialog";
+import { GoListDialog } from "@/components/boat/welcome/GoListDialog";
+import { FirstDetailsDialog } from "@/components/boat/welcome/FirstDetailsDialog";
 import { glow } from "@/lib/glow";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
@@ -172,7 +174,7 @@ import { ChecklistPeek } from "@/components/boat/departure/ChecklistPeek";
 import { TrainingMode, restartWalkthrough } from "@/components/boat/TrainingMode";
 import { ModelWalkthroughConfirm } from "@/components/boat/ModelWalkthroughConfirm";
 import { WIZARD_PREFIX, wizardsFrom } from "@/lib/wizard";
-import useWizardsDone from "@/hooks/useWizardsDone";
+import useWizardsDone, { useTrainingProgress } from "@/hooks/useWizardsDone";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
 import { queuedCatches } from "@/lib/fishQueue";
@@ -387,7 +389,8 @@ export default function BoatPrep({ boatId, boats }) {
   const [crewHidden, showCrewLists] = useCrewHidden(boatId);
   const helpPanels = useAdminLists("Admin - Help Panel - ", online);
   const wizardsDone = useWizardsDone(user.user_id, online);
-  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online)).map((w) => ({ ...w, done: wizardsDone.includes(w.key) }));
+  const training = useTrainingProgress(user.user_id, online);
+  const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online)).map((w) => ({ ...w, done: wizardsDone.includes(w.key), credited: training.credited[w.key] || 0 }));
   const [modelAsk, setModelAsk] = useState(null);
   const modelBoat = boats.boats.find((b) => b.model && !b.crew);
   const startWalkthrough = (w) => {
@@ -405,6 +408,7 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const [setupOpen, setSetupOpen] = useState(false);
   const [zoneTip, setZoneTip] = useState(false);
+  const [goList, setGoList] = useState(null);
   // After "Got it": the Galley (or Cockpit) on the wizard's new map glows so the skipper knows where to tap.
   const glowFirstZone = (mapId) => {
     const sw = ((boats.current.zone_maps || []).find((m) => m.id === mapId)?.swatches) || [];
@@ -1086,19 +1090,25 @@ export default function BoatPrep({ boatId, boats }) {
     sessionStorage.setItem("mbp_welcome_checked", "1");
     sessionStorage.removeItem("mbp_welcome_go");
     api.get("/welcome").then(({ data }) => {
-      if (!data.auto) return;
+      const b = state.boat || {};
+      const mine = !crew && !boats.current.model;
+      const fresh = data.first && mine && !(b.vessel || "").trim() && !(b.callsign || "").trim();
+      // Existing skippers without a zone map and with boat details missing: the Zone Map Set Up Wizard at every sign-in until they have one.
+      const setup = data.skipper && mine && !fresh && !(boats.current.zone_maps || []).length && ["vessel", "make", "model", "year_built"].some((k) => !String(b[k] || "").trim());
+      if (!data.auto) { if (setup) setSetupOpen(true); return; }
       const own = boats.boats.find((b) => !b.crew && !b.model);
       if ((crew || boats.current.model) && own && !go) { sessionStorage.setItem("mbp_welcome_go", "1"); boats.select(own.key); return; }
       if (!crew && !boats.current.model && !data.home_set) { changeBoatField("home_list", "welcome"); api.put("/welcome", { home_set: true }).catch(() => {}); }
-      const b = state.boat || {};
-      if (data.first && !crew && !boats.current.model && !(b.vessel || "").trim() && !(b.callsign || "").trim()) { setFirstPrompt(true); return; }
+      if (fresh) { setFirstPrompt(true); return; }
       startWelcome();
+      if (setup) setSetupOpen(true);
     }).catch(() => {});
   }, [online, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   // Brand new skipper: Vessel, Callsign and phone first, then Welcome.
   const [firstPrompt, setFirstPrompt] = useState(false);
   const startWelcome = () => { setActiveId("welcome"); api.post("/welcome/visited").catch(() => {}); };
-  const firstDone = () => {
+  const firstDone = (vals) => {
+    Object.entries(vals).forEach(([k, v]) => changeBoatField(k, v));
     setFirstPrompt(false);
     startWelcome();
   };
@@ -1274,7 +1284,7 @@ export default function BoatPrep({ boatId, boats }) {
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} firstPrompt={firstPrompt} onFirstDone={firstDone} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} onFish={notFor("fish") ? undefined : openFish} onBartender={crew || notFor("provision") ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} onFish={notFor("fish") ? undefined : openFish} onBartender={crew || notFor("provision") ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
             onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
@@ -1387,6 +1397,7 @@ export default function BoatPrep({ boatId, boats }) {
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
               if (id === "boatInventory" && !boats.current.model && !identityFull(boat)) setSetupOpen(true);
+              else setGoList({ id, name: allLists.find((l) => l.id === id)?.name || "that list" });
             }}
             onTutorial={launchTutorial}
             onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
@@ -1417,6 +1428,8 @@ export default function BoatPrep({ boatId, boats }) {
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
         onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(mapId || true), 1400); }} />}
       <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />
+      <GoListDialog list={goList} onGo={() => { setActiveId(goList.id); setGoList(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} onStay={() => setGoList(null)} />
+      {firstPrompt && <FirstDetailsDialog boat={boat} onContinue={firstDone} />}
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />

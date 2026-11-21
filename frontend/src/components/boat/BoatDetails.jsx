@@ -25,8 +25,8 @@ const MoreButton = ({ boat, onClick, btnRef }) => (
   </button>
 );
 
-const Field = ({ id, label, value, onChange, onBlur, placeholder, type = "text", boxed = false }) => (
-  <label htmlFor={id} className={`flex min-w-0 flex-col gap-1 ${boxed ? "rounded-sm outline outline-[3px] outline-offset-4 outline-[var(--ink,#0f172a)]" : ""}`} data-boxed={boxed || undefined}>
+const Field = ({ id, label, value, onChange, onBlur, placeholder, type = "text" }) => (
+  <label htmlFor={id} className="flex min-w-0 flex-col gap-1">
     <span className="field-label">{label}</span>
     <input
       id={id}
@@ -61,7 +61,7 @@ const Summary = ({ boat, onExpand, tone }) => (
 // TODO is fine in the Skipper's phone for now, just like blank.
 const skipperPhoneError = (v) => (/^todo$/i.test((v || "").trim()) ? "" : phoneError(v));
 
-export const BoatDetails = ({ boat, firstPrompt = false, onFirstDone, onChange, onOrganise, onHome, homeName = "Boat Inventory", onTrip, onSearch, onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
+export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onTrip, onSearch, onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -108,14 +108,11 @@ export const BoatDetails = ({ boat, firstPrompt = false, onFirstDone, onChange, 
       onClose={() => { setAsk(false); if (!creating.current) onDetailsClosed?.(); creating.current = false; }} />
   </>;
   const focused = useRef(false);
-  useEffect(() => { if (complete && !focused.current && !firstPrompt) setOpen(false); }, [complete]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (firstPrompt) setOpen(true); }, [firstPrompt]);
-  const firstFilled = [boat.vessel, boat.callsign, boat.skipper_phone].every((v) => (v || "").trim()) && !skipperPhoneError(boat.skipper_phone);
-  const phoneLeft = () => { if (firstPrompt && firstFilled) { setOpen(false); onFirstDone?.(); } };
+  useEffect(() => { if (complete && !focused.current) setOpen(false); }, [complete]);
   const onBlur = (e) => {
     if (more || e.currentTarget.contains(e.relatedTarget)) return;
     focused.current = false;
-    if (complete && !firstPrompt) setOpen(false);
+    if (complete) setOpen(false);
   };
   const homePreview = useHomePreview();
   const shownHome = homePreview?.name || homeName;
@@ -150,15 +147,14 @@ export const BoatDetails = ({ boat, firstPrompt = false, onFirstDone, onChange, 
           <span className="field-label">Boat details</span><ChevronUp className="h-5 w-5" />
         </button>
       )}
-      {firstPrompt && <p className="rounded-md bg-amber-50 px-2.5 py-2 text-sm font-bold text-amber-900" data-testid="first-details-note">You can enter TODO here and come back to these fields later</p>}
       <div className="grid grid-cols-2 gap-2.5">
-        <Field id="vessel" label="Vessel" value={boat.vessel} placeholder="Name..." onChange={(v) => onChange("vessel", v)} onBlur={() => { keepName(); phoneLeft(); }} boxed={firstPrompt} />
-        <Field id="callsign" label="Callsign" value={boat.callsign} placeholder="Call..." onChange={(v) => onChange("callsign", v)} onBlur={phoneLeft} boxed={firstPrompt} />
+        <Field id="vessel" label="Vessel" value={boat.vessel} placeholder="Name..." onChange={(v) => onChange("vessel", v)} onBlur={keepName} />
+        <Field id="callsign" label="Callsign" value={boat.callsign} placeholder="Call..." onChange={(v) => onChange("callsign", v)} />
         <Field id="skipper" label="Skipper" value={boat.skipper} placeholder="Name..." onChange={(v) => onChange("skipper", v)} />
         <Field id="email" type="email" label="Email" value={boat.log_email || ""} placeholder="you@email.com" onChange={(v) => onChange("log_email", v)} />
         <Field id="shore-contact-email" type="email" label="Shore contact email" value={boat.shore_email || ""} placeholder="shore@email.com" onChange={(v) => onChange("shore_email", v.slice(0, 254))} />
         <div className="flex min-w-0 flex-col gap-1">
-          <Field id="skipper-phone" type="tel" label="Skipper's phone" value={boat.skipper_phone || ""} placeholder="+64 21 555 1234" onChange={(v) => onChange("skipper_phone", v.slice(0, 30))} onBlur={phoneLeft} boxed={firstPrompt} />
+          <Field id="skipper-phone" type="tel" label="Skipper's phone" value={boat.skipper_phone || ""} placeholder="+64 21 555 1234" onChange={(v) => onChange("skipper_phone", v.slice(0, 30))} />
           {skipperPhoneError(boat.skipper_phone) && <p className="text-xs font-bold text-[var(--red)]" data-testid="skipper-phone-error">{skipperPhoneError(boat.skipper_phone)}</p>}
         </div>
         <MoreButton boat={boat} btnRef={moreRef} onClick={() => setMore(true)} />

@@ -20,14 +20,19 @@ const Choice = ({ on, label, onPick, testId }) => (
   </label>
 );
 
-// One question: its bullets light up one by one when it first appears; once answered it folds, green (interested) or light red.
-const Question = ({ q, answer, onAnswer, focus, onOpen }) => {
+// One question; once answered it folds, green (interested) or light red.
+// A new question: the one just answered (folded) glows 5s, then this one 5s, then its bullets go grey one by one.
+const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey }) => {
   const [open, setOpen] = useState(!answer || focus);
   const ran = useRef(false);
   useEffect(() => {
     if (answer || ran.current) return;
     ran.current = true;
-    (async () => { for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft"); })();
+    (async () => {
+      if (prevKey) await glow(`welcome-q-${prevKey}`, 5000);
+      await glow(`welcome-q-${q.key}`, 5000);
+      for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft");
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (v) => { onAnswer(v); setOpen(false); };
   const tone = answer === "yes" ? "border-emerald-600 bg-emerald-50" : answer === "no" ? "border-red-300 bg-red-50" : "border-[var(--navy)] bg-white";
@@ -57,10 +62,11 @@ export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeH
   const next = questions.findIndex((q) => !answers[q.key]);
   const shown = next < 0 ? questions : questions.slice(0, next + 1);
   const rec = recommendations(questions, answers);
+  const [justAnswered, setJustAnswered] = useState(null);
   return (
     <section className="flex flex-col gap-3" data-testid="welcome-questions">
       <p className="text-sm">My Boat Prep would like to know what you would like from it, so we don&apos;t clutter up your session with features you have no interest in. You can always turn them on later: when getting started, less is more.</p>
-      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => onAnswer(q.key, v)} focus={focus === q.key} onOpen={() => onOpen(q.key)} />)}
+      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => { setJustAnswered(q.key); onAnswer(q.key, v); }} focus={focus === q.key} onOpen={() => onOpen(q.key)} prevKey={justAnswered} />)}
       {(rec.tutorials.length > 0 || rec.home) && (
         <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-emerald-600 bg-white p-3" data-testid="welcome-recommend">
           <p className="text-sm font-extrabold uppercase tracking-wide">Recommended for you</p>

@@ -7,7 +7,7 @@ const P = ({ children, testId }) => <p className="text-sm" data-testid={testId}>
 const ShowMe = ({ onClick, testId }) => (
   <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>Show me</button>
 );
-// Help drop-down highlighted, then Help > Model Vessel, then its "Crew Registration and Invites" tutorial.
+// Help drop-down highlighted, then Help > Model Vessel opens and its "Crew Registration and Invites" tutorial glows; Model Vessel folds and glows, then the menu closes.
 const showTutorial = async () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
   await wait(400);
@@ -21,7 +21,12 @@ const showTutorial = async () => {
   const item = document.querySelector('[data-testid^="app-menu-help-model-wizard-crew-registration"]');
   if (!item) return;
   item.scrollIntoView({ block: "nearest" });
-  await glow(item.dataset.testid, 2000);
+  await glow(item.dataset.testid, 5000);
+  closeMenu("model");
+  await wait(150);
+  await glow("app-menu-help-model-vessel-item", 5000);
+  closeMenu("help");
+  closeMenu("menu");
 };
 // The boat list drops down and scrolls to the Model Vessel (yellow, 2 seconds), then back to the current boat (yellow, 2 seconds); nothing is selected.
 const showBoats = async () => {

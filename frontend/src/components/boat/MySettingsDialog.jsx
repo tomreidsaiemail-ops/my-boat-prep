@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import useAdminLists from "@/hooks/useAdminLists";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TIDE_WARNING } from "@/components/boat/navigator/TideWarning";
+import { TrainingProgress } from "@/components/boat/TrainingProgress";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
 
@@ -56,8 +57,8 @@ export const MySettingsDialog = ({ open, onClose }) => {
           <DialogDescription className="text-sm text-slate-700">Settings for you, on every boat.</DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="prefs" className="flex flex-col gap-3">
-        <TabsList className="grid h-auto grid-cols-3 gap-1 bg-[var(--navy)]/10 p-1" data-testid="my-settings-tabs">
-          {[["prefs", "User Preferences"], ["privacy", "Privacy Settings"], ["features", "Feature Settings"]].map(([v, l]) => (
+        <TabsList className="grid h-auto grid-cols-4 gap-1 bg-[var(--navy)]/10 p-1" data-testid="my-settings-tabs">
+          {[["prefs", "User Preferences"], ["privacy", "Privacy Settings"], ["features", "Feature Settings"], ["training", "Training Progress"]].map(([v, l]) => (
             <TabsTrigger key={v} value={v} className="whitespace-normal px-1 py-1.5 text-[11px] font-extrabold uppercase leading-tight data-[state=active]:bg-[var(--navy)] data-[state=active]:text-white" data-testid={`my-settings-tab-${v}`}>{l}</TabsTrigger>
           ))}
         </TabsList>
@@ -102,6 +103,9 @@ export const MySettingsDialog = ({ open, onClose }) => {
           </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
+        </TabsContent>
+        <TabsContent value="training" className="mt-0">
+          <TrainingProgress uid={user?.user_id} online={online} />
         </TabsContent>
         </Tabs>
       </DialogContent>
