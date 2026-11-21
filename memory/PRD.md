@@ -1127,3 +1127,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Welcome questions: after the new question title glow ends, "I am interested"/"I am not interested" stay yellow (Choice hint) until one is ticked, for every question.
 - 2026-06: Welcome questions: no glow on the answered question; the next question title glows 5s immediately, then choices stay yellow.
 - 2026-06: Help menu has a "Welcome" cascade at the top: "Open Welcome" (where they left off) and "Go through Welcome again from the start" (POST /api/welcome/restart clears answers, mv_ack, section; reopens Welcome guided with Continue buttons).
+- 2026-06: Trip Planning: "Ask the Magic Marine Navigator" fold now hides its answer card too (no longer forced open by a result); asking opens it.

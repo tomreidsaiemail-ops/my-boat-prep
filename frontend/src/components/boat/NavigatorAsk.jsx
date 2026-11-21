@@ -128,6 +128,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   };
 
   const ask = () => {
+    setAskOpen(true);
     if (locked) { onUpgrade(); return; }
     if (!start.trim() || !dest.trim()) { setState((s) => ({ ...s, error: "Add a START and a DESTINATION first. The Magic Marine Navigator needs both to suggest a route." })); return; }
     if (!online) { setState((s) => ({ ...s, error: "The Magic Marine Navigator needs a signal" })); return; }
@@ -192,8 +193,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           </label>
         )}
       </div>
-      <FoldHeader open={askOpen || state.busy || !!state.result} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>
-      {(askOpen || state.busy || !!state.result) && (<>
+      {/* Folds away the question and its answer too; asking opens it. */}
+      <FoldHeader open={askOpen || state.busy} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>
+      {(askOpen || state.busy) && (<>
       <label htmlFor="navigator-question" className="sr-only">ASK THE MAGIC MARINE NAVIGATOR</label>
       <NavigatorIntro online={online} />
       <div className="flex items-start gap-2">
