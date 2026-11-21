@@ -236,7 +236,7 @@ export default function BoatPrep({ boatId, boats }) {
     }
   }, [loaded, online, !pending, crew, boats.current.key]); // eslint-disable-line react-hooks/exhaustive-deps
   // Signing out asks for the Skipper's Phone while it's blank, so a shore contact can call in an emergency.
-  const phoneMissing = loaded && !crew && !boats.current.charter_lock && !(state.boat?.skipper_phone || "").trim();
+  const phoneMissing = loaded && !crew && !boats.current.charter_lock && !(state.boat?.skipper_phone || "").trim().replace(/^todo$/i, "");
   useEffect(() => {
     setPendingPhone(phoneMissing ? (phone) => mutate((st) => ({ ...st, boat: { ...st.boat, skipper_phone: phone } })) : null);
     return () => setPendingPhone(null);
@@ -1075,11 +1075,20 @@ export default function BoatPrep({ boatId, boats }) {
       if (!data.auto) return;
       const own = boats.boats.find((b) => !b.crew && !b.model);
       if ((crew || boats.current.model) && own && !go) { sessionStorage.setItem("mbp_welcome_go", "1"); boats.select(own.key); return; }
-      setActiveId("welcome");
       if (!crew && !boats.current.model && !data.home_set) { changeBoatField("home_list", "welcome"); api.put("/welcome", { home_set: true }).catch(() => {}); }
-      api.post("/welcome/visited").catch(() => {});
+      const b = state.boat || {};
+      if (data.first && !crew && !boats.current.model && !(b.vessel || "").trim() && !(b.callsign || "").trim()) { setFirstPrompt(true); return; }
+      startWelcome();
     }).catch(() => {});
   }, [online, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Brand new skipper: Vessel, Callsign and phone first, then the collapsed VESSEL bar at the top with Welcome under it.
+  const [firstPrompt, setFirstPrompt] = useState(false);
+  const startWelcome = () => { setActiveId("welcome"); api.post("/welcome/visited").catch(() => {}); };
+  const firstDone = () => {
+    setFirstPrompt(false);
+    startWelcome();
+    setTimeout(() => document.querySelector('[data-testid="boat-details-summary"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 500);
+  };
   const changeBoatField = (key, value) => {
     if (key === "shore_email") {
       const id = boats.current.boat_id;
@@ -1252,7 +1261,7 @@ export default function BoatPrep({ boatId, boats }) {
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} onFish={notFor("fish") ? undefined : openFish} onBartender={crew || notFor("provision") ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} firstPrompt={firstPrompt} onFirstDone={firstDone} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} onFish={notFor("fish") ? undefined : openFish} onBartender={crew || notFor("provision") ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
             onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
             zone={crew ? undefined : { boatId, count: (boats.current.zone_maps || []).length, coloured: boatZones(boats.current).length > 0, online, premium, onUpgrade: () => needPro("Zone maps"),
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),

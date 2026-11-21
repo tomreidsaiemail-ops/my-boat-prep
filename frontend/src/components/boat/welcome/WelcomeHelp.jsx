@@ -48,12 +48,11 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
   const [mvNote, setMvNote] = useState(false);
   const ran = useRef(false);
   const tour = async () => {
-    if (welcomeHome) { await glow("boat-details-home-btn", 2000); await glow("set-home-list-btn", 2000); }
-    else await glow("set-home-list-btn", 1000);
+    await Promise.all([glow("list-selector", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
     await wait(400);
-    await Promise.all([previewHome("Boat Inventory", "cross", 1000), glow("boat-details-home-btn", 1000), glow("set-home-list-btn", 1000)]);
+    await Promise.all([previewHome("Boat Inventory", "cross", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
     await wait(300);
-    await Promise.all([previewHome("Trip Planning", "cross", 1000), glow("boat-details-home-btn", 1000), glow("set-home-list-btn", 1000)]);
+    await Promise.all([previewHome("Trip Planning", "cross", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
     await wait(300);
     await glow("boat-crew-btn", 2000);
     await glow("boat-selector", 1000);
