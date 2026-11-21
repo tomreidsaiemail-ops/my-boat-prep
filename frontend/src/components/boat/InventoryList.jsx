@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronsUpDown, HelpCircle, Info, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, HelpCircle, Info, Lightbulb, Pencil, Plus, Search, Sparkles, UploadCloud, X } from "lucide-react";
 import { api, apiError } from "@/lib/api";
 import { ZoneMap } from "@/components/boat/ZoneMap";
 import { InventoryArea } from "@/components/boat/InventoryArea";
@@ -47,20 +47,23 @@ const DEFAULT_HELP = [
   "From here on just pick a colour like Orange and Batch Magic Scan your Galley cupboards. The sailing community have provided great defaults for your Galley cupboards like Dry Storage Locker, but you can add your own.",
 ].map((label) => ({ label }));
 
-const InventoryInstructions = ({ searching, online }) => {
+const InventoryInstructions = ({ searching, online, tools = null }) => {
   const [open, setOpenState] = useState(() => localStorage.getItem(INSTR_KEY) !== "1");
   const setOpen = (v) => { setOpenState(v); localStorage.setItem(INSTR_KEY, v ? "0" : "1"); };
   useEffect(() => { if (searching) setOpen(false); }, [searching]); // eslint-disable-line react-hooks/exhaustive-deps
   const admin = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === HELP_NAME)?.items;
   const lines = admin?.length ? admin : DEFAULT_HELP;
   return (
-    <div className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white text-sm text-[var(--muted)]" data-testid="inventory-instructions">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-3 text-left font-bold text-[var(--navy)]" data-testid="inventory-instructions-toggle">
-        <HelpCircle className="h-4 w-4 shrink-0" /> How to take your Boat Inventory
-        <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
-      </button>
+    <div className="flex flex-col gap-2" data-testid="inventory-instructions">
+      <div className="flex items-stretch gap-2">
+        {tools}
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white px-2.5 py-2 text-left text-[13px] font-bold text-[var(--navy)] sm:px-4 sm:text-sm" data-testid="inventory-instructions-toggle">
+          <HelpCircle className="h-4 w-4 shrink-0" /> Zone Cupboard Help
+          <ChevronDown className={`ml-auto h-4 w-4 shrink-0 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
       {open && (
-        <div className="flex flex-col gap-2 px-4 pb-4" data-testid="inventory-instructions-body">
+        <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-[var(--muted)]" data-testid="inventory-instructions-body">
           {lines.map((i, k) => (
             <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""} data-testid={`inventory-instructions-line-${k}`}>
               <LinkedText text={i.label} testId={`inventory-instructions-link-${k}`} />
@@ -518,7 +521,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p>}
         {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) cupboards. The skipper looks after the rest.</p>}
       </> : (
-        <InventoryInstructions searching={!!q} online={online} />
+        <InventoryInstructions searching={!!q} online={online} tools={coloured && !q && groups.length > 0 && (
+          <div className="flex shrink-0 flex-col gap-1" data-testid="inventory-zone-fold-tools">
+            <button type="button" className="btn-ghost !min-h-0 h-[23px] justify-start gap-1 px-2 text-[11px]" onClick={() => setFoldList([])} data-testid="inventory-expand-cupboards-btn"><ChevronsUpDown className="h-3.5 w-3.5" />Expand cupboards</button>
+            <button type="button" className="btn-ghost !min-h-0 h-[23px] justify-start gap-1 px-2 text-[11px]" onClick={() => setFoldList(allZoneKeys())} data-testid="inventory-collapse-cupboards-btn"><ChevronsDownUp className="h-3.5 w-3.5" />Collapse cupboards</button>
+          </div>
+        )} />
       )}
       <ul className="flex flex-col gap-2" data-testid="inventory-areas">
         {groups.map((g) => {

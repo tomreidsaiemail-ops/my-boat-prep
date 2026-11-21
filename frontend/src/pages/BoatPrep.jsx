@@ -1115,9 +1115,14 @@ export default function BoatPrep({ boatId, boats }) {
   // Help > Welcome: open it where they left off, or clear the answers and go through it step by step again.
   const welcomeMenu = {
     open: () => { setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" }); },
-    restart: () => api.post("/welcome/restart").then(() => { setGuided(true); setWelcomeRun((n) => n + 1); setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" }); })
-      .catch(() => toast.error("Couldn't restart Welcome: check your signal")),
+    restart: () => setRestartAsk(true),
   };
+  const [restartAsk, setRestartAsk] = useState(false);
+  const restartWelcome = () => api.post("/welcome/restart").then(() => {
+    setRestartAsk(false);
+    if (!crew && !boats.current.model) changeBoatField("home_list", "welcome");
+    setGuided(true); setWelcomeRun((n) => n + 1); setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" });
+  }).catch(() => toast.error("Couldn't restart Welcome: check your signal"));
   const firstDone = (vals) => {
     Object.entries(vals).forEach(([k, v]) => changeBoatField(k, v));
     setGuided(true);
@@ -1442,6 +1447,9 @@ export default function BoatPrep({ boatId, boats }) {
       <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />
       <GoListDialog list={goList} onGo={() => { setActiveId(goList.id); setGoList(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} onStay={() => setGoList(null)} />
       {firstPrompt && <FirstDetailsDialog boat={boat} onContinue={firstDone} />}
+      <ConfirmDelete item={restartAsk ? "welcome" : null} onClose={() => setRestartAsk(false)} onConfirm={restartWelcome} danger={false} testId="welcome-restart"
+        title="Go through Welcome again from the start?" confirmLabel="Continue to Welcome" cancelLabel="Cancel"
+        note={crew || boats.current.model ? "Your Welcome answers will be cleared so you can start fresh." : "Your Welcome answers will be cleared so you can start fresh, and Welcome will be made your Home screen."} />
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
