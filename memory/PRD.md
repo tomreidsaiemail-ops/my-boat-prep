@@ -1122,3 +1122,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - Open (from iteration_223 review): showTutorial leaves menu open if the crew item is missing; Training Progress may miss a just-finished tutorial until refetch; wizard panel 1 discards typed values on close.
 - 2026-06: Welcome question glow now targets only the bold title button (welcome-q-<key>-toggle), not the whole card.
 - 2026-06: First cupboard coaching (once per boat, localStorage mbp_cupboard_coach:<boat>; reset when the last cupboard is deleted): zone with no cupboards glows Quick add section 5s + yellow help line; after Done the new cupboard glows "Upload image for Magic Scan" 5s (if no cupboard photos) with yellow help, then "Add a folder or box" 5s (if no folders/boxes) with yellow help. Self-tested by screenshot.
+- 2026-06: Folder/box help wording: "...your folder of rigging and boat builders reports."
