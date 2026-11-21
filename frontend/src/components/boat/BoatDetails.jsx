@@ -42,6 +42,9 @@ const Field = ({ id, label, value, onChange, onBlur, placeholder, type = "text",
   </label>
 );
 
+const TODO_FIELDS = ["vessel", "callsign", "skipper", "log_email", "shore_email", "skipper_phone"];
+const hasTodo = (boat) => TODO_FIELDS.some((k) => /^todo$/i.test((boat[k] || "").trim()));
+
 const Summary = ({ boat, onExpand, tone }) => (
   <button type="button" onClick={onExpand} data-testid="boat-details-summary" aria-expanded="false" aria-label="Show boat details"
     className="flex min-h-[48px] w-full items-center gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white px-3 text-left [transition:border-color_.15s] hover:border-[var(--navy)]">
@@ -50,6 +53,7 @@ const Summary = ({ boat, onExpand, tone }) => (
       <span className="field-label shrink-0">Vessel</span><b className={`min-w-0 truncate ${tone ? `rounded px-1.5 ${tone}` : ""}`} data-testid="summary-vessel">{boat.vessel}</b>
       <span className="field-label ml-2 shrink-0 max-[420px]:hidden">Callsign</span><b className="shrink-0 font-mono" data-testid="summary-callsign">{boat.callsign}</b>
     </span>
+    {hasTodo(boat) && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500 ring-2 ring-amber-200" title="Some boat details still say TODO" aria-label="Some boat details still say TODO" data-testid="boat-details-todo-dot" />}
     <ChevronDown className="h-5 w-5 shrink-0 text-[var(--muted)]" data-testid="boat-details-expand-btn" />
   </button>
 );
