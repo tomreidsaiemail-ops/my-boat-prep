@@ -1401,7 +1401,7 @@ export default function BoatPrep({ boatId, boats }) {
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
-        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={() => { setSetupOpen(false); setActiveId("boatInventory"); }} />}
+        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); }} />}
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />

@@ -104,7 +104,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
           </DialogHeader>
           {step === "details" && <DetailsPanel draft={draft} set={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} onNext={next} />}
           {(step === "colours" || step === "blank") && <MapPanel boat={boat} map={map} online={online} presets={presets} onMaps={onMaps} auto={step === "colours"} blank={step === "blank"} onNext={() => setStep("done")} />}
-          {step === "done" && <DonePanel blank={blank} onInventory={onInventory} onClose={onClose} />}
+          {step === "done" && <DonePanel blank={blank} onInventory={() => onInventory(mapId)} onClose={onClose} />}
         </DialogContent>
       </Dialog>
       <ZoneSchematicsDialog open={open && step === "schematic"} boat={{ ...details, ...draft }} boatId={boat.boat_id} online={online} extra={none}

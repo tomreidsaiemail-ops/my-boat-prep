@@ -157,7 +157,11 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const steps = walkSteps(pics.filter((p) => p.map), boat?.walk_skip || [], areas, boat);
   const sectionRef = useRef(null);
   useEffect(() => {
-    const show = () => { setExpanded(true); setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); };
+    // An event naming a map (the Set Up Wizard) scrolls to that overview rather than the section top.
+    const show = (e) => {
+      setExpanded(true);
+      setTimeout(() => (document.querySelector(`[data-testid="zone-overview-${e.detail?.mapId}"]`) || sectionRef.current)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    };
     window.addEventListener("mbp:show-zone-map", show);
     return () => window.removeEventListener("mbp:show-zone-map", show);
   }, []);
