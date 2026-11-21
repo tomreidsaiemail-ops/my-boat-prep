@@ -1,0 +1,26 @@
+{
+  "summary": "Tested the frontend only, as test-user-pro (cookie test_session_pro_1) at mobile 390x844. All 8 requested checks passed. (1) My Settings > Feature Settings shows the 7 checkboxes feature-<key>-checkbox. All start unchecked, and /api/auth/me returns false for all 7. (2) With all unchecked: there is no boat-details-fish-btn or boat-details-bartender-btn. The hamburger menu still has app-menu-fish-item and app-menu-bartender-item, and they open fish-dialog and bartender-dialog. Boat Inventory has no inventory-print-cards. Provisions has no hide-area-toggle, no area-filter and no topup-btn, while ordering-toggle and prompt-delete-toggle still show. Trip Planning shows START, DESTINATION and WHY WE'RE GOING, but no navigator-ask-toggle and no weather-photos-toggle. (3) Ticking each box shows a toast ('... will show'), and the backend saves true. After a reload every element is back: the fish and martini icons (the fish icon opens fish-dialog), Print Cards, the Hide Area filter toggle (its own tick hides and shows area-filter as expected), the 'Ask The Magic Mariner what's missing from the list' button, and the Navigator and Weather photos fold headers right after START and DESTINATION. (4) Unticking shows '... is hidden' toasts, and the elements stay hidden after a reload. All 7 toggles were reset to false for test-user-pro, which I checked through /api/auth/me.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home Boat Details button row (390px)", "issues": ["With the fish and martini icons on, the 'Welcome' button label wraps to 'Welco / me' because 6 buttons share the row. Consider shrink-0 or whitespace-nowrap on the home button, or a smaller gap."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: stop the 'Welcome' home-button label wrapping in the Boat Details row when both magic icons are on at 390px"
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx ~1232: the Area filter check, !((hideArea || !user.show_hide_area) && !crew), still shows the Area filter to crew even when show_hide_area is off. That matches the earlier crew behaviour, but confirm it is intended.",
+    "MySettingsDialog.jsx: the show-list-footer-checkbox label is rendered in both the User Preferences and Feature Settings tabs with the same data-testid (this was already there). Only one tab is mounted at a time in Radix Tabs, so it works, but it is duplicated.",
+    "I did not test: tours skipping hidden items, the interim departure dialog (NavigatorAsk interim=true always shows Ask and Photos), and the free and crew roles."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "None. Only the 7 test-user-pro feature toggles were changed, and all were set back to false.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "test-user-pro opens on Welcome or the last list, with 'Arrived?' (Not yet) and 'Trip Planning has finished' (Not now) dialogs that must be dismissed first. List ids: boatInventory, provisions, routeHazards. The hide-area toggle checkbox testid is hide-area-toggle-checkbox. The topup button testid is topup-btn."
+}
