@@ -48,6 +48,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
   const datum = user?.tide_datum || "CD";
   const showTides = (on) => save("/me/preferences", { show_tides: on }, on ? "High and low tide approximations will show" : "Tides are hidden");
   const tides = (d) => d !== datum && save("/me/preferences", { tide_datum: d }, d === "MSL" ? "Tides now show from Mean Sea Level (MSL)" : "Tides now show above Chart Datum (CD)");
+  const footer = (on) => save("/me/features", { show_list_footer: on }, on ? "Reset All and the export buttons will show at the bottom of every list" : "Reset All and the exports are in the menu only");
   const sundowners = (on) => save("/me/features", { show_sundowners: on }, on ? "Sundowner time will show from sunset" : "Sundowner time is hidden");
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -79,6 +80,10 @@ export const MySettingsDialog = ({ open, onClose }) => {
           ))}
           <p className="text-xs text-[var(--muted)]">Pick one. Where a tide station doesn't publish Chart Datum, heights show as MSL and say so.</p>
           </>}
+          <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-list-footer-label">
+            <input type="checkbox" checked={!!user?.show_list_footer} disabled={busy || !online} onChange={(e) => footer(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-list-footer-checkbox" />
+            <span><b>Reset All, Export button set List Footer.</b> Show Reset All..., Export Current, Export All and Export to Excel... at the bottom of every list. They are always in the menu under Reset all... and Export/Import...</span>
+          </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>
@@ -100,6 +105,10 @@ export const MySettingsDialog = ({ open, onClose }) => {
           <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-sundowners-label">
             <input type="checkbox" checked={!!user?.show_sundowners} disabled={busy || !online} onChange={(e) => sundowners(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-sundowners-checkbox" />
             <span><b>Show Sundowners.</b> From sunset, show the SUNDOWNER TIME cocktail pick from the Magic Bartender.</span>
+          </label>
+          <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-list-footer-label">
+            <input type="checkbox" checked={!!user?.show_list_footer} disabled={busy || !online} onChange={(e) => footer(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-list-footer-checkbox" />
+            <span><b>Reset All, Export button set List Footer.</b> Show Reset All..., Export Current, Export All and Export to Excel... at the bottom of every list. They are always in the menu under Reset all... and Export/Import...</span>
           </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>

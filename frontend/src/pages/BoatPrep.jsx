@@ -1285,7 +1285,7 @@ export default function BoatPrep({ boatId, boats }) {
     <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header welcome={welcomeMenu} helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew || notFor("provision") ? undefined : openBartender} onFish={openFish}
+      <Header welcome={welcomeMenu} listTools={active.id === "welcome" ? undefined : { reset: () => reset("bottom"), exportCurrent: () => exportLists(true, "bottom"), exportAll: () => exportLists(false, "bottom"), excel: () => setDialog({ type: "excel" }), locked: !premium }} helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew || notFor("provision") ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
@@ -1450,7 +1450,7 @@ export default function BoatPrep({ boatId, boats }) {
       <ConfirmDelete item={restartAsk ? "welcome" : null} onClose={() => setRestartAsk(false)} onConfirm={restartWelcome} danger={false} testId="welcome-restart"
         title="Go through Welcome again from the start?" confirmLabel="Continue to Welcome" cancelLabel="Cancel"
         note={crew || boats.current.model ? "Your Welcome answers will be cleared so you can start fresh." : "Your Welcome answers will be cleared so you can start fresh, and Welcome will be made your Home screen."} />
-      {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
+      {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} buttons={!!user.show_list_footer} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}

@@ -30,7 +30,7 @@ export const helpMenuItems = (panels = []) => {
   };
 };
 
-const Cascade = ({ title, icon: Icon, testId, tone = "border-[var(--line)]", openOn = "", children }) => {
+export const Cascade = ({ title, icon: Icon, testId, tone = "border-[var(--line)]", openOn = "", children }) => {
   const [open, setOpen] = useState(false);
   useMenuOpen(openOn, setOpen);
   return (

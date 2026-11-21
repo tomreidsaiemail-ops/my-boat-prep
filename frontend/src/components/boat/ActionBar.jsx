@@ -7,9 +7,11 @@ export const ValidationBar = ({ show, testId }) =>
     </div>
   ) : null;
 
-export const ActionBar = ({ zone, warn, onReset, onExport, onExcel, locked }) => (
+// buttons off (My Settings > Feature Settings): just the warning; Reset all and the exports live in the menu.
+export const ActionBar = ({ zone, warn, onReset, onExport, onExcel, locked, buttons = true }) => (
   <div className="flex flex-col gap-2">
     <ValidationBar show={warn} testId={`${zone}-validation-bar`} />
+    {buttons && <>
     <div className="grid grid-cols-3 gap-2">
       <button type="button" data-testid={`${zone}-reset-all-btn`} onClick={onReset} className="btn-ghost">
         <RotateCcw className="h-4 w-4" /> Reset All...
@@ -26,5 +28,6 @@ export const ActionBar = ({ zone, warn, onReset, onExport, onExcel, locked }) =>
         <FileSpreadsheet className="h-4 w-4 text-[#1D6F42]" /> Export to Excel...
       </button>
     )}
+    </>}
   </div>
 );

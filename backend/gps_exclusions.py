@@ -28,13 +28,16 @@ async def set_privacy(p: PrivacyIn, user: dict = Depends(get_current_user)):
 
 
 class FeaturesIn(BaseModel):
-    show_sundowners: bool
+    show_sundowners: Optional[bool] = None
+    show_list_footer: Optional[bool] = None
 
 
 @router.put("/me/features")
 async def set_features(f: FeaturesIn, user: dict = Depends(get_current_user)):
     """My Settings > Feature Settings, for this person on every boat."""
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"features.show_sundowners": f.show_sundowners}})
+    sets = {f"features.{k}": v for k, v in f.model_dump(exclude_none=True).items()}
+    if sets:
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": sets})
     return await signed_in_user(user["user_id"])
 
 

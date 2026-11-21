@@ -54,6 +54,7 @@ class UserOut(BaseModel):
     shore_contact: bool = False
     ignore_300: bool = False
     show_sundowners: bool = False
+    show_list_footer: bool = False
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
@@ -85,6 +86,7 @@ def to_user_out(u: dict) -> UserOut:
         created_at=u.get("created_at"), tos_version=u.get("tos_version"), home=u.get("home") or "", shore_only=bool(u.get("shore_only")),
         shore_contact=bool(u.get("shore_contact")), ignore_300=bool((u.get("privacy") or {}).get("ignore_300")),
         show_sundowners=bool((u.get("features") or {}).get("show_sundowners")),
+        show_list_footer=bool((u.get("features") or {}).get("show_list_footer")),
         tide_datum="MSL" if (u.get("prefs") or {}).get("tide_datum") == "MSL" else "CD",
         show_tides=bool((u.get("prefs") or {}).get("show_tides")), tide_ack_date=str((u.get("prefs") or {}).get("tide_ack_date") or ""),
         welcome_no=[k for k, v in ((u.get("welcome") or {}).get("answers") or {}).items() if v == "no"],
