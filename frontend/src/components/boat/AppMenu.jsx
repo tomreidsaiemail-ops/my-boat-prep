@@ -7,7 +7,7 @@ import { ShareAppDialog } from "@/components/boat/ShareAppDialog";
 import { HelpDialog, HelpSubMenu, helpMenuItems } from "@/components/boat/HelpMenu";
 import { useMenuOpen } from "@/lib/glow";
 
-export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer }) => {
+export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer, welcome }) => {
   const navigate = useNavigate();
   const [feedback, setFeedback] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -38,7 +38,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
             <DropdownMenuItem onSelect={onRequestTransfer} className={onTransfer ? "pl-8" : ""} data-testid="app-menu-request-transfer-item"><Inbox className="mr-2 h-4 w-4" />Request Ownership Transfer...</DropdownMenuItem>
             <DropdownMenuSeparator className="my-1.5 h-[2px] bg-[var(--navy)]" data-testid="app-menu-transfer-separator" />
           </>}
-          <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} onModelWalkthrough={onModelWalkthrough} wizards={wizards} />
+          <HelpSubMenu items={helpMenuItems(helpPanels)} onPick={setHelp} onModelWalkthrough={onModelWalkthrough} wizards={wizards} welcome={welcome} />
           <DropdownMenuItem onSelect={onOpenFaq} data-testid="app-menu-faq-item"><HelpCircle className="mr-2 h-4 w-4" />FAQ</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setFeedback(true)} data-testid="app-menu-feedback-item"><MessageSquarePlus className="mr-2 h-4 w-4" />Submit feedback...</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setSharing(true)} data-testid="app-menu-share-item"><QrCode className="mr-2 h-4 w-4" />Share the app</DropdownMenuItem>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, ChevronDown, GraduationCap, HelpCircle, Package, Route, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronDown, GraduationCap, HelpCircle, Package, RotateCcw, Route, Ship, Sparkles } from "lucide-react";
 import { LinkedText } from "@/components/boat/LinkedText";
 import { useMenuOpen } from "@/lib/glow";
 
@@ -45,10 +45,10 @@ const Cascade = ({ title, icon: Icon, testId, tone = "border-[var(--line)]", ope
 
 const Pick = ({ h, onPick }) => <DropdownMenuItem onSelect={() => onPick(h)} className="pl-3" data-testid={`app-menu-help-${slug(h.title)}`}>{h.title}</DropdownMenuItem>;
 
-export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, onModelWalkthrough, wizards = [] }) => {
+export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, onModelWalkthrough, wizards = [], welcome }) => {
   const [open, setOpen] = useState(false);
   useMenuOpen("help", setOpen);
-  if (!groups.length && !rest.length && !(onModelWalkthrough && wizards.length)) return null;
+  if (!groups.length && !rest.length && !welcome && !(onModelWalkthrough && wizards.length)) return null;
   // Opens downwards inside the menu, so the cascade fits on a phone screen.
   return (
     <>
@@ -57,6 +57,12 @@ export const HelpSubMenu = ({ items: { groups = [], rest = [] } = {}, onPick, on
       </DropdownMenuItem>
       {open && (
         <div className="ml-6 border-l-2 border-[var(--line)]" data-testid="app-menu-help-submenu">
+          {welcome && (
+            <Cascade title="Welcome" icon={Ship} testId="app-menu-help-welcome">
+              <DropdownMenuItem onSelect={welcome.open} className="pl-3" data-testid="app-menu-help-welcome-open"><Ship className="mr-2 h-4 w-4" />Open Welcome</DropdownMenuItem>
+              <DropdownMenuItem onSelect={welcome.restart} className="pl-3" data-testid="app-menu-help-welcome-restart"><RotateCcw className="mr-2 h-4 w-4" />Go through Welcome again from the start</DropdownMenuItem>
+            </Cascade>
+          )}
           {groups.map((g) => (
             <Cascade key={g.title} title={g.title} icon={g.icon} testId={`app-menu-help-group-${slug(g.title)}`}>
               {g.items.map((h) => <Pick key={h.title} h={h} onPick={onPick} />)}

@@ -151,6 +151,13 @@ async def save_welcome(p: WelcomeIn, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+@router.post("/welcome/restart")
+async def restart_welcome(user: dict = Depends(get_current_user)):
+    """Help > Welcome > Go through Welcome again: clears the answers, the Model Vessel tick and the remembered place."""
+    await db.users.update_one({"user_id": user["user_id"]}, {"$unset": {"welcome.answers": "", "welcome.mv_ack": "", "welcome.section": ""}})
+    return {"ok": True}
+
+
 async def seed_welcome():
     """Creates the private "Admin - Welcome Screen" list and the Global Config force line once (here and in production)."""
     if await db.migrations.find_one({"_id": "welcome_screen_seed"}):

@@ -1111,6 +1111,13 @@ export default function BoatPrep({ boatId, boats }) {
   const [firstPrompt, setFirstPrompt] = useState(false);
   const startWelcome = () => { setActiveId("welcome"); api.post("/welcome/visited").catch(() => {}); };
   const [guided, setGuided] = useState(false);
+  const [welcomeRun, setWelcomeRun] = useState(0);
+  // Help > Welcome: open it where they left off, or clear the answers and go through it step by step again.
+  const welcomeMenu = {
+    open: () => { setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" }); },
+    restart: () => api.post("/welcome/restart").then(() => { setGuided(true); setWelcomeRun((n) => n + 1); setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" }); })
+      .catch(() => toast.error("Couldn't restart Welcome: check your signal")),
+  };
   const firstDone = (vals) => {
     Object.entries(vals).forEach(([k, v]) => changeBoatField(k, v));
     setGuided(true);
@@ -1273,7 +1280,7 @@ export default function BoatPrep({ boatId, boats }) {
     <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
-      <Header helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew || notFor("provision") ? undefined : openBartender} onFish={openFish}
+      <Header welcome={welcomeMenu} helpPanels={helpPanels} onModelWalkthrough={boats.boats.some((b) => !b.crew) ? startWalkthrough : undefined} wizards={wizards} gps={gps} broadcast={broadcast} broadcastSent={tr?.last} online={online} pending={pending} onGoOffline={goOffline} onGoOnline={goOnline} tripDate={tripDate} onDateChange={setTripDate} onOpenFaq={openFaq} onBartender={crew || notFor("provision") ? undefined : openBartender} onFish={openFish}
         onShopScan={!crew || crewPro ? () => openStores("shopScan") : undefined} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined}
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
@@ -1398,7 +1405,7 @@ export default function BoatPrep({ boatId, boats }) {
             ctx={{ units: boat.units, yearBuilt: boat.year_built, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
-          {active.id === "welcome" && <WelcomeScreen online={online} guided={guided} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
+          {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} guided={guided} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
               if (id === "boatInventory" && !boats.current.model && !identityFull(boat)) setSetupOpen(true);
