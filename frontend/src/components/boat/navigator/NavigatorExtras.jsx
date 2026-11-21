@@ -1,6 +1,7 @@
 import useAdminLists from "@/hooks/useAdminLists";
 import { AlertTriangle, BellRing, ChevronRight } from "lucide-react";
 import { ArriveType } from "@/components/boat/navigator/ArriveType";
+import { useAuth } from "@/context/AuthContext";
 import { TideNote } from "@/components/boat/navigator/TideNote";
 
 // Paragraphs come from the private admin list "Admin - Help Panel - MMN Routing Guidance" (cached for offline use).
@@ -52,8 +53,10 @@ const timingAnomaly = (w) => {
 };
 
 // Departure, optional race/event and where crew meet, kept with the passage plan. interim: the New departure window (today's leg).
-export const TripTiming = ({ weather = {}, onChange, interim, note = null, start = "", dest = "" }) => {
-  const warn = timingAnomaly(weather);
+export const TripTiming = ({ weather = {}, onChange, interim, note = null, start = "", dest = "", why = null }) => {
+  const { user } = useAuth();
+  const racing = !!user?.show_post_departure;
+  const warn = racing ? timingAnomaly(weather) : "";
   // Start follows Departure until the skipper sets a different Start.
   const depart = (v) => onChange({ depart_at: v, ...(!weather.event_at || weather.event_at === weather.depart_at ? { event_at: v } : {}) });
   // An empty Estimated Finish takes the Departure date, once the date box is left (not on each keystroke).
@@ -66,7 +69,6 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   const noDepart = !interim && (weather.depart_at || "").length < 16;
   const departField = <>
     <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn || noDepart} onLeave={fillFinish} />
-    {noDepart && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-depart-required">Enter the Departure date and time. It's needed for the trip plan.</p>}
     <TideNote place={start} pos={weather.start_pos} date={day(weather.depart_at)} testId="depart-tides" />
   </>;
   // Start is only for racing: folded away until opened once, then it stays open.
@@ -81,9 +83,8 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. The Yacht Club's Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className={`field-input text-base normal-case tracking-normal ${noName ? "!border-[var(--red)]" : ""}`} data-testid="navigator-event-name-input" />
     </label>
-    {noName && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-event-name-required">Enter the Event or Trip name. It's needed before you depart.</p>}
     {!interim && departField}
-    {startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
+    {!racing ? null : startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
       : <button type="button" onClick={() => onChange({ event_open: true })} className="flex items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 py-2 text-left text-sm" data-testid="navigator-event-at-expand-btn">
         <ChevronRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
         <span><b className="text-[var(--navy)]">Start date and time (optional)</b><span className="block text-xs text-[var(--muted)]">Same as DEPARTURE DATE AND TIME. Only for racing, tap to set a different Start.</span></span>
@@ -91,8 +92,8 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
     <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
     {note}
-    {!interim && noFinish && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-finish-required">Enter the Estimated Finish date and time. It's needed for the trip plan.</p>}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
+    {why}
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
     {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <div className="flex flex-col gap-1.5">
@@ -112,12 +113,14 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   );
 };
 
-export const WhyGoing = ({ value, onChange, hint = "Logged in the Ship's Log with the photos when Departure is ticked on the Leaving Dock list." }) => (
+export const WhyGoing = ({ value, onChange, hint = "Logged in Ship's Log" }) => (
   <label className="flex flex-col gap-1.5">
-    <span className="field-label">Why we're going</span>
+    <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+      <span className="field-label">Why we're going</span>
+      <span className="text-xs text-[var(--muted)]" data-testid="navigator-why-hint">{hint}</span>
+    </span>
     <textarea value={value} onChange={(e) => onChange(e.target.value)} maxLength={1000} rows={3}
       placeholder="e.g. Window Tue 0600-1800: SW 15-20 kn easing, 1.5 m swell. Leave before the next front on Wed."
       className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-why-input" />
-    <span className="text-xs text-[var(--muted)]">{hint}</span>
   </label>
 );

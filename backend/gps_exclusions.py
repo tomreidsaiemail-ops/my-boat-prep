@@ -37,6 +37,7 @@ class FeaturesIn(BaseModel):
     show_nav_ask: Optional[bool] = None
     show_weather_photos: Optional[bool] = None
     show_topup: Optional[bool] = None
+    show_post_departure: Optional[bool] = None
 
 
 @router.put("/me/features")

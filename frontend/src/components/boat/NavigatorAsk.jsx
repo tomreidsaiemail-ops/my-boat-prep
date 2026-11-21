@@ -86,6 +86,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const { user: me } = useAuth();
   const showAsk = interim || me?.show_nav_ask;
   const showPhotos = interim || me?.show_weather_photos;
+  const whyGoing = <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in Ship's Log when you tap Leave Berth, Weigh Anchor or Leave Mooring" : undefined} />;
   const [quick, setQuick] = useState(false);
   const [sure, setSure] = useState(0);
   const w = boat.weather || {};
@@ -214,8 +215,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       </>)}
       {showPhotos && <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />}
       {showPhotos && photosOpen && <NavigatorReminders />}
-      <WhyGoing value={boat.weather?.why || ""} onChange={(v) => onWeather({ why: v })} hint={interim ? "Logged in the Ship's Log with the photos when you tap Leave Berth, Weigh Anchor or Leave Mooring." : undefined} />
-      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} />
+      {interim && whyGoing}
+      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} why={interim ? null : whyGoing} />
       {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
     </div>
   );

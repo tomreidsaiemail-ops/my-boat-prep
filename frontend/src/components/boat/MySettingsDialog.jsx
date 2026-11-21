@@ -10,6 +10,12 @@ import { TIDE_WARNING } from "@/components/boat/navigator/TideWarning";
 import { TrainingProgress } from "@/components/boat/TrainingProgress";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
+const FeatureToggle = ({ id, name, note, user, busy, online, save }) => (
+  <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`feature-${id}-label`}>
+    <input type="checkbox" checked={!!user?.[id]} disabled={busy || !online} onChange={(e) => save("/me/features", { [id]: e.target.checked }, e.target.checked ? `${name} will show` : `${name} is hidden`)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`feature-${id}-checkbox`} />
+    <span><b>Show {name}.</b>{note && <span className="block text-xs text-[var(--muted)]">{note}</span>}</span>
+  </label>
+);
 const SHOW_FEATURES = [
   ["show_fish_icon", "\"Magic Fish Whisperer\" icon on home page", "The Magic Fish Whisperer is always in the menu."],
   ["show_bar_icon", "\"Magic Bartender\" icon on home page", "The Magic Bartender is always in the menu."],
@@ -115,12 +121,9 @@ export const MySettingsDialog = ({ open, onClose }) => {
             <input type="checkbox" checked={!!user?.show_list_footer} disabled={busy || !online} onChange={(e) => footer(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-list-footer-checkbox" />
             <span><b>Reset All, Export button set List Footer.</b> Show Reset All..., Export Current, Export All and Export to Excel... at the bottom of every list. They are always in the menu under Reset all... and Export/Import...</span>
           </label>
-          {SHOW_FEATURES.map(([key, name, note]) => (
-            <label key={key} className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`feature-${key}-label`}>
-              <input type="checkbox" checked={!!user?.[key]} disabled={busy || !online} onChange={(e) => save("/me/features", { [key]: e.target.checked }, e.target.checked ? `${name} will show` : `${name} is hidden`)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`feature-${key}-checkbox`} />
-              <span><b>Show {name}.</b>{note && <span className="block text-xs text-[var(--muted)]">{note}</span>}</span>
-            </label>
-          ))}
+          {SHOW_FEATURES.map(([key, name, note]) => <FeatureToggle key={key} id={key} name={name} note={note} user={user} busy={busy} online={online} save={save} />)}
+          <h3 className="field-label pt-2" data-testid="racing-features-heading">Racing features</h3>
+          <FeatureToggle id="show_post_departure" name="Post Departure, Start date and time" note="Shows Start date and time (optional) in Trip Planning, for a race start after you leave the dock." user={user} busy={busy} online={online} save={save} />
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>

@@ -62,6 +62,7 @@ class UserOut(BaseModel):
     show_nav_ask: bool = False
     show_weather_photos: bool = False
     show_topup: bool = False
+    show_post_departure: bool = False
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
@@ -70,7 +71,7 @@ class UserOut(BaseModel):
     auth_provider: str = "email"
 
 
-HIDDEN_FEATURES = ("show_fish_icon", "show_bar_icon", "show_print_cards", "show_hide_area", "show_nav_ask", "show_weather_photos", "show_topup")
+HIDDEN_FEATURES = ("show_fish_icon", "show_bar_icon", "show_print_cards", "show_hide_area", "show_nav_ask", "show_weather_photos", "show_topup", "show_post_departure")
 
 
 def provider_of(u: dict) -> str:
