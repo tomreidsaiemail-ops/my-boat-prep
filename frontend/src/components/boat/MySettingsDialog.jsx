@@ -89,10 +89,6 @@ export const MySettingsDialog = ({ open, onClose }) => {
           ))}
           <p className="text-xs text-[var(--muted)]">Pick one. Where a tide station doesn't publish Chart Datum, heights show as MSL and say so.</p>
           </>}
-          <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid="show-list-footer-label">
-            <input type="checkbox" checked={!!user?.show_list_footer} disabled={busy || !online} onChange={(e) => footer(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="show-list-footer-checkbox" />
-            <span><b>Reset All, Export button set List Footer.</b> Show Reset All..., Export Current, Export All and Export to Excel... at the bottom of every list. They are always in the menu under Reset all... and Export/Import...</span>
-          </label>
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>
