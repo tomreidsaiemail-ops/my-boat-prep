@@ -69,7 +69,7 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
         </div>}
         <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b><br />
-          Register and invite crew<ShowMe onClick={() => glow("boat-crew-btn", 5000)} testId="welcome-show-crew-btn" /><br />
+          Register and invite crew<ShowMe onClick={() => { setHomeOpen(false); glow("boat-crew-btn", 5000); }} testId="welcome-show-crew-btn" /><br />
           Register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails.<br />
           Take the Model Vessel tutorial<br />
           Crew Registration and Invites<ShowMe onClick={showTutorial} testId="welcome-show-crew-tutorial-btn" /><br />
