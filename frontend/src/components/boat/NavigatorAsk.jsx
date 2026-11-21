@@ -100,6 +100,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const allLegs = [{ route_start: start, route_dest: dest, start_pos: w.start_pos, dest_pos: w.dest_pos, arrive_type: w.arrive_type }, ...legsNow];
   const dayTrip = canReturn && isDayTrip(allLegs) && (allLegs.length !== 2 || allLegs.some((l) => l.arrive_type === "transit"));
   const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
+  // A Draft Plan that ends away from START (green 1 to red 2 on the map) is a One-way Trip.
+  const oneWay = canReturn && draft && !isReturn && !dayTrip;
   // Trip Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
     start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, path: w.path ?? null }, ...(w.legs || [])];
@@ -187,7 +189,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
             <span className="flex h-11 items-center rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">Day Trip</span>
           </span>
         )}
-        {!interim && !dayTrip && (
+        {!interim && oneWay && (
+          <span className="flex shrink-0 flex-col items-center gap-1" title="Ends away from START. Add a leg back to START on the Edit Draft Plan map to make it a return trip." data-testid="one-way-trip-flag">
+            <span className="field-label text-center leading-tight">One-way<br />trip</span>
+            <span className="flex h-11 items-center whitespace-nowrap rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">One-way</span>
+          </span>
+        )}
+        {!interim && !dayTrip && !oneWay && (
           <label className={`flex shrink-0 flex-col items-center gap-1 ${!canReturn || legsNow.length ? "opacity-60" : "cursor-pointer"}`} data-testid="return-trip"
             title={isReturn ? "Leg 2 comes back to START, so this is a return trip" : legsNow.length ? "Only a 2-leg trip that comes back to START is a return trip" : canReturn ? "" : "Enter the START and DESTINATION first"}>
             <span className="field-label text-center leading-tight">Return<br />trip</span>
