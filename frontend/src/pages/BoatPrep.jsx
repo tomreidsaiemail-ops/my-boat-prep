@@ -1365,7 +1365,7 @@ export default function BoatPrep({ boatId, boats }) {
           <Navigation2 className="h-4 w-4" /> Passed {transitNow.route_dest || `Point ${transitNow.n + 1}`}
         </button>
       )}
-      {hopKey !== "crewRoles" && hopRow}
+      {hopRow}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
           {prepClones.map((l) => {
@@ -1419,7 +1419,6 @@ export default function BoatPrep({ boatId, boats }) {
             onTutorial={launchTutorial}
             onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
           {active.id !== "welcome" && !isTripList(active) && checks}
-          {hopKey === "crewRoles" && hopRow}
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
