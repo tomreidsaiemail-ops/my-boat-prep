@@ -56,6 +56,7 @@ import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/Cr
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
 import { InventorySetupWizard } from "@/components/boat/welcome/InventorySetupWizard";
 import { ZoneTipDialog } from "@/components/boat/welcome/ZoneTipDialog";
+import { glow } from "@/lib/glow";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
@@ -404,6 +405,17 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const [setupOpen, setSetupOpen] = useState(false);
   const [zoneTip, setZoneTip] = useState(false);
+  // After "Got it": the Galley (or Cockpit) on the wizard's new map glows so the skipper knows where to tap.
+  const glowFirstZone = (mapId) => {
+    const sw = ((boats.current.zone_maps || []).find((m) => m.id === mapId)?.swatches) || [];
+    const s = sw.find((x) => /galley/i.test(x.label || "")) || sw.find((x) => /cockpit/i.test(x.label || "")) || sw[0];
+    if (!s) return;
+    setTimeout(() => {
+      const t = `zone-overview-${mapId}`;
+      document.querySelector(`[data-testid="${t}-label-${s.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      glow(`${t}-label-${s.id}`, 5000); glow(`${t}-swatch-${s.id}`, 5000);
+    }, 300);
+  };
   const switchToModel = () => { restartWalkthrough(user.user_id, modelAsk.key); setModelAsk(null); boats.select(modelBoat.key); };
   const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
   const hiddenLists = crew ? crewHidden : state.list_hidden || [];
@@ -1403,8 +1415,8 @@ export default function BoatPrep({ boatId, boats }) {
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
-        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(true), 1400); }} />}
-      <ZoneTipDialog open={zoneTip} onClose={() => setZoneTip(false)} />
+        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(mapId || true), 1400); }} />}
+      <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />

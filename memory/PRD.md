@@ -1117,3 +1117,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Set Up Wizard "Open Boat Inventory" expands Zone Maps and scrolls to the new overview (mbp:show-zone-map event with detail.mapId).
 - 2026-06: Set Up Wizard blank done panel adds note: cupboard definitions are kept; re-drag zones or use Magically Place Colours on the new schematic.
 - 2026-06: After Set Up Wizard "Open Boat Inventory", ZoneTipDialog prompts to tap a zone (Galley/Cockpit), add cupboards and try a test magic scan. Only on the wizard path; never on other zone map opens.
+- 2026-06: Wizard blank hull shown at 680px wide on phones in a sideways-scroll box (OverviewMap `big` prop) with hint; Magically Place Colours + deck toggle hidden there. After the zone tip "Got it", the Galley (else Cockpit, else first) label + dot on the new map glow 5s and scroll into view. Deployed to production after this.

@@ -37,7 +37,7 @@ const MapPanel = ({ boat, map, online, presets, onMaps, auto, blank, onNext }) =
     {blank
       ? <p className="text-sm">No matching schematic, so here is a blank one (the bow is on the right). Just drop the Galley, Saloon and some cabins onto it. Later you can replace it with a schematic from your boat&apos;s operating manual, or an image of your own.</p>
       : <p className="text-sm">The Magic Mariner is placing your zone colours on your schematic. Drag any that need nudging.</p>}
-    {map && <OverviewMap boat={boat} map={map} src={boatMapUrl(boat, map)} canEdit online={online} presets={presets} onMaps={onMaps} autoStart={auto} />}
+    {map && <OverviewMap boat={boat} map={map} src={boatMapUrl(boat, map)} canEdit online={online} presets={presets} onMaps={onMaps} autoStart={auto} big={blank} />}
     <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!(map?.swatches || []).length} onClick={onNext} data-testid="setup-colours-next-btn">
       {(map?.swatches || []).length ? <>Next <ArrowRight className="h-4 w-4" /></> : blank ? "Drop at least one colour first" : "Waiting for colours..."}
     </button>
@@ -98,7 +98,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
   return (
     <>
       <Dialog open={open && step !== "schematic"} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="inventory-setup-wizard" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className={`flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--navy)] ${step === "blank" ? "max-sm:p-3" : ""}`} data-testid="inventory-setup-wizard" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-extrabold" data-testid="setup-title">Boat Inventory Set Up: {TITLES[step]}</DialogTitle>
             <DialogDescription className="text-left text-xs">Boat Inventory Set Up Wizard</DialogDescription>

@@ -15,7 +15,7 @@ export const OverviewView = ({ src, swatches = [], testId = "zone-overview-full"
 );
 
 // A Zone Map Overview: an AI layout plan the skipper drops the admin's predetermined colour squares onto (e.g. Cockpit - Gold where the cockpit is).
-export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour, onZoneDefaults, autoStart = false }) => {
+export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onMaps, onRemove, removing, onImage, onColour, onZoneDefaults, autoStart = false, big = false }) => {
   const [swatches, setSwatches] = useState(map.swatches || []);
   const [selected, setSelected] = useState(null);
   const [armed, setArmed] = useState(null);
@@ -164,9 +164,13 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       </button>
       {!hidden && (<>
       {map.source_url && <a href={map.source_url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-semibold text-[var(--muted)] underline" data-testid={`${t}-source`}>Source: {map.source_title || "web"}</a>}
-      <CalloutPlan src={src} alt={`${map.name || "Zone Map"} overview`} imgClass="block max-h-72 max-w-full rounded-md" swatches={swatches} boxRef={box}
-        selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} onOpen={onImage} className={armed ? "cursor-crosshair" : ""} testId={t} planTestId={`${t}-plan`}
+      {/* big (the wizard's blank hull): twice the size on phones, scroll sideways for the rest of the hull. */}
+      <div className={big ? "overflow-x-auto max-sm:rounded-md max-sm:bg-white" : ""} data-testid={big ? `${t}-big` : undefined}>
+      <CalloutPlan src={src} alt={`${map.name || "Zone Map"} overview`} imgClass={big ? "block rounded-md max-sm:w-[680px] max-sm:max-w-none sm:max-h-72 sm:max-w-full" : "block max-h-72 max-w-full rounded-md"} swatches={swatches} boxRef={box}
+        selected={selected} onDotDown={dragOld} onLabelDown={dragLabel} onClick={tapPlan} onOpen={onImage} className={`${armed ? "cursor-crosshair" : ""} ${big ? "max-sm:!max-w-none" : ""}`} testId={t} planTestId={`${t}-plan`}
         onRemove={canEdit ? (e, s) => { e.stopPropagation(); setSelected(null); save(swatches.filter((x) => x.id !== s.id)); } : null} />
+      </div>
+      {big && <p className="text-xs font-semibold text-white sm:hidden" data-testid={`${t}-big-hint`}>Scroll the drawing sideways to reach the bow and stern.</p>}
       {canEdit && (
         <>
           <button type="button" onClick={swatches.length ? toggleTools : undefined} aria-expanded={!shut} aria-disabled={!swatches.length}
@@ -175,6 +179,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             {swatches.length > 0 && <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${shut ? "" : "rotate-180"}`} />}
           </button>
           {!shut && <>
+          {!big && <>
           <button type="button" className="btn-solid min-h-10 justify-center gap-2 text-sm" disabled={placing || !presets.length} onClick={autoPlace} data-testid={`${t}-auto-btn`}>
             {placing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {placing ? "Magic Mariner is finding zones to colour..." : "Magically Place Colours"}
@@ -184,6 +189,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             Include deck zones
             <span className="basis-full pl-7 text-xs font-semibold text-[var(--muted)]">{withDeck ? "decks, anchor locker and lazarettes too" : "below deck, cockpit and transom only"}</span>
           </label>
+          </>}
           <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Drag a colour onto the plan (or tap a colour, then tap the plan). Tap a placed dot or its name to add photos of that zone and scan its cupboards; press and hold a dot to remove it. Drag a name anywhere, even over the drawing; it stays where you drop it. Open image shows the plan full size."}</p>
           <div ref={paletteRef} className="flex flex-wrap gap-1.5 overflow-hidden p-0.5" style={clipH && !allColours ? { maxHeight: clipH } : undefined} data-testid={`${t}-palette`}>
             {presets.map((p) => used.has(p.label) ? (
