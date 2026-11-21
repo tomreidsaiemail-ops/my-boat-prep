@@ -1113,3 +1113,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Welcome tour reduced to ONE 5s yellow highlight (list picker + Home button + Home icon together); Boat Inventory/Trip Planning previews, crew and boat-list glows removed from the auto tour. No scroll after the first-sign-in details. Self-tested (glow sampled every 0.5s).
 - 2026-06: "Register and invite crew" Show me also collapses HOME BUTTON SETTING.
 - 2026-06: Welcome "Do you want to make your crew safer?" is its own fold section (welcome-crew-toggle); the Model Vessel boat-list Show me collapses it.
+- 2026-06: Welcome help renamed "Home, Model Vessel and Safer Crew Help"; 3 mixed-case fold sub-sections (Home Button Setting / Do you want to make your crew safer? / Model Vessel, welcome-mv-toggle) via FoldHeader `mixed` prop; Thanks tick stays below them.
