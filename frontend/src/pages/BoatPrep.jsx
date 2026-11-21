@@ -175,6 +175,7 @@ import { TrainingMode, restartWalkthrough } from "@/components/boat/TrainingMode
 import { ModelWalkthroughConfirm } from "@/components/boat/ModelWalkthroughConfirm";
 import { WIZARD_PREFIX, wizardsFrom } from "@/lib/wizard";
 import useWizardsDone, { useTrainingProgress } from "@/hooks/useWizardsDone";
+import { boatKey } from "@/hooks/useBoats";
 import { BARTENDER_KIND, BARTENDER_NAME, cocktailItems } from "@/lib/bartender";
 import { useFeature } from "@/lib/features";
 import { queuedCatches } from "@/lib/fishQueue";
@@ -1089,12 +1090,14 @@ export default function BoatPrep({ boatId, boats }) {
     if (!go && sessionStorage.getItem("mbp_welcome_checked")) return;
     sessionStorage.setItem("mbp_welcome_checked", "1");
     sessionStorage.removeItem("mbp_welcome_go");
-    api.get("/welcome").then(({ data }) => {
+    // The server's boat list, not the cached one: on a new device the cache has no zone maps yet.
+    Promise.all([api.get("/welcome"), api.get("/me/boats").catch(() => null)]).then(([{ data }, mineRes]) => {
       const b = state.boat || {};
       const mine = !crew && !boats.current.model;
       const fresh = data.first && mine && !(b.vessel || "").trim() && !(b.callsign || "").trim();
+      const server = mineRes?.data?.boats?.find((x) => boatKey(x) === boats.current.key);
       // Existing skippers without a zone map and with boat details missing: the Zone Map Set Up Wizard at every sign-in until they have one.
-      const setup = data.skipper && mine && !fresh && !(boats.current.zone_maps || []).length && ["vessel", "make", "model", "year_built"].some((k) => !String(b[k] || "").trim());
+      const setup = data.skipper && mine && !fresh && !!mineRes && !(server?.zone_maps || []).length && ["vessel", "make", "model", "year_built"].some((k) => !String(b[k] || "").trim());
       if (!data.auto) { if (setup) setSetupOpen(true); return; }
       const own = boats.boats.find((b) => !b.crew && !b.model);
       if ((crew || boats.current.model) && own && !go) { sessionStorage.setItem("mbp_welcome_go", "1"); boats.select(own.key); return; }

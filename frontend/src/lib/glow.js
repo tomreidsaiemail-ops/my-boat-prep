@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 
 // Yellow highlight on an on-screen element for a moment (Welcome screen tours); resolves when it ends.
+// Overlapping glows on one element are counted, so an earlier one ending doesn't cut a later one short.
+const glowing = new WeakMap();
 export const glow = (testId, ms = 1000, cls = "mbp-glow") => new Promise((done) => {
   const els = [...document.querySelectorAll(`[data-testid="${testId}"]`)];
-  els.forEach((e) => e.classList.add(cls));
-  setTimeout(() => { els.forEach((e) => e.classList.remove(cls)); done(); }, ms);
+  const count = (e, d) => { const m = glowing.get(e) || {}; m[cls] = (m[cls] || 0) + d; glowing.set(e, m); return m[cls]; };
+  els.forEach((e) => { count(e, 1); e.classList.add(cls); });
+  setTimeout(() => { els.forEach((e) => { if (count(e, -1) <= 0) e.classList.remove(cls); }); done(); }, ms);
 });
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

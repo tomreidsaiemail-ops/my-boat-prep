@@ -1,0 +1,30 @@
+{
+  "summary": "Tested the backend (6 pytest cases, all passed) and the frontend at mobile 390x844 as test-welcome-new, plus crew and admin checks. Passed: (5) training magic credit: the first finish credits 10, later finishes credit 0, keys are case-insensitive, purchased_allowance goes up by 10 only once; /wizards/mine returns the right fields; analytics training_magic works and the Admin Analytics tiles render; non-admins get 403. (8) FirstDetailsDialog: Esc and outside clicks do not close it; Continue stays disabled until all three fields are filled; '12345' shows first-phone-error; TODO is accepted; the values are saved to the DB and Welcome opens. (2) Crew tutorial Show me: Help glows 2s, Model Vessel opens about 2s, Crew Registration glows 5s, then Model Vessel folds and glows 5s, then the menu closes. (3) and (4) Help tick and '+10 magic' badge, and the Training Progress tab (10 extra magic, 1 of 9, row with date and +10). (6) Make home: with details missing the wizard opens and no go-list-dialog appears; with details complete go-list-dialog appears; Stay keeps Welcome; Yes switches to Boat Inventory. (1) The wizard opens at every sign-in while details are missing, and not when details are complete; crew-only users get nothing. (7) Mostly works, with one timing bug. BUGS: (A) a skipper with a zone map but missing make still gets the Set Up Wizard on a new device or browser (race condition); (B) the answered question's yellow glow is cut short when the answer comes within 5s of the question appearing.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BoatPrep.jsx sign-in welcome effect (line ~1097)", "issue": "The 'setup' check reads boats.current.zone_maps before /api/me/boats has loaded. On a new device or browser, localStorage mbp_boats is the default MAIN with no zone_maps, so a skipper WITH a zone map but with make/model/year missing still gets inventory-setup-wizard at sign-in. Reproduced: zone_maps=[1 map] and make='' in a fresh context gives a wizard count of 1. A second sign-in on the same device (cached mbp_boats with the map) gives 0. The server /api/me/boats did return 1 zone map.", "selector": "[data-testid=inventory-setup-wizard]", "priority": "HIGH"},
+      {"component": "WelcomeQuestions.jsx + lib/glow.js", "issue": "If the user answers a question within 5s of it appearing, the folded answered card glows for less than 5s. Measured: welcome-q-find glowed only about 3s, then nothing for about 2s, then welcome-q-crew glowed at 5.0s. Cause: the question's own first-appearance glow(welcome-q-find, 5000) timer removes the mbp-glow class early, while the new question's glow(prevKey) on the same element is still meant to run. glow() should count overlapping glows per element (or cancel the earlier timer) before removing the class. The crew card's 5s glow and the grey bullet-by-bullet glow (5s each) are correct.", "selector": "[data-testid=welcome-q-find]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_training_magic.py", "/app/test_reports/pytest/pytest_training_magic.xml"],
+  "action_items": [
+    "Fix the setup-wizard sign-in race: wait for the first /api/me/boats refresh (expose a 'synced' flag from useBoats) or have /api/welcome return has_zone_map, before deciding setupOpen",
+    "Make glow() handle overlapping glows on the same element (ref-count, or keep a per-element timer and clear it), so the answered card's 5s glow is not cut short"
+  ],
+  "critical_code_review_comments": [
+    "WelcomeHelp showTutorial: if the crew-registration item is missing (admin lists not loaded yet or offline), it returns early and leaves the app menu and Help open",
+    "useTrainingProgress: wizardEvent('finish') updates mbp_wizards_done but not mbp_training_progress.finished. Training Progress, which uses p.finished when it exists, can miss a tutorial just finished until /wizards/mine is fetched again (remount/online)",
+    "InventorySetupWizard saves details only on Next; closing panel 1 discards what was typed, with no warning",
+    "Backend crediting is atomic (find_one_and_update BEFORE plus a credited $exists guard), so it is safe under concurrent requests. test-user-free is launch-free premium, so it earns credits too"
+  ],
+  "updated_files": ["/app/backend/tests/test_training_magic.py"],
+  "success_rate": {"backend": "100%", "frontend": "85%"},
+  "seed_data_creation": "None kept. Test wizard_progress rows (test_tutorial_*) were deleted and purchased_allowance was reverted for test-user-pro and test-user-free (both 0). For test-welcome-new: the crew-registration finish row was deleted, purchased_allowance went back to 0, free_used went back to 3 (the schematic search used 1), the TEST_zm1 zone map was removed, and the boat/welcome reset was applied as requested.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use a fresh browser context for each sign-in (sessionStorage mbp_welcome_checked). Ticking the ack checkbox folds the help, so use click(), not check(). The setup wizard saves only on setup-next-btn. After Next comes a schematic search dialog (it costs 1 free magic); Esc goes back to details, and a second Esc closes it. To test go-list, set boat.home_list='welcome' in the DB with details complete. Menu glow sequence verified by sampling classes every 0.5s. Reset script in the review request.",
+  "rca of the issue": "A: the BoatPrep welcome effect depends on [online, loaded] only. On a new device it runs before the useBoats refresh, while boats.current still holds the default entry without zone_maps. B: glow() uses an independent setTimeout per call and removes the class without checking for other active glows on the same element."
+}

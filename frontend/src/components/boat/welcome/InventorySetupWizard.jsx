@@ -10,6 +10,8 @@ import { OverviewMap } from "@/components/boat/zone/OverviewMap";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 
 const FIELDS = ["vessel", "boat_type", "make", "model", "year_built"];
+// The blank schematic matching the boat type: 2 hulls for a catamaran, 3 for a trimaran, else a monohull.
+const blankFor = (type) => (/trimaran/i.test(type || "") ? "/blank-trimaran.png" : /catamaran/i.test(type || "") ? "/blank-catamaran.png" : "/blank-hull.png");
 const TITLES = { details: "Your boat", colours: "Magically place colours", blank: "Your blank schematic", done: "You're set up" };
 
 const DetailsPanel = ({ draft, set, onNext }) => (
@@ -83,7 +85,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
     setBusy(true);
     try {
       const form = new FormData();
-      form.append("file", await (await fetch("/blank-hull.png")).blob(), "blank-schematic.png");
+      form.append("file", await (await fetch(blankFor(draft.boat_type || details.boat_type))).blob(), "blank-schematic.png");
       form.append("kind", "overview");
       added((await api.post(`/boats/${boat.boat_id}/zone-maps`, form, { timeout: 60000 })).data.zone_maps, "blank");
       setBlank(true);
