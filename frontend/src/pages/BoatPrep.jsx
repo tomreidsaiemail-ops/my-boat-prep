@@ -55,6 +55,7 @@ import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
 import { InventorySetupWizard } from "@/components/boat/welcome/InventorySetupWizard";
+import { ZoneTipDialog } from "@/components/boat/welcome/ZoneTipDialog";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
@@ -402,6 +403,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key);
   };
   const [setupOpen, setSetupOpen] = useState(false);
+  const [zoneTip, setZoneTip] = useState(false);
   const switchToModel = () => { restartWalkthrough(user.user_id, modelAsk.key); setModelAsk(null); boats.select(modelBoat.key); };
   const batchHelp = helpPanels.find((p) => p.name.toLowerCase().replace(/\s+/g, " ") === "admin - help panel - batch magic scan button")?.items;
   const hiddenLists = crew ? crewHidden : state.list_hidden || [];
@@ -1401,7 +1403,8 @@ export default function BoatPrep({ boatId, boats }) {
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
-        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); }} />}
+        onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(true), 1400); }} />}
+      <ZoneTipDialog open={zoneTip} onClose={() => setZoneTip(false)} />
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} />}
       {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
