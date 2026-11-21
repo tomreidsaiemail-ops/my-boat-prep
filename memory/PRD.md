@@ -1125,3 +1125,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Folder/box help wording: "...your folder of rigging and boat builders reports."
 - 2026-06: Guided Welcome for brand new users (after FirstDetailsDialog, BoatPrep `guided`): only Home Button Setting open, yellow Continue -> crew section, yellow Continue -> Model Vessel, Thanks tick highlighted yellow. "I am interested" on the find question shows FindNoteDialog ("Continue with Welcome...") before folding. Preview template "Admin - Welcome Screen" item 1 renamed "...quickly and easily." (Production left for the user to edit).
 - 2026-06: Welcome questions: after the new question title glow ends, "I am interested"/"I am not interested" stay yellow (Choice hint) until one is ticked, for every question.
+- 2026-06: Welcome questions: no glow on the answered question; the next question title glows 5s immediately, then choices stay yellow.

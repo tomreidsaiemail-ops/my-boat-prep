@@ -35,8 +35,8 @@ const Choice = ({ on, label, onPick, testId, hint = false }) => (
 );
 
 // One question; once answered it folds, green (interested) or light red.
-// A new question: the bold title of the one just answered (folded) glows 5s, then this one's title 5s; then its two choices stay yellow until one is ticked while its bullets go grey one by one.
-const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) => {
+// A new question: its bold title glows 5s straight away (the answered one just folds green or red); then its two choices stay yellow until one is ticked while its bullets go grey one by one.
+const Question = ({ q, answer, onAnswer, focus, onOpen, beforeYes }) => {
   const [open, setOpen] = useState(!answer || focus);
   const [hint, setHint] = useState(false);
   const ran = useRef(false);
@@ -44,7 +44,6 @@ const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) =>
     if (answer || ran.current) return;
     ran.current = true;
     (async () => {
-      if (prevKey) await glow(`welcome-q-${prevKey}-toggle`, 5000);
       await glow(`welcome-q-${q.key}-toggle`, 5000);
       setHint(true);
       for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft");
@@ -78,12 +77,11 @@ export const WelcomeQuestions = ({ questions, answers, onAnswer, homeId, onMakeH
   const next = questions.findIndex((q) => !answers[q.key]);
   const shown = next < 0 ? questions : questions.slice(0, next + 1);
   const rec = recommendations(questions, answers);
-  const [justAnswered, setJustAnswered] = useState(null);
   const [findNote, setFindNote] = useState(null);
   return (
     <section className="flex flex-col gap-3" data-testid="welcome-questions">
       <p className="text-sm">My Boat Prep would like to know what you would like from it, so we don&apos;t clutter up your session with features you have no interest in. You can always turn them on later: when getting started, less is more.</p>
-      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => { setJustAnswered(q.key); onAnswer(q.key, v); }} focus={focus === q.key} onOpen={() => onOpen(q.key)} prevKey={justAnswered}
+      {shown.map((q) => <Question key={q.key} q={q} answer={answers[q.key]} onAnswer={(v) => onAnswer(q.key, v)} focus={focus === q.key} onOpen={() => onOpen(q.key)}
         beforeYes={q.key === "find" ? () => new Promise((done) => setFindNote(() => done)) : undefined} />)}
       <FindNoteDialog open={!!findNote} onContinue={() => { findNote(); setFindNote(null); }} />
       {(rec.tutorials.length > 0 || rec.home) && (
