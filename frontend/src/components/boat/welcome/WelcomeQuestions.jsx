@@ -21,7 +21,7 @@ const Choice = ({ on, label, onPick, testId }) => (
 );
 
 // One question; once answered it folds, green (interested) or light red.
-// A new question: the one just answered (folded) glows 5s, then this one 5s, then its bullets go grey one by one.
+// A new question: the bold title of the one just answered (folded) glows 5s, then this one's title 5s, then its bullets go grey one by one.
 const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey }) => {
   const [open, setOpen] = useState(!answer || focus);
   const ran = useRef(false);
@@ -29,8 +29,8 @@ const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey }) => {
     if (answer || ran.current) return;
     ran.current = true;
     (async () => {
-      if (prevKey) await glow(`welcome-q-${prevKey}`, 5000);
-      await glow(`welcome-q-${q.key}`, 5000);
+      if (prevKey) await glow(`welcome-q-${prevKey}-toggle`, 5000);
+      await glow(`welcome-q-${q.key}-toggle`, 5000);
       for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft");
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
