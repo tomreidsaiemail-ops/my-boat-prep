@@ -1128,3 +1128,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Welcome questions: no glow on the answered question; the next question title glows 5s immediately, then choices stay yellow.
 - 2026-06: Help menu has a "Welcome" cascade at the top: "Open Welcome" (where they left off) and "Go through Welcome again from the start" (POST /api/welcome/restart clears answers, mv_ack, section; reopens Welcome guided with Continue buttons).
 - 2026-06: Trip Planning: "Ask the Magic Marine Navigator" fold now hides its answer card too (no longer forced open by a result); asking opens it.
+- 2026-06: Navigator warning reads "...local tidal charts, PredictWind® and Navionics® for weather and routing."
