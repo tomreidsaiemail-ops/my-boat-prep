@@ -28,16 +28,17 @@ export const recommendations = (questions, answers) => {
   return { tutorials: [...new Set(yes.flatMap((r) => r.tutorials))], home: yes[0]?.home || null };
 };
 
-const Choice = ({ on, label, onPick, testId }) => (
-  <label className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border-[1.5px] px-3 py-2 text-sm font-bold ${on ? "border-[var(--navy)] bg-[var(--navy)] text-white" : "border-[var(--line)] bg-white"}`} data-testid={testId}>
+const Choice = ({ on, label, onPick, testId, hint = false }) => (
+  <label className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border-[1.5px] px-3 py-2 text-sm font-bold ${on ? "border-[var(--navy)] bg-[var(--navy)] text-white" : hint ? "border-yellow-500 bg-yellow-200" : "border-[var(--line)] bg-white"}`} data-hint={hint || undefined} data-testid={testId}>
     <input type="checkbox" checked={on} onChange={onPick} className="h-5 w-5 accent-[var(--navy)]" data-testid={`${testId}-checkbox`} />{label}
   </label>
 );
 
 // One question; once answered it folds, green (interested) or light red.
-// A new question: the bold title of the one just answered (folded) glows 5s, then this one's title 5s, then its bullets go grey one by one.
+// A new question: the bold title of the one just answered (folded) glows 5s, then this one's title 5s; then its two choices stay yellow until one is ticked while its bullets go grey one by one.
 const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) => {
   const [open, setOpen] = useState(!answer || focus);
+  const [hint, setHint] = useState(false);
   const ran = useRef(false);
   useEffect(() => {
     if (answer || ran.current) return;
@@ -45,6 +46,7 @@ const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) =>
     (async () => {
       if (prevKey) await glow(`welcome-q-${prevKey}-toggle`, 5000);
       await glow(`welcome-q-${q.key}-toggle`, 5000);
+      setHint(true);
       for (let i = 0; i < q.bullets.length; i += 1) await glow(`welcome-${q.key}-bullet-${i}`, 5000, "mbp-glow-soft");
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -63,8 +65,8 @@ const Question = ({ q, answer, onAnswer, focus, onOpen, prevKey, beforeYes }) =>
           {q.bullets.map((b, i) => <li key={b} className="rounded px-1" data-testid={`welcome-${q.key}-bullet-${i}`}>{b}</li>)}
         </ul>
         <div className="flex gap-2">
-          <Choice on={answer === "yes"} label="I am interested" onPick={() => pick("yes")} testId={`welcome-q-${q.key}-yes`} />
-          <Choice on={answer === "no"} label="I am not interested" onPick={() => pick("no")} testId={`welcome-q-${q.key}-no`} />
+          <Choice on={answer === "yes"} label="I am interested" onPick={() => pick("yes")} testId={`welcome-q-${q.key}-yes`} hint={hint && !answer} />
+          <Choice on={answer === "no"} label="I am not interested" onPick={() => pick("no")} testId={`welcome-q-${q.key}-no`} hint={hint && !answer} />
         </div>
       </>}
     </div>
