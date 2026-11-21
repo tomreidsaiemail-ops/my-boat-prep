@@ -1081,13 +1081,12 @@ export default function BoatPrep({ boatId, boats }) {
       startWelcome();
     }).catch(() => {});
   }, [online, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Brand new skipper: Vessel, Callsign and phone first, then the collapsed VESSEL bar at the top with Welcome under it.
+  // Brand new skipper: Vessel, Callsign and phone first, then Welcome.
   const [firstPrompt, setFirstPrompt] = useState(false);
   const startWelcome = () => { setActiveId("welcome"); api.post("/welcome/visited").catch(() => {}); };
   const firstDone = () => {
     setFirstPrompt(false);
     startWelcome();
-    setTimeout(() => document.querySelector('[data-testid="boat-details-summary"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 500);
   };
   const changeBoatField = (key, value) => {
     if (key === "shore_email") {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Ship } from "lucide-react";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
-import { closeMenu, glow, openMenu, previewHome, previewList, wait } from "@/lib/glow";
+import { closeMenu, glow, openMenu, previewList, wait } from "@/lib/glow";
 
 const P = ({ children, testId }) => <p className="text-sm" data-testid={testId}>{children}</p>;
 const ShowMe = ({ onClick, testId }) => (
@@ -41,7 +41,7 @@ const showBoats = async () => {
 const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
 const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, pulse === true); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
-// The Home button and Model Vessel help: a short yellow-highlight tour, then folded into one line once the skipper ticks "Thanks".
+// The Home button and Model Vessel help: one 5-second yellow highlight of the list picker, Home button and Home icon, then folded into one line once the skipper ticks "Thanks".
 export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
   const [homeOpen, setHomeOpen] = useState(true);
@@ -49,13 +49,6 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
   const ran = useRef(false);
   const tour = async () => {
     await Promise.all([glow("list-selector", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
-    await wait(400);
-    await Promise.all([previewHome("Boat Inventory", "cross", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
-    await wait(300);
-    await Promise.all([previewHome("Trip Planning", "cross", 5000), glow("boat-details-home-btn", 5000), glow("set-home-list-btn", 5000)]);
-    await wait(300);
-    await glow("boat-crew-btn", 2000);
-    await glow("boat-selector", 1000);
     setMvNote(true);
   };
   useEffect(() => { if (!ack && !ran.current) { ran.current = true; tour(); } }, []); // eslint-disable-line react-hooks/exhaustive-deps
