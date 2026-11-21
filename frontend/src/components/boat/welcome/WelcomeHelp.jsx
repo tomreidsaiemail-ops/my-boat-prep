@@ -45,6 +45,7 @@ const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, 
 export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
   const [homeOpen, setHomeOpen] = useState(true);
+  const [crewOpen, setCrewOpen] = useState(true);
   const [mvNote, setMvNote] = useState(false);
   const ran = useRef(false);
   const tour = async () => {
@@ -68,13 +69,14 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
             </>
             : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
         </div>}
-        <P testId="welcome-crew-help"><b>Do you want to make your crew safer?</b><br />
+        <FoldHeader open={crewOpen} onToggle={() => setCrewOpen((o) => !o)} testId="welcome-crew-toggle">Do you want to make your crew safer?</FoldHeader>
+        {crewOpen && <P testId="welcome-crew-help">
           Register and invite crew<ShowMe onClick={() => { setHomeOpen(false); glow("boat-crew-btn", 5000); }} testId="welcome-show-crew-btn" /><br />
           Register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails.<br />
           Take the Model Vessel tutorial<br />
           Crew Registration and Invites<ShowMe onClick={showTutorial} testId="welcome-show-crew-tutorial-btn" /><br />
-          Any changes, even crew registrations, stay with the Model Vessel.</P>
-        <P testId="welcome-mv-boat-list">The Model Vessel is like another boat you own<ShowMe onClick={showBoats} testId="welcome-show-boats-btn" /></P>
+          Any changes, even crew registrations, stay with the Model Vessel.</P>}
+        <P testId="welcome-mv-boat-list">The Model Vessel is like another boat you own<ShowMe onClick={() => { setCrewOpen(false); showBoats(); }} testId="welcome-show-boats-btn" /></P>
         {mvNote && <P testId="welcome-mv-green">The Model Vessel is green themed so you will know you are working with it and not your own boat.</P>}
         <P>The Model Vessel tutorials are very quick to go through, and you don&apos;t even have to type in route details: they have a &quot;Do It For Me&quot; feature that fills in what it wants. The Model Vessel comes with a boat schematic showing the galley, saloon and cabin layouts, so it is a great starting point to see how to organise your own schematic, and it can do magic scanning without you taking a photo, as the photos already exist.</P>
         <P>You can switch to the Model Vessel while going through the Welcome screen, or hop out to the Model Vessel or any list like Trip Planning. The Welcome screen opens each time you sign in, right where you left off, until you have been through every section. After that you select it like any other list.</P>
