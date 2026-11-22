@@ -126,20 +126,21 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
     <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />
-    {why}
+    {/* Why we're going and Meet up are leaving-the-dock details, so a New departure from Arriving leaves them out. */}
+    {!interim && why}
+    {!interim && (
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <label htmlFor="navigator-meetup" className="field-label">Meet up details</label>
-        {!interim && (
-          <label className={`flex items-center gap-1.5 text-xs font-bold text-[var(--navy)] ${changed(meetup) ? "" : "opacity-50"}`} data-testid="navigator-meetup-agree">
-            <input type="checkbox" checked={agree} disabled={!changed(meetup)} onChange={(e) => onChange({ meetup_agree: e.target.checked })} className="h-4 w-4 accent-[var(--navy)]" data-testid="navigator-meetup-agree-checkbox" />
-            Crew member to agree to this explicitly
-          </label>
-        )}
+        <label className={`flex items-center gap-1.5 text-xs font-bold text-[var(--navy)] ${changed(meetup) ? "" : "opacity-50"}`} data-testid="navigator-meetup-agree">
+          <input type="checkbox" checked={agree} disabled={!changed(meetup)} onChange={(e) => onChange({ meetup_agree: e.target.checked })} className="h-4 w-4 accent-[var(--navy)]" data-testid="navigator-meetup-agree-checkbox" />
+          Crew member to agree to this explicitly
+        </label>
       </div>
       <textarea id="navigator-meetup" value={meetup} maxLength={1000} rows={3} onChange={(e) => setMeetup(e.target.value)}
         className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-meetup-input" />
     </div>
+    )}
   </div>
   );
 };
