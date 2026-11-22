@@ -1421,10 +1421,11 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
-            onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => {
+            onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id, open = false) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
+              if (open) pickList(id); // "Make Home, and Open Boat Inventory": straight there, set up first if needed
               if (id === "boatInventory" && !boats.current.model && !identityFull(boat)) setSetupOpen(true);
-              else setGoList({ id, name: allLists.find((l) => l.id === id)?.name || "that list" });
+              else if (!open) setGoList({ id, name: allLists.find((l) => l.id === id)?.name || "that list" });
             }}
             onTutorial={launchTutorial}
             onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
