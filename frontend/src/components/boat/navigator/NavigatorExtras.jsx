@@ -28,14 +28,20 @@ import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
 // Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
 // onLeave: the date box lost focus (typing a date changes it a keystroke at a time). action: a button right of the label.
-export const When = ({ id, label, value, onChange, warn, onLeave, action = null }) => {
+// nowHours: a "set now" button in the label that fills the date and time with now plus that many hours.
+const localAt = (h) => { const d = new Date(Date.now() + h * 3600000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+export const When = ({ id, label, value, onChange, warn, onLeave, action = null, nowHours = null }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
   const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
       <div className="flex items-center justify-between gap-2">
-        <label htmlFor={id} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</label>
+        <span className={`field-label flex flex-wrap items-center gap-x-1 ${warn ? "!text-[var(--red)]" : ""}`}>
+          <label htmlFor={id}>{label}</label>
+          {nowHours !== null && <span className="whitespace-nowrap">(<button type="button" onClick={() => onChange(localAt(nowHours))}
+            className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" data-testid={`${id}-set-now-btn`}>{nowHours ? `set now + ${nowHours}hr` : "set now"}</button>)</span>}
+        </span>
         {action}
       </div>
       <div className="grid grid-cols-[3fr_2fr] gap-2">
@@ -71,7 +77,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   const setMeetup = (v) => onChange({ meetup: v, ...(changed(v) && !changed(meetup) ? { meetup_agree: true } : {}) });
   const noDepart = !interim && (weather.depart_at || "").length < 16;
   const departField = <>
-    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn || noDepart} onLeave={fillFinish} />
+    <When id="navigator-depart-at" label="Departure date and time" value={weather.depart_at} onChange={depart} warn={warn || noDepart} onLeave={fillFinish} nowHours={0} />
     <TideNote place={start} pos={weather.start_pos} date={day(weather.depart_at)} testId="depart-tides" />
   </>;
   // Start is only for racing: folded away until opened once, then it stays open.
@@ -95,7 +101,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
         <span><b className="text-[var(--navy)]">Start date and time (optional)</b><span className="block text-xs text-[var(--muted)]">Same as DEPARTURE DATE AND TIME. Only for racing, tap to set a different Start.</span></span>
       </button>}
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
-    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish}
+    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} nowHours={2}
       action={!interim && !actualOpen && (
         <button type="button" onClick={() => onChange({ actual_open: true, actual_finish_at: weather.finish_at || "" })}
           className="inline-flex h-8 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
