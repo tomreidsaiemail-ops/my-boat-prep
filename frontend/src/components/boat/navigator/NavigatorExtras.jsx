@@ -93,8 +93,8 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
     <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
-    {why}
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
+    {why}
     {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
