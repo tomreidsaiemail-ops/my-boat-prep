@@ -105,11 +105,11 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   const noName = !interim && !String(weather.event_name || "").trim();
   return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
-    <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
+    {!interim && <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
       <span className={`field-label ${noName ? "!text-[var(--red)]" : ""}`}>Event or Trip name{interim ? " (optional)" : ""}</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. The Yacht Club's Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className={`field-input text-base normal-case tracking-normal ${noName ? "!border-[var(--red)]" : ""}`} data-testid="navigator-event-name-input" />
-    </label>
+    </label>}
     {departField}
     {!racing ? null : startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
       : <button type="button" onClick={() => onChange({ event_open: true })} className="flex items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 py-2 text-left text-sm" data-testid="navigator-event-at-expand-btn">

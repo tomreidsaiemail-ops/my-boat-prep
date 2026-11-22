@@ -3,18 +3,19 @@ import { Anchor, LifeBuoy, Sailboat } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { LEG_KINDS, dmyt, nowLocal, today } from "@/lib/allDone";
+import { tripBoat } from "@/lib/trips";
 
 const ICONS = { berth: Sailboat, anchor: Anchor, mooring: LifeBuoy };
 const pad = (n) => String(n).padStart(2, "0");
 const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 // next: the next planned leg from Trip Planning. It leaves now, and its finish moves by however early or late that is.
-const blank = (next) => {
-  if (!next) return { route_start: "", route_dest: "", weather: { depart_at: nowLocal(), finish_at: today(), meetup: "" } };
+const blank = (next, event_name = "") => {
+  if (!next) return { route_start: "", route_dest: "", weather: { depart_at: nowLocal(), finish_at: today(), meetup: "", event_name } };
   const now = new Date();
   const dep = new Date((next.depart_at || "").length >= 16 ? next.depart_at : "");
   const fin = new Date((next.finish_at || "").length >= 16 ? next.finish_at : "");
   const finish = Number.isNaN(fin.getTime()) ? next.finish_at || today() : local(Number.isNaN(dep.getTime()) ? fin : new Date(fin.getTime() + (now.getTime() - dep.getTime())));
-  return { route_start: next.route_start || "", route_dest: next.route_dest || "", weather: { depart_at: local(now), finish_at: finish, meetup: "", arrive_type: next.arrive_type || "" } };
+  return { route_start: next.route_start || "", route_dest: next.route_dest || "", weather: { depart_at: local(now), finish_at: finish, meetup: "", arrive_type: next.arrive_type || "", event_name } };
 };
 
 const missing = (w) => {
@@ -24,7 +25,8 @@ const missing = (w) => {
 };
 
 const Body = ({ trip, next, legNo, boat, items, online, locked, onUpgrade, boatId, onDepart }) => {
-  const [leg, setLeg] = useState(() => blank(next));
+  // The Event or Trip name comes from Trip Planning and is shown (read only) beside the leg number.
+  const [leg, setLeg] = useState(() => blank(next, next?.event_name || (trip ? tripBoat(boat, trip.id).weather?.event_name : "") || ""));
   const planned = next && (next.depart_at || next.finish_at) ? (
     <p className="-mt-1 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900" data-testid="interim-departure-planned-times">
       Planned Leg {next.n} times: Departure {dmyt(next.depart_at) || "not set"} · Estimated Finish {dmyt(next.finish_at) || "not set"}. Departure is set to now and the finish moved to match.

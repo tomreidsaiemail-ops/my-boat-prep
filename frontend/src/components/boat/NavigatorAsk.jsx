@@ -171,6 +171,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       )}
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
+        {interim && w.event_name && <span className="min-w-0 truncate text-sm font-bold text-[var(--navy)]" title={w.event_name} data-testid="interim-event-name">{w.event_name}</span>}
         {!interim && !sure && (
           <button type="button" onClick={() => (draft ? setQuick({}) : ret ? setQuick({ seed: true }) : hasRoute ? setSure(1) : setQuick({}))} className="btn-ghost h-11 min-w-0 flex-1 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
             {draft ? <Pencil className="h-4 w-4 shrink-0 text-amber-500" /> : <Zap className="h-4 w-4 shrink-0 text-amber-500" />} <span className="truncate">{draft ? EDIT_NAME : QUICK_NAME}...</span>
