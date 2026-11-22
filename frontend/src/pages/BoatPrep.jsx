@@ -1221,7 +1221,7 @@ export default function BoatPrep({ boatId, boats }) {
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
-              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} />
+              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} done={boat.legs?.[hopTrip]} />
           )}
         </div>
       );
@@ -1422,7 +1422,7 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
-              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} boat={tripBoat(boat, active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (

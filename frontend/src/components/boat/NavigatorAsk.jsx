@@ -74,7 +74,7 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
 );
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning }) => {
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -159,7 +159,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           {onLeaving && <HopBubble icon={Anchor} label="Leave" onClick={onLeaving} departAt={boat.weather?.depart_at} testId="route-leaving-dock" />}
           {onArriving && <HopBubble icon={Flag} label="Arrive" onClick={onArriving} testId="route-arriving" />}
           {onReturning && <HopBubble icon={Home} label="Return" onClick={onReturning} testId="route-returning-dock" />}
-          <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} />
+          <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} done={sailed} />
         </div>
       )}
       {!interim && (
