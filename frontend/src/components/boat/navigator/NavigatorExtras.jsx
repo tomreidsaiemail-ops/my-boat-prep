@@ -53,13 +53,13 @@ export const When = ({ id, label, value, onChange, warn, onLeave, action = null,
   const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className={`field-label flex flex-wrap items-center gap-x-1 ${warn ? "!text-[var(--red)]" : ""}`}>
+      <div className="flex items-center gap-2">
+        <span className={`field-label flex flex-wrap items-center gap-x-1 gap-y-1 ${warn ? "!text-[var(--red)]" : ""}`}>
           <label htmlFor={id}>{label}</label>
           {nowHours !== null && <span className="whitespace-nowrap">(<SetNow id={id} base={nowHours * 60} onSet={onChange} label={hrLabel}
             className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" />)</span>}
+          {action}
         </span>
-        {action}
       </div>
       <div className="grid grid-cols-[3fr_2fr] gap-2">
         <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} onBlur={onLeave} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
@@ -105,13 +105,12 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   const noName = !interim && !String(weather.event_name || "").trim();
   return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
-    {interim && departField}
     <label htmlFor="navigator-event-name" className="flex flex-col gap-1.5">
       <span className={`field-label ${noName ? "!text-[var(--red)]" : ""}`}>Event or Trip name{interim ? " (optional)" : ""}</span>
       <input id="navigator-event-name" value={weather.event_name || ""} maxLength={100} placeholder="e.g. The Yacht Club's Winter Series Race 3" onChange={(e) => onChange({ event_name: e.target.value })}
         className={`field-input text-base normal-case tracking-normal ${noName ? "!border-[var(--red)]" : ""}`} data-testid="navigator-event-name-input" />
     </label>
-    {!interim && departField}
+    {departField}
     {!racing ? null : startOpen ? <When id="navigator-event-at" label="Start date and time (optional)" value={weather.event_at} onChange={(v) => onChange({ event_at: v })} warn={warn} />
       : <button type="button" onClick={() => onChange({ event_open: true })} className="flex items-center gap-2 rounded-md border-[1.5px] border-dashed border-[var(--line)] px-3 py-2 text-left text-sm" data-testid="navigator-event-at-expand-btn">
         <ChevronRight className="h-4 w-4 shrink-0 text-[var(--navy)]" />
@@ -119,14 +118,14 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
       </button>}
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
     <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} nowHours={2}
-      action={!interim && !actualOpen && (
+      action={!actualOpen && (
         <button type="button" onClick={() => onChange({ actual_open: true, actual_finish_at: weather.finish_at || "" })}
-          className="inline-flex h-8 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
+          className="ml-1 inline-flex h-7 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-[11px] font-bold normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
       )} />
-    {!interim && actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
+    {actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
-    {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
+    <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />
     {why}
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">

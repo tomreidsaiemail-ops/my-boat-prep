@@ -221,7 +221,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       const entry = { ...departureDecision({ ...b, route_start: lt.start, route_dest: lt.dest, weather: w }), id: Date.now(),
         label: `${tripHead(lt.start, lt.dest, w.depart_at)} - Interim departure, ${k.label} - Route Plan: ${trip.name} - ${tripLine(lt)}. ${tripTimes(lt).join(", ")}.${levels ? ` Levels: ${levelsText(b, levels)}.` : ""} - ${stamp()}` };
       const rec = { id: entry.id, kind, start: lt.start, dest: lt.dest, depart_at: w.depart_at || "", event_name: w.event_name || "", event_at: w.event_at || "",
-        finish_at: w.finish_at || "", arrive_type: w.arrive_type || "", meetup: w.meetup || "", why: w.why || "", advice: String(w.advice || "").slice(0, 2000),
+        finish_at: w.finish_at || "", ...(w.actual_finish_at ? { actual_finish_at: w.actual_finish_at } : {}), arrive_type: w.arrive_type || "", meetup: w.meetup || "", why: w.why || "", advice: String(w.advice || "").slice(0, 2000),
         photos: (w.photos || []).map((p) => ({ id: p.id, note: p.note || "", at: p.at })), at: new Date().toISOString(), logs: [entry.id], ...(levels ? { levels } : {}) };
       const legs = { ...(b.legs || {}), [trip.id]: [...(b.legs?.[trip.id] || []), rec] };
       const underway = { trip_id: trip.id, name: trip.name, event: lt.event, line: tripLine(lt), at: new Date().toISOString(), leg: kind };
