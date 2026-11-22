@@ -29,7 +29,21 @@ import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 // Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
 // onLeave: the date box lost focus (typing a date changes it a keystroke at a time). action: a button right of the label.
 // nowHours: a "set now" button in the label that fills the date and time with now plus that many hours.
-const localAt = (h) => { const d = new Date(Date.now() + h * 3600000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+const localAt = (h, from = Date.now()) => { const d = new Date(from + h * 3600000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+
+// One-tap Estimated Finish: the Departure date and time plus 2, 4 or 8 hours.
+const DurationPicks = ({ depart, onPick }) => {
+  const from = (depart || "").length >= 16 ? new Date(depart).getTime() : NaN;
+  return (
+    <div className="-mt-1 flex flex-wrap items-center gap-1.5" data-testid="navigator-duration-picks">
+      <span className="text-xs text-[var(--muted)]">Departure plus</span>
+      {[2, 4, 8].map((h) => (
+        <button key={h} type="button" disabled={Number.isNaN(from)} onClick={() => onPick(localAt(h, from))} title={Number.isNaN(from) ? "Set the Departure date and time first" : undefined}
+          className="h-8 rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50 disabled:opacity-40" data-testid={`navigator-duration-${h}h-btn`}>+{h} hr</button>
+      ))}
+    </div>
+  );
+};
 export const When = ({ id, label, value, onChange, warn, onLeave, action = null, nowHours = null }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
@@ -106,6 +120,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
         <button type="button" onClick={() => onChange({ actual_open: true, actual_finish_at: weather.finish_at || "" })}
           className="inline-flex h-8 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
       )} />
+    <DurationPicks depart={weather.depart_at} onPick={(v) => onChange({ finish_at: v })} />
     {!interim && actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
