@@ -1110,7 +1110,6 @@ export default function BoatPrep({ boatId, boats }) {
   // Brand new skipper: Vessel, Callsign and phone first, then Welcome.
   const [firstPrompt, setFirstPrompt] = useState(false);
   const startWelcome = () => { setActiveId("welcome"); api.post("/welcome/visited").catch(() => {}); };
-  const [guided, setGuided] = useState(false);
   const [welcomeRun, setWelcomeRun] = useState(0);
   // Help > Welcome: open it where they left off, or clear the answers and go through it step by step again.
   const welcomeMenu = {
@@ -1121,11 +1120,10 @@ export default function BoatPrep({ boatId, boats }) {
   const restartWelcome = () => api.post("/welcome/restart").then(() => {
     setRestartAsk(false);
     if (!crew && !boats.current.model) changeBoatField("home_list", "welcome");
-    setGuided(true); setWelcomeRun((n) => n + 1); setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" });
+    setWelcomeRun((n) => n + 1); setActiveId("welcome"); window.scrollTo({ top: 0, behavior: "smooth" });
   }).catch(() => toast.error("Couldn't restart Welcome: check your signal"));
   const firstDone = (vals) => {
     Object.entries(vals).forEach(([k, v]) => changeBoatField(k, v));
-    setGuided(true);
     setFirstPrompt(false);
     startWelcome();
   };
@@ -1410,7 +1408,7 @@ export default function BoatPrep({ boatId, boats }) {
             ctx={{ units: boat.units, yearBuilt: boat.year_built, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
-          {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} guided={guided} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
+          {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
               if (id === "boatInventory" && !boats.current.model && !identityFull(boat)) setSetupOpen(true);

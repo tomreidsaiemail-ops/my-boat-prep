@@ -47,16 +47,16 @@ const showHome = () => Promise.all([glow("boat-details-home-btn", 5000), glow("s
 const showCross = (pulse) => { const done = previewList("Boat Inventory", 5000, pulse === true); setTimeout(() => { glow("list-selector-preview", 4950); glow("set-home-list-btn", 4950); }, 50); return done; };
 
 // Home, Model Vessel and Safer Crew help: one 5-second yellow highlight of the list picker, Home button and Home icon, then folded into one line once the skipper ticks "Thanks".
-// guided (brand new user): one sub-section at a time, each ending in a yellow Continue, then the "Thanks" tick glows.
+// Until "Thanks" is ticked (new skippers, a restart or a resume): one sub-section at a time, each ending in a yellow Continue, then the "Thanks" tick glows.
 const GoOn = ({ onClick, testId }) => (
   <button type="button" onClick={onClick} className="btn-solid mt-1 h-11 self-start gap-2 !border-2 !border-yellow-500 !bg-yellow-300 px-5 !text-[var(--navy)] hover:!bg-yellow-400" data-testid={testId}>
     Continue <ArrowRight className="h-4 w-4" />
   </button>
 );
 
-export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen, guided = false }) => {
+export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
-  const [stage, setStage] = useState(guided && !ack ? "home" : "");
+  const [stage, setStage] = useState(!ack ? "home" : "");
   const [homeOpen, setHomeOpen] = useState(true);
   const [crewOpen, setCrewOpen] = useState(!stage);
   const [mvOpen, setMvOpen] = useState(!stage);
