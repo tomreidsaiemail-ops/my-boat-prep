@@ -32,7 +32,7 @@ import { DEFAULT_DATA, addTemplateLists, displayLabel, isOutdated, keepMine, res
 import { MergeDialog } from "@/components/boat/merge/MergeDialog";
 import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { DepartRoute } from "@/components/boat/departure/RoutePlanCard";
-import { ArrivedCard } from "@/components/boat/departure/ArrivedCard";
+import { ArrivedCard, nextDepartureLine } from "@/components/boat/departure/ArrivedCard";
 import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
 import { LevelsConfirmDialog } from "@/components/boat/departure/LevelsConfirmDialog";
 import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
@@ -120,7 +120,7 @@ import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { MPA_KIND, MPA_NAME, isMealHead, mealPlanLists } from "@/lib/mpa";
 import { CheckCircle2, Navigation2, ClipboardCheck, Flag, Home, Route, ShoppingBasket, ShoppingCart, Sparkles, Trash2, User } from "lucide-react";
 import { HopBubble } from "@/components/boat/navigator/HopBubble";
-import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
+import { RouteBubble, firstLeg } from "@/components/boat/navigator/PlannedRouteView";
 import { AssignShoppersDialog } from "@/components/boat/AssignShoppersDialog";
 import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
@@ -1217,6 +1217,12 @@ export default function BoatPrep({ boatId, boats }) {
     return boat.underway?.trip_id === id || (boat.legs?.[id] || []).some((l) => l.at && new Date(l.at).getTime() >= plan - 86400000); // left no more than a day before the plan
   };
   const daysFor = (id) => (departed(id) ? undefined : tripBoat(boat, id).weather?.depart_at);
+  // The first planned leg not yet sailed on the trip, for the Arrived card when nothing is underway.
+  const nextDeparture = (id) => {
+    const t = tripBoat(boat, id);
+    const plan = [firstLeg((t.route_start || "").trim(), (t.route_dest || "").trim(), t.weather || {}), ...(t.weather?.legs || [])];
+    return nextDepartureLine(plan[departed(id) ? (boat.legs?.[id] || []).filter((l) => l.arrived_at).length : 0]);
+  };
   const hopRow = !crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
@@ -1312,7 +1318,7 @@ export default function BoatPrep({ boatId, boats }) {
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />
-        : <ArrivedCard underway={boat.underway} big label={active.id === "returningDock" ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
             onArrive={() => {
               if (!doneGuard()) return;
               // On Returning to Dock this ends the trip there; anywhere else it's an arrival at the next destination.
@@ -1380,7 +1386,7 @@ export default function BoatPrep({ boatId, boats }) {
         </div>
       )}
       {/* Not underway: the ARRIVED card sits under the Trip Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
-      {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
+      {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
           onDepart={() => doneGuard() && allDone.openDepart()} />
