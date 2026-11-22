@@ -32,23 +32,21 @@ import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 // nowHours: a "set now" button in the label that fills the date and time with now plus that many hours.
 const localAt = (h, from = Date.now()) => { const d = new Date(from + h * 3600000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 
-// "set now" button: each tap sets now plus the shown hours, then offers one hour more; 10 seconds without a tap goes back to the start.
-const SetNow = ({ id, base, onSet }) => {
-  const [step, setStep] = useState(0);
+// Stepping "set now" button: each tap sets now plus the shown minutes, then offers one step more; 10 seconds without a tap goes back to the start.
+export const SetNow = ({ id, base = 0, step = 60, onSet, label, className, testId }) => {
+  const [n, setN] = useState(0);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const hours = base + step;
+  const mins = base + n * step;
   const tap = () => {
-    onSet(localAt(hours));
-    setStep((s) => s + 1);
+    onSet(localAt(mins / 60));
+    setN((v) => v + 1);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setStep(0), 10000);
+    timer.current = setTimeout(() => setN(0), 10000);
   };
-  return (
-    <span className="whitespace-nowrap">(<button type="button" onClick={tap}
-      className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" data-testid={`${id}-set-now-btn`}>{hours ? `set now + ${hours}hr` : "set now"}</button>)</span>
-  );
+  return <button type="button" onClick={tap} className={className} data-testid={testId || `${id}-set-now-btn`}>{label(mins)}</button>;
 };
+const hrLabel = (m) => (m ? `set now + ${m / 60}hr` : "set now");
 export const When = ({ id, label, value, onChange, warn, onLeave, action = null, nowHours = null }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
@@ -58,7 +56,8 @@ export const When = ({ id, label, value, onChange, warn, onLeave, action = null,
       <div className="flex items-center justify-between gap-2">
         <span className={`field-label flex flex-wrap items-center gap-x-1 ${warn ? "!text-[var(--red)]" : ""}`}>
           <label htmlFor={id}>{label}</label>
-          {nowHours !== null && <SetNow id={id} base={nowHours} onSet={onChange} />}
+          {nowHours !== null && <span className="whitespace-nowrap">(<SetNow id={id} base={nowHours * 60} onSet={onChange} label={hrLabel}
+            className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" />)</span>}
         </span>
         {action}
       </div>

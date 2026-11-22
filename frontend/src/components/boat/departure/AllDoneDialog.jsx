@@ -1,5 +1,5 @@
 import { AlertTriangle, Anchor, CheckCircle2, Info, LifeBuoy, Loader2, Sailboat } from "lucide-react";
-import { When } from "@/components/boat/navigator/NavigatorExtras";
+import { SetNow, When } from "@/components/boat/navigator/NavigatorExtras";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ICON = { ok: <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />, info: <Info className="mt-0.5 h-4 w-4 shrink-0 text-[var(--muted)]" />, warn: <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /> };
@@ -21,8 +21,7 @@ const Choices = ({ choices, busy, disabled, onPick }) => (
   </div>
 );
 
-const pad = (n) => String(n).padStart(2, "0");
-const minus15 = () => { const d = new Date(Date.now() - 15 * 60000); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const nowLabel = (m) => (m ? `Set to Now - ${-m} minutes` : "Set to Now");
 
 // ARRIVED: the Estimated Finish is confirmed (or changed) as the actual arrival time.
 const ActualFinish = ({ plan, onFinish }) => (
@@ -30,7 +29,7 @@ const ActualFinish = ({ plan, onFinish }) => (
     <When id="all-done-actual-finish" label="Actual finish date and time" value={plan.finish} onChange={onFinish} warn={plan.finish?.length !== 16} />
     <div className="flex flex-wrap items-center justify-between gap-2">
       <span className="text-xs text-[var(--muted)]" data-testid="all-done-actual-estimate">{plan.estimate && plan.finish === plan.estimate ? "Filled in from the Estimated Finish. Change it if you were early or late." : plan.finish ? "This is logged as when you arrived." : "Enter when you arrived."}</span>
-      <button type="button" className="btn-ghost h-9 min-h-0 px-3 text-xs" onClick={() => onFinish(minus15())} data-testid="all-done-actual-now15">Set to Now - 15 minutes</button>
+      <SetNow step={-5} onSet={onFinish} label={nowLabel} className="btn-ghost h-9 min-h-0 px-3 text-xs" testId="all-done-actual-now" />
     </div>
   </div>
 );
