@@ -142,11 +142,8 @@ async def get_archive(boat_id: BoatPath, archive_id: ArchivePath, user: dict = D
             "invites": [{"name": i.get("name", ""), "email": i.get("email", "")} for i in a.get("invites") or []]}
 
 
-@router.post("/boats/{boat_id}/trip-archives/{archive_id}/restore")
-async def restore_archive(boat_id: BoatPath, archive_id: ArchivePath, payload: RestoreIn, user: dict = Depends(get_current_user)):
-    a = await _get(user, boat_id, archive_id)
+async def _crew_back(user: dict, boat_id: str, a: dict, to: str, rsvp: bool):
     doc = await owned_boat(user, boat_id)
-    to = payload.to_trip_id
     sets, adds = {notes_key(to): a.get("notes", "")} if a.get("notes") else {}, []
     for c in a["crew"]:
         m = c["user_id"]
@@ -156,11 +153,27 @@ async def restore_archive(boat_id: BoatPath, archive_id: ArchivePath, payload: R
             sets[f"crew_trips.{m}"] = [to]
         else:
             sets[f"crew_trips.{m}"] = list(dict.fromkeys([*trips_of(doc, m), to]))
-        if c.get("rsvp"):
+        if rsvp and c.get("rsvp"):
             sets[_rsvp_key(to, m)] = c["rsvp"]
     update = {**({"$set": sets} if sets else {}), **({"$addToSet": {"crew": {"$each": adds}}} if adds else {})}
     if update:
         await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, update)
+
+
+# Create Similar Trip: the archive's plan, checklist and crew go into a trip again; the archive itself stays as it is.
+@router.post("/boats/{boat_id}/trip-archives/{archive_id}/similar")
+async def similar_trip(boat_id: BoatPath, archive_id: ArchivePath, payload: RestoreIn, user: dict = Depends(get_current_user)):
+    a = await _get(user, boat_id, archive_id)
+    await _crew_back(user, boat_id, a, payload.to_trip_id, rsvp=False)
+    return {"trip_id": a["trip_id"], "to_trip_id": payload.to_trip_id, "name": a["name"], "description": a.get("description", ""), "items": a["items"], "details": a["details"],
+            "crew": len(a["crew"])}
+
+
+@router.post("/boats/{boat_id}/trip-archives/{archive_id}/restore")
+async def restore_archive(boat_id: BoatPath, archive_id: ArchivePath, payload: RestoreIn, user: dict = Depends(get_current_user)):
+    a = await _get(user, boat_id, archive_id)
+    to = payload.to_trip_id
+    await _crew_back(user, boat_id, a, to, rsvp=True)
     taken = {i["email_key"] for i in await db.crew_invites.find({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "email_key": 1}).to_list(500) if i.get("email_key")}
     back = [{**i, "trip_id": to} for i in a.get("invites") or [] if i.get("email_key") not in taken]
     if back:

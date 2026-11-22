@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
 import { openList } from "@/lib/trips";
-import { addLogEntry, archivePayload, finishedTrip, removeLogEntry, resetTrip, restoreTarget, restoreTrip, snoozeTrip } from "@/lib/tripArchive";
+import { addLogEntry, archivePayload, finishedTrip, removeLogEntry, resetTrip, restoreTarget, restoreTrip, similarTarget, similarTrip, snoozeTrip } from "@/lib/tripArchive";
 
 // Archived trips for the skipper's boat: the finished-trip prompt, archive + Undo, restore and delete.
 export default function useTripArchives({ boat, state, mutate, online, enabled }) {
@@ -42,6 +42,27 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     }
   };
 
+  // Create Similar Trip: null (with a warning) while that list still holds a current plan.
+  const similarCheck = (a) => {
+    const to = similarTarget(stateRef.current, a);
+    if (!to) toast.error(`Archive the current ${stateRef.current.registry.find((l) => l.id === a.trip_id)?.name || "trip"} plan first, then Create Similar Trip`);
+    return to;
+  };
+  const similar = async (a, depart, name) => {
+    const to = similarCheck(a);
+    if (!to) return false;
+    try {
+      const { data } = await api.post(`${base}/${a.archive_id}/similar`, { to_trip_id: to.id });
+      mutate((s) => similarTrip(s, data, to, depart, name));
+      toast.success(`${name} is planned in ${to.name}, departing ${new Date(`${depart}T00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`);
+      openList(to.id);
+      return true;
+    } catch (e) {
+      toast.error(apiError(e, "Couldn't create the similar trip, please try again"));
+      return false;
+    }
+  };
+
   const archive = async (id, mail = {}) => {
     if (!online) { toast.error("Archiving a trip needs a signal"); return; }
     setBusy(true);
@@ -73,5 +94,5 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
   const closeAsk = () => { if (ask && !ask.manual) snoozeTrip(boat.key, ask.id); setAsk(null); };
   const confirmAsk = () => { const { id, mail } = ask; setAsk(null); archive(id, mail); };
 
-  return { archives, ask, busy, askArchive, closeAsk, confirmAsk, setMail, restore, remove, load: (id) => api.get(`${base}/${id}`).then(({ data }) => data) };
+  return { archives, ask, busy, askArchive, closeAsk, confirmAsk, setMail, restore, similar, similarCheck, remove, load: (id) => api.get(`${base}/${id}`).then(({ data }) => data) };
 }

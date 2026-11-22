@@ -63,6 +63,36 @@ export const restoreTrip = (s, r, to) => ({
   boat: withDetails(s.boat, to.id, r.details || {}),
 });
 
+// Create Similar Trip goes back into the archive's own list, but only once that list's current plan is archived (null until then).
+export const similarTarget = (s, a) => {
+  const list = s.registry.find((l) => l.id === a.trip_id);
+  if (!list) return { id: a.trip_id, name: a.name, add: true };
+  return blankTrip(s, a.trip_id) ? { id: a.trip_id, name: list.name } : null;
+};
+const DATE_KEYS = new Set(["depart_at", "finish_at", "event_at"]);
+const DROP_KEYS = new Set(["actual_finish_at", "actual_open"]);
+const shiftDay = (v, days) => {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
+  const d = new Date(`${v.slice(0, 10)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10) + v.slice(10);
+};
+const realign = (v, days) => (Array.isArray(v) ? v.map((x) => realign(x, days))
+  : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).filter(([k]) => !DROP_KEYS.has(k)).map(([k, x]) => [k, DATE_KEYS.has(k) && typeof x === "string" ? shiftDay(x, days) : realign(x, days)]))
+  : v);
+// Every planned date moves by the same number of days so the trip departs on the new date (times of day kept); the Actual Finish is cleared.
+export const similarDetails = (details = {}, departDate, name) => {
+  const was = (details.weather?.depart_at || "").slice(0, 10);
+  const days = was ? Math.round((new Date(`${departDate}T00:00:00Z`) - new Date(`${was}T00:00:00Z`)) / 86400000) : 0;
+  const out = realign(details, days);
+  return { ...out, weather: { ...(out.weather || {}), event_name: name, ...(was ? {} : { depart_at: departDate }) } };
+};
+export const similarTrip = (s, r, to, departDate, name) => {
+  const next = restoreTrip(s, { ...r, items: (r.items || []).map(({ checked_by: _c, ...i }) => ({ ...i, checked: false })), details: similarDetails(r.details, departDate, name) }, to); // eslint-disable-line no-unused-vars
+  const { [to.id]: _sailed, ...legs } = next.boat.legs || {}; // eslint-disable-line no-unused-vars
+  return { ...next, boat: { ...next.boat, legs } };
+};
+
 const snoozes = () => { try { return JSON.parse(localStorage.getItem(SNOOZE_KEY) || "{}"); } catch { return {}; } };
 export const snoozeTrip = (boatKey, id) => localStorage.setItem(SNOOZE_KEY, JSON.stringify({ ...snoozes(), [`${boatKey}:${id}`]: today() }));
 

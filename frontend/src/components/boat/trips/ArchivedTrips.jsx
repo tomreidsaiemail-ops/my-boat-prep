@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Archive, ChevronDown, Eye, Loader2, RotateCcw } from "lucide-react";
+import { Archive, ChevronDown, CopyPlus, Eye, Loader2, RotateCcw } from "lucide-react";
 import { ArchivedTripDialog } from "@/components/boat/trips/ArchivedTripDialog";
+import { SimilarTripDialog } from "@/components/boat/trips/SimilarTripDialog";
 import { statLine } from "@/lib/tripArchive";
 
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString("en-NZ", { day: "numeric", month: "short", year: "numeric" }) : "");
 
-const Row = ({ a, onView, onRestore }) => {
+const Row = ({ a, onView, onRestore, onSimilar }) => {
   const [busy, setBusy] = useState(false);
   const route = [a.route_start, a.route_dest].filter(Boolean).join(" → ");
   return (
@@ -22,6 +23,7 @@ const Row = ({ a, onView, onRestore }) => {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />} Restore
         </button>
       </div>
+      <button type="button" className="btn-ghost min-h-10 gap-1.5 px-3 text-sm" onClick={() => onSimilar(a)} data-testid={`archived-trip-similar-${a.archive_id}`}><CopyPlus className="h-4 w-4" /> Create Similar Trip</button>
     </li>
   );
 };
@@ -30,6 +32,7 @@ const Row = ({ a, onView, onRestore }) => {
 export const ArchivedTrips = ({ trips, listName, online, onArchive, busy }) => {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState(null);
+  const [similar, setSimilar] = useState(null);
   const list = trips.archives || [];
   return (
     <section className="mt-2 flex flex-col gap-2 border-t-[1.5px] border-dashed border-[var(--line)] pt-4" data-testid="archived-trips">
@@ -43,8 +46,9 @@ export const ArchivedTrips = ({ trips, listName, online, onArchive, busy }) => {
       {open && (trips.archives === null ? <p className="px-1 text-sm text-[var(--muted)]" data-testid="archived-trips-offline">{online ? "Loading…" : "Archived Trips show when you have a signal."}</p>
         : list.length === 0 ? <p className="px-1 text-sm text-[var(--muted)]" data-testid="archived-trips-empty">No archived trips yet. When a trip&apos;s estimated finish passes you&apos;ll be asked to archive it.</p>
         : <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-md border-[1.5px] border-[var(--line)] bg-white" data-testid="archived-trips-list">
-            {list.map((a) => <Row key={a.archive_id} a={a} onView={setView} onRestore={trips.restore} />)}
+            {list.map((a) => <Row key={a.archive_id} a={a} onView={setView} onRestore={trips.restore} onSimilar={(x) => trips.similarCheck(x) && setSimilar(x)} />)}
           </ul>)}
+      {similar && <SimilarTripDialog archive={similar} load={trips.load} onCreate={(depart, name) => trips.similar(similar, depart, name)} onClose={() => setSimilar(null)} />}
       {view && <ArchivedTripDialog summary={view} load={trips.load} onRestore={trips.restore} onDelete={trips.remove} onClose={() => setView(null)} />}
     </section>
   );
