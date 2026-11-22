@@ -27,14 +27,17 @@ export const NavigatorReminders = () => (
 import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 
 // Date and time are separate boxes, so a date saves even before a time is picked (a single date-and-time box saves nothing until both are filled).
-// onLeave: the date box lost focus (typing a date changes it a keystroke at a time).
-export const When = ({ id, label, value, onChange, warn, onLeave }) => {
+// onLeave: the date box lost focus (typing a date changes it a keystroke at a time). action: a button right of the label.
+export const When = ({ id, label, value, onChange, warn, onLeave, action = null }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
   const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
-      <label htmlFor={id} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</label>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>{label}</label>
+        {action}
+      </div>
       <div className="grid grid-cols-[3fr_2fr] gap-2">
         <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} onBlur={onLeave} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
         <input type="time" value={time} disabled={!date} onChange={(e) => join(date, e.target.value)} aria-label={`${label}: time`} className={`${box} disabled:opacity-50`} data-testid={`${id}-time-input`} />
@@ -74,6 +77,8 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
   // Start is only for racing: folded away until opened once, then it stays open.
   const startOpen = weather.event_open || (weather.event_at && weather.event_at !== weather.depart_at);
   const noFinish = (weather.finish_at || "").length < 16;
+  // Actual arrival is folded away behind the Actual button, which fills it from the Estimated Finish.
+  const actualOpen = weather.actual_open || !!weather.actual_finish_at;
   const noName = !interim && !String(weather.event_name || "").trim();
   return (
   <div className="flex flex-col gap-3" data-testid="trip-timing">
@@ -90,7 +95,12 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
         <span><b className="text-[var(--navy)]">Start date and time (optional)</b><span className="block text-xs text-[var(--muted)]">Same as DEPARTURE DATE AND TIME. Only for racing, tap to set a different Start.</span></span>
       </button>}
     {warn && <p role="alert" className="-mt-1 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="trip-timing-anomaly">{warn}</p>}
-    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish} />
+    <When id="navigator-finish-at" label="Estimated Finish date and time" value={weather.finish_at} onChange={(v) => onChange({ finish_at: v })} warn={!interim && noFinish}
+      action={!interim && !actualOpen && (
+        <button type="button" onClick={() => onChange({ actual_open: true, actual_finish_at: weather.finish_at || "" })}
+          className="inline-flex h-8 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
+      )} />
+    {!interim && actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
     {!interim && <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />}
@@ -108,7 +118,6 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
       <textarea id="navigator-meetup" value={meetup} maxLength={1000} rows={3} onChange={(e) => setMeetup(e.target.value)}
         className="field-input min-h-[80px] resize-y py-2 text-base normal-case leading-snug tracking-normal" data-testid="navigator-meetup-input" />
     </div>
-    {!interim && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
   </div>
   );
 };
