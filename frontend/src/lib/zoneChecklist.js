@@ -53,5 +53,20 @@ const DEFAULT = [
   "Under the seats and floorboards",
 ];
 
-// What to make sure is in the photos of a zone; the galley list is the longest because it matters most.
-export const zoneChecklist = (label) => (LISTS.find(([re]) => re.test(String(label || "").toLowerCase())) || [null, DEFAULT])[1];
+// What to make sure is in the photos of a zone; the galley list is the longest because it matters most. Used until the admin list has loaded.
+const builtIn = (label) => (LISTS.find(([re]) => re.test(String(label || "").toLowerCase())) || [null, DEFAULT])[1];
+
+export const ZONE_CAPTURE = "Admin - Zone by Zone - Make sure you capture";
+// "Admin - Zone by Zone - Make sure you capture": a zone name, then its bullets indented under it.
+const byZone = (items = []) => items.reduce((acc, i) => (i.indent ? (acc.length ? [...acc.slice(0, -1), { ...acc[acc.length - 1], bullets: [...acc[acc.length - 1].bullets, i.label] }] : acc)
+  : [...acc, { zone: i.label.trim().toLowerCase(), bullets: [] }]), []);
+// The zone's own entry, else the longest zone name inside its label (Port Forward cabin -> Forward cabin; Aft Head -> Heads), else "Other zones".
+export const zoneChecklist = (label, items) => {
+  const zones = byZone(items).filter((z) => z.bullets.length);
+  if (!zones.length) return builtIn(label);
+  const l = String(label || "").trim().toLowerCase();
+  const hit = zones.find((z) => z.zone === l)
+    || [...zones].sort((a, b) => b.zone.length - a.zone.length).find((z) => l.includes(z.zone) || l.includes(z.zone.replace(/s$/, "")))
+    || zones.find((z) => z.zone.startsWith("other"));
+  return hit ? hit.bullets : builtIn(label);
+};

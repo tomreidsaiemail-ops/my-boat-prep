@@ -150,7 +150,7 @@ async def boat_types(_: dict = Depends(get_current_user)):
     return {"types": types or DEFAULT_BOAT_TYPES}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ", "admin - global config ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ", "admin - global config ", "admin - zone by zone - ")
 
 
 @router.get("/admin-lists")
@@ -588,6 +588,39 @@ async def seed_common_names():
                                             "description": "Cupboard names offered as a pick list when scanning Galley cupboards. Make \"Admin - Common <Zone> Names\" for any other zone.",
                                             "items": [{"id": n + 1, "label": t} for n, t in enumerate(GALLEY_NAMES)], "created_at": now, "updated_at": now, "updated_by": "system"})
     await db.migrations.insert_one({"_id": "common_galley_names", "at": now})
+
+
+ZONE_CAPTURE = "Admin - Zone by Zone - Make sure you capture"
+_GALLEY = ["A wide shot of the whole galley first", "Every cupboard above the bench, doors open", "Every cupboard below the bench, doors open",
+           "Every shelf, with its fiddles (the rails that stop things sliding off)", "Every drawer pulled out: cutlery, utensils, tools",
+           "Under the sink and behind the stove", "Fridge and freezer with the lid open", "Lockers under the floor or seats near the galley",
+           "The LPG shut-off valve and fire blanket"]
+_COCKPIT = ["A wide shot of the whole area first", "Every lazarette and locker with its lid open", "Lockers under the seats",
+            "Winch handle pockets and binnacle storage", "Liferaft, lifebuoy and danbuoy positions"]
+_SALOON = ["A wide shot of the whole saloon first", "Lockers behind and under the seats", "Every shelf with its fiddles", "Chart table and its drawers",
+           "Under the floorboards: bilge, tanks, spares"]
+_CABIN = ["A wide shot of the cabin first", "Hanging lockers with doors open", "Lockers under the bunk", "Shelves with their fiddles, and drawers"]
+_HEADS = ["A wide shot of the heads first", "Cabinets and the space under the basin", "Seacocks and the holding tank valve"]
+_ENGINE = ["A wide shot with the engine cover off", "Spares lockers and tool storage", "Filters, impeller and belts locations"]
+_ANCHOR = ["The anchor locker with its lid open", "Windlass and its controls"]
+_OTHER = ["A wide shot of the whole zone first", "Every cupboard and locker with doors open", "Every shelf with its fiddles, and every drawer", "Under the seats and floorboards"]
+# Zone name, then its bullets (indented). A zone uses the longest zone name found in its label; "Other zones" covers the rest.
+ZONE_CAPTURE_ROWS = [("Galley", _GALLEY), ("Saloon", _SALOON), ("Nav station", _SALOON), ("Cockpit", _COCKPIT), ("Lazarette", _COCKPIT), ("Deck", _COCKPIT),
+                     ("Transom", _COCKPIT), ("Forward cabin", _CABIN), ("Aft cabin", _CABIN), ("Cabin", _CABIN), ("Stateroom", _CABIN), ("Heads", _HEADS),
+                     ("Engine room", _ENGINE), ("Anchor locker", _ANCHOR), ("Other zones", _OTHER)]
+
+
+async def seed_zone_capture():
+    """Runs once: the zone-by-zone "Make sure you capture" photo bullets, editable by the admin."""
+    if await db.migrations.find_one({"_id": "zone_capture_list"}):
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    if not await db.list_templates.find_one({"custom": True, "name": {"$regex": rf"^\s*{re.escape(ZONE_CAPTURE)}\s*$", "$options": "i"}}, {"_id": 1}):
+        rows = [r for zone, bullets in ZONE_CAPTURE_ROWS for r in ({"label": zone}, *({"label": t, "indent": True} for t in bullets))]
+        await db.list_templates.insert_one({"list_id": f"tpl_{uuid4().hex[:10]}", "custom": True, "name": ZONE_CAPTURE, "private": True,
+                                            "description": "Zone Map photo tips. Each zone name, then its bullets indented under it.",
+                                            "items": [{"id": n + 1, **r} for n, r in enumerate(rows)], "created_at": now, "updated_at": now, "updated_by": "system"})
+    await db.migrations.insert_one({"_id": "zone_capture_list", "at": now})
 
 
 GALLEY_NAMES = ["Counter Top", "Fridge", "Freezer", "Larder", "Dry Foods Store", "Hanging Basket", "Bilge Storage", "Spice Rack", "Root Locker", "Provisioning Bin", "Provisioning Bin 2"]

@@ -6,7 +6,8 @@ import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { boatMapUrl } from "@/components/boat/ZoneMap";
 import { LIGHT, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
-import { zoneChecklist } from "@/lib/zoneChecklist";
+import { ZONE_CAPTURE, zoneChecklist } from "@/lib/zoneChecklist";
+import useAdminLists from "@/hooks/useAdminLists";
 import { SkipperComment } from "@/components/boat/zone/SkipperComment";
 import { QuickCupboards } from "@/components/boat/zone/QuickCupboards";
 import { ZoneCupboards } from "@/components/boat/zone/ZoneCupboards";
@@ -21,12 +22,14 @@ export const ZoneChip = ({ zone, className = "", testId }) => (
 
 export const Checklist = ({ zone, open: start, testId }) => {
   const [open, setOpen] = useState(start);
+  const lists = useAdminLists("Admin - Zone by Zone - ", navigator.onLine);
+  const items = lists.find((l) => l.name.toLowerCase() === ZONE_CAPTURE.toLowerCase())?.items;
   return (
     <div className="rounded-md border-[1.5px] border-[var(--line)] bg-[var(--panel)] text-sm" data-testid={testId}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2 text-left font-bold text-[var(--navy)]" data-testid={`${testId}-toggle`}>
         Make sure you capture <ChevronDown className={`ml-auto h-4 w-4 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && <ul className="flex flex-col gap-1 px-3 pb-3">{zoneChecklist(zone.label).map((t, n) => (
+      {open && <ul className="flex flex-col gap-1 px-3 pb-3">{zoneChecklist(zone.label, items).map((t, n) => (
         <li key={t} className="relative pl-5 text-[var(--muted)] before:absolute before:left-1 before:content-['•']" data-testid={`${testId}-item-${n}`}>{t}</li>
       ))}</ul>}
     </div>
