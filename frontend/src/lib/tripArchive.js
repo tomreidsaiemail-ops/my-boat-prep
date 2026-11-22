@@ -70,7 +70,7 @@ export const similarTarget = (s, a) => {
   return blankTrip(s, a.trip_id) ? { id: a.trip_id, name: list.name } : null;
 };
 const DATE_KEYS = new Set(["depart_at", "finish_at", "event_at"]);
-const DROP_KEYS = new Set(["actual_finish_at", "actual_open"]);
+const DROP_KEYS = new Set(["actual_finish_at", "actual_open", "advice", "advice_at"]); // the old Navigator advice names the old days
 const shiftDay = (v, days) => {
   if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return v;
   const d = new Date(`${v.slice(0, 10)}T00:00:00Z`);

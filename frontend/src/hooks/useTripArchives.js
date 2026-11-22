@@ -54,6 +54,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     try {
       const { data } = await api.post(`${base}/${a.archive_id}/similar`, { to_trip_id: to.id });
       mutate((s) => similarTrip(s, data, to, depart, name));
+      toast.dismiss(a.archive_id);
       toast.success(`${name} is planned in ${to.name}, departing ${new Date(`${depart}T00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`);
       openList(to.id);
       return true;

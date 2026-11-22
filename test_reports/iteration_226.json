@@ -1,0 +1,28 @@
+{
+  "summary": "Tested Create Similar Trip for archived trips, backend and frontend, as test-user-pro at 390x844. Everything requested passed. BACKEND (new file tests/test_trip_archive_similar.py, 2/2 passed, run on an isolated TEST_sim_boat): POST /similar returns name, items and details. It re-adds the crew to the target trip, including the member who had been fully removed, with their roles, names and agreements. It copies no RSVPs and no invites, and the archive stays in both the GET list and the detail view. A second /similar call adds no duplicate crew_trips entries. Restore still deletes the archive and brings back the RSVPs and invites. An unknown archive returns 404, another user gets 404, a malformed id or to_trip_id gets 422, and no auth gets 401. FRONTEND (main boat, routeHazards): I ticked all 5 items, then ran archive-trip-btn with both email boxes unticked. START and Departure were cleared. Archived Trips showed 1 row with View, Restore and Create Similar Trip, and there was no horizontal overflow (scrollWidth 390 = clientWidth). Create Similar Trip opened similar-trip-dialog with the date defaulting to today, min today, and the name prefilled 'Quick Trip Plan Draft' (the archive's event_name). A past date showed similar-trip-date-error and disabled Create. I set today+5 (2026-11-27) and the name TEST_Similar Trip, then clicked Create. The result: START and DESTINATION restored, the Event name is the new name, Departure is 2026-11-27 06:00 (original time kept), Finish is 2026-11-27 09:00, and leg 2 moved from 20/11 to 28/11 (+8 days). The Actual button shows and the actual field does not. All 5 items are unticked, the archive is still listed (count 1), and the success toast appeared. Mongo confirmed the changes persisted and that crew_trips includes routeHazards with no rsvp. Clicking Create Similar Trip again, with the list now holding a plan, showed the toast 'Archive the current Trip Planning plan first, then Create Similar Trip' and no dialog.",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "POST /api/boats/{id}/trip-archives/{aid}/similar", "issue": "to_trip_id is not checked against the archive's trip_id or the boat's lists, so any valid id can get the crew assigned to it. The same is true of restore."},
+    {"endpoint": "_crew_back", "issue": "A member who was not 'removed' at archive time but has since left the boat still gets a crew_trips entry (ghost entry) because the else branch doesn't check doc.crew. This also affects restore."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [
+    {"flow": "Archive toast Undo after Create Similar Trip", "issue": "The 'archived ... Undo' toast (10 s) is still on screen after Create Similar Trip. Pressing Undo then restores the archive as a second copy '(restored)', because the list is no longer blank, and deletes the archive. Consider dismissing the archive toast (toast.dismiss(archive_id)) when a similar trip is created.", "affected_selectors": ["similar-trip-create-btn"]}
+  ], "design_issues": [
+    {"screen": "Trip Planning after Create Similar Trip", "issues": ["The weather advice text and advice_at carried over from the archive still name the old days (e.g. 'Fri 20 Nov'). Consider clearing them, or marking the advice as stale, so the skipper regenerates it for the new dates."]}
+  ]},
+  "test_report_links": ["/app/backend/tests/test_trip_archive_similar.py", "/app/test_reports/pytest/similar.xml"],
+  "action_items": [
+    "Optional: dismiss the archive Undo toast when Create Similar Trip runs, so Undo can't make a duplicate.",
+    "Optional: clear or flag the stale weather advice (advice/advice_at) in similarDetails.",
+    "Optional: check that to_trip_id is an existing or new trip list id."
+  ],
+  "critical_code_review_comments": [
+    "Pending invites are not carried into the similar trip. This fits 'same crew', but say so in the dialog if users expect invitees too.",
+    "Older test: test_trip_archives.py::test_archive_restore_custom_trip2_rsvp_notes expects a trip_rsvp 'in' on custom_trip2, but main currently has no trip_rsvp, so that test may fail because of the data rather than the code. Not run this iteration."
+  ],
+  "updated_files": ["/app/backend/tests/test_trip_archive_similar.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None kept. Before the UI test I backed up test-user-pro/main user_boats, and afterwards I restored it, so the original Quick Trip Plan Draft, its dates and crew_trips are back. I deleted the one archive I created (6a985dd0...). The TEST_sim_boat used by the pytest file is deleted in its teardown.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To open Trip Planning, run page.evaluate(\"window.dispatchEvent(new CustomEvent('mbp:open-list',{detail:'routeHazards'}))\"). Dismiss ashore-prompt-cancel-btn and trip-finish-cancel-btn in a loop. The archive prompt uses trip-finish-mail-shore/-crew checkboxes and trip-finish-confirm-btn. Checklist toggles are checklist-item-toggle-<n> and checklist-select-all. Back up the user_boats main doc before archiving through the UI and restore it afterwards. The app clock is about 2026-11-22."
+}
