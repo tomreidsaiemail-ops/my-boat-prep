@@ -1211,11 +1211,17 @@ export default function BoatPrep({ boatId, boats }) {
   // Hop bubbles (Trip Planning, Route...); on Crew Roles they sit under the list instead of above it.
   const transitNow = allDone.transitLeg();
   const TRIP_HOPS = new Set(["leavingDock", "arrivingDest", "returningDock"]);
+  // Days to go only matter before leaving: shown on Trip Planning and Leaving Dock, gone once the trip has departed.
+  const departed = (id) => {
+    const plan = new Date(tripBoat(boat, id).weather?.depart_at || "").getTime();
+    return boat.underway?.trip_id === id || (boat.legs?.[id] || []).some((l) => l.at && new Date(l.at).getTime() >= plan - 86400000); // left no more than a day before the plan
+  };
+  const daysFor = (id) => (departed(id) ? undefined : tripBoat(boat, id).weather?.depart_at);
   const hopRow = !crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
             <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
-              departAt={HOP_ICON[id] ? undefined : tripBoat(boat, id).weather?.depart_at} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
+              departAt={HOP_ICON[id] || active.id !== "leavingDock" ? undefined : daysFor(id)} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
@@ -1420,7 +1426,7 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
-              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (
