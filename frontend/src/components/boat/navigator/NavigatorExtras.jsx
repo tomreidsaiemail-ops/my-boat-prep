@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import useAdminLists from "@/hooks/useAdminLists";
 import { AlertTriangle, BellRing, ChevronRight } from "lucide-react";
 import { ArriveType } from "@/components/boat/navigator/ArriveType";
@@ -31,17 +32,21 @@ import { MEETUP_DEFAULT } from "@/lib/routeNotes";
 // nowHours: a "set now" button in the label that fills the date and time with now plus that many hours.
 const localAt = (h, from = Date.now()) => { const d = new Date(from + h * 3600000); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 
-// One-tap Estimated Finish: the Departure date and time plus 2, 4 or 8 hours.
-const DurationPicks = ({ depart, onPick }) => {
-  const from = (depart || "").length >= 16 ? new Date(depart).getTime() : NaN;
+// "set now" button: each tap sets now plus the shown hours, then offers one hour more; 10 seconds without a tap goes back to the start.
+const SetNow = ({ id, base, onSet }) => {
+  const [step, setStep] = useState(0);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const hours = base + step;
+  const tap = () => {
+    onSet(localAt(hours));
+    setStep((s) => s + 1);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setStep(0), 10000);
+  };
   return (
-    <div className="-mt-1 flex flex-wrap items-center gap-1.5" data-testid="navigator-duration-picks">
-      <span className="text-xs text-[var(--muted)]">Departure plus</span>
-      {[2, 4, 8].map((h) => (
-        <button key={h} type="button" disabled={Number.isNaN(from)} onClick={() => onPick(localAt(h, from))} title={Number.isNaN(from) ? "Set the Departure date and time first" : undefined}
-          className="h-8 rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50 disabled:opacity-40" data-testid={`navigator-duration-${h}h-btn`}>+{h} hr</button>
-      ))}
-    </div>
+    <span className="whitespace-nowrap">(<button type="button" onClick={tap}
+      className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" data-testid={`${id}-set-now-btn`}>{hours ? `set now + ${hours}hr` : "set now"}</button>)</span>
   );
 };
 export const When = ({ id, label, value, onChange, warn, onLeave, action = null, nowHours = null }) => {
@@ -53,8 +58,7 @@ export const When = ({ id, label, value, onChange, warn, onLeave, action = null,
       <div className="flex items-center justify-between gap-2">
         <span className={`field-label flex flex-wrap items-center gap-x-1 ${warn ? "!text-[var(--red)]" : ""}`}>
           <label htmlFor={id}>{label}</label>
-          {nowHours !== null && <span className="whitespace-nowrap">(<button type="button" onClick={() => onChange(localAt(nowHours))}
-            className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" data-testid={`${id}-set-now-btn`}>{nowHours ? `set now + ${nowHours}hr` : "set now"}</button>)</span>}
+          {nowHours !== null && <SetNow id={id} base={nowHours} onSet={onChange} />}
         </span>
         {action}
       </div>
@@ -120,7 +124,6 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
         <button type="button" onClick={() => onChange({ actual_open: true, actual_finish_at: weather.finish_at || "" })}
           className="inline-flex h-8 shrink-0 items-center rounded-full border-[1.5px] border-[var(--navy)] bg-white px-3 text-xs font-bold text-[var(--navy)] hover:bg-slate-50" data-testid="navigator-actual-btn">Actual</button>
       )} />
-    <DurationPicks depart={weather.depart_at} onPick={(v) => onChange({ finish_at: v })} />
     {!interim && actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
