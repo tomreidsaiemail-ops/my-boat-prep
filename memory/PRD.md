@@ -1133,3 +1133,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Hamburger menu: "Reset all..." + "Export/Import" cascade (Export Current, Export All, Export to Excel..., Import Spreadsheet...) where Import was. List footer buttons hidden by default; new unchecked My Settings > Feature Settings "Reset All, Export button set List Footer" (users.features.show_list_footer via PUT /me/features, UserOut.show_list_footer) shows them again. Validation bar still shows at the bottom when an export is blocked.
 
 - 2026-06: Trip Planning step-by-step guide on the Model Vessel (see CHANGELOG.md). Tested iteration_227.
+- 2026-06: Trip guide follow-ups (set-now holds, End of trip instructions, archive at the end). Tested iteration_228.

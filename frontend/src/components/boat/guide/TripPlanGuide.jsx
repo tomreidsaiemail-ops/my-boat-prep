@@ -85,8 +85,8 @@ const Filled = ({ guide }) => {
   );
 };
 
-// From the guide's finish: the archive button below stays yellow until the trip is archived, which ends the guide.
-const ArchiveHint = () => {
+// From the guide's finish, just above Archived Trips: the archive button stays yellow until the trip is archived, which ends the guide.
+export const ArchiveHint = () => {
   useHold("archive-trip-btn");
   useEffect(() => {
     const t = setTimeout(() => document.querySelector('[data-testid="archive-trip-btn"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 700);
@@ -102,6 +102,5 @@ export const TripPlanGuide = ({ guide, onQuick }) => (
     {reached(guide.stage, "bubbles") && <Bubbles guide={guide} />}
     {reached(guide.stage, "quick") && <Quick guide={guide} onQuick={onQuick} />}
     {reached(guide.stage, "filled") && <Filled guide={guide} />}
-    {guide.stage === "complete" && guide.archive && <ArchiveHint />}
   </div>
 );

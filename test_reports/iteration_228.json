@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only test at 390x844 of the 3 Model Vessel Trip Planning guide follow-ups, run as test-admin-1 over 6 Playwright runs with real server state. All requested behaviours PASS. (1) Stage 'filled': both set-now buttons pick up mbp-glow after the first 5s field glow and keep it at 6, 8, 12, 16, 20 and 24s, after the sequence ends. 20 samples taken 100ms apart showed no flicker. Clicking 'set now' removed only its own glow, and 'set now + 2hr' stayed yellow until it was clicked (seen.setNow / setNow2 saved). (2) Midpoint arrival: DEPART -> levels -> Depart now gave stage underway. The About to depart window showed DepartGuide and no EndTripGuide. At stage 'click', ARRIVED -> levels showed trip-guide-end-trip as the first section of all-done-dialog, with the yellow bg-yellow-200 text. all-done-end-trip glowed and its checkbox was unticked. Continue folded the section (text and Continue gone), removed the End of trip glow and put a held glow on all-done-choice-mooring, scrolled into view (691-747 of 844). The glow was still on 4s later. The toggle re-expands the section with no Continue button. Clicking ARRIVE MOORING logged the arrival (toast) and moved the guide to 'arrived'. (3) Returning to Dock arrival: no EndTripGuide, End of trip pre-ticked and not glowing. Log arrival gave stage 'complete'. (4) Complete panel order: text, log button, Finish button, archive reminder text, archive bubble. The bubble switched to Trip Planning with archive-trip-btn in view (398-446) and glowing, still glowing 5s later, and trip-guide-archive-text rendered. Cancelling the prompt kept the stage at 'complete' with the glow on. Confirming showed the toast 'Trip Planning archived...', reset the Trip Planning (START, DEST and name empty, Leg 2 cleared, Archived Trips (1)) and set the stage to 'done'. All trip-guide UI was gone, the glow was removed and Help > Model Vessel > Trip Planning step-by-step guide showed the done tick. Backend log confirmed the Model Vessel wrap-up email was suppressed. Regression: the main boat's Trip Planning shows no guide UI or archive glow, even with guide stage complete+archive in localStorage. Archiving on the main boat works (toast + Undo, then 'is back as an active trip'). No page errors in any run.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Trip Planning after 'Take me to Trip Planning' (stage complete)", "issues": ["trip-guide-archive-text sits in the guide area under START/DESTINATION, about 785px above archive-trip-btn. Once the page scrolls to the button the yellow instruction is off screen, so the user sees a glowing button with no explanation next to it. The text also says 'highlighted below'. Consider an inline hint next to the archive button, or a shorter scroll."]},
+      {"screen": "Archive prompt / toast on Model Vessel", "issues": ["Says 'A wrap-up email ... goes to you 3 minutes later' and 'The wrap-up email goes out in 3 minutes unless you Undo', but the Model Vessel never sends email (backend logged 'Email not sent (Model Vessel training)'). This is misleading in the guide context. Consider training-mode wording."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: show the archive instruction near archive-trip-btn, or keep it visible while the button is in view",
+    "Optional: on the Model Vessel, reword the archive prompt and toast email text",
+    "Minor: guideRestart (tripGuide.js) resets stage and seen but not the 'archive' flag. After a restart that reaches 'complete' again, Trip Planning shows ArchiveHint and glows the archive button before the bubble is pressed. Add archive:false to guideRestart, or clear it when the guide goes to 'done'."
+  ],
+  "critical_code_review_comments": [
+    "tripGuide.js guideRestart: the archive flag survives the restart (see action item)",
+    "trip_summary.send_due (backup after a restart) runs outside the request context, so no_email is not set. A Model Vessel archive whose 3-minute timer is lost to a backend restart could send a real wrap-up email. The normal path is safe because create_task copies the context, which this run confirmed. Consider skipping boat_id == model_vessel in send_summary.",
+    "Unrelated, seen in the backend log: other archives' trip summary emails fail with '502: Failed to send email' (ce909ddc..., 8e5114c0..., 578cc43e...). These archives were not created by this run."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "None. test_session_admin_1 had expired (2026-11-23 01:28); extended its expires_at by 30 days in user_sessions, as test_credentials.md allows. The Model Vessel archive created by the test (c3d03b49-...) was deleted through the API afterwards. The main-boat archive was undone straight away, before any email.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Same setup as iteration_227. Wait about 3s after switching to the Model Vessel before using list-selector, or the list option click can be lost. Set the guide stage with localStorage.setItem plus window.dispatchEvent(new Event('mbp:trip-guide')) to update live. Add seen flags (e.g. underway, newdep, 'returning-returningDock') to skip glow sequences. The Model Vessel Trip Planning was archived and reset by this run: START, DEST, Quick Draft Plan and legs are now empty, so the next run must make a Quick Draft Plan again. The vessel is at the dock, not underway. The guide stage in this browser was 'done'. The archive prompt testids are trip-finish-dialog, trip-finish-confirm-btn, trip-finish-cancel-btn, trip-finish-mail-shore and trip-finish-mail-crew. Not run live: the main boat's ARRIVED dialog (main is not underway). The code gates the help prop on guide, which is null on main."
+}

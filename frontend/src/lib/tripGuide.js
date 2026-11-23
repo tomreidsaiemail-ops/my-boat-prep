@@ -15,7 +15,7 @@ export const guideSet = (uid, patch) => {
   window.dispatchEvent(new Event(EV));
 };
 // From the top, on the Model Vessel's Trip Planning.
-export const guideRestart = (uid) => guideSet(uid, { stage: "", go: true, seen: {} });
+export const guideRestart = (uid) => guideSet(uid, { stage: "", go: true, seen: {}, archive: false });
 
 export const useTripGuide = (uid) => {
   const [g, setG] = useState(() => read(uid));

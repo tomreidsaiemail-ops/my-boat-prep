@@ -41,6 +41,7 @@ import useAllDone from "@/hooks/useAllDone";
 import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } from "@/lib/tripGuide";
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
+import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
 import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
@@ -1459,6 +1460,7 @@ export default function BoatPrep({ boatId, boats }) {
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>
           )}
+          {active.id === DEFAULT_TRIP && guide?.stage === "complete" && guide.archive && <ArchiveHint />}
           {!crew && isTripList(active) && !guideEarly && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} />}
           {isTripList(active) && !guideEarly && checks}
           {!crew && items.length > 0 && active.id !== "shipsLog" && !EMERGENCY[active.id] && (
