@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only test of the Model Vessel Trip Planning step-by-step guide at 390x844, plus a desktop check of the Quick Draft Plan width. Ran the whole flow as test-admin-1 across 7 Playwright runs. The browser context resets between runs, so later runs set the stage in localStorage and the seen flags let them skip glow sequences already checked. The server state (trip, departure, arrivals) carried through for real. Every stage advanced correctly: intro -> bubbles (8 x 5s glow sequence, bullets appear one by one, Continue at the end) -> quick -> map -> filled -> leave -> leaveOk -> underway -> types -> click -> arrived -> newdep -> newdepGo -> returning -> complete -> done. Also passed: folding and re-expanding sections (no Continue or Skip when re-expanded), START/DESTINATION held yellow and the lower fields hidden in intro, all glow sequences, the map destination popup's return option glowing ~5s, the Leave section placed under the hop bubbles, DepartGuide at the top of About to depart, the Route bubble showing DEPARTED/ARRIVED badges and 'Prepare to pick up buoy', LEAVE MOORING held, Return bubble held, Returning to Dock UNDERWAY->ARRIVED glows, the Complete panel (Ship's Log link works, Finish removes all guide UI), Skip guide (toast shown, guide UI removed, stays off after reload), and Help > Model Vessel > Trip Planning step-by-step guide (from the main boat it switches to Model Vessel Trip Planning and restarts at intro). Regression: the main boat's Trip Planning, Quick Draft Plan and Leaving Dock About to depart show no guide content. No page errors. One real design defect: the yellow highlight makes the text unreadable on the dark solid buttons.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Leaving Dock / About to depart / Arriving / New departure (guide highlights)", "issues": [
+        "HIGH: .mbp-glow (App.css:163) only changes background (#fde68a) and box-shadow, so white text on btn-solid buttons becomes white on pale yellow and is barely readable. Seen on depart-all-done-btn ('DEPART, ALL CHECKS DONE'), all-done-confirm-btn ('Depart now', held after the DepartGuide Continue), vessel-arrived-all-done-btn (held through the whole 'click' stage), arrived-all-done-btn and interim-departure-mooring-btn ('LEAVE MOORING', held). These are the exact buttons the guide tells the skipper to press. Fix: add color: var(--navy) !important to .mbp-glow (and to its svg icons), or add a rule like .btn-solid.mbp-glow."
+      ]},
+      {"screen": "Model Vessel Trip Planning (mobile)", "issues": [
+        "MINOR: the Model Vessel 'Training · Step 1 of 6' panel (fixed at the bottom, ~210px tall) covers the lower part of the guide sections and the bottom of the Quick Draft Plan map dialog at 390x844 until the user closes or shrinks it. Consider auto-shrinking it (training-shrink-btn behaviour) while the trip guide is active."
+      ]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Make highlighted dark buttons readable: give .mbp-glow a dark text colour (e.g. color: var(--navy) !important) so 'Depart now', 'DEPART, ALL CHECKS DONE', 'ARRIVED, ALL ARRIVAL CHECKS DONE' and 'LEAVE MOORING' can be read while they are held yellow",
+    "Optional: minimise the Model Vessel Training panel while the Trip Planning guide runs on mobile"
+  ],
+  "critical_code_review_comments": [
+    "guideRestart only resets the guide's stage. It leaves the Model Vessel's trip state alone (previous legs with DEPARTED/ARRIVED records, or an active underway if the skipper skipped partway after departing). After a restart, the Route window shows old badges, and if the vessel is still underway the 'leave' stage's DEPART step won't fit. Consider clearing or ending the Model Vessel trip on restart, or warning the skipper. Not tested.",
+    "useTripGuide only refreshes on its own custom event, not on the 'storage' event, so a second tab won't see stage changes. Minor.",
+    "DepartGuide calls useGuideSteps({...guide, seen:{}}), so the About to depart sequence replays every time the window opens, and it also calls guide.see('depart') each time. This looks intended, but the seen flag is never read.",
+    "The Map guide's Continue uses hold, so it stays yellow until clicked. That's fine, but the spec didn't ask for it."
+  ],
+  "updated_files": ["/app/test_reports/iteration_227.json"],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "97% (all 13 requested flows pass; 1 contrast design issue)"},
+  "seed_data_creation": "Running the real flow created, on test-admin-1's Model Vessel: a Quick Draft Plan (Marlborough District -> Tararua District, return), one departure, a mooring arrival, a Leave Mooring departure and a Returning to Dock arrival. All of it is logged in the Model Vessel's Ship's Log, and the trip ended at the dock (not underway). Nothing was published as a master template. On the main boat, the About to depart window was opened and cancelled, and nothing was logged. The main boat's Quick Draft Plan was opened and cancelled. The guide's localStorage lived only in the test browser contexts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Setup: cookie session_token=test_session_admin_1, sessionStorage mbp_welcome_checked=1, press Escape, then boat-selector -> boat-option-model_vessel. Close the training panel with training-close-btn. Open Trip Planning via list-selector -> list-option-routeHazards. To jump to a stage, set localStorage mbp_trip_guide:test-admin-1 to {stage, seen:{...}} before switching boats. Levels dialog: click level-confirm-{fuel,gas,water,bat_engine,bat_house}-half, then levels-confirm-btn. Map taps at the default zoom work and name the points by district. In About to log your arrival, clicking all-done-choice-mooring logs the arrival straight away. Help > Model Vessel cascade: app-menu-btn -> app-menu-help-item -> click the 'Model Vessel' text (its testid is app-menu-help-model-vessel-item) -> app-menu-help-model-wizard-trip-planning-step-by-step-guide. Not verified: the Help menu's done tick after finishing (my test set localStorage directly, which doesn't fire the app's event)."
+}

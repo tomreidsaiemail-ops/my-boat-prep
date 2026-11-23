@@ -1131,3 +1131,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Navigator warning reads "...local tidal charts, PredictWind® and Navionics® for weather and routing."
 - 2026-06: Boat Inventory: "How to take your Boat Inventory" renamed "Zone Cupboard Help"; "Expand cupboards"/"Collapse cupboards" (unfold/fold every zone) stacked to its left on one row; help body opens full width below. Help > Welcome > "Go through Welcome again from the start" now confirms first (welcome-restart-dialog) and on "Continue to Welcome" makes Welcome the Home list (own boats only).
 - 2026-06: Hamburger menu: "Reset all..." + "Export/Import" cascade (Export Current, Export All, Export to Excel..., Import Spreadsheet...) where Import was. List footer buttons hidden by default; new unchecked My Settings > Feature Settings "Reset All, Export button set List Footer" (users.features.show_list_footer via PUT /me/features, UserOut.show_list_footer) shows them again. Validation bar still shows at the bottom when an export is blocked.
+
+- 2026-06: Trip Planning step-by-step guide on the Model Vessel (see CHANGELOG.md). Tested iteration_227.
