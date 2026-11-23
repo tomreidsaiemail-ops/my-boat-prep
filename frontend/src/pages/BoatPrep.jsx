@@ -41,12 +41,12 @@ import useAllDone from "@/hooks/useAllDone";
 import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } from "@/lib/tripGuide";
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
 import { DistressConfirm } from "@/components/boat/shore/DistressConfirm";
-import { NextStep } from "@/components/boat/departure/NextStep";
+import { NextHint, NextStep } from "@/components/boat/departure/NextStep";
 import { arriveType, nextStepName } from "@/components/boat/navigator/ArriveType";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
-import { routeTrips, today } from "@/lib/allDone";
+import { routeTrips, pickTrip, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
 import { SLOTS } from "@/components/boat/PhotoSlots";
 
@@ -1264,6 +1264,7 @@ export default function BoatPrep({ boatId, boats }) {
   const toDock = uwType?.key === "dock";
   const goNext = () => setActiveId(toDock ? "returningDock" : "arrivingDest");
   const leaveStep = uwId ? { label: `Next step - ${nextStepName(uwType?.key)}`, onClick: goNext } : null;
+  const departLive = !!uwId && pickTrip(routeTrips(state.registry, boat), boat.route_trip, boat.route_trip_day)?.id === uwId;
   const underwayNext = uwId && active.id !== (toDock ? "returningDock" : "arrivingDest") ? { label: `Next: ${nextStepName(uwType?.key, false)}`, onClick: goNext } : null;
   const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
   const ended = !uwId && boat.trip_ended && allLists.some((l) => l.id === boat.trip_ended) ? boat.trip_ended : "";
@@ -1367,7 +1368,7 @@ export default function BoatPrep({ boatId, boats }) {
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" next={underwayNext} />
         : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
-            step={underwayNext} noArrive={active.id === "arrivingDest" && toDock}
+            step={underwayNext} noArrive={active.id === "arrivingDest" && toDock} planned={active.id === (toDock ? "returningDock" : "arrivingDest")}
             onArrive={() => {
               if (!doneGuard()) return;
               // Heading back to the dock (or on Returning to Dock) this ends the trip there; otherwise it's an arrival at the next destination.
@@ -1429,10 +1430,13 @@ export default function BoatPrep({ boatId, boats }) {
         </button>
       )}
       {hopRow}
-      {!crew && active.id === "arrivingDest" && toDock && <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />}
-      {!crew && active.id === "returningDock" && toDock && (
-        <p className="rounded-md bg-yellow-200 px-3 py-2.5 text-sm font-extrabold text-[var(--navy)]" data-testid="returning-next-hint">Next step, Go over 'Returning to Dock' checks, and click 'ARRIVED, ALL CHECKS DONE'</p>
-      )}
+      {/* The next step, always right under the bubbles. */}
+      {!crew && active.id === "leavingDock" && (departLive ? leaveStep && <NextStep label={leaveStep.label} onClick={leaveStep.onClick} testId="route-plan-next-step" />
+        : <NextHint testId="leaving-next-hint">Next step: perform Leaving Dock checks, then click DEPART</NextHint>)}
+      {!crew && active.id === "arrivingDest" && uwId && (toDock ? <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />
+        : <NextHint testId="arriving-next-hint">Next step: perform arrival checks, and click "ARRIVED"</NextHint>)}
+      {!crew && active.id === "returningDock" && toDock && <NextHint testId="returning-next-hint">Next step, Go over 'Returning to Dock' checks, and click 'ARRIVED, ALL CHECKS DONE'</NextHint>}
+      {!crew && !uwId && (active.id === "arrivingDest" || active.id === "returningDock") && (archiveStep || (active.id === "arrivingDest" && stopHint && <NextHint testId="arrived-next-hint">{stopHint}</NextHint>))}
       {guide && TRIP_HOPS.has(active.id) && <TripListGuide guide={guide} listId={active.id} busy={!!allDone.plan || !!allDone.levelsAsk.ask} onShipsLog={() => pickList("shipsLog")} onTripPlanning={() => pickList(DEFAULT_TRIP)} />}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
@@ -1445,13 +1449,12 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {/* Not underway: the ARRIVED card sits under the Trip Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
       {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && (
-        <ArrivedCard underway={boat.underway} next={ended ? "" : nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)}>
-          {archiveStep || (active.id === "arrivingDest" && stopHint && <p className="rounded-md bg-yellow-200 px-3 py-2.5 text-sm font-extrabold text-[var(--navy)]" data-testid="arrived-next-hint">{stopHint}</p>)}
-        </ArrivedCard>
+        <ArrivedCard underway={boat.underway} next={ended ? "" : nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)}
+          noArrive={!!archiveStep || (active.id === "arrivingDest" && !!stopHint)} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
-          onDepart={() => doneGuard() && allDone.openDepart()} next={leaveStep} />
+          onDepart={() => doneGuard() && allDone.openDepart()} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}

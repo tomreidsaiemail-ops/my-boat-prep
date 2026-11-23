@@ -1,0 +1,21 @@
+{
+  "summary": "Frontend-only test of the Trip Planning / Arriving / Returning next-step text changes, run as test-admin-1 on a 390x844 screen. Used boat 'main' (TODO), which is not the Model Vessel, so this also covers 'all boats', and Model Vessel for the no-date case. The new helper /app/backend/tests/seed_trip_depart.py set up TEST_ plans with no date, today and +2 days. Every requested check passes: (1) No departure date: trip-next-step is not rendered, the Leave bubble is white/navy and there is no days label. (2) Departure today: route-leaving-dock-btn has bg-yellow-300 and route-leaving-dock-days reads '(today)'. This is true on Model Vessel and on main. trip-next-step-link reads 'Next step, switch to Leaving Dock, go over Leaving Dock checks and Depart'. (3) +2 days: the Leave bubble is not yellow, the days label reads '(2 days)' and the link reads 'Coming up soon, switch to Leaving Dock, go over Leaving Dock checks and Depart'. (4) Tapping the link switches list-selector to Leaving Dock. (5) After DEPART, at the stop after arriving, and while underway on Leg 2, trip-next-step is hidden and Leave is no longer yellow. (6) After arriving at the mooring (Leg 2 goes to dock, not underway): arrived-next-hint reads \"Next step: Go over Leaving checks, and click 'New departure...' to return to dock\" and New departure is data-planned. (7) Returning to Dock: returning-next-hint is hidden before arrival while underway to the mooring, and hidden at the stop. It shows after New departure -> Leave Mooring (underway to dock) with the exact text. It is a plain <p> (cursor auto, yellow bg rgb(254,240,138)) and sits above the ARRIVED, ALL CHECKS DONE card. Regression: DEPART flow works. The UNDERWAY badge reads 'Next: Arriving at Destination' and then 'Next: Returning to Dock'. On Arriving at Destination while underway to dock there is arriving-next-step 'Next step - Returning to Dock' and no arrived-next-hint. The ArrivedCard is fine. scrollWidth is 390 (no horizontal overflow) on every screen checked. The test-admin-1 boats main and model_vessel were restored from a backup taken before testing.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/seed_trip_depart.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "NavigatorAsk: trip-next-step is also hidden while the Model Vessel training guide is before the 'filled' stage (the `early` const). So on Model Vessel with a today date and the guide active, only the yellow Leave bubble shows and the link does not. This looks intended, so not a bug, but the user may notice it.",
+    "Label: a departure date in the past ('N days ago', not departed) shows 'Next step, ...'. That seems sensible."
+  ],
+  "updated_files": ["/app/backend/tests/seed_trip_depart.py"],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Wrote TEST_ plans into test-admin-1/main and test-admin-1/model_vessel. Both were restored afterwards from a mongoexport backup (/tmp/bk/admin_boats.json, upsert by _id), with boat_ts bumped.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "seed_trip_depart.py <boat> <days|none> [leg1] [leg2] (needs MONGO_URL/DB_NAME from backend/.env) seeds test-admin-1 plans. On boat main (shows as 'TODO') the training guide does not hide trip-next-step. Arrival dialog: click [data-testid^=all-done-actual-now] first (finish time is required), then all-done-choice-mooring. New departure: arrival-new-departure-btn -> levels (-half buttons + levels-confirm-btn) -> navigator-finish-at-set-now-btn (needed if leg finish is empty) -> interim-departure-mooring-btn. Close the inventory-setup-wizard on main with Escape."
+}

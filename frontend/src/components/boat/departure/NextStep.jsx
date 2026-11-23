@@ -9,3 +9,8 @@ export const NextStep = ({ label, onClick, testId, prefix = "Please click" }) =>
 
 // What the plan says comes next (the planned arrival, how you'll leave, New departure...), shown yellow on its button.
 export const PLANNED = "!border-2 !border-yellow-500 !bg-yellow-300 !text-[var(--navy)] hover:!bg-yellow-400";
+
+// A plain yellow reminder of the next step, under the list's bubbles.
+export const NextHint = ({ children, testId }) => (
+  <p className="rounded-md bg-yellow-200 px-3 py-2.5 text-sm font-extrabold text-[var(--navy)]" data-testid={testId}>{children}</p>
+);

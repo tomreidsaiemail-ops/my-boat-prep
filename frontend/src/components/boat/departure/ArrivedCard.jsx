@@ -1,6 +1,7 @@
 import { Flag } from "lucide-react";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
+import { PLANNED } from "@/components/boat/departure/NextStep";
 
 const dayWord = (d) => {
   const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
@@ -16,8 +17,8 @@ export const nextDepartureLine = (leg) => {
 };
 
 // Arriving at Destination and Returning to Dock: the one-tap ARRIVED that ends the trip. children: the next step instead, once arrived.
-// step: the "Next:" badge beside UNDERWAY. noArrive: no ARRIVED here (heading back to the dock, seen from Arriving at Destination).
-export const ArrivedCard = ({ underway, onArrive, big = false, label = "Arrived, all checks done", testId = "arrived", next = "", children, step = null, noArrive = false }) => (
+// step: the "Next:" badge beside UNDERWAY. noArrive: no ARRIVED here (heading back to the dock, seen from Arriving at Destination). planned: ARRIVED is the next step (yellow).
+export const ArrivedCard = ({ underway, onArrive, big = false, label = "Arrived, all checks done", testId = "arrived", next = "", children, step = null, noArrive = false, planned = false }) => (
   <section className={`flex flex-col gap-2.5 rounded-lg border-2 ${big ? "border-emerald-700 shadow-md" : "border-[var(--navy)]"} bg-white p-3.5`} data-testid={`${testId}-card`}>
     {underway?.trip_id ? (
       <>
@@ -27,7 +28,7 @@ export const ArrivedCard = ({ underway, onArrive, big = false, label = "Arrived,
     ) : next ? <p className="text-sm font-bold text-[var(--navy)]" data-testid={`${testId}-next-departure`}>{next}</p>
       : <p className="text-sm text-[var(--muted)]" data-testid={`${testId}-not-underway`}>No departure is marked underway.</p>}
     {children || (!noArrive && (
-      <button type="button" className="btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide" onClick={onArrive} data-testid={`${testId}-all-done-btn`}>
+      <button type="button" className={`btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide ${planned ? PLANNED : ""}`} onClick={onArrive} data-testid={`${testId}-all-done-btn`}>
         <Flag className="h-5 w-5" /> {label}
       </button>
     ))}

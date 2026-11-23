@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowRight, Map as MapIcon, Navigation } from "lucide-react";
 import { dmyt, pickTrip, tripIssue, tripLine } from "@/lib/allDone";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
-import { NextStep } from "@/components/boat/departure/NextStep";
+import { PLANNED } from "@/components/boat/departure/NextStep";
 
 // Opens the Route Plan list and lands on its Departure or Estimated Finish date.
 const goTo = (id, field = "navigator-depart-at") => {
@@ -19,9 +19,8 @@ const TimeRow = ({ label, value, onGo, testId }) => (
   </div>
 );
 
-// Leaving the Dock: which Route Planning trip this departure uses, its summary and the one-tap DEPART.
-// next: once it's under way, DEPART gives way to the link to the next list ({ label, onClick }).
-export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, next = null }) => {
+// Leaving the Dock: which Route Planning trip this departure uses, its summary and the one-tap DEPART (gone once it's under way).
+export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart }) => {
   const live = underway?.trip_id && underway.trip_id === trip?.id;
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="route-plan-card">
@@ -54,8 +53,8 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, 
         </div>
       )}
       {live && <UnderwayBubble underway={underway} testId="route-plan-underway" />}
-      {live && next ? <NextStep label={next.label} onClick={next.onClick} testId="route-plan-next-step" /> : (
-        <button type="button" className="btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide" onClick={onDepart} disabled={!trip} data-testid="depart-all-done-btn">
+      {!live && (
+        <button type="button" className={`btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide ${PLANNED}`} onClick={onDepart} disabled={!trip} data-testid="depart-all-done-btn">
           <Navigation className="h-5 w-5" /> Depart, all checks done
         </button>
       )}
@@ -63,7 +62,7 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, 
   );
 };
 
-export const DepartRoute = ({ trips, boat, onPick, onDepart, next }) => {
+export const DepartRoute = ({ trips, boat, onPick, onDepart }) => {
   const trip = pickTrip(trips, boat.route_trip, boat.route_trip_day);
-  return <RoutePlanCard trips={trips} trip={trip} issue={tripIssue(trips, trip)} underway={boat.underway} onPick={onPick} onDepart={onDepart} next={next} />;
+  return <RoutePlanCard trips={trips} trip={trip} issue={tripIssue(trips, trip)} underway={boat.underway} onPick={onPick} onDepart={onDepart} />;
 };
