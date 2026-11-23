@@ -12,7 +12,7 @@ import { boatMapUrl } from "@/components/boat/ZoneMap";
 const FIELDS = ["vessel", "boat_type", "make", "model", "year_built"];
 // The blank schematic matching the boat type: 2 hulls for a catamaran, 3 for a trimaran, else a monohull.
 const blankFor = (type) => (/trimaran/i.test(type || "") ? "/blank-trimaran.png" : /catamaran/i.test(type || "") ? "/blank-catamaran.png" : "/blank-hull.png");
-const TITLES = { details: "Your boat", colours: "Magically place colours", blank: "Your blank schematic", done: "You're set up" };
+const TITLES = { details: "Your boat", colours: "Magically place colours", blank: "Your blank schematic", current: "Your schematic", done: "You're set up" };
 
 const DetailsPanel = ({ draft, set, onNext }) => (
   <div className="flex flex-col gap-3" data-testid="setup-details-panel">
@@ -34,14 +34,15 @@ const DetailsPanel = ({ draft, set, onNext }) => (
   </div>
 );
 
-const MapPanel = ({ boat, map, online, presets, onMaps, auto, blank, onNext, onZoneDefaults }) => (
-  <div className="flex flex-col gap-3" data-testid={blank ? "setup-blank-panel" : "setup-colours-panel"}>
-    {blank
+const MapPanel = ({ boat, map, online, presets, onMaps, auto, blank, current, onNext, onZoneDefaults }) => (
+  <div className="flex flex-col gap-3" data-testid={current ? "setup-current-panel" : blank ? "setup-blank-panel" : "setup-colours-panel"}>
+    {current && <p className="text-sm">Here is your current schematic. Check its zone colours (drag any that need nudging), then Next gives each zone its usual cupboards.</p>}
+    {!current && (blank
       ? <p className="text-sm">No matching schematic, so here is a blank one (the bow is on the right). Just drop the Galley, Saloon and some cabins onto it. Later you can replace it with a schematic from your boat&apos;s operating manual, or an image of your own.</p>
-      : <p className="text-sm">The Magic Mariner is placing your zone colours on your schematic. Drag any that need nudging.</p>}
+      : <p className="text-sm">The Magic Mariner is placing your zone colours on your schematic. Drag any that need nudging.</p>)}
     {map && <OverviewMap boat={boat} map={map} src={boatMapUrl(boat, map)} canEdit online={online} presets={presets} onMaps={onMaps} onZoneDefaults={onZoneDefaults} autoStart={auto} big={blank} />}
     <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={!(map?.swatches || []).length} onClick={onNext} data-testid="setup-colours-next-btn">
-      {(map?.swatches || []).length ? <>Next <ArrowRight className="h-4 w-4" /></> : blank ? "Drop at least one colour first" : "Waiting for colours..."}
+      {(map?.swatches || []).length ? <>Next <ArrowRight className="h-4 w-4" /></> : blank || current ? "Drop at least one colour first" : "Waiting for colours..."}
     </button>
   </div>
 );
@@ -59,7 +60,8 @@ const DonePanel = ({ blank, made, onInventory, onClose }) => (
   </div>
 );
 
-// Boat Inventory Set Up Wizard: boat details, the schematic search, Magically Place Colours (or a blank hull to drop colours on), then done.
+// Boat Inventory Set Up Wizard: boat details (only when any are missing), the schematic search, Magically Place Colours (or a blank hull to drop colours on), then done.
+// A boat that already has a schematic skips the search: it shows that schematic, then Next gives its zones their usual cupboards.
 // onZoneDefaults(swatches): gives the placed zones their usual cupboards, returns how many were added or filed.
 export const InventorySetupWizard = ({ open, onClose, boat, details, online, onField, onMaps, onInventory, onZoneDefaults }) => {
   const [step, setStep] = useState("details");
@@ -72,13 +74,20 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
   const zoneDefaults = (sw) => { const n = onZoneDefaults(sw); setMade((m) => m + n); return n; };
   useEffect(() => {
     if (!open) return;
-    setStep("details"); setMapId(null); setBlank(false); setMade(0);
-    setDraft(Object.fromEntries(FIELDS.map((k) => [k, details[k] || ""])));
+    setMapId(null); setBlank(false); setMade(0);
+    const d = Object.fromEntries(FIELDS.map((k) => [k, details[k] || ""]));
+    setDraft(d);
+    if (identityFull(d) && d.vessel.trim()) go(); else setStep("details");
     if (online && !presets.length) api.get("/zone-colour-presets").then(({ data }) => setPresets(data.presets)).catch(() => {});
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const maps = boat.zone_maps || [];
   const map = maps.find((m) => m.id === mapId);
-  const next = () => { FIELDS.forEach((k) => { if ((details[k] || "") !== draft[k]) onField(k, draft[k]); }); setStep("schematic"); };
+  const go = () => {
+    const ov = maps.filter((m) => m.kind === "overview");
+    const cur = ov.find((m) => (m.swatches || []).length) || ov[ov.length - 1];
+    if (cur) { setMapId(cur.id); setStep("current"); } else setStep("schematic");
+  };
+  const next = () => { FIELDS.forEach((k) => { if ((details[k] || "") !== draft[k]) onField(k, draft[k]); }); go(); };
   const added = (all, to) => {
     const before = new Set(maps.map((m) => m.id));
     const m = all.filter((x) => x.kind === "overview" && !before.has(x.id)).pop() || all.filter((x) => x.kind === "overview").pop();
@@ -110,7 +119,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
             <DialogDescription className="text-left text-xs">Boat Inventory Set Up Wizard</DialogDescription>
           </DialogHeader>
           {step === "details" && <DetailsPanel draft={draft} set={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} onNext={next} />}
-          {(step === "colours" || step === "blank") && <MapPanel boat={boat} map={map} online={online} presets={presets} onMaps={onMaps} auto={step === "colours"} blank={step === "blank"} onZoneDefaults={zoneDefaults}
+          {["colours", "blank", "current"].includes(step) && <MapPanel boat={boat} map={map} online={online} presets={presets} onMaps={onMaps} auto={step === "colours"} blank={step === "blank"} current={step === "current"} onZoneDefaults={zoneDefaults}
             onNext={() => { zoneDefaults(map?.swatches || []); setStep("done"); }} />}
           {step === "done" && <DonePanel blank={blank} made={made} onInventory={() => onInventory(mapId)} onClose={onClose} />}
         </DialogContent>

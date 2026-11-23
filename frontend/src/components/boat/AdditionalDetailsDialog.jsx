@@ -10,7 +10,7 @@ import { HullSpeedHint } from "@/components/boat/telemetry/HullSpeedHint";
 import { WeightPanel } from "@/components/boat/weights/WeightPanel";
 import { switchWeights } from "@/lib/weights";
 import { useCrewDiet } from "@/lib/crewDiet";
-import { zoneMapLabel } from "@/components/boat/zone/ZoneSchematicsDialog";
+import { PLANNED } from "@/components/boat/departure/NextStep";
 import useBoatTypes from "@/hooks/useBoatTypes";
 
 const OTHER = "__other";
@@ -95,7 +95,8 @@ const UnitToggle = ({ value, onChange }) => (
   </div>
 );
 
-export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, maintDone, onZoneMap, zoneDone }) => {
+// setup: Boat Inventory Set Up ({ status: start | continue | done, onOpen }), yellow until it's complete.
+export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnFocus, onMakeKit, onMaintSetup, maintDone, setup }) => {
   const { pob, children, adults } = crewSplit(boat);
   const unit = boat.units === "ft" ? "ft" : "m";
   const setPob = (n) => { onChange("pob", n); if ((boat.children || 0) >= n) onChange("children", n - 1); };
@@ -125,7 +126,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
                 onChange={(e) => onChange("year_built", e.target.value.replace(/\D/g, "").slice(0, 4))}
                 className="field-input" data-testid="boat-year-input" />
             </label>
-            {(onMaintSetup || onZoneMap) && <p className="col-span-2 self-end pb-2 text-xs text-[var(--muted)]" data-testid="boat-year-hint">Make, model and year of manufacture are needed for the buttons below.</p>}
+            {onMaintSetup && <p className="col-span-2 self-end pb-2 text-xs text-[var(--muted)]" data-testid="boat-year-hint">Make, model and year of manufacture are needed for Boat Maintenance lists.</p>}
             {/* All the maintenance lists are on the boat; deleting any brings the Create button back. */}
             {onMaintSetup && maintDone && (
               <label className="col-span-3 flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md border-[1.5px] border-[var(--green)] bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900"
@@ -139,17 +140,17 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
                 <Sparkles className="h-4 w-4 shrink-0" /> Create Boat Maintenance lists...
               </button>
             )}
-            {onZoneMap && zoneDone && (
+            {setup?.status === "done" && (
               <label className="col-span-3 flex min-h-10 cursor-not-allowed items-center gap-2 rounded-md border-[1.5px] border-[var(--green)] bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-900"
                 onClick={() => toast.message("in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen.")}
-                title="in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen." data-testid="zone-map-done">
-                <input type="checkbox" checked readOnly disabled className="h-5 w-5 accent-[var(--green)]" data-testid="zone-map-done-checkbox" /> Zone Map Schematic Done
+                title="in Boat Inventory, remove all coloured zones on current zone schematic to enable a different schematic to be chosen." data-testid="inventory-setup-done">
+                <input type="checkbox" checked readOnly disabled className="h-5 w-5 accent-[var(--green)]" data-testid="inventory-setup-done-checkbox" /> Boat Inventory Set Up complete
               </label>
             )}
-            {onZoneMap && !zoneDone && (
-              <button type="button" onClick={() => (identityReady(boat) ? onZoneMap() : toast.error(IDENTITY_NEEDED))}
-                className="btn-ghost col-span-3 h-auto min-h-10 justify-start gap-1.5 px-3 py-2 text-left text-sm" data-testid="zone-map-create-btn">
-                <Sparkles className="h-4 w-4 shrink-0" /> {zoneMapLabel(boat)}
+            {setup && setup.status !== "done" && (
+              <button type="button" onClick={setup.onOpen}
+                className={`btn-ghost col-span-3 h-auto min-h-10 justify-start gap-1.5 px-3 py-2 text-left text-sm ${PLANNED}`} data-testid="inventory-setup-open-btn">
+                <Sparkles className="h-4 w-4 shrink-0" /> {setup.status === "continue" ? "Continue to Set Up Boat Inventory..." : "Set up Boat Inventory..."}
               </button>
             )}
           </div>

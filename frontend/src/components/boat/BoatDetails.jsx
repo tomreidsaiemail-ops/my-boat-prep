@@ -8,7 +8,6 @@ import { ArrangeIcon } from "@/components/boat/ArrangeIcon";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
-import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { RESUME_ZONE, identityFull, onAskDetailsForZone } from "@/components/boat/zone/CreateOverviewButton";
 
@@ -65,7 +64,6 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
-  const [plans, setPlans] = useState(false);
   const [ask, setAsk] = useState(false);
   const creating = useRef(false);
   const moreRef = useRef(null);
@@ -97,14 +95,15 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
     }
     if (zone && !zone.count && ready) setAsk(true); else onDetailsClosed?.();
   };
-  const plansDone = (maps) => { zone.onMaps(maps); setPlans(false); setMore(false); zone.onShow(); };
+  // Boat Inventory Set Up: start it with no schematic, continue it while no zone has cupboards, then it's complete.
+  const setupOpen = () => (zone.hasMap || zone.premium ? zone.onSetup() : zone.onUpgrade());
+  const setup = zone && { status: !zone.hasMap ? "start" : zone.cupboards ? "done" : "continue", onOpen: () => { setMore(false); setupOpen(); } };
   const dialog = <>
     <AdditionalDetailsDialog open={more} boat={boat} onChange={onChange} onClose={closeMore} returnFocus={moreRef} onMakeKit={onMakeKit}
-      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} maintDone={maintDone} zoneDone={!!zone?.coloured} onZoneMap={zone && (() => (zone.premium ? setPlans(true) : zone.onUpgrade()))} />
-    {zone && <ZoneSchematicsDialog open={plans} boat={boat} boatId={zone.boatId} online={zone.online} onDone={plansDone} onClose={() => setPlans(false)} />}
-    <ConfirmDelete item={ask ? [1] : null} danger={false} title="Create a zone map?" confirmLabel="Create zone map" cancelLabel="Not now" testId="zone-map-ask"
-      note={`Your boat doesn't have a zone map yet. We can search the web for a schematic of a ${[boat.make, boat.model].filter(Boolean).join(" ")} for you to start from.`}
-      onConfirm={() => { creating.current = true; setAsk(false); setMore(true); setPlans(true); }}
+      onMaintSetup={onMaintSetup && (() => { setMore(false); onMaintSetup(); })} maintDone={maintDone} setup={setup} />
+    <ConfirmDelete item={ask ? [1] : null} danger={false} title="Set up Boat Inventory?" confirmLabel="Set up Boat Inventory" cancelLabel="Not now" testId="zone-map-ask"
+      note={`Your boat doesn't have a zone map yet. The Boat Inventory Set Up finds a schematic of a ${[boat.make, boat.model].filter(Boolean).join(" ")} and gives each zone its usual cupboards.`}
+      onConfirm={() => { creating.current = true; setAsk(false); setupOpen(); }}
       onClose={() => { setAsk(false); if (!creating.current) onDetailsClosed?.(); creating.current = false; }} />
   </>;
   const focused = useRef(false);
