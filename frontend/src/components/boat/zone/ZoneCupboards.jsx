@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
 
 // The opened zone's cupboards, folded like its row in the zone list, so the skipper can work on them here.
-export const ZoneCupboards = ({ zone, rows, render, t }) => {
-  const [open, setOpen] = useState(false);
+export const ZoneCupboards = ({ zone, rows, render, t, startOpen = false }) => {
+  const [open, setOpen] = useState(startOpen);
+  useEffect(() => { if (startOpen) setOpen(true); }, [startOpen]);
   return (
     // Ticks save as they're made; only an item typed but not added counts as unsaved work in the zone window.
     <div className="rounded-md border-[1.5px] border-[var(--line)] bg-white" data-autosave data-testid={`${t}-cupboards`}>

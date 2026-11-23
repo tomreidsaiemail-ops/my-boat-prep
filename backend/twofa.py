@@ -30,6 +30,21 @@ async def is_special(email: str) -> bool:
     return False
 
 
+FIRST_TIME = "behave like first time"
+
+
+async def behaves_first(email: str) -> bool:
+    """A list line with ",Behave Like First Time" after the email: each time that user opens the app, it starts again as their first time."""
+    email = (email or "").strip().lower()
+    doc = await db.list_templates.find_one(_named(), {"_id": 0, "items": 1})
+    for i in (doc or {}).get("items") or []:
+        label = str(i.get("label", ""))
+        m = EMAIL.search(label)
+        if m and m.group(0).lower() == email and FIRST_TIME in " ".join(label.lower().split()):
+            return True
+    return False
+
+
 def code_hash(email: str, code: str) -> str:
     return hashlib.sha256(f"{email}:{code}".encode()).hexdigest()
 

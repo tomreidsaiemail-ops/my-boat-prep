@@ -13,6 +13,7 @@ import { QuickCupboards } from "@/components/boat/zone/QuickCupboards";
 import { ZoneCupboards } from "@/components/boat/zone/ZoneCupboards";
 import { DeleteZone } from "@/components/boat/zone/DeleteZone";
 import { usualCupboards } from "@/lib/zoneDefaults";
+import { ZoneFirstHelp } from "@/components/boat/zone/ZoneFirstHelp";
 
 // An empty zone with a usual set (Galley: Fridge, Freezer...): one tap adds them, nothing is added until then.
 const UsualCupboards = ({ zone, onAdd, t }) => {
@@ -69,8 +70,9 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 };
 
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
-// onUsual: shown while the zone has no cupboards, adds its usual set.
-export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary, coach = false, onUsual }) => {
+// onUsual: shown while the zone has no cupboards, adds its usual set. firstHelp: the first zone window ever opened (see ZoneFirstHelp).
+export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary, coach = false, onUsual,
+  firstHelp = null, helpScanning = false, onSampleScan, onOwnScan }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -99,7 +101,8 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><ZoneChip zone={zone} className="text-sm" testId={`${t}-chip`} /> zone</DialogTitle>
           <DialogDescription>{zone.colour} zone. Photos of {zone.label} take {zone.colour}, and every cupboard you scan here is filed under {zone.label}.</DialogDescription>
         </DialogHeader>
-        {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} />}
+        {firstHelp && <ZoneFirstHelp help={firstHelp} count={(rows || []).length} t={t} scanning={helpScanning} onSample={onSampleScan} onOwn={onOwnScan} />}
+        {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} startOpen={!!firstHelp && (rows || []).length > 0} />}
         {onUsual && !(rows || []).length && <UsualCupboards zone={zone} onAdd={onUsual} t={t} />}
         {big ? (
           <div className="flex flex-col gap-2" data-testid={`${t}-big`}>

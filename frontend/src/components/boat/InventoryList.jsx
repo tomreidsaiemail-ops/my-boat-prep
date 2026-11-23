@@ -18,6 +18,7 @@ import { newAreaItemId } from "@/lib/inventoryMove";
 import { CupboardPhotoButton, areaPhotos, areaPhotoUrl, uploadAreaPhoto, withPhotos } from "@/components/boat/inventory/CupboardPhoto";
 import { ZonePhotosButton } from "@/components/boat/zone/ZonePhotosButton";
 import { withZoneDefaults } from "@/lib/zoneDefaults";
+import { SAMPLE_CUTLERY } from "@/components/boat/zone/ZoneFirstHelp";
 import { areaZones, boatZones, rainbowGroups, zonePhotos } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
@@ -381,6 +382,29 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     openArea(firstId);
   };
   const { user } = useAuth();
+  // The first zone window this person ever opens gets yellow help; in the Galley its Cutlery Drawer is made ready for a first Magic Scan.
+  const helpKey = `mbp_zone_help:${user.user_id}`;
+  const [zoneHelp, setZoneHelp] = useState(null);
+  useEffect(() => {
+    if (!zone) { setZoneHelp(null); return; }
+    if (readOnly || !boat || boat.owner_id || localStorage.getItem(helpKey)) return;
+    localStorage.setItem(helpKey, "1");
+    if (!same(zone.label || "", "Galley")) { setZoneHelp({ kind: "other" }); return; }
+    const cut = (a) => !a.parent_id && same(a.name, "Cutlery Drawer");
+    const have = zoneTops(zone.colour).find(cut) || areas.find((a) => cut(a) && !zoneKey(a));
+    const place = { label: zone.label, colour: zone.colour };
+    if (have && !zoneKey(have)) setArea(have.id, (x) => ({ ...x, zone: place }));
+    const id = have?.id || newId();
+    if (!have) onChange((list) => [...list, { id, name: "Cutlery Drawer", items: [], zone: place }]);
+    setZoneHelp({ kind: "galley", id, made: !have });
+  }, [zone]); // eslint-disable-line react-hooks/exhaustive-deps
+  const helpArea = () => areas.find((a) => a.id === zoneHelp?.id);
+  const sampleScan = async () => {
+    const a = helpArea();
+    if (!a) return;
+    try { runScan(a, [await fetch(SAMPLE_CUTLERY).then((r) => { if (!r.ok) throw new Error(); return r.blob(); })], false); }
+    catch { toast.error("Couldn't load the sample image, please try again"); }
+  };
   const [qrArea, setQrArea] = useState(null);
   useEffect(() => {
     const qr = pendingQr();
@@ -582,7 +606,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
         onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
-        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} onUsual={readOnly ? undefined : addUsual} />
+        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} onUsual={readOnly ? undefined : addUsual}
+        firstHelp={zoneHelp} helpScanning={!!zoneHelp && scanning === zoneHelp.id} onSampleScan={sampleScan} onOwnScan={(e) => { const a = helpArea(); if (a) startScan(a)(e); }} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper

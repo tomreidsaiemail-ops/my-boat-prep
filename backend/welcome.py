@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from auth import get_current_user
 from db import db
+from model_vessel import MODEL_BOAT_ID, ensure_model_vessel
+from twofa import behaves_first
 
 router = APIRouter(prefix="/api")
 LIST_NAME = "Admin - Welcome Screen"
@@ -121,6 +123,21 @@ async def get_welcome(user: dict = Depends(get_current_user)):
     return {"questions": qs, "force": n, "due": n not in visits, "first": not visits, "answers": answers, "mv_ack": bool(w.get("mv_ack")),
             "section": w.get("section") or "", "complete": complete, "skipper": skipper, "home_set": bool(w.get("home_set")),
             "auto": skipper and (not complete or n not in visits)}
+
+
+@router.post("/me/first-time-reset")
+async def first_time_reset(user: dict = Depends(get_current_user)):
+    """Tagged ",Behave Like First Time" on ADMIN - 2FA Special Users: the Welcome screen and walkthroughs start again and the
+    Model Vessel is a fresh copy. Their own boats, lists and inventory stay as they are; training magic already given isn't given twice."""
+    if not await behaves_first(user.get("email")):
+        return {"reset": False}
+    uid = user["user_id"]
+    await db.users.update_one({"user_id": uid}, {"$unset": {"welcome": ""}})
+    await db.wizard_progress.update_many({"user_id": uid}, {"$unset": {"finished_at": ""}})
+    for coll in ("user_boats", "crew_invites", "trip_archives"):
+        await db[coll].delete_many({"owner_id": uid, "boat_id": MODEL_BOAT_ID})
+    await ensure_model_vessel(user, None)
+    return {"reset": True}
 
 
 @router.post("/welcome/visited")

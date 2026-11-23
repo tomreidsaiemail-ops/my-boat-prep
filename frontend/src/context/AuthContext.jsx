@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { PICK_KEY } from "@/lib/shorePick";
+import { clearFirstTime } from "@/lib/firstTime";
 
 const USER_KEY = "mbp_user";
+const FIRST_KEY = "mbp_first_time_checked";
 const AuthContext = createContext(null);
 
 const cachedUser = () => {
@@ -31,6 +33,16 @@ export function AuthProvider({ children }) {
       setChecking(false);
     }
   }, [setUser]);
+
+  // Once per app open: someone tagged "Behave Like First Time" starts again as a first-timer (the server says if they are).
+  const uid = user?.user_id;
+  useEffect(() => {
+    if (checking || !uid || sessionStorage.getItem(FIRST_KEY) === uid) return;
+    api.post("/me/first-time-reset", null, { timeout: 20000 }).then(({ data }) => {
+      sessionStorage.setItem(FIRST_KEY, uid);
+      if (data.reset) { clearFirstTime(); window.location.reload(); }
+    }).catch(() => {});
+  }, [checking, uid]);
 
   useEffect(() => {
     // Returning from Google sign-in: GoogleCallback exchanges the code first.
