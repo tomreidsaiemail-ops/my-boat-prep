@@ -86,8 +86,8 @@ const TripFlag = ({ label, title, testId }) => (
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
 // guide: the Model Vessel's Trip Planning guide; until the Quick Draft Plan is done only the bubbles, START and DESTINATION show.
-// tripId: this Trip Planning list (for the crew window). provisioned: something on Provisions is ticked.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null, tripId, provisioned }) => {
+// tripId: this Trip Planning list (for the crew window). provisioned: something on Provisions is ticked. endStep: the trip has ended, its next steps replace Leave.
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null, tripId, provisioned, endStep = null }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -133,7 +133,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
   };
   const early = !!guide && !reached(guide.stage, "filled");
-  const leaveAt = departed ? undefined : boat.weather?.depart_at;
+  const leaveAt = departed || endStep ? undefined : boat.weather?.depart_at;
   const leaveToday = daysToGo(leaveAt) === "(today)";
   const applyQuick = ([first, ...rest], fresh) => {
     if (early) guide.to("filled");
@@ -191,7 +191,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           <HopBubble icon={ShoppingCart} label="Provisions" tone="crew" onClick={() => openList("provisions")} testId="route-provisions" />
         </div>
       )}
-      {!interim && !early && onLeaving && daysToGo(leaveAt) && (<>
+      {!interim && !early && endStep}
+      {!interim && !early && !endStep && onLeaving && daysToGo(leaveAt) && (<>
         <NextStep prefix={null} onClick={onLeaving} testId="trip-next-step"
           label={`${leaveToday || daysToGo(leaveAt).includes("ago") ? "Next step" : "Coming up soon"}, switch to Leaving Dock, go over Leaving Dock checks and Depart`} />
         <TripTodos boatId={boatId} online={online} single={!!w.single_hand} provisioned={!!provisioned} />

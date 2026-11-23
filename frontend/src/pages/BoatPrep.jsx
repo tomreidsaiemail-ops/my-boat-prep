@@ -1273,7 +1273,7 @@ export default function BoatPrep({ boatId, boats }) {
   const stopNext = !uwId && !ended && arrivedLegs(hopTrip).length ? legNow(hopTrip) : null;
   const stopHint = stopNext ? (arriveType(stopNext.arrive_type)?.key === "dock" ? "Next step: Go over Leaving checks, and click 'New departure...' to return to dock" : "Click New departure for your next leg") : "";
   const leftBy = arrivedLegs(hopTrip).at(-1)?.arrival || "";
-  const archiveStep = ended && <NextStep prefix="Next step:" label="Archive Trip" testId="archive-next-step" onClick={() => { setArchiveGo(true); setArchivedId(""); pickList(ended); }} />;
+  const archiveStep = ended && <NextStep prefix="Next steps:" label="Archive Trip, crew debriefing, review ship's log" testId="archive-next-step" onClick={() => { setArchiveGo(true); setArchivedId(""); pickList(ended); }} />;
   const hopRow = !crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
@@ -1502,7 +1502,7 @@ export default function BoatPrep({ boatId, boats }) {
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
               onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} guide={active.id === DEFAULT_TRIP ? guide : null}
-              tripId={active.id} provisioned={(state.data.provisions || []).some((i) => i.checked)} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+              tripId={active.id} provisioned={(state.data.provisions || []).some((i) => i.checked)} endStep={active.id === ended ? archiveStep : null} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (
