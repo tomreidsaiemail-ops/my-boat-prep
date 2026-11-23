@@ -1,0 +1,40 @@
+{
+  "summary": "Tested the first-zone yellow help (Galley Cutlery Drawer + sample Magic Scan, non-Galley text, empty-zone quick-create glow, only-first-zone rule, crew) and Behave Like First Time (backend + UI) on a mobile 390x844 viewport. Every requested flow passed. Setup: I put zone_maps (the Model Vessel overview: Galley/Saloon/Nav station...) and TEST_ cupboards (TEST_Fridge in Galley, 3 in Saloon) straight into test-admin-1/main in the DB. Afterwards I restored it from a mongoexport backup.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Nav station zone window", "issues": ["The 'Make sure you capture' list says 'A wide shot of the whole saloon first' because zoneChecklist.js groups /saloon|lounge|chart|nav/ together. This was there before this change. Minor wording."]}
+    ]
+  },
+  "verified": [
+    "Galley first open with no Cutlery Drawer: one 'Cutlery Drawer' was created in Galley straight away (saved to the server with zone Galley/Orange). The text reads 'We've added a Cutlery Drawer to your Galley. Would you like some help Magic Scanning the Cutlery Drawer?'. The fold is open showing GALLEY - 2 and the yes button is visible.",
+    "Galley first open with an existing Cutlery Drawer in Galley: the text has no 'We've added' part and there is no duplicate. With the drawer unzoned (zone removed in the DB), it was filed under Galley (checked on the server) and there was no duplicate (GALLEY - 2).",
+    "Yes, please show me opens the sample dialog. The sample image loads (naturalWidth 587). 'Use the sample image' closes the dialog and the button shows 'Scanning the Cutlery Drawer...'. The review dialog then lists Paring knife, Steak knife, Dinner knife, Tablespoon, Dinner fork, Teaspoon, Bottle opener and Pen. Save contents stored 8 items in the Cutlery Drawer.",
+    "'Photo and upload my own' (set_input_files on the own-input) closes the dialog and runs the scan. The review showed the 'already lists 8 items' add/replace choice.",
+    "Saloon with 3 cupboards: 'Open one of the 3 cupboards below, ...' and the fold is open with the cupboards visible.",
+    "Nav station with 0 cupboards: the 'Create a cupboard, ...' text shows and zone-dialog-nav-station-quick has mbp-glow. The glow is removed once TEST_Nav Locker was added.",
+    "Only the first zone: after Galley, Saloon showed no help, and Galley after a reload showed no help. Key mbp_zone_help:test-admin-1 = '1'.",
+    "Crew (test_session_welcome_crew on test-user-pro/main): no first-help element and the mbp_zone_help key was not set. Note: tapping the Galley label as crew opened a pin/photo viewer, not zone-dialog-galley, so the crew check is only partial.",
+    "Behave Like First Time (test-welcome-new, fresh context): POST /api/me/first-time-reset returned reset:true and the page reloaded once. The 'Welcome aboard My Boat Prep' first-timer dialog auto-opened. These seeded keys were removed: mbp_zone_help:, mbp_trip_guide:, mbp_model_x, mbp_zone_map_help_seen. The unrelated key mbp_keepme_other was kept.",
+    "Model Vessel: created_at changed and the TEST_mvchange area I had pushed into it was gone. welcome.answers was cleared. The user's own main boat diff showed only timestamp changes (sec_ts.boat, synced_at, updated_at), no data changes.",
+    "Same tab reload: no second reset call and no reload loop. A new context reset again.",
+    "Untagged test-admin-1: {reset:false}, no extra reload, and its localStorage keys were kept."
+  ],
+  "test_report_links": ["/app/backend/tests/test_first_time_reset.py", "/app/test_reports/pytest/first_time.xml"],
+  "action_items": [
+    "Optional: think about the race in AuthContext. The first-time reset runs at the same time as the boat sync on load. On a device that already has a cached Model Vessel or an un-synced outbox, the old copy could be pushed back after the server recreated it (clearFirstTime only runs after the response). This was not reproduced because the fresh contexts had no cache. Consider holding the boat sync until the reset check finishes.",
+    "Optional: each Behave Like First Time app open that uses the sample scan spends one AI scan from the user's allowance."
+  ],
+  "critical_code_review_comments": [
+    "InventoryList.jsx zoneHelp effect: it sets mbp_zone_help before it decides the kind, and it skips readOnly and shared boats (boat.owner_id). Correct.",
+    "Test data issue: the test_session_free_1 and test_session_pro_1 sessions expired at 2026-11-23T01:28Z, so they return 401. test_credentials.md says they were extended. Re-seed them if needed."
+  ],
+  "updated_files": ["/app/backend/tests/test_first_time_reset.py"],
+  "success_rate": {"backend": "100% (4/4)", "frontend": "100% of requested flows (crew check partial)"},
+  "seed_data_creation": "Temporary TEST_ cupboards and a zone_maps overview on test-admin-1/main, restored from backup at the end (areas 0, zone_maps 0, as before). Removed the welcome field from test-welcome-new (the original state). test-welcome-new is still tagged.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "To open zone windows on test-admin-1/main quickly, copy test-welcome-new's model_vessel zone_maps[0] (the overview with Galley/Saloon/Nav station swatches) into admin main zone_maps, add areas with zone {label,colour}, and bump sec_ts.areas. Back up first with mongoexport and restore with mongoimport --mode=upsert --upsertFields=owner_id,boat_id. Each browser_automation call is a new context, so localStorage starts empty and the first help shows again. To seed localStorage before a reload, use add_init_script guarded by a sessionStorage counter (window.name did not survive the app reload)."
+}
