@@ -177,9 +177,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           <HopBubble icon={UserCog} label="Roles" tone="crew" onClick={() => window.dispatchEvent(new CustomEvent("mbp:crew-roles", { detail: { hop: true } }))} testId="route-roles" />
         </div>
       )}
-      {!interim && !early && onLeaving && !departed && (
+      {!interim && !early && onLeaving && daysToGo(leaveAt) && (
         <NextStep prefix={null} onClick={onLeaving} testId="trip-next-step"
-          label={`${leaveToday ? "Next step" : "Coming up soon"}, switch to Leaving Dock, go over Leaving Dock checks and Depart`} />
+          label={`${leaveToday || daysToGo(leaveAt).includes("ago") ? "Next step" : "Coming up soon"}, switch to Leaving Dock, go over Leaving Dock checks and Depart`} />
       )}
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
