@@ -1457,7 +1457,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
-          onDepart={() => doneGuard() && allDone.openDepart()} planned={!ended} />
+          onDepart={() => doneGuard() && allDone.openDepart()} ended={!!ended} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}

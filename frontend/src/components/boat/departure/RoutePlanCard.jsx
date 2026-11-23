@@ -19,8 +19,8 @@ const TimeRow = ({ label, value, onGo, testId }) => (
   </div>
 );
 
-// Leaving the Dock: which Route Planning trip this departure uses, its summary and the one-tap DEPART (gone once it's under way; yellow while it's the next step).
-export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, planned = true }) => {
+// Leaving the Dock: which Route Planning trip this departure uses, its summary and the one-tap DEPART (yellow; gone once under way or once the trip has ended).
+export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, ended = false }) => {
   const live = underway?.trip_id && underway.trip_id === trip?.id;
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="route-plan-card">
@@ -53,8 +53,8 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, 
         </div>
       )}
       {live && <UnderwayBubble underway={underway} testId="route-plan-underway" />}
-      {!live && (
-        <button type="button" className={`btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide ${planned ? PLANNED : ""}`} onClick={onDepart} disabled={!trip} data-testid="depart-all-done-btn">
+      {!live && !ended && (
+        <button type="button" className={`btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide ${PLANNED}`} onClick={onDepart} disabled={!trip} data-testid="depart-all-done-btn">
           <Navigation className="h-5 w-5" /> Depart, all checks done
         </button>
       )}
@@ -62,7 +62,7 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, 
   );
 };
 
-export const DepartRoute = ({ trips, boat, onPick, onDepart, planned }) => {
+export const DepartRoute = ({ trips, boat, onPick, onDepart, ended }) => {
   const trip = pickTrip(trips, boat.route_trip, boat.route_trip_day);
-  return <RoutePlanCard trips={trips} trip={trip} issue={tripIssue(trips, trip)} underway={boat.underway} onPick={onPick} onDepart={onDepart} planned={planned} />;
+  return <RoutePlanCard trips={trips} trip={trip} issue={tripIssue(trips, trip)} underway={boat.underway} onPick={onPick} onDepart={onDepart} ended={ended} />;
 };
