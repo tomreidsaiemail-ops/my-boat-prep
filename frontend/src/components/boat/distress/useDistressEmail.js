@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validEmail = (v) => EMAIL_RE.test((v || "").trim());
 
-// Background Mayday / Pan-Pan email to the shore contact, once per session per kind. Never blocks the VHF call.
+// Background Mayday / Pan-Pan email to the shore contact once confirmed, once per session per kind. Never blocks the VHF call.
 export default function useDistressEmail({ online, shore, build }) {
   const [st, setSt] = useState({});
   const done = useRef({});
@@ -14,10 +14,11 @@ export default function useDistressEmail({ online, shore, build }) {
       .then(() => setSt((s) => ({ ...s, [kind]: "sent" })))
       .catch(() => setSt((s) => ({ ...s, [kind]: "failed" })));
   };
+  const canSend = (kind) => online && validEmail(shore) && !done.current[kind];
   const opened = (kind) => {
-    if (!online || !validEmail(shore) || done.current[kind]) return;
+    if (!canSend(kind)) return;
     done.current[kind] = true;
     send(kind);
   };
-  return { state: st, opened, retryShore: send };
+  return { state: st, canSend, opened, retryShore: send };
 }

@@ -256,17 +256,17 @@ export default function BoatPrep({ boatId, boats }) {
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);
-  // Mayday / Pan-Pan: the list opens for the call straight away; the shore contact is only alerted once the skipper confirms.
-  const [distressAsk, setDistressAsk] = useState("");
+  // Mayday / Pan-Pan: the list opens for the call straight away; the shore contact is only alerted once the skipper confirms
+  // on the line at its top. Answered kinds stay answered until MAYDAY / PAN-PAN is tapped again.
+  const [distressDone, setDistressDone] = useState({});
   const openDistress = (id) => {
     const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
-    if (shoreAlert.canRaise(id)) setDistressAsk(id);
+    setDistressDone((d) => ({ ...d, [id]: false }));
     if (!allLists.some((l) => l.id === id)) {
       if (crew) { toast.error(`The ${name} list isn't on this boat`); return; }
       mutate((s) => resetLists(s, [id], templates));
       toast.success(`${name} list added back to this boat`);
     }
-    if (activeId === id) distress.opened(id);
     setActiveId(id);
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
@@ -515,7 +515,6 @@ export default function BoatPrep({ boatId, boats }) {
     const lines = [intro.title, intro.text, ...(state.emergency_checked?.[kind] ? [intro.confirm] : []), ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
     return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
   } });
-  useEffect(() => { if (online && EMERGENCY[active.id]) distress.opened(active.id); }, [active.id, online]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -1331,7 +1330,6 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
-      <DistressConfirm kind={distressAsk} onConfirm={() => { shoreAlert.raise(distressAsk); setDistressAsk(""); }} onIgnore={() => setDistressAsk("")} />
       {shopBar && <ShoppingAheadBar />}
       <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} stopAt={shoreTrack.stopAt} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
@@ -1359,7 +1357,11 @@ export default function BoatPrep({ boatId, boats }) {
       {/* Reset and Export live at the bottom; the "still loading" warning stays up here where the skipper is. */}
       <ValidationBar show={warn === "top" && !ready} testId="top-validation-bar" />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} homeId={homeList.id} onSetHome={crew ? undefined : setHome} updatedIds={updatedIds} />
-      {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
+      {EMERGENCY[active.id] && !distressDone[active.id] && (shoreAlert.canRaise(active.id) || distress.canSend(active.id)) && (
+        <DistressConfirm kind={active.id} onIgnore={() => setDistressDone((d) => ({ ...d, [active.id]: true }))}
+          onConfirm={() => { shoreAlert.raise(active.id); distress.opened(active.id); setDistressDone((d) => ({ ...d, [active.id]: true })); }} />
+      )}
+      {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && !EMERGENCY[active.id] && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
       {!crew && SERVICE_LOGS[active.id] ? (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} boat={boat} onBoatChange={updateBoat} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
@@ -1493,7 +1495,7 @@ export default function BoatPrep({ boatId, boats }) {
         title="Go through Welcome again from the start?" confirmLabel="Continue to Welcome" cancelLabel="Cancel"
         note={crew || boats.current.model ? "Your Welcome answers will be cleared so you can start fresh." : "Your Welcome answers will be cleared so you can start fresh, and Welcome will be made your Home screen."} />
       {active.id !== "welcome" && <ActionBar zone="bottom" warn={warn === "bottom" && !ready} onReset={() => reset("bottom")} onExport={(c) => exportLists(c, "bottom")} onExcel={() => setDialog({ type: "excel" })} locked={!premium} buttons={!!user.show_list_footer} />}
-      {!premium && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
+      {!premium && !EMERGENCY[active.id] && <AdBanner online={online} onRemoveAds={() => askUpgrade("Removing ads")} />}
       <CreateListDialog open={dialog?.type === "list"} online={online} onConfirm={createList} onClose={() => setDialog(null)} />
       <OrganiseDialog open={dialog?.type === "organise"} onClose={() => setDialog(null)} org={org} cats={listCats} lists={menuLists} hidden={hiddenLists}
         crew={crew} admin={!!user.is_admin} onPick={pickList} onShow={showLists} onLink={linkList} />
