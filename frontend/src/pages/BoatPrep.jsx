@@ -1264,7 +1264,7 @@ export default function BoatPrep({ boatId, boats }) {
   const toDock = uwType?.key === "dock";
   const goNext = () => setActiveId(toDock ? "returningDock" : "arrivingDest");
   const leaveStep = uwId ? { label: `Next step - ${nextStepName(uwType?.key)}`, onClick: goNext } : null;
-  const underwayNext = uwId ? { label: `Next: ${nextStepName(uwType?.key, false)}`, onClick: goNext } : null;
+  const underwayNext = uwId && active.id !== (toDock ? "returningDock" : "arrivingDest") ? { label: `Next: ${nextStepName(uwType?.key, false)}`, onClick: goNext } : null;
   const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
   const ended = !uwId && boat.trip_ended && allLists.some((l) => l.id === boat.trip_ended) ? boat.trip_ended : "";
   const stopNext = !uwId && !ended && arrivedLegs(hopTrip).length ? legNow(hopTrip) : null;
@@ -1366,12 +1366,12 @@ export default function BoatPrep({ boatId, boats }) {
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" next={underwayNext} />
-        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
             step={underwayNext} noArrive={active.id === "arrivingDest" && toDock}
             onArrive={() => {
               if (!doneGuard()) return;
-              // On Returning to Dock this ends the trip there; anywhere else it's an arrival at the next destination.
-              const id = active.id === "returningDock" ? "returningDock" : "arrivingDest";
+              // Heading back to the dock (or on Returning to Dock) this ends the trip there; otherwise it's an arrival at the next destination.
+              const id = active.id === "returningDock" || toDock ? "returningDock" : "arrivingDest";
               setActiveId(id); allDone.openArrive(id, allLists.find((l) => l.id === id)?.name || (id === "returningDock" ? "Returning to Dock" : "Arriving at Destination"));
             }} />)}
       {barList && user.show_sundowners && <SundownerCard items={state.data[barList.id] || []} vessel={boat.vessel} gps={gps} kids={kids} onOpen={() => pickList(barList.id)} />}
