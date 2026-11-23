@@ -18,7 +18,7 @@ MODEL_BOAT_ID = "model_vessel"
 WIZARD_LIST = "Admin - Model Vessel - Basic Introduction Walkthrough"
 OLD_WIZARD_LIST = "Admin - Model Vessel - wizard instructions"
 WIZARD_STEPS = [
-    'Click on Vessel, and then click on Additional Boat Details, you will notice that it says "Zone Map Schematic Done" in green, and then press Next',
+    'Click on Vessel, and then click on Additional Boat Details, you will notice that it says "Boat Inventory Set Up complete" in green, and then press Next',
     "Close Additional Boat Details, and click the Home Boat Inventory button, and then press Next",
     "Expand the ZONE MAPS with the down arrow icon, you will see this expand collapse icon a lot. Here it is hiding the Model Vessel's ZONE MAPs, but we want to see them. When you can see them press Next",
     'You will see that there are 3 zone map overviews. Click "Show" on the first one at the top, and then press Next.',
@@ -140,3 +140,14 @@ async def seed_wizards():
         await db.migrations.update_one({"_id": mid}, {"$set": {"at": now}}, upsert=True)
     if first:
         await db.migrations.insert_one({"_id": "model_vessel_wizards_v2", "at": now})
+    await _rename_setup_done(now)
+
+
+async def _rename_setup_done(now: str):
+    """Once: the green label in Additional details is now "Boat Inventory Set Up complete"."""
+    if await db.migrations.find_one({"_id": "wizard_setup_complete_text"}):
+        return
+    async for t in db.list_templates.find({"custom": True, "items.label": {"$regex": "Zone Map Schematic Done"}}, {"_id": 1, "items": 1}):
+        items = [{**i, "label": i["label"].replace("Zone Map Schematic Done", "Boat Inventory Set Up complete")} for i in t["items"]]
+        await db.list_templates.update_one({"_id": t["_id"]}, {"$set": {"items": items, "updated_at": now}})
+    await db.migrations.insert_one({"_id": "wizard_setup_complete_text", "at": now})

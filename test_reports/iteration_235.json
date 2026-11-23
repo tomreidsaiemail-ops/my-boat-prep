@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only test (mobile 390x844) of the Boat Inventory Set Up button in Additional details and the wizard entry points. Every requested scenario passed. (1) Admin boat 'main' (no maps, no make/model): inventory-setup-open-btn reads 'Set up Boat Inventory...' and has the PLANNED yellow classes (!bg-yellow-300 !border-yellow-500). There are 0 zone-map-create-btn elements. Clicking it opens inventory-setup-wizard on 'Your boat' with Boat name 'TODO' prefilled. Next stays disabled until type, make, model and year are all filled. Escape closes it. (2) Pro boat 'main' (overview schematic with 9 swatches, 0 zoned cupboards, full identity): the button reads 'Continue to Set Up Boat Inventory...' in yellow. The wizard opens directly at 'Boat Inventory Set Up: Your schematic' (setup-current-panel shows the schematic image). Next leads to setup-done-panel, where setup-done-cupboards reads '20 in all'. Reopening Additional details then shows the green inventory-setup-done 'Boat Inventory Set Up complete' and no open button. The change was saved to Mongo: 20 zoned areas. (3) Same boat with make/model cleared: the wizard opens on 'Your boat' with name, type and year carried in. After filling make and model, Next goes to 'Your schematic', not the web search. (4) Model Vessel shows inventory-setup-done 'Boat Inventory Set Up complete'. (5) The account test_session_free_1 counts as premium (premium=true, launch_free=true because of the FIRST200 launch offer), so its button opens the wizard. With /api/auth/me intercepted in Playwright to return premium=false, clicking 'Set up Boat Inventory...' shows the 'My Boat Prep Pro: Zone maps is a Pro feature' upgrade prompt and no wizard. (6) The zone-map-ask dialog: after entering make, model and year on admin main and pressing Done, it reads 'Set up Boat Inventory?' with a note naming the make and model. Its confirm opens the wizard on 'Your boat' with make, model and year carried in (type was still missing). (7) Regressions pass: the maint-setup-open-btn hint text is correct; with make/model missing it shows the toast 'Please fill in Make, Model and Year of manufacture first'; once those are set it opens the Boat Maintenance lists dialog. When admin 'main' was opened at sign-in, the wizard opened on its own at 'Your boat' (details missing). All changed user_boats documents (admin, free and pro: main and model_vessel) were backed up to /tmp/bk/user_boats.json and restored at the end. Restore was confirmed: admin main TODO with no make, pro main 0 zoned areas, Model Vessels Myboatprep XYZ1 2001.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Model Vessel TRAINING step 1 overlay", "issues": ["The text still says 'you will notice that it says \"Zone Map Schematic Done\" in green', but the green label is now 'Boat Inventory Set Up complete'. The text comes from /app/backend/model_vessel.py line 21 and /app/backend/seed/model_vessel_wizards.json, and may also be stored in the walkthroughs collection."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: change the Model Vessel training step 1 text from 'Zone Map Schematic Done' to 'Boat Inventory Set Up complete' (backend/model_vessel.py, seed/model_vessel_wizards.json and the stored walkthrough doc)."
+  ],
+  "critical_code_review_comments": [
+    "BoatDetails.closeMore only shows zone-map-ask when make, model and year are filled (ready). This is fine, but a boat with no details never gets the reminder, even though the wizard can now collect those details itself.",
+    "setupOpen sends non-premium users who already have a map into the wizard (OverviewMap canEdit). This matches the spec, but it lets them edit zone maps without Pro.",
+    "BoatPrep.jsx is 1626 lines, well over the 700-line guideline."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "None. Mongo was temporarily changed for tests: pro main make/model set to blank, and the wizard added zone cupboards. My fills also accidentally changed admin model_vessel make/model while that boat was active. Everything was restored from /tmp/bk/user_boats.json.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "test-user-pro/main is a ready-made 'continue' case: an overview map with 9 swatches and areas with no zone. Running the wizard there assigns zones; back up first (mongoexport) and restore. test_session_free_1 is premium because of FIRST200, so to test non-premium behaviour, intercept /api/auth/me and set premium=false and launch_free=false. Clearing localStorage makes the admin land on Model Vessel with TRAINING mode, and in admin mode edits there change the admin's model_vessel. Set localStorage mbp_boats_active='main' before loading. A 'Trip Planning has finished' dialog appears on admin and pro main; dismiss it with Escape."
+}

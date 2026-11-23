@@ -4,7 +4,7 @@
   "description": "Model Vessel training window: one step per line, shown in order with Back and Next.",
   "items": [
    "Click on Vessel, and then click on Additional Boat Details, you will notice that it says",
-   "\"Zone Map Schematic Done\" in green, and then press Next",
+   "\"Boat Inventory Set Up complete\" in green, and then press Next",
    "Close Additional Boat Details, and click the Home Boat Inventory button, and then press Next",
    "Boat Inventory is the main list where you manage what is on the boat. If you cannot see the Model Vessel schematic, expand the ZONE MAPS with the down arrow icon to the far right of the ZONE MAPS() count.  You may also have to press Show on \"My zone map overview\". When you can see the model vessel schematics press Next.",
    "If you hide \"My zone map overview\", and collapse ZONE MAPS, you will see how to be economic with what you see when working in Boat Inventory.  Expand ZONE MAPS it again, and show \"My zone map overview\" and then press Next.",
