@@ -183,6 +183,7 @@ class BoatDetails(BaseModel):
     underway: Dict[str, Any] = Field(default_factory=dict)
     legs: Dict[str, Any] = Field(default_factory=dict)
     last_levels: Dict[str, Any] = Field(default_factory=dict)
+    trip_ended: str = Field(default="", max_length=80)
 
     @field_validator("trips", mode="before")
     @classmethod

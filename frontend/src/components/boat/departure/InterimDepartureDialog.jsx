@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { NavigatorAsk } from "@/components/boat/NavigatorAsk";
 import { LEG_KINDS, dmyt, nowLocal, today } from "@/lib/allDone";
 import { tripBoat } from "@/lib/trips";
+import { PLANNED } from "@/components/boat/departure/NextStep";
 
 const ICONS = { berth: Sailboat, anchor: Anchor, mooring: LifeBuoy };
 const pad = (n) => String(n).padStart(2, "0");
@@ -24,7 +25,8 @@ const missing = (w) => {
   return "";
 };
 
-const Body = ({ trip, next, legNo, boat, items, online, locked, onUpgrade, boatId, onDepart }) => {
+// leaving: how the last arrival was made (mooring, anchor, berth), so that way of leaving shows yellow.
+const Body = ({ trip, next, legNo, boat, items, online, locked, onUpgrade, boatId, onDepart, leaving = "" }) => {
   // The Event or Trip name comes from Trip Planning and is shown (read only) beside the leg number.
   const [leg, setLeg] = useState(() => blank(next, next?.event_name || (trip ? tripBoat(boat, trip.id).weather?.event_name : "") || ""));
   const planned = next && (next.depart_at || next.finish_at) ? (
@@ -49,7 +51,7 @@ const Body = ({ trip, next, legNo, boat, items, online, locked, onUpgrade, boatI
         {LEG_KINDS.map((k) => {
           const Icon = ICONS[k.key];
           return (
-            <button key={k.key} type="button" className="btn-solid flex h-auto min-h-16 flex-col items-center justify-center gap-1 px-1 py-2 text-center text-xs font-extrabold uppercase leading-tight" onClick={() => go(k.key)} data-testid={`interim-departure-${k.key}-btn`}>
+            <button key={k.key} type="button" className={`btn-solid flex h-auto min-h-16 flex-col items-center justify-center gap-1 px-1 py-2 text-center text-xs font-extrabold uppercase leading-tight ${k.key === leaving ? PLANNED : ""}`} onClick={() => go(k.key)} data-testid={`interim-departure-${k.key}-btn`} data-planned={k.key === leaving || undefined}>
               <Icon className="h-5 w-5" /> {k.label}
             </button>
           );

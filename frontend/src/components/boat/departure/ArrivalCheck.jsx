@@ -7,6 +7,7 @@ import { TankChange } from "@/components/boat/departure/TankChange";
 import { tankSummary } from "@/lib/allDone";
 import { useCollapsed } from "@/components/boat/departure/BatteryStatus";
 import { arrivalSummary, arrivalUsage, num, usedText } from "@/lib/telemetry";
+import { PLANNED } from "@/components/boat/departure/NextStep";
 
 const r = (n) => Math.round(n * 10) / 10;
 const left = (n, u) => (n ? `about ${r(n)} ${u} left` : "");
@@ -23,7 +24,8 @@ const Used = ({ label, value, testId }) => (
 );
 
 // Matches the Leaving the Dock check: levels on arrival, then fuel, water and gas used since the last departure.
-export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog, onNewArrival, onNewDeparture }) => {
+// newNext: New departure is the trip's next step, so it shows yellow.
+export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, onUnlog, onRelog, onTankLog, onNewArrival, onNewDeparture, newNext = false }) => {
   const depart = boat.depart || {};
   const arrive = boat.arrive || {};
   const setArrive = (patch) => onBoatChange("arrive", { ...arrive, ...patch });
@@ -47,7 +49,7 @@ export const ArrivalCheck = ({ boat, listName, engineType, onBoatChange, onLog, 
             </button>
           )}
           <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={onNewArrival} data-testid="arrival-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New arrival</button>
-          {onNewDeparture && <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={onNewDeparture} data-testid="arrival-new-departure-btn"><Navigation className="h-3.5 w-3.5" /> New departure...</button>}
+          {onNewDeparture && <button type="button" className={`btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs ${newNext ? PLANNED : ""}`} onClick={onNewDeparture} data-testid="arrival-new-departure-btn" data-planned={newNext || undefined}><Navigation className="h-3.5 w-3.5" /> New departure...</button>}
         </div>
       </div>
       {collapsed ? (

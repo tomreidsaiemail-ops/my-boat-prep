@@ -130,7 +130,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
         : { trips: { ...(b.trips || {}), [trip.id]: { ...(b.trips?.[trip.id] || {}), weather: markLogged(b.trips?.[trip.id]?.weather) } } };
       // Leaving Dock starts the trip's legs afresh; each later stop and departure is added to them.
       const leg = { id: entry.id, kind: "dock", start: trip.start, dest: trip.dest, depart_at: trip.departAt, finish_at: trip.finishAt, why: trip.why, at: new Date().toISOString(), logs: [dep.log_id, entry.id] };
-      const boat = { ...b, ...weather, arrive: {}, depart: { ...dep, trip_id: trip.id }, last_levels: d.levels || b.last_levels || {}, route_trip: trip.id, route_trip_day: today(), legs: { ...(b.legs || {}), [trip.id]: [leg] },
+      const boat = { ...b, ...weather, arrive: {}, depart: { ...dep, trip_id: trip.id }, last_levels: d.levels || b.last_levels || {}, route_trip: trip.id, route_trip_day: today(), legs: { ...(b.legs || {}), [trip.id]: [leg] }, trip_ended: "",
         underway: { trip_id: trip.id, name: trip.name, event: trip.event || "", line, at: new Date().toISOString() } };
       return { ...s, boat, data: { ...s.data, leavingDock: tickAll(s.data.leavingDock || [], tickedBy), shipsLog: [...log, entry] } };
     });
@@ -176,8 +176,8 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
       let shipsLog = [...log, entry];
       let keep = legs;
       const trip = folded && legs.length ? foldTrip(shipsLog, legs, [u.name || "Route Plan", u.event].filter(Boolean).join(" - ")) : null;
-      // Once folded the status checks start fresh for the next trip.
-      const fresh = trip ? { depart: {}, arrive: {} } : { arrive: arr };
+      // Once folded the status checks start fresh for the next trip, and archiving it is the next step.
+      const fresh = trip ? { depart: {}, arrive: {}, trip_ended: u.trip_id } : { arrive: arr };
       if (trip) { shipsLog = trip; keep = []; }
       const list = s.data[listId] || [];
       const ticks = kind ? stampTicks(list, list.map((i) => ({ ...i, checked: arrivalTicks(list, kind.key).has(i.id) })), tickedBy) : tickAll(list, tickedBy, arriveSkip(listId, list));

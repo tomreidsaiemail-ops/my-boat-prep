@@ -72,7 +72,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
       mutate((s) => addLogEntry(resetTrip(s, id), data));
       setArchives((l) => [data, ...(l || [])]);
       toast.success(`${data.name} archived. The wrap-up email goes out in 3 minutes unless you Undo`, { id: data.archive_id, duration: 10000, action: { label: "Undo", onClick: () => restore(data) } });
-      return true;
+      return data;
     } catch (e) {
       toast.error(apiError(e, "Couldn't archive the trip, please try again"));
       return false;

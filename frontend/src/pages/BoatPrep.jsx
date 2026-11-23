@@ -41,6 +41,8 @@ import useAllDone from "@/hooks/useAllDone";
 import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } from "@/lib/tripGuide";
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
 import { DistressConfirm } from "@/components/boat/shore/DistressConfirm";
+import { NextStep } from "@/components/boat/departure/NextStep";
+import { arriveType } from "@/components/boat/navigator/ArriveType";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
@@ -259,6 +261,9 @@ export default function BoatPrep({ boatId, boats }) {
   // Mayday / Pan-Pan: the list opens for the call straight away; the shore contact is only alerted once the skipper confirms
   // on the line at its top. Answered kinds stay answered until MAYDAY / PAN-PAN is tapped again.
   const [distressDone, setDistressDone] = useState({});
+  // "Archive Trip" next step: the archive button on Trip Planning shows yellow, then the trip just archived in Archived Trips.
+  const [archiveGo, setArchiveGo] = useState(false);
+  const [archivedId, setArchivedId] = useState("");
   const openDistress = (id) => {
     const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
     setDistressDone((d) => ({ ...d, [id]: false }));
@@ -413,6 +418,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (!tg.stage && active.id === DEFAULT_TRIP) tg.to("intro");
     else if (tg.stage === "filled" && active.id === "leavingDock") tg.to("leave");
   }, [tg.go, tg.stage, active.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!isTripList(active)) { setArchiveGo(false); setArchivedId(""); } }, [active.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const startWalkthrough = (w) => {
     if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
     if (w.key === TRIP_GUIDE.key) { guideRestart(user.user_id); if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key); return; }
@@ -1244,12 +1250,26 @@ export default function BoatPrep({ boatId, boats }) {
     return boat.underway?.trip_id === id || (boat.legs?.[id] || []).some((l) => l.at && new Date(l.at).getTime() >= plan - 86400000); // left no more than a day before the plan
   };
   const daysFor = (id) => (departed(id) ? undefined : tripBoat(boat, id).weather?.depart_at);
-  // The first planned leg not yet sailed on the trip, for the Arrived card when nothing is underway.
-  const nextDeparture = (id) => {
+  // The planned leg under way, or else the first one not yet sailed (for the Arrived card when nothing is underway).
+  const arrivedLegs = (id) => (boat.legs?.[id] || []).filter((l) => l.arrived_at);
+  const legNow = (id) => {
     const t = tripBoat(boat, id);
     const plan = [firstLeg((t.route_start || "").trim(), (t.route_dest || "").trim(), t.weather || {}), ...(t.weather?.legs || [])];
-    return nextDepartureLine(plan[departed(id) ? (boat.legs?.[id] || []).filter((l) => l.arrived_at).length : 0]);
+    return plan[departed(id) ? arrivedLegs(id).length : 0];
   };
+  const nextDeparture = (id) => nextDepartureLine(legNow(id));
+  // Next steps, for every boat: where the leg under way arrives, what follows an arrival, and archiving once the trip has ended.
+  const uwId = boat.underway?.trip_id || "";
+  const uwType = uwId ? arriveType(legNow(uwId)?.arrive_type) : null;
+  const toDock = uwType?.key === "dock";
+  const leaveStep = uwId ? { label: toDock ? "Next step - Returning to Dock" : `Next step - Arriving at Destination${uwType?.list === "arrivingDest" ? `, ${uwType.label}` : ""}`,
+    onClick: () => setActiveId(toDock ? "returningDock" : "arrivingDest") } : null;
+  const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
+  const ended = !uwId && boat.trip_ended && allLists.some((l) => l.id === boat.trip_ended) ? boat.trip_ended : "";
+  const stopNext = !uwId && !ended && arrivedLegs(hopTrip).length ? legNow(hopTrip) : null;
+  const stopHint = stopNext ? (arriveType(stopNext.arrive_type)?.key === "dock" ? "Click New departure to return to dock" : "Click New departure for your next leg") : "";
+  const leftBy = arrivedLegs(hopTrip).at(-1)?.arrival || "";
+  const archiveStep = ended && <NextStep prefix="Next step:" label="Archive Trip" testId="archive-next-step" onClick={() => { setArchiveGo(true); setArchivedId(""); pickList(ended); }} />;
   const hopRow = !crew && HOPS[hopKey] && (
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
@@ -1407,6 +1427,7 @@ export default function BoatPrep({ boatId, boats }) {
         </button>
       )}
       {hopRow}
+      {!crew && active.id === "arrivingDest" && toDock && <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />}
       {guide && TRIP_HOPS.has(active.id) && <TripListGuide guide={guide} listId={active.id} busy={!!allDone.plan || !!allDone.levelsAsk.ask} onShipsLog={() => pickList("shipsLog")} onTripPlanning={() => pickList(DEFAULT_TRIP)} />}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
@@ -1418,10 +1439,14 @@ export default function BoatPrep({ boatId, boats }) {
         </div>
       )}
       {/* Not underway: the ARRIVED card sits under the Trip Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
-      {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)} />}
+      {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && (
+        <ArrivedCard underway={boat.underway} next={ended ? "" : nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)}>
+          {archiveStep || (active.id === "arrivingDest" && stopHint && <p className="rounded-md bg-yellow-200 px-3 py-2.5 text-sm font-extrabold text-[var(--navy)]" data-testid="arrived-next-hint">{stopHint}</p>)}
+        </ArrivedCard>
+      )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
-          onDepart={() => doneGuard() && allDone.openDepart()} />
+          onDepart={() => doneGuard() && allDone.openDepart()} next={leaveStep} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
@@ -1429,7 +1454,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (
         <ArrivalCheck boat={liveLog(legBoat(boat), state.data.shipsLog)} listName={active.name} engineType={engineType} onBoatChange={updateBoat} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank}
-          onNewArrival={allDone.newArrival} onNewDeparture={active.id === "arrivingDest" ? () => { if (guide?.stage === "newdep") guide.to("newdepGo"); if (doneGuard()) allDone.newDeparture(() => setInterim(true)); } : undefined} />
+          onNewArrival={allDone.newArrival} newNext={active.id === "arrivingDest" && !!stopHint} onNewDeparture={active.id === "arrivingDest" ? () => { if (guide?.stage === "newdep") guide.to("newdepGo"); if (doneGuard()) allDone.newDeparture(() => setInterim(true)); } : undefined} />
       )}
       {isTips ? <TipsList tips={tips} admin={!!user.is_admin} online={online} onSave={saveTips} />
         : active.id === FAQ_ID ? <FaqList faq={faq} admin={!!user.is_admin} online={online} onSave={saveFaq} />
@@ -1474,7 +1499,7 @@ export default function BoatPrep({ boatId, boats }) {
             </button>
           )}
           {active.id === DEFAULT_TRIP && guide?.stage === "complete" && guide.archive && <ArchiveHint />}
-          {!crew && isTripList(active) && !guideEarly && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} />}
+          {!crew && isTripList(active) && !guideEarly && <ArchivedTrips trips={trips} listName={active.name} online={online} busy={trips.busy} onArchive={() => trips.askArchive(active.id, active.name)} point={archiveGo} fresh={archivedId} />}
           {isTripList(active) && !guideEarly && checks}
           {!crew && items.length > 0 && active.id !== "shipsLog" && !EMERGENCY[active.id] && (
             <button type="button" className="btn-ghost h-10 min-h-0 gap-1.5 self-end px-3 text-sm text-[var(--red)]" onClick={askDeleteList} data-testid="list-delete-list-btn">
@@ -1556,10 +1581,10 @@ export default function BoatPrep({ boatId, boats }) {
           help="Who buys this and brings it on board. Shows as a basket badge and in their invite." testId="edit-item-shopper-select" />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
       </TextDialog>
-      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
+      <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} leaving={leftBy} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); if (await allDone.interimDepart(kind, leg)) guideLogged("interim"); }} />
-      <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onClose={allDone.close}
+      <AllDoneDialog plan={allDone.plan} busy={allDone.busy} planned={plannedArrival} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onClose={allDone.close}
         onConfirm={(how) => { const p = allDone.plan; allDone.confirm(how); guideLogged(p?.kind === "depart" ? "depart" : p?.listId); }}
         help={!guide ? null : allDone.plan?.kind === "depart" && between(guide.stage, "leave", "leaveOk") ? <DepartGuide guide={guide} />
           : allDone.plan?.kind === "arrive" && allDone.plan.listId === "arrivingDest" && between(guide.stage, "underway", "click") ? <EndTripGuide /> : null} />
@@ -1575,7 +1600,13 @@ export default function BoatPrep({ boatId, boats }) {
       <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor} onHeadOnly={(id) => { remove(id); setDialog(null); }}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
       <TripFinishPrompt ask={trips.ask} onClose={trips.closeAsk} onMail={trips.setMail}
-        onConfirm={async () => { const g = guide; if ((await trips.confirmAsk()) && g?.stage === "complete") g.to("done"); }} />
+        onConfirm={async () => {
+          const g = guide;
+          const done = await trips.confirmAsk();
+          if (!done) return;
+          setArchiveGo(false); setArchivedId(done.archive_id);
+          if (g?.stage === "complete") g.to("done");
+        }} />
       {emailPrompt}
     </main>
     </CrewDietContext.Provider>
