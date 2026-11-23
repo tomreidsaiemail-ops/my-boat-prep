@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const COLOURS = ["White", "Off-white", "Cream", "Grey", "Silver", "Black", "Navy blue", "Blue", "Light blue", "Green", "Dark green", "Red", "Yellow", "Orange", "Teak"];
+export const COLOURS = ["White", "Off-white", "Cream", "Grey", "Silver", "Black", "Navy blue", "Blue", "Light blue", "Green", "Dark green", "Red", "Yellow", "Orange", "Teak"];
 const OTHER = "__other";
 
 // Pick a common colour or type your own, e.g. "Navy with gold stripe".

@@ -267,7 +267,13 @@ export const displayLabel = (item, ctx) => {
     case "panPanGps": return `Check GPS position ${ctx.position}`;
     case "panPanPosition": return `Report position ${ctx.position}`;
     case "panPanVessel": return `This is ${v}, ${v}, ${v}. Callsign ${c}${ctx.mmsi ? `, MMSI ${ctx.mmsi}` : ""}`;
-    case "pobDescription": return `There are ${pobWords(ctx)} The boat is a white ${ctx.boatType || "[BOAT TYPE]"}. NOTE: If not white state correct colour of boat.`;
+    case "pobDescription": {
+      const type = ctx.boatType || "[BOAT TYPE]";
+      if (!ctx.hull && !ctx.deck) return `There are ${pobWords(ctx)} The boat is a white ${type}. NOTE: If not white state correct colour of boat.`;
+      const hull = (ctx.hull || "white").toLowerCase();
+      const deck = (ctx.deck || "white").toLowerCase();
+      return `There are ${pobWords(ctx)} The boat is a ${hull === deck ? `${hull} ${type}` : `${type} with a ${hull} hull and ${deck} deck`}.`;
+    }
     default: return item.id === MMSI_ITEM.id && ctx.mmsi && item.label === MMSI_ITEM.label ? `(MMSI ${ctx.mmsi} is included above)` : item.label;
   }
 };
