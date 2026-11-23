@@ -12,6 +12,12 @@ export const ARRIVE_TYPES = [
   { key: "dock", label: "Returning to Dock", prep: "Prepare to return to Dock", leave: "Leave Dock", list: "returningDock", Icon: Home },
 ];
 export const arriveType = (key) => ARRIVE_TYPES.find((t) => t.key === key);
+// The trip's next step while a leg that ends this way is under way: "Returning to Dock" or "Arriving at Destination, Mooring".
+export const nextStepName = (key, withType = true) => {
+  const t = arriveType(key);
+  if (t?.key === "dock") return t.label;
+  return `Arriving at Destination${withType && t?.list === "arrivingDest" ? `, ${t.label}` : ""}`;
+};
 
 export const ArriveType = ({ id, value, onChange, warn }) => (
   <div className="flex flex-col gap-1.5" role="radiogroup" aria-labelledby={`${id}-label`} data-testid={`${id}-field`}>

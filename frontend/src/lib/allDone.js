@@ -1,5 +1,6 @@
 import { batteriesOf, batteryName, isLow, levelLabel } from "@/lib/telemetry";
 import { DEFAULT_TRIP, tripBoat, tripLists } from "@/lib/trips";
+import { nextStepName } from "@/components/boat/navigator/ArriveType";
 
 const TANKS = [["fuel", "Fuel"], ["gas", "LPG"], ["water", "Water"]];
 const dmy = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ""); return m ? `${+m[3]}/${+m[2]}/${m[1]}` : ""; };
@@ -23,7 +24,8 @@ export const routeTrips = (registry, boat) => tripLists(registry).map((t) => {
   const w = b.weather || {};
   const startAt = w.depart_at || "";
   return { id: t.id, name: t.name, event: String(w.event_name || "").trim(), start: String(b.route_start || "").trim(), dest: String(b.route_dest || "").trim(),
-    from: dmy(w.depart_at), to: dmy(w.finish_at), startDay: startAt.slice(0, 10), startOn: dmy(startAt), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim() };
+    from: dmy(w.depart_at), to: dmy(w.finish_at), startDay: startAt.slice(0, 10), startOn: dmy(startAt), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim(),
+    arriveType: w.arrive_type || "" };
 });
 
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -49,8 +51,9 @@ export const tripLine = (t) => {
 
 export const tripTimes = (t) => [`Departure: ${dmyt(t.departAt) || "not set"}`, `Estimated arrival: ${dmyt(t.finishAt) || "not set"}`];
 
-// What the shore contact page shows after DEPART.
-export const shorePlan = (t) => [`Route Plan: ${t.name}`, tripLine(t), ...tripTimes(t), t.why && `Why we're going: ${t.why}`].filter(Boolean).join("\n");
+// What the shore contact page shows after DEPART and each New departure, ending with where this leg arrives next.
+export const shorePlan = (t) => [`Route Plan: ${t.name}`, tripLine(t), ...tripTimes(t), t.why && `Why we're going: ${t.why}`,
+  `Next step: ${nextStepName(t.arriveType)}${t.dest ? ` at ${t.dest}` : ""}`].filter(Boolean).join("\n");
 
 // Arriving at Destination holds interim departures under these headings; ARRIVED leaves them unticked.
 export const LEG_KINDS = [
@@ -75,5 +78,5 @@ export const legTrip = (trip, leg) => {
   const w = leg.weather || {};
   // A leg with no name of its own carries the trip's Event or Trip name.
   return { id: trip.id, name: trip.name, event: String(w.event_name || "").trim() || trip.event || "", start: String(leg.route_start || "").trim(), dest: String(leg.route_dest || "").trim(),
-    from: dmy(w.depart_at), to: dmy(w.finish_at), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim() };
+    from: dmy(w.depart_at), to: dmy(w.finish_at), departAt: w.depart_at || "", finishAt: w.finish_at || "", why: String(w.why || "").trim(), arriveType: w.arrive_type || "" };
 };

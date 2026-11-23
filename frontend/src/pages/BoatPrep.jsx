@@ -42,7 +42,7 @@ import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } 
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
 import { DistressConfirm } from "@/components/boat/shore/DistressConfirm";
 import { NextStep } from "@/components/boat/departure/NextStep";
-import { arriveType } from "@/components/boat/navigator/ArriveType";
+import { arriveType, nextStepName } from "@/components/boat/navigator/ArriveType";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
@@ -1262,8 +1262,9 @@ export default function BoatPrep({ boatId, boats }) {
   const uwId = boat.underway?.trip_id || "";
   const uwType = uwId ? arriveType(legNow(uwId)?.arrive_type) : null;
   const toDock = uwType?.key === "dock";
-  const leaveStep = uwId ? { label: toDock ? "Next step - Returning to Dock" : `Next step - Arriving at Destination${uwType?.list === "arrivingDest" ? `, ${uwType.label}` : ""}`,
-    onClick: () => setActiveId(toDock ? "returningDock" : "arrivingDest") } : null;
+  const goNext = () => setActiveId(toDock ? "returningDock" : "arrivingDest");
+  const leaveStep = uwId ? { label: `Next step - ${nextStepName(uwType?.key)}`, onClick: goNext } : null;
+  const underwayNext = uwId ? { label: `Next: ${nextStepName(uwType?.key, false)}`, onClick: goNext } : null;
   const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
   const ended = !uwId && boat.trip_ended && allLists.some((l) => l.id === boat.trip_ended) ? boat.trip_ended : "";
   const stopNext = !uwId && !ended && arrivedLegs(hopTrip).length ? legNow(hopTrip) : null;
@@ -1364,8 +1365,9 @@ export default function BoatPrep({ boatId, boats }) {
               onMaps: (maps) => boats.patch(boats.current.key, { zone_maps: maps }),
               onShow: () => { setActiveId(INVENTORY_LIST.id); setTimeout(() => window.dispatchEvent(new Event("mbp:show-zone-map")), 400); } }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
-      {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" />
+      {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" next={underwayNext} />
         : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+            step={underwayNext} noArrive={active.id === "arrivingDest" && toDock}
             onArrive={() => {
               if (!doneGuard()) return;
               // On Returning to Dock this ends the trip there; anywhere else it's an arrival at the next destination.
