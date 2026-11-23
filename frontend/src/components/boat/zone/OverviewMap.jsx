@@ -77,7 +77,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
       const { data } = await api.post(`/boats/${boat.boat_id}/zone-maps/${map.id}/auto-swatches`, { include_deck: withDeck }, { timeout: 90000 });
       onMaps(data.zone_maps);
       const made = onZoneDefaults?.((data.zone_maps.find((m) => m.id === map.id) || {}).swatches || []) || 0;
-      toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}${made ? ` and added ${made} ${made === 1 ? "cupboard" : "cupboards"} for those zones` : ""}. Drag any that need nudging.`, { duration: 6000 });
+      toast.success(`Magic Mariner placed ${data.placed} ${data.placed === 1 ? "colour" : "colours"}${made ? ` and added ${made} ${made === 1 ? "cupboard" : "cupboards"} for those zones` : ""}. Drag any that need nudging.`, { duration: 6000, ...(autoStart ? { position: "top-center" } : {}) });
     } catch (e) { toast.error(apiError(e, "The Magic Mariner couldn't place the colours")); }
     finally { setPlacing(false); }
   };
