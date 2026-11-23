@@ -50,10 +50,11 @@ export default function useShoreAlert(entry, crew, online, gps) {
   // A held alert goes the moment the phone gets signal back, even if the app is still in offline mode.
   useEffect(() => { window.addEventListener("online", flush); return () => window.removeEventListener("online", flush); }, [flush]);
 
+  // Whether raising this would reach a shore contact (none set up, already active or already held: nothing to send).
+  const canRaise = (kind) => contacts !== 0 && !(alert?.state === "active" && (alert.kind === kind || alert.kind === "mayDay"))
+    && !readQ().some((j) => mine(j) && j.type === "up" && j.body.kind === kind);
   const raise = (kind) => {
-    if (contacts === 0) return;
-    if (alert?.state === "active" && (alert.kind === kind || alert.kind === "mayDay")) return;
-    if (readQ().some((j) => mine(j) && j.type === "up" && j.body.kind === kind)) return;
+    if (!canRaise(kind)) return;
     const g = gpsRef.current;
     const fix = g.status === "ok" ? { lat: g.lat, lon: g.lon, acc: g.acc, fix_at: Date.now() } : g.last?.lat != null ? { lat: g.last.lat, lon: g.last.lon, fix_at: g.last.at } : {};
     const body = { owner_id: owner, boat_id: boatId, alert_id: newId(), kind, at: Date.now(), ...fix };
@@ -77,5 +78,5 @@ export default function useShoreAlert(entry, crew, online, gps) {
   };
 
   const hide = (id) => { const next = [...hidden.filter((h) => h !== id), id].slice(-20); localStorage.setItem(HIDE_KEY, JSON.stringify(next)); setHidden(next); setPhase(""); };
-  return { alert, contacts, phase, raise, standDown, hide, hidden, online };
+  return { alert, contacts, phase, canRaise, raise, standDown, hide, hidden, online };
 }

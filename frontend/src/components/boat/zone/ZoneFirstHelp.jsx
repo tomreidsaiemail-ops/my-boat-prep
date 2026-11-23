@@ -30,6 +30,11 @@ export const ZoneFirstHelp = ({ help, count, t, scanning, onSample, onOwn }) => 
   const [ask, setAsk] = useState(false);
   const galley = help.kind === "galley";
   useHold(`${t}-quick`, !galley && !count);
+  // The Cutlery Drawer (opened below): its photo icon and both Magic Scan buttons stay yellow too, once they show.
+  const id = galley ? help.id : "";
+  useHold(`inventory-area-photo-${id}`, galley);
+  useHold(`inventory-scan-btn-${id}`, galley);
+  useHold(`inventory-scan-photos-btn-${id}`, galley);
   if (!galley) {
     return (
       <p className={BOX} data-testid={`${t}-first-help-text`}>

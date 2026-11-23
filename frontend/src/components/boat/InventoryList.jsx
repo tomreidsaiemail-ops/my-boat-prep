@@ -397,6 +397,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     const id = have?.id || newId();
     if (!have) onChange((list) => [...list, { id, name: "Cutlery Drawer", items: [], zone: place }]);
     setZoneHelp({ kind: "galley", id, made: !have });
+    setFocus({ id, at: Date.now() });
   }, [zone]); // eslint-disable-line react-hooks/exhaustive-deps
   const helpArea = () => areas.find((a) => a.id === zoneHelp?.id);
   const sampleScan = async () => {

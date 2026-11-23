@@ -40,6 +40,7 @@ import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
 import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } from "@/lib/tripGuide";
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
+import { DistressConfirm } from "@/components/boat/shore/DistressConfirm";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
@@ -255,9 +256,11 @@ export default function BoatPrep({ boatId, boats }) {
   const [activeId, setActiveId] = useState(premium ? "boatInventory" : "leavingDock");
   const [batchRequest, setBatchRequest] = useState(false);
   const [charterTerms, setCharterTerms] = useState(0);
+  // Mayday / Pan-Pan: the list opens for the call straight away; the shore contact is only alerted once the skipper confirms.
+  const [distressAsk, setDistressAsk] = useState("");
   const openDistress = (id) => {
     const name = id === "mayDay" ? "Mayday" : "Pan-Pan";
-    shoreAlert.raise(id);
+    if (shoreAlert.canRaise(id)) setDistressAsk(id);
     if (!allLists.some((l) => l.id === id)) {
       if (crew) { toast.error(`The ${name} list isn't on this boat`); return; }
       mutate((s) => resetLists(s, [id], templates));
@@ -1328,6 +1331,7 @@ export default function BoatPrep({ boatId, boats }) {
         onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
+      <DistressConfirm kind={distressAsk} onConfirm={() => { shoreAlert.raise(distressAsk); setDistressAsk(""); }} onIgnore={() => setDistressAsk("")} />
       {shopBar && <ShoppingAheadBar />}
       <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} stopAt={shoreTrack.stopAt} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
