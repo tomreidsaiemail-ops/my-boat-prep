@@ -1268,7 +1268,7 @@ export default function BoatPrep({ boatId, boats }) {
   const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
   const ended = !uwId && boat.trip_ended && allLists.some((l) => l.id === boat.trip_ended) ? boat.trip_ended : "";
   const stopNext = !uwId && !ended && arrivedLegs(hopTrip).length ? legNow(hopTrip) : null;
-  const stopHint = stopNext ? (arriveType(stopNext.arrive_type)?.key === "dock" ? "Click New departure to return to dock" : "Click New departure for your next leg") : "";
+  const stopHint = stopNext ? (arriveType(stopNext.arrive_type)?.key === "dock" ? "Next step: Go over Leaving checks, and click 'New departure...' to return to dock" : "Click New departure for your next leg") : "";
   const leftBy = arrivedLegs(hopTrip).at(-1)?.arrival || "";
   const archiveStep = ended && <NextStep prefix="Next step:" label="Archive Trip" testId="archive-next-step" onClick={() => { setArchiveGo(true); setArchivedId(""); pickList(ended); }} />;
   const hopRow = !crew && HOPS[hopKey] && (
@@ -1430,6 +1430,9 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {hopRow}
       {!crew && active.id === "arrivingDest" && toDock && <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />}
+      {!crew && active.id === "returningDock" && toDock && (
+        <p className="rounded-md bg-yellow-200 px-3 py-2.5 text-sm font-extrabold text-[var(--navy)]" data-testid="returning-next-hint">Next step, Go over 'Returning to Dock' checks, and click 'ARRIVED, ALL CHECKS DONE'</p>
+      )}
       {guide && TRIP_HOPS.has(active.id) && <TripListGuide guide={guide} listId={active.id} busy={!!allDone.plan || !!allDone.levelsAsk.ask} onShipsLog={() => pickList("shipsLog")} onTripPlanning={() => pickList(DEFAULT_TRIP)} />}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">

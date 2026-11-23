@@ -15,6 +15,7 @@ const TONES = {
   crew: "border-sky-400 bg-sky-100 text-sky-900 hover:bg-sky-200",
   prep: "border-red-300 bg-red-50 text-red-900 hover:bg-red-100",
   done: "border-emerald-500 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+  today: "border-yellow-500 bg-yellow-300 text-[var(--navy)] hover:bg-yellow-400",
 };
 
 // A small pill that hops between Route Planning and Leaving Dock, with the days to departure after it.

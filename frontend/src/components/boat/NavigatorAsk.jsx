@@ -11,7 +11,8 @@ import { NavigatorIntro, NavigatorReminders, TripTiming, WhyGoing } from "@/comp
 import { stamp } from "@/components/boat/departure/LogCopy";
 import { PlannedLegs } from "@/components/boat/navigator/PlannedLegs";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
-import { HopBubble } from "@/components/boat/navigator/HopBubble";
+import { HopBubble, daysToGo } from "@/components/boat/navigator/HopBubble";
+import { NextStep } from "@/components/boat/departure/NextStep";
 import { RouteBubble } from "@/components/boat/navigator/PlannedRouteView";
 import { isDayTrip, returnsToStart } from "@/lib/tripStops";
 import { useAuth } from "@/context/AuthContext";
@@ -119,6 +120,8 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
   };
   const early = !!guide && !reached(guide.stage, "filled");
+  const leaveAt = departed ? undefined : boat.weather?.depart_at;
+  const leaveToday = daysToGo(leaveAt) === "(today)";
   const applyQuick = ([first, ...rest], fresh) => {
     if (early) guide.to("filled");
     putLegs([first, ...rest], { ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true });
@@ -161,7 +164,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     <div className="flex flex-col gap-2" data-testid="navigator-ask-panel">
       {!interim && (
         <div className="flex flex-wrap items-center gap-2" data-testid="route-hops">
-          {onLeaving && <HopBubble icon={Anchor} label="Leave" onClick={onLeaving} departAt={departed ? undefined : boat.weather?.depart_at} testId="route-leaving-dock" />}
+          {onLeaving && <HopBubble icon={Anchor} label="Leave" onClick={onLeaving} departAt={leaveAt} tone={leaveToday ? "today" : "navy"} testId="route-leaving-dock" />}
           {onArriving && <HopBubble icon={Flag} label="Arrive" onClick={onArriving} testId="route-arriving" />}
           {onReturning && <HopBubble icon={Home} label="Return" onClick={onReturning} testId="route-returning-dock" />}
           <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} done={sailed} />
@@ -173,6 +176,10 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           <HopBubble icon={ClipboardCheck} label="Prep" tone="crew" onClick={() => openList("crewPrep")} testId="route-prep" />
           <HopBubble icon={UserCog} label="Roles" tone="crew" onClick={() => window.dispatchEvent(new CustomEvent("mbp:crew-roles", { detail: { hop: true } }))} testId="route-roles" />
         </div>
+      )}
+      {!interim && !early && onLeaving && !departed && (
+        <NextStep prefix={null} onClick={onLeaving} testId="trip-next-step"
+          label={`${leaveToday ? "Next step" : "Coming up soon"}, switch to Leaving Dock, go over Leaving Dock checks and Depart`} />
       )}
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
