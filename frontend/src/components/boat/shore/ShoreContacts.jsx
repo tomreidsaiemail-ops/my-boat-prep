@@ -31,10 +31,10 @@ export const offerShoreRemoval = async (boatId, email, stillCleared = () => true
 
 const copyText = (text) => navigator.clipboard?.writeText(text).then(() => true).catch(() => false) ?? Promise.resolve(false);
 
-const InviteForm = ({ boatId, vessel, prefill, onSent }) => {
-  const [name, setName] = useState("");
+const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
+  const [name, setName] = useState(prefillName || "");
   const [email, setEmail] = useState(prefill || "");
-  useEffect(() => { if (prefill) setEmail((e) => e || prefill); }, [prefill]);
+  useEffect(() => { if (prefill) setEmail((e) => e || prefill); if (prefillName) setName((n) => n || prefillName); }, [prefill, prefillName]);
   const [busy, setBusy] = useState("");
   const [link, setLink] = useState("");
   const [message, setMessage] = useState("");
@@ -90,7 +90,7 @@ const InviteForm = ({ boatId, vessel, prefill, onSent }) => {
 };
 
 // Skipper's Shore Contacts panel under the crew cards: invites, the tracking switch and who is watching.
-export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", onShoreEmail, onTrackingChange }) => {
+export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", shoreName = "", onShoreEmail, onTrackingChange }) => {
   const [info, setInfo] = useState(null);
   const [awake, setAwake] = useState(() => localStorage.getItem(AWAKE_KEY) === "true");
   // Boat details shows the first shore contact's email when it's empty.
@@ -133,6 +133,7 @@ export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", onShoreEm
   if (!online && !info) return <p className="text-sm text-[var(--muted)]" data-testid="shore-contacts-offline">Shore Contacts need a signal to manage.</p>;
   if (!info) return <Loader2 className="h-5 w-5 animate-spin" />;
   const t = info.tracking || {};
+  const newShore = !!shoreEmail.trim() && !info.contacts.some((c) => same(c.email, shoreEmail));
   return (
     // Everything here saves straight away, so it never counts as unsaved changes when the Crew screen closes.
     <section className="flex flex-col gap-3 rounded-xl border-2 border-[var(--navy)] bg-sky-50/60 p-3" data-no-dirty data-testid="shore-contacts">
@@ -166,7 +167,7 @@ export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", onShoreEm
         ))}
       </ul>
       {t.on && info.contacts.length > 0 && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-remove-locked-note">To remove a shore contact, untick Share position with shore contacts first.</p>}
-      <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} prefill={shoreEmail.trim() && !info.contacts.some((c) => same(c.email, shoreEmail)) ? shoreEmail.trim() : ""} onSent={load} />
+      <InviteForm boatId={boat.boat_id} vessel={vessel || boat.vessel} prefill={newShore ? shoreEmail.trim() : ""} prefillName={newShore ? shoreName.trim() : ""} onSent={load} />
     </section>
   );
 };

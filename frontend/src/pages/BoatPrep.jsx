@@ -62,6 +62,7 @@ import { CrewPrepCloneDialog } from "@/components/boat/CrewPrepCloneDialog";
 import { CrewPrepProgress, crewPrepName, prepCounts } from "@/components/boat/CrewPrepProgress";
 import { WelcomeScreen } from "@/components/boat/welcome/WelcomeScreen";
 import { InventorySetupWizard } from "@/components/boat/welcome/InventorySetupWizard";
+import { MaydaySetupDialog, maydayReady } from "@/components/boat/distress/MaydaySetupDialog";
 import { ZoneTipDialog } from "@/components/boat/welcome/ZoneTipDialog";
 import { GoListDialog } from "@/components/boat/welcome/GoListDialog";
 import { FirstDetailsDialog } from "@/components/boat/welcome/FirstDetailsDialog";
@@ -436,6 +437,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key);
   };
   const [setupOpen, setSetupOpen] = useState(false);
+  const [maydaySetup, setMaydaySetup] = useState(false);
   const [zoneTip, setZoneTip] = useState(false);
   const [goList, setGoList] = useState(null);
   // After "Got it": the Galley (or Cockpit) on the wizard's new map glows so the skipper knows where to tap.
@@ -1488,6 +1490,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
+            mayday={crew ? undefined : { ready: maydayReady(boat), onSetup: () => setMaydaySetup(true) }}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id, open = false) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
               if (open) pickList(id); // "Make Home, and Open Boat Inventory": straight there, set up first if needed
@@ -1522,6 +1525,7 @@ export default function BoatPrep({ boatId, boats }) {
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
+      {maydaySetup && <MaydaySetupDialog boat={boat} lines={(state.data.mayDay || []).map(labelFor)} onChange={changeBoatField} onClose={() => setMaydaySetup(false)} />}
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField} onZoneDefaults={setupZoneDefaults}
         onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(mapId || true), 1400); }} />}
       <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />

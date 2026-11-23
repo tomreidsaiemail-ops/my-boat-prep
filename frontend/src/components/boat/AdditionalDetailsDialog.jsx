@@ -180,6 +180,13 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
               onChange={(e) => onChange("mmsi", e.target.value.replace(/\D/g, "").slice(0, 9))} />
             {boat.mmsi && boat.mmsi.length !== 9 && <span className="text-xs font-bold text-[var(--red)]" data-testid="mmsi-warning">An MMSI number has 9 digits</span>}
           </label>
+          <label className="col-span-2 -mt-1 flex cursor-pointer items-center gap-2 text-sm font-bold" data-testid="no-mmsi">
+            <input type="checkbox" checked={!!boat.no_mmsi} onChange={(e) => onChange("no_mmsi", e.target.checked)} className="h-5 w-5 accent-[var(--navy)]" data-testid="no-mmsi-checkbox" /> No MMSI
+          </label>
+          <TextField id="shore-name" label="Shore contact name" value={boat.shore_name || ""} placeholder="Their name" onChange={(v) => onChange("shore_name", v.slice(0, 60))} />
+          <label className="flex cursor-pointer items-end gap-2 pb-3 text-sm font-bold" data-testid="no-shore">
+            <input type="checkbox" checked={!!boat.no_shore} onChange={(e) => onChange("no_shore", e.target.checked)} className="h-5 w-5 accent-[var(--navy)]" data-testid="no-shore-checkbox" /> No shore contact
+          </label>
           <DetailsSection title="Vessel Telemetry / Vessel Dimensions" testId="dimensions-section"
             summary={[["LOA", boat.loa], ["LWL", boat.lwl], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, LWL, beam, draft and mast height"}>
             <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => { if (u !== unit) switchWeights(boat, u, onChange); onChange("units", u); }} /></div>

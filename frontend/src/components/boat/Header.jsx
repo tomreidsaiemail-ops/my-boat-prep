@@ -1,4 +1,5 @@
 import { MapPin } from "lucide-react";
+import { useDistressHighlight } from "@/lib/glow";
 import { NetworkToggle } from "@/components/boat/NetworkToggle";
 import { AccountMenu } from "@/components/boat/AccountMenu";
 import { AppMenu } from "@/components/boat/AppMenu";
@@ -17,7 +18,9 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer, welcome, listTools }) => (
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer, welcome, listTools }) => {
+  const held = useDistressHighlight() ? "mbp-glow" : "";
+  return (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
@@ -36,14 +39,14 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcas
           className="h-11 rounded-md bg-[var(--navy)] px-1.5 font-mono text-xs font-bold sm:px-2.5 sm:text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-4 focus:ring-[var(--blue)]/30" data-testid="date-input" />
       </label>
       <div className="ml-auto flex min-w-0 flex-col items-end gap-1">
-        <div className={`flex min-w-0 items-start gap-1 break-words text-right font-mono text-[11px] font-semibold leading-tight ${broadcast && broadcast !== "b300" ? "text-[#1d4ed8]" : gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position" data-relayed={!!broadcast && broadcast !== "b300"}>
+        <div className={`flex min-w-0 items-start gap-1 break-words rounded text-right font-mono text-[11px] font-semibold leading-tight ${held} ${broadcast && broadcast !== "b300" ? "text-[#1d4ed8]" : gps.status === "ok" ? "text-[var(--navy)]" : "text-[var(--muted)]"}`} data-testid="gps-position" data-relayed={!!broadcast && broadcast !== "b300"}>
           <MapPin className="mt-px h-3 w-3 shrink-0" />
           <span className="flex flex-col items-end" data-testid="gps-position-text">{gps.text.split(" / ").map((line) => <span key={line} className="whitespace-nowrap">{line}</span>)}</span>
         </div>
         {onMayday && (
           <div className="flex gap-1" data-testid="distress-buttons">
-            <button type="button" onClick={onMayday} className="h-6 whitespace-nowrap rounded-md bg-[var(--red)] px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="mayday-btn">Mayday</button>
-            <button type="button" onClick={onPanPan} className="h-6 whitespace-nowrap rounded-md bg-orange-500 px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95" data-testid="panpan-btn">Pan-Pan</button>
+            <button type="button" onClick={onMayday} className={`h-6 whitespace-nowrap rounded-md bg-[var(--red)] px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95 ${held}`} data-testid="mayday-btn">Mayday</button>
+            <button type="button" onClick={onPanPan} className={`h-6 whitespace-nowrap rounded-md bg-orange-500 px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95 ${held}`} data-testid="panpan-btn">Pan-Pan</button>
           </div>
         )}
       </div>
@@ -51,4 +54,5 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcas
       <AccountMenu />
     </div>
   </header>
-);
+  );
+};

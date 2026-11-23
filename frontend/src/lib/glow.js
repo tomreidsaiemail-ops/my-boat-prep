@@ -1,4 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+// A yellow highlight held on MAYDAY, PAN-PAN and GPS in the header while Welcome's MAYDAY line is showing.
+export const holdDistressHighlight = (on) => window.dispatchEvent(new CustomEvent("mbp:hold-distress", { detail: !!on }));
+export const useDistressHighlight = () => {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const f = (e) => setOn(e.detail);
+    window.addEventListener("mbp:hold-distress", f);
+    return () => window.removeEventListener("mbp:hold-distress", f);
+  }, []);
+  return on;
+};
 
 // Yellow highlight on an on-screen element for a moment (Welcome screen tours); resolves when it ends.
 // Overlapping glows on one element are counted, so an earlier one ending doesn't cut a later one short.

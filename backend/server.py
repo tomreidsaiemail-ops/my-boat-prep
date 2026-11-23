@@ -133,6 +133,9 @@ class BoatDetails(BaseModel):
     callsign: str = ""
     log_email: str = ""
     shore_email: str = ""
+    shore_name: str = Field(default="", max_length=60)
+    no_shore: bool = False
+    no_mmsi: bool = False
     shore_enabled: bool = False
     boat_type: str = ""
     pob: int = Field(default=1)
@@ -377,7 +380,7 @@ STATE_FIELDS = ("boat", "registry", "data", "updated_at", "log_sent", "engine_lo
 def to_out(state: BoatState, role: str = "owner") -> BoatStateOut:
     out = BoatStateOut(**state.model_dump(exclude={"id"}), role=role)
     if role == "crew":
-        out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_enabled": False, "budget_notes": ""})
+        out.boat = out.boat.model_copy(update={"log_email": "", "shore_email": "", "shore_name": "", "shore_enabled": False, "budget_notes": ""})
         hidden = {l.get("id") for l in out.registry if l.get("kind") == "budget" or l.get("id") == "transferOwnership"}
         out.registry = [l for l in out.registry if l.get("id") not in hidden]
         out.data = {k: v for k, v in out.data.items() if k not in hidden}

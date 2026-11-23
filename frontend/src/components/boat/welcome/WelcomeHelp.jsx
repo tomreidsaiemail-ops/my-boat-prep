@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Ship } from "lucide-react";
+import { ArrowRight, CheckCircle2, Ship } from "lucide-react";
 import { FoldHeader } from "@/components/boat/navigator/FoldHeader";
-import { closeMenu, glow, openMenu, previewList, wait } from "@/lib/glow";
+import { closeMenu, glow, holdDistressHighlight, openMenu, previewList, wait } from "@/lib/glow";
 
 const P = ({ children, testId }) => <p className="text-sm" data-testid={testId}>{children}</p>;
-const ShowMe = ({ onClick, testId }) => (
-  <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>Show me</button>
+const ShowMe = ({ onClick, testId, children = "Show me" }) => (
+  <button type="button" onClick={onClick} className="ml-1 inline rounded border border-[var(--navy)] bg-white px-1.5 align-baseline text-sm font-bold text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white" data-testid={testId}>{children}</button>
 );
 // Help drop-down highlighted, then Help > Model Vessel opens and its "Crew Registration and Invites" tutorial glows; Model Vessel folds and glows, then the menu closes.
 const showTutorial = async () => {
@@ -54,11 +54,15 @@ const GoOn = ({ onClick, testId }) => (
   </button>
 );
 
-export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen }) => {
+// mayday: { ready, onSetup } for the "Prefilled MAYDAY script with GPS" line (skippers only).
+export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen, mayday }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
   const [stage, setStage] = useState(!ack ? "home" : "");
   const [homeOpen, setHomeOpen] = useState(true);
   const [crewOpen, setCrewOpen] = useState(!stage);
+  // MAYDAY, PAN-PAN and GPS stay yellow while the MAYDAY line shows, until MAYDAY is set up.
+  const holdHl = open && crewOpen && !!mayday && !mayday.ready;
+  useEffect(() => { holdDistressHighlight(holdHl); return () => holdDistressHighlight(false); }, [holdHl]);
   const [mvOpen, setMvOpen] = useState(!stage);
   const toCrew = () => { setHomeOpen(false); setCrewOpen(true); setStage("crew"); };
   const toMv = () => { setCrewOpen(false); setMvOpen(true); setStage("mv"); };
@@ -88,6 +92,10 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
         </div>}
         <FoldHeader open={crewOpen} onToggle={() => setCrewOpen((o) => !o)} testId="welcome-crew-toggle" mixed>Do you want to make your crew safer?</FoldHeader>
         {crewOpen && <P testId="welcome-crew-help">
+          {mayday && <><span data-testid="welcome-mayday-line">Prefilled MAYDAY script with GPS</span>
+            {mayday.ready
+              ? <span className="ml-1 inline-flex items-center gap-1 rounded border border-emerald-600 bg-emerald-50 px-1.5 align-baseline text-sm font-bold text-emerald-800" data-testid="welcome-mayday-done"><CheckCircle2 className="h-4 w-4" />MAYDAY set up</span>
+              : <ShowMe onClick={mayday.onSetup} testId="welcome-mayday-setup-btn">Help me set that up</ShowMe>}<br /></>}
           Register and invite crew<ShowMe onClick={() => { setHomeOpen(false); glow("boat-crew-btn", 5000); }} testId="welcome-show-crew-btn" /><br />
           Register and invite your crew by cutting and pasting from your crew spreadsheet, or simply typing in a list of names and emails.<br />
           Take the Model Vessel tutorial<br />
