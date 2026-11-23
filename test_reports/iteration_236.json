@@ -1,0 +1,31 @@
+{
+  "summary": "Tested the Welcome 'Prefilled MAYDAY script with GPS' feature end to end at 390x844, plus the backend fields shore_name, no_shore and no_mmsi. Backend: 4 of 4 pytest pass. Owner saves persist, shore_name over 60 characters returns 422, a crew GET returns shore_name and shore_email blank, and a crew PUT leaves the owner's shore_name unchanged. Frontend: the MAYDAY line is the first line of the crew section. 'Help me set that up' shows when MAYDAY is not set up. mayday-btn, panpan-btn and gps-position get mbp-glow while the section is open, on the main boat and on Model Vessel. The glow goes off when the crew section or the outer help section is folded, when leaving Welcome, and once setup is complete. In the setup dialog, filled fields show value, tick and pencil and empty ones show an input. MMSI keeps only digits and is cut to 9. The shore email tick appears only for a valid email. 'No MMSI' hides the MMSI field and 'No shore contact' hides the shore fields. The status reads 'MAYDAY is set up' when complete and Done closes the dialog. Values save to the DB and survive a reload. They show in the Boat details bar (#vessel, #callsign, #shore-contact-email) and in Additional details (mmsi-input, pob-input, no-mmsi-checkbox, #shore-name, no-shore-checkbox). The crew window's Shore Contacts invite form is prefilled with the shore name and email. Crew (free user on the pro boat) do not see the MAYDAY line. Regressions pass: the Welcome 'Show me' button glows boat-crew-btn, the MAYDAY list opens from the header button, and there is no horizontal overflow (scrollWidth 390).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MaydaySetupDialog / MAYDAY script", "issue": "If 'No MMSI' is ticked while a valid MMSI is still stored, the script still reads 'Callsign ZMA123, MMSI 512345678' and the stored MMSI stays. The two settings contradict each other. Either clear mmsi when No MMSI is ticked, or leave the MMSI out of the script.", "selector": "[data-testid='mayday-setup-no-mmsi-checkbox']", "priority": "LOW"},
+      {"component": "ShoreContacts InviteForm", "issue": "When both name and email are prefilled from the MAYDAY setup, the note still says 'Email filled in from Boat details. Add their name, then send the invite.' even though the name is already filled. The copy should change when prefillName is used.", "selector": "[data-testid='shore-invite-prefill-note']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Welcome crew section (390px)", "issues": ["The 'Help me set that up' and 'MAYDAY set up' bubbles wrap onto their own line under 'Prefilled MAYDAY script with GPS'. This is acceptable."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_mayday_setup_fields.py", "/app/test_reports/pytest/pytest_mayday_setup.xml"],
+  "action_items": [
+    "Optional: when No MMSI is ticked, leave the MMSI out of the MAYDAY script, or clear it",
+    "Optional: change the shore-invite-prefill-note copy when the name is prefilled too"
+  ],
+  "critical_code_review_comments": [
+    "POB defaults to 1 on the backend, so the POB field always counts as filled (tick) and the user is never asked to confirm it. This matches the spec (POB>=1) but may be weaker than intended.",
+    "Header applies mbp-glow through a React className string (held). When the hold switches, React rewrites className and can remove a temporary glow() class added with classList on the same mayday-btn, panpan-btn or gps-position element. This is an edge case.",
+    "useDistressHighlight starts false and only listens for events, so a Header that remounts while WelcomeHelp's hold is on misses the state until the next change. Low risk.",
+    "In SetupField, edit mode is set once at mount from !ok. A field that becomes valid while being typed in stays an input with a tick. This is the intended behaviour."
+  ],
+  "updated_files": ["/app/backend/tests/test_mayday_setup_fields.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% (2 low-priority copy/consistency notes)"},
+  "seed_data_creation": "None. Temporarily changed test-user-pro/main: mmsi, shore_name, shore_email, no_shore, no_mmsi. All were restored with Mongo to their original values (mmsi '', shore_name '', shore_email shore.only.test@example.com, no_shore/no_mmsi false), with fresh boat_ts. test-user-pro users.welcome.section was put back to 'crew' and last_boat to 'main'. The welcome promo Continue was clicked for test-user-pro, a test account.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Welcome is gated by the promotion card: click welcome-promo-continue-btn. Boat details bar fields are #vessel, #callsign, #shore-contact-email (open with boat-details-summary). The server's users.last_boat overrides localStorage mbp_boats_active. Switch boats with mbp:menu-open 'boats' and boat-option-*. Model Vessel's MAYDAY is not set up (mmsi empty), which is good for glow tests. Leave Welcome with mbp:open-list 'mayDay'. Run pytest with -n 0."
+}

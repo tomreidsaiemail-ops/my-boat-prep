@@ -516,7 +516,7 @@ export default function BoatPrep({ boatId, boats }) {
   const listSearch = searchableList(active.name) && !active.isInventory;
   useEffect(() => { setAreaFilter(""); setListQuery(""); }, [active.id]);
   useEffect(() => { const q = pendingQr(); if (q && qrBoatKey(q, user.user_id) === boats.current.key) setActiveId(INVENTORY_LIST.id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: !boat.no_mmsi && boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
   const distress = useDistressEmail({ online, shore: boat.shore_email, build: (kind) => {
     const position = distressPosition(gps);

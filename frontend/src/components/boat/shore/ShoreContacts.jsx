@@ -63,7 +63,7 @@ const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Their name" className="field-input" data-testid="shore-invite-name" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="Their email" className="field-input" data-testid="shore-invite-email" />
       </div>
-      {prefill && same(email, prefill) && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-invite-prefill-note">Email filled in from Boat details. Add their name, then send the invite.</p>}
+      {prefill && same(email, prefill) && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-invite-prefill-note">{prefillName && name === prefillName ? "Name and email filled in from Boat details. Send the invite." : "Email filled in from Boat details. Add their name, then send the invite."}</p>}
       <button type="submit" disabled={!!busy} className="btn-solid min-h-11 justify-center gap-2" data-testid="shore-invite-send-btn">
         {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send email invite
       </button>
