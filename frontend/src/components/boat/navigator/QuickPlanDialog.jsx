@@ -5,6 +5,7 @@ import { StopsMap } from "@/components/boat/navigator/StopsMap";
 import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
 import { legMiles, milesText, returnsToStart, stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
+import { MapGuide } from "@/components/boat/guide/DialogGuides";
 
 export const QUICK_NAME = "Quick Draft Plan";
 export const EDIT_NAME = "Edit Draft Plan";
@@ -88,7 +89,8 @@ const TripMiles = ({ legs }) => {
 // add: a new stop goes after that point, -1 for a new START, and the map waits for its tap).
 // ret: a return trip, so the DESTINATION's tap also makes Leg 2 back to the START.
 // seed: a typed-in return trip ({ legs: [Leg 1], back: its Leg 2 or null }); its names and times are kept, only the pins are tapped in.
-export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false, seed = null }) => {
+// guide: the Model Vessel's Trip Planning guide is on this step, so its map help shows at the top of a wider window.
+export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false, seed = null, guide = false }) => {
   const adding = draft && add !== null;
   const [fresh, setFresh] = useState(!draft && !seed);
   const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || seed?.legs || [newLeg(1)]));
@@ -218,7 +220,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       : "Tap a pin to rename it, pick how you arrive, delete it or add a stop after it. Drag a pin to move it, then tap Done.";
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[96vh] w-[calc(100%-1rem)] max-w-2xl overflow-y-auto rounded-lg p-3 sm:p-5" data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
+      <DialogContent className={`max-h-[96vh] w-[calc(100%-1rem)] ${guide ? "max-w-4xl" : "max-w-2xl"} overflow-y-auto rounded-lg p-3 sm:p-5`} data-testid="quick-plan-dialog" onOpenAutoFocus={(e) => e.preventDefault()}
         dirty={pending !== null || JSON.stringify(legs) !== initial.current}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-extrabold" data-testid="quick-plan-title">
@@ -226,6 +228,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           </DialogTitle>
           <DialogDescription data-testid="quick-plan-hint">{hint}</DialogDescription>
         </DialogHeader>
+        {guide && <MapGuide destination={pending === 1} />}
         <div className="flex gap-1.5">
           <button type="button" className="btn-ghost h-12 shrink-0 justify-center px-3 text-sm" onClick={onClose} data-testid="quick-plan-cancel-btn">Cancel</button>
           <button type="button" className="btn-ghost h-12 flex-1 justify-center gap-1 px-2 text-sm leading-tight" disabled={!undo.length || pending !== null} onClick={undoLast} data-testid="quick-plan-undo-btn">

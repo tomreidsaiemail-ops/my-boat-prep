@@ -34,8 +34,8 @@ const ActualFinish = ({ plan, onFinish }) => (
   </div>
 );
 
-// What DEPART or ARRIVED is about to tick and log, shown before anything changes.
-export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndTrip }) => {
+// What DEPART or ARRIVED is about to tick and log, shown before anything changes. help: guide text at the top.
+export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndTrip, help = null }) => {
   const depart = plan?.kind === "depart";
   return (
     <Dialog open={!!plan} onOpenChange={(o) => !o && !busy && onClose()}>
@@ -46,6 +46,7 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndT
               <DialogTitle className="font-display text-lg font-extrabold">{depart ? "About to depart" : "About to log your arrival"}</DialogTitle>
               <DialogDescription>{plan.blocked ? "Finish this first, then try again:" : "This is what will be ticked and logged in the Ship's Log:"}</DialogDescription>
             </DialogHeader>
+            {!plan.blocked && help}
             {plan.blocked
               ? <p role="alert" className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="all-done-blocked"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{plan.blocked}</p>
               : (

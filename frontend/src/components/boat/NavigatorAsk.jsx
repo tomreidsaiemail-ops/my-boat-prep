@@ -17,6 +17,8 @@ import { isDayTrip, returnsToStart } from "@/lib/tripStops";
 import { useAuth } from "@/context/AuthContext";
 import { TideNote } from "@/components/boat/navigator/TideNote";
 import { TideWarning, localDay } from "@/components/boat/navigator/TideWarning";
+import { TripPlanGuide } from "@/components/boat/guide/TripPlanGuide";
+import { reached } from "@/lib/tripGuide";
 
 const routeText = (start, dest) => [start.trim(), dest.trim()].filter(Boolean).join(" to ");
 
@@ -74,7 +76,8 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
 );
 
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed }) => {
+// guide: the Model Vessel's Trip Planning guide; until the Quick Draft Plan is done only the bubbles, START and DESTINATION show.
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -115,7 +118,9 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
     onWeather({ ...extra, ...(isReturn && !rest.length ? { return_trip: false } : {}), depart_at: first.depart_at, finish_at: first.finish_at,
       start_pos: first.start_pos, dest_pos: first.dest_pos, path: first.path, arrive_type: first.arrive_type || "", legs: rest.map(({ start_pos, ...l }) => l) });
   };
+  const early = !!guide && !reached(guide.stage, "filled");
   const applyQuick = ([first, ...rest], fresh) => {
+    if (early) guide.to("filled");
     putLegs([first, ...rest], { ...(fresh ? { event_name: QUICK_NAME, event_at: first.depart_at } : {}), trip_draft: true });
     toast.success(`${fresh ? QUICK_NAME : "Draft Plan"}: ${rest.length + 1} ${rest.length ? "legs" : "leg"} ${fresh ? "added to" : "updated in"} Trip Planning`);
   };
@@ -173,13 +178,13 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
         {interim && w.event_name && <span className="min-w-0 truncate text-sm font-bold text-[var(--navy)]" title={w.event_name} data-testid="interim-event-name">{w.event_name}</span>}
         {!interim && !sure && (
-          <button type="button" onClick={() => (draft ? setQuick({}) : ret ? setQuick({ seed: true }) : hasRoute ? setSure(1) : setQuick({}))} className="btn-ghost h-11 min-w-0 flex-1 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
+          <button type="button" onClick={() => { if (guide?.stage === "quick") guide.to("map"); if (draft) setQuick({}); else if (ret) setQuick({ seed: true }); else if (hasRoute) setSure(1); else setQuick({}); }} className="btn-ghost h-11 min-w-0 flex-1 justify-center gap-1.5 !border-amber-500 font-extrabold" data-testid="quick-plan-btn">
             {draft ? <Pencil className="h-4 w-4 shrink-0 text-amber-500" /> : <Zap className="h-4 w-4 shrink-0 text-amber-500" />} <span className="truncate">{draft ? EDIT_NAME : QUICK_NAME}...</span>
           </button>
         )}
       </div>
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret}
+      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft && !quick.fresh ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret && !quick.fresh} guide={guide?.stage === "map"}
         seed={quick.seed ? { legs: [{ ...current()[0], start_pos: null, dest_pos: null, path: null }], back: isReturn ? legsNow[0] : null } : null} />}
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
@@ -207,9 +212,11 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           </label>
         )}
       </div>
+      {/* The guide's Continue starts a fresh Quick Draft Plan, without the replace warnings (this is the Model Vessel). */}
+      {guide && !interim && <TripPlanGuide guide={guide} onQuick={() => { guide.to("map"); setSure(0); setQuick({ fresh: true }); }} />}
       {/* Folds away the question and its answer too; asking opens it. */}
-      {showAsk && <FoldHeader open={askOpen || state.busy} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>}
-      {showAsk && (askOpen || state.busy) && (<>
+      {showAsk && !early && <FoldHeader open={askOpen || state.busy} onToggle={() => setAskOpen((o) => !o)} icon={Compass} testId="navigator-ask-toggle">Ask the Magic Marine Navigator</FoldHeader>}
+      {showAsk && !early && (askOpen || state.busy) && (<>
       <label htmlFor="navigator-question" className="sr-only">ASK THE MAGIC MARINE NAVIGATOR</label>
       <NavigatorIntro online={online} />
       <div className="flex items-start gap-2">
@@ -223,10 +230,10 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       {state.error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="navigator-error">{state.error}</p>}
       {state.result && <AnswerCard result={state.result} boat={boat} left={state.left} onClose={() => setState((s) => ({ ...s, result: null }))} />}
       </>)}
-      {showPhotos && <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />}
-      {showPhotos && photosOpen && <NavigatorReminders />}
-      <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} why={whyGoing} />
-      {!interim && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
+      {showPhotos && !early && <WeatherPhotos boat={boat} onPatch={onWeather} online={online} boatId={boatId} open={photosOpen} onToggle={() => setPhotosOpen((o) => !o)} />}
+      {showPhotos && !early && photosOpen && <NavigatorReminders />}
+      {!early && <TripTiming weather={boat.weather || {}} onChange={onWeather} interim={interim} note={timesNote} start={start} dest={dest} why={whyGoing} />}
+      {!interim && !early && <PlannedLegs start={start.trim()} dest={dest.trim()} weather={boat.weather || {}} onChange={onWeather} onLegs={putLegs} onDraft={draft ? (select, add = null) => setQuick({ select, add }) : undefined} />}
     </div>
   );
 };
