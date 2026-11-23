@@ -1278,7 +1278,7 @@ export default function BoatPrep({ boatId, boats }) {
         <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
             <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
-              departAt={HOP_ICON[id] || active.id !== "leavingDock" ? undefined : daysFor(id)} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
+              departAt={HOP_ICON[id] || active.id !== "leavingDock" || ended ? undefined : daysFor(id)} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
@@ -1435,7 +1435,7 @@ export default function BoatPrep({ boatId, boats }) {
       {hopRow}
       {/* The next step, always right under the bubbles. */}
       {!crew && active.id === "leavingDock" && (departLive ? leaveStep && <NextStep label={leaveStep.label} onClick={leaveStep.onClick} testId="route-plan-next-step" />
-        : <NextHint testId="leaving-next-hint">Next step: perform Leaving Dock checks, then click DEPART</NextHint>)}
+        : ended ? archiveStep : <NextHint testId="leaving-next-hint">Next step: perform Leaving Dock checks, then click DEPART</NextHint>)}
       {!crew && active.id === "arrivingDest" && uwId && (toDock ? <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />
         : <NextHint testId="arriving-next-hint">Next step: perform arrival checks, and click "ARRIVED"</NextHint>)}
       {!crew && active.id === "returningDock" && toDock && <NextHint testId="returning-next-hint">Next step, Go over 'Returning to Dock' checks, and click 'ARRIVED, ALL CHECKS DONE'</NextHint>}
@@ -1457,7 +1457,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}
-          onDepart={() => doneGuard() && allDone.openDepart()} />
+          onDepart={() => doneGuard() && allDone.openDepart()} planned={!ended} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
