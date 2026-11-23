@@ -214,11 +214,11 @@ const useWarn = () => {
 };
 
 // One-tap hops between the trip lists ("trip" = the Trip Planning in use).
-const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"] };
+const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"], provisions: ["trip"] };
 const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck };
 const HOP_TONE = { crewPrep: "crew" };
 const HOP_LABEL = { arrivingDest: "Arrive", returningDock: "Return" };
-const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone"];
+const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone", "provisions"];
 
 
 export default function BoatPrep({ boatId, boats }) {
@@ -422,6 +422,7 @@ export default function BoatPrep({ boatId, boats }) {
   const startWalkthrough = (w) => {
     if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
     if (w.key === TRIP_GUIDE.key) { guideRestart(user.user_id); if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key); return; }
+    if (guide || tg.go) tg.skip(); // one guide at a time: the walkthrough picked last takes over
     if (boats.current.key === modelBoat.key) restartWalkthrough(user.user_id, w.key);
     else setModelAsk(w);
   };
@@ -430,6 +431,7 @@ export default function BoatPrep({ boatId, boats }) {
     const w = wizards.find((x) => x.title.toLowerCase() === title.toLowerCase());
     if (!w) { toast.error(`The "${title}" tutorial isn't available yet`); return; }
     if (!modelBoat) { toast.info("Your Model Vessel was deleted. A fresh copy comes back next time you sign in."); return; }
+    if (guide || tg.go) tg.skip();
     restartWalkthrough(user.user_id, w.key);
     if (boats.current.key !== modelBoat.key) boats.select(modelBoat.key);
   };
@@ -1340,7 +1342,7 @@ export default function BoatPrep({ boatId, boats }) {
   return (
     <WeightsContext.Provider value={weights}>
     <CrewDietContext.Provider value={diet}>
-    {boats.current.model && !crew && <TrainingMode key={boats.current.model_copy || ""} uid={user.user_id} online={online} copy={boats.current.model_copy || ""} admin={user.is_admin} />}
+    {boats.current.model && !crew && <TrainingMode key={boats.current.model_copy || ""} uid={user.user_id} online={online} copy={boats.current.model_copy || ""} admin={user.is_admin} paused={!!guide || !!tg.go} />}
     <ModelWalkthroughConfirm open={!!modelAsk} title={modelAsk?.title} from={boats.current.vessel} onConfirm={switchToModel} onClose={() => setModelAsk(null)} />
     <main className="relative mx-auto flex max-w-xl flex-col gap-4 px-4 pb-16 pt-5" data-testid="boat-prep-app">
       {!user.is_admin && <BoatWatermark boat={boats.current} />}
@@ -1355,7 +1357,8 @@ export default function BoatPrep({ boatId, boats }) {
       {shopBar && <ShoppingAheadBar />}
       <AshorePrompt boat={boats.current} tracking={shoreTrack.tracking} stopAt={shoreTrack.stopAt} online={online} />
       <BoatSwitcher boats={boats} state={state} premium={premium} online={online} onUpgrade={() => askUpgrade("More than one boat")} onInviteUpgrade={() => askUpgrade("Crew sharing")}
-        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} onShoreEmail={crew ? undefined : (v) => updateBoat("shore_email", v)} />
+        onSaveBriefing={crew ? undefined : saveRoleBriefing} knownRole={(r) => hasRole(state, r)} onAddAreas={addAreasNamed} onShoreEmail={crew ? undefined : (v) => updateBoat("shore_email", v)}
+        onSingleHand={crew ? undefined : (id, v) => tripWeather(id)({ single_hand: v })} />
       <CharterBanner entry={boats.current} online={online} onTerms={() => setCharterTerms((n) => n + 1)} onEnded={() => boats.refresh()} />
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
@@ -1498,7 +1501,8 @@ export default function BoatPrep({ boatId, boats }) {
           {!crew && isTripList(active) && (
             <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
-              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} guide={active.id === DEFAULT_TRIP ? guide : null} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
+              onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} guide={active.id === DEFAULT_TRIP ? guide : null}
+              tripId={active.id} provisioned={(state.data.provisions || []).some((i) => i.checked)} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
           {showMpa && (

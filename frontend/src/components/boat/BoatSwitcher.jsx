@@ -14,7 +14,7 @@ import { CrewDialog } from "@/components/boat/CrewDialog";
 import { apiError } from "@/lib/api";
 import { roleBriefings, roleGroups } from "@/lib/crewRoles";
 import { routeNotes } from "@/lib/routeNotes";
-import { tripsWithPlans } from "@/lib/trips";
+import { DEFAULT_TRIP, tripBoat, tripsWithPlans } from "@/lib/trips";
 
 export const nameOf = (b) => b.vessel?.trim() || "New boat (add a name)";
 const BTN = "flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white active:scale-95 [transition:background-color_.15s,color_.15s,transform_.1s]";
@@ -31,7 +31,7 @@ const BoatOption = ({ b }) => (
   </span>
 );
 
-export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole, onAddAreas, onShoreEmail }) => {
+export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInviteUpgrade, onSaveBriefing, knownRole, onAddAreas, onShoreEmail, onSingleHand }) => {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [typed, setTyped] = useState("");
@@ -39,11 +39,14 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const [listOpen, setListOpen] = useState(false);
   useMenuOpen("boats", setListOpen);
   const [startInvite, setStartInvite] = useState(false);
+  // The trip the crew window is for: the Trip Planning its Crew bubble was tapped on, else the one under way or in use.
+  const [crewTrip, setCrewTrip] = useState("");
   // "Back to Invite crew" after changing the available roles reopens the invite where the skipper left it.
   useEffect(() => {
     const reopen = () => { setStartInvite(true); setCrewOpen(true); };
     const openCrew = (e) => {
       setCrewOpen(true);
+      setCrewTrip(e?.detail?.trip || "");
       if (e?.detail?.section !== "shore") return;
       // Jump to the Shore Contact panel so the Arrived button is right there.
       let tries = 0;
@@ -124,10 +127,18 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         onConfirm={confirmAdd} onClose={() => setAdding(false)}>
         <DeletedBoats open={adding} online={online} onRestore={restoreFromList} />
       </TextDialog>
-      {!cur.crew && (
-        <CrewDialog open={crewOpen} boat={cur} details={state?.boat} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} shoreEmail={state?.boat?.shore_email || ""} onShoreEmail={onShoreEmail} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
-          onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); }} />
-      )}
+      {!cur.crew && (() => {
+        const trips = tripsWithPlans(state);
+        const b = state?.boat || {};
+        const tid = [crewTrip, b.underway?.trip_id, b.route_trip, DEFAULT_TRIP].find((id) => id && trips.some((t) => t.id === id)) || "";
+        const tw = tid ? tripBoat(b, tid).weather || {} : {};
+        const trip = tid ? { name: String(tw.event_name || "").trim() || trips.find((t) => t.id === tid).name, single: !!tw.single_hand } : null;
+        return (
+        <CrewDialog open={crewOpen} boat={cur} details={state?.boat} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={trips} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} shoreEmail={state?.boat?.shore_email || ""} onShoreEmail={onShoreEmail} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+          trip={trip} onSingleHand={onSingleHand && tid ? (v) => onSingleHand(tid, v) : undefined}
+          onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); setCrewTrip(""); }} />
+        );
+      })()}
       <AlertDialog open={deleting} onOpenChange={(o) => !o && setDeleting(false)}>
         <AlertDialogContent className="max-w-sm rounded-lg border-2 border-[var(--navy)]" data-testid="delete-boat-dialog">
           <AlertDialogHeader>

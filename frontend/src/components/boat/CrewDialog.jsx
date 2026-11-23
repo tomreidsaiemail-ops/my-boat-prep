@@ -4,6 +4,7 @@ import { Anchor, ClipboardList, Clock, Eye, Loader2, Mail, Pencil, RefreshCw, Us
 import { useAuth } from "@/context/AuthContext";
 import { CrewInvitePreview } from "@/components/boat/crew/CrewInvitePreview";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CrewAvatar } from "@/components/boat/register/CrewPhoto";
 import { api, apiError } from "@/lib/api";
 import { PhotoPicker } from "@/components/boat/PhotoPicker";
@@ -65,8 +66,9 @@ const Row = ({ title, sub, bubbles, rsvp, after, badge, onRemove, onEdit, label,
   </li>
 );
 
-export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas, shoreEmail, onShoreEmail }) => {
+export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas, shoreEmail, onShoreEmail, trip = null, onSingleHand }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
+  const [loaded, setLoaded] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [chartering, setChartering] = useState(false);
   const charterOn = useFeature("charter");
@@ -87,7 +89,12 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
     catch (err) { toast.error(apiError(err, "Couldn't save the roles, please try again")); return false; }
   };
 
-  const load = useCallback(() => api.get(`/boats/${boat.boat_id}/crew`).then(({ data }) => setInfo(data)).catch(() => {}), [boat.boat_id]);
+  const load = useCallback(() => api.get(`/boats/${boat.boat_id}/crew`).then(({ data }) => {
+    setInfo(data); setLoaded(true);
+    window.dispatchEvent(new CustomEvent("mbp:crew-info", { detail: { boat_id: boat.boat_id, n: (data.crew || []).length + (data.invites || []).length } }));
+  }).catch(() => {}), [boat.boat_id]);
+  // Single hand is only offered while there's no crew and no invite out.
+  const noCrew = loaded ? info.crew.length + info.invites.length === 0 : !online && !boat.crew_count;
   const [reg, setReg] = useState({});
   const loadReg = useCallback(() => api.get("/crew-register", { params: { boat_id: boat.boat_id } }).then(({ data }) => setReg(Object.fromEntries(data.crew.map((c) => [c.email.toLowerCase(), c])))).catch(() => {}), [boat.boat_id]);
   useEffect(() => { if (open && online) { load(); loadReg(); } }, [open, online, load, loadReg]);
@@ -140,8 +147,19 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
           <DialogTitle className="font-display text-xl font-extrabold">{name}: photo and crew</DialogTitle>
           <DialogDescription className="text-left text-sm">Crew see this boat on their own phones and can tick items. Only you can change anything else.</DialogDescription>
         </DialogHeader>
+        {trip && (
+          <p className="flex flex-wrap items-baseline gap-x-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] px-3 py-2" data-testid="crew-trip-name">
+            <span className="field-label">Event or trip name</span> <b className="text-sm">{trip.name}</b>
+          </p>
+        )}
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
         <RoutesCrewHelp online={online} />
+        {trip && onSingleHand && noCrew && (
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3 py-2 text-sm font-bold" data-testid="crew-single-hand">
+            <Checkbox checked={trip.single} onCheckedChange={(v) => onSingleHand(!!v)} className="h-5 w-5" data-testid="crew-single-hand-checkbox" />
+            Single hand <span className="font-normal text-[var(--muted)]">I'm sailing this trip on my own</span>
+          </label>
+        )}
         <button type="button" className="btn-ghost h-12 justify-center gap-2" onClick={() => (online ? setRegister(true) : toast.error("Go online to open Crew Registration"))} data-testid="crew-register-open-btn">
           <ClipboardList className="h-4 w-4" /> Crew Registration
         </button>

@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Anchor, ClipboardCheck, Compass, Flag, Home, Loader2, Pencil, UserCog, Users, X, Zap } from "lucide-react";
+import { Anchor, ClipboardCheck, Compass, Flag, Home, Loader2, Pencil, ShoppingCart, UserCog, Users, X, Zap } from "lucide-react";
+import { TripTodos } from "@/components/boat/navigator/TripTodos";
 import { openList } from "@/lib/trips";
 import { toast } from "sonner";
 import { EDIT_NAME, QUICK_NAME, QuickPlanDialog } from "@/components/boat/navigator/QuickPlanDialog";
@@ -76,9 +77,17 @@ const RouteField = ({ id, label, value, onChange, placeholder }) => (
   </div>
 );
 
+const TripFlag = ({ label, title, testId }) => (
+  <span className="flex shrink-0 flex-col items-center gap-1" title={title} data-testid={testId}>
+    <span className="field-label text-center leading-tight">Trip<br />type</span>
+    <span className="flex h-11 items-center whitespace-nowrap rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">{label}</span>
+  </span>
+);
+
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
 // guide: the Model Vessel's Trip Planning guide; until the Quick Draft Plan is done only the bubbles, START and DESTINATION show.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null }) => {
+// tripId: this Trip Planning list (for the crew window). provisioned: something on Provisions is ticked.
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null, tripId, provisioned }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -100,12 +109,16 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
   const legsNow = w.legs || [];
   const isReturn = returnsToStart([{ route_start: start }, ...legsNow]);
   const canReturn = !!(start.trim() && dest.trim());
-  // A Day Trip: back at START with no stop on the way (one leg, transit points, or 3+ legs); a plain 2-leg out-and-back stays a Return trip.
+  // Back at START: a Day Trip when home the same day (any legs, transits or anchoring), a Return Trip when later. Ending elsewhere is a Passage.
   const allLegs = [{ route_start: start, route_dest: dest, start_pos: w.start_pos, dest_pos: w.dest_pos, arrive_type: w.arrive_type }, ...legsNow];
-  const dayTrip = canReturn && isDayTrip(allLegs) && (allLegs.length !== 2 || allLegs.some((l) => l.arrive_type === "transit"));
+  const loop = canReturn && (isReturn || isDayTrip(allLegs));
+  const last = legsNow[legsNow.length - 1];
+  const endAt = (last ? last.finish_at || last.depart_at : w.finish_at) || "";
+  const sameDay = !!w.depart_at && !!endAt && w.depart_at.slice(0, 10) === endAt.slice(0, 10);
+  const dayTrip = loop && sameDay;
+  const returnTrip = loop && !sameDay;
   const ret = canReturn && (isReturn || (!legsNow.length && w.return_trip !== false));
-  // A Draft Plan that ends away from START (green 1 to red 2 on the map) is a One-way Trip.
-  const oneWay = canReturn && draft && !isReturn && !dayTrip;
+  const passage = canReturn && !loop && (draft || legsNow.length > 0);
   // Trip Planning as the draft's legs, with any name or time changes made here.
   const current = () => [{ id: "plan", route_start: start, route_dest: dest, depart_at: w.depart_at || "", finish_at: w.finish_at || "", arrive_type: w.arrive_type || "",
     start_pos: w.start_pos || null, dest_pos: w.dest_pos || null, path: w.path ?? null }, ...(w.legs || [])];
@@ -172,15 +185,17 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       )}
       {!interim && (
         <div className="flex flex-wrap items-center gap-2" data-testid="route-crew-hops">
-          <HopBubble icon={Users} label="Crew" tone="crew" onClick={() => window.dispatchEvent(new Event("mbp:open-crew"))} testId="route-crew" />
+          <HopBubble icon={Users} label="Crew" tone="crew" onClick={() => window.dispatchEvent(new CustomEvent("mbp:open-crew", { detail: { trip: tripId } }))} testId="route-crew" />
           <HopBubble icon={ClipboardCheck} label="Prep" tone="crew" onClick={() => openList("crewPrep")} testId="route-prep" />
           <HopBubble icon={UserCog} label="Roles" tone="crew" onClick={() => window.dispatchEvent(new CustomEvent("mbp:crew-roles", { detail: { hop: true } }))} testId="route-roles" />
+          <HopBubble icon={ShoppingCart} label="Provisions" tone="crew" onClick={() => openList("provisions")} testId="route-provisions" />
         </div>
       )}
-      {!interim && !early && onLeaving && daysToGo(leaveAt) && (
+      {!interim && !early && onLeaving && daysToGo(leaveAt) && (<>
         <NextStep prefix={null} onClick={onLeaving} testId="trip-next-step"
           label={`${leaveToday || daysToGo(leaveAt).includes("ago") ? "Next step" : "Coming up soon"}, switch to Leaving Dock, go over Leaving Dock checks and Depart`} />
-      )}
+        <TripTodos boatId={boatId} online={online} single={!!w.single_hand} provisioned={!!provisioned} />
+      </>)}
       <div className="flex items-center gap-3">
         <h3 className="shrink-0 font-display text-base font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="route-leg-1-heading">Leg {legNo}</h3>
         {interim && w.event_name && <span className="min-w-0 truncate text-sm font-bold text-[var(--navy)]" title={w.event_name} data-testid="interim-event-name">{w.event_name}</span>}
@@ -196,19 +211,10 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />
         <RouteField id="route-dest" label="DESTINATION" value={dest} onChange={(v) => setRoute("route_dest", v)} placeholder="e.g. Picton" />
-        {!interim && dayTrip && (
-          <span className="flex shrink-0 flex-col items-center gap-1" title="Ends where it starts. Pin points on the Edit Draft Plan map to pass on the way round." data-testid="day-trip-flag">
-            <span className="field-label text-center leading-tight">Day<br />trip</span>
-            <span className="flex h-11 items-center rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">Day Trip</span>
-          </span>
-        )}
-        {!interim && oneWay && (
-          <span className="flex shrink-0 flex-col items-center gap-1" title="Ends away from START. Add a leg back to START on the Edit Draft Plan map to make it a return trip." data-testid="one-way-trip-flag">
-            <span className="field-label text-center leading-tight">One-way<br />trip</span>
-            <span className="flex h-11 items-center whitespace-nowrap rounded-full bg-[var(--navy)] px-2.5 text-xs font-extrabold uppercase text-white">One-way</span>
-          </span>
-        )}
-        {!interim && !dayTrip && !oneWay && (
+        {!interim && dayTrip && <TripFlag label="Day Trip" title="Back at START the same day. It can pass, stop or anchor on the way." testId="day-trip-flag" />}
+        {!interim && returnTrip && <TripFlag label="Return Trip" title="Back at START, more than one night away" testId="return-trip-flag" />}
+        {!interim && passage && <TripFlag label="Passage" title="Ends away from START, even if it's just one day" testId="passage-flag" />}
+        {!interim && !loop && !passage && (
           <label className={`flex shrink-0 flex-col items-center gap-1 ${!canReturn || legsNow.length ? "opacity-60" : "cursor-pointer"}`} data-testid="return-trip"
             title={isReturn ? "Leg 2 comes back to START, so this is a return trip" : legsNow.length ? "Only a 2-leg trip that comes back to START is a return trip" : canReturn ? "" : "Enter the START and DESTINATION first"}>
             <span className="field-label text-center leading-tight">Return<br />trip</span>

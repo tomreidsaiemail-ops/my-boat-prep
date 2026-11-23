@@ -25,8 +25,8 @@ const PENDING = "mbp_wizard_pending";
 export const restartWalkthrough = (uid, which = BASIC) => { reset(keys(uid), which); sessionStorage.setItem(PENDING, "1"); window.dispatchEvent(new Event(RESTART)); };
 
 // Model Vessel: a green page with a Training Mode strip and the chosen "Admin - Model Vessel - *" wizard.
-// The wizard and step are remembered; X hides it until Show steps.
-export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
+// The wizard and step are remembered; X hides it until Show steps. paused: the Trip Planning guide is running, so it closes (and stays closed).
+export const TrainingMode = ({ uid, online, copy = "", admin = false, paused = false }) => {
   const [editing, setEditing] = useState(false);
   const wizards = wizardsFrom(useAdminLists(WIZARD_PREFIX, online));
   const k = keys(uid);
@@ -69,7 +69,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   const wiz = parseWizard(wizard?.lines);
   const { steps, raw, finishRaw } = wiz;
   const [editingFinish, setEditingFinish] = useState(false);
-  const show = !shut && !(fresh && online && !boot) && steps.length > 0;
+  const show = !paused && !shut && !(fresh && online && !boot) && steps.length > 0;
   // Hidden while the admin edits a step or the Finish panel, so the edit window gets the whole screen.
   const win = show && !editing && !editingFinish;
   const at = Math.min(step, steps.length);
@@ -99,6 +99,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false }) => {
   };
   const move = (n, p, a) => { go(n); setPath(p); setAnswers(a); localStorage.setItem(k.path, JSON.stringify(p)); localStorage.setItem(k.answers, JSON.stringify(a)); };
   const close = (v) => { setShut(v); localStorage.setItem(k.shut, JSON.stringify(v)); };
+  useEffect(() => { if (paused) close(true); }, [paused]); // eslint-disable-line react-hooks/exhaustive-deps
   // Windows open below the training (and admin) strip, so their X close buttons are never hidden under it.
   const strip = useRef(null);
   useEffect(() => {
