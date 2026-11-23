@@ -1136,3 +1136,4 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Trip guide follow-ups (set-now holds, End of trip instructions, archive at the end). Tested iteration_228.
 - 2026-06: Set Up Wizard gives zones their usual cupboards; empty zones offer 'Add the usual cupboards'. Tested iteration_229.
 - 2026-06: First zone window help (Galley Cutlery Drawer sample Magic Scan) and 'Behave Like First Time' tag on ADMIN - 2FA Special Users. Tested iteration_230.
+- 2026-06: Trip 'Next step' links and plan highlights on Leaving/Arriving/Returning + Archive Trip next step. Tested iteration_231.

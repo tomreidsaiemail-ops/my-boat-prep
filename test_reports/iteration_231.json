@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only test of the trip 'next step' highlights on a mobile 390x844 screen, run as test-admin-1 on the Model Vessel plus one flow on main. I put TEST_ trip plans straight into the DB with /app/backend/tests/seed_mv_trip.py and covered 5 plan types: mooring->dock, anchor->mooring (one-way), berth with no Leg 2, dock, and mooring->dock on main. I found and fixed one bug. AllDoneDialog never passed the `planned` prop to <Choices>, so 'About to log your arrival' showed every choice dark (the user's screenshot). After a one-line fix, every requested flow passes: (1) After DEPART, depart-all-done-btn is replaced by route-plan-next-step, a yellow link reading 'Next step - Arriving at Destination, Mooring' (or Anchoring / Berthing, or 'Next step - Returning to Dock' for a dock plan), and the link switches lists. (2) The planned arrival choice is yellow with data-planned (mooring, anchor and berth each checked). (3) After arriving, arrived-next-hint reads 'Click New departure to return to dock' (or 'for your next leg') instead of the ARRIVED button, arrival-new-departure-btn is yellow, and this still shows after a reload. With no further leg and End of trip unticked, the ARRIVED button stays. (4) In the New departure window the button matching the arrival is yellow (Leave Mooring after a mooring arrival, Weigh Anchor after an anchor arrival). (5) Under way to the dock, arriving-next-step sits below the hop row, is yellow and switches to Returning to Dock. It is not shown when under way to another destination. (6) Logging arrival on Returning to Dock with End of trip ticked shows archive-next-step instead of ARRIVED, and it is still there after a reload. Tapping it opens Trip Planning with archive-trip-btn yellow and in view. Archiving opens Archived Trips with the new row yellow (data-fresh) and in view, and the next step is gone afterwards. (7) A one-way trip shows the Archive Trip next step on Arriving at Destination. Ship's Log entries for departure, arrival, interim departure and trip folding were written correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AllDoneDialog (About to log your arrival)", "issue": "The `planned` prop was taken in by AllDoneDialog but never passed on to <Choices>, so no arrival choice was ever yellow or had data-planned. FIXED by adding planned={planned} to <Choices>, then retested for mooring, anchor and berth.", "selector": "[data-testid=all-done-choice-mooring]", "priority": "HIGH (fixed)"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/seed_mv_trip.py"],
+  "action_items": [
+    "None blocking. Please review the one-line fix in AllDoneDialog.jsx (planned={planned} on <Choices>)."
+  ],
+  "critical_code_review_comments": [
+    "BoatPrep.jsx is 1615 lines, well over the 700-line guideline. The next-step logic (~lines 1255-1272) could move into a hook such as useTripNextSteps.",
+    "While under way to the dock, Arriving at Destination still shows the big 'ARRIVED, ALL ARRIVAL CHECKS DONE' card above the yellow 'Next step - Returning to Dock' link. It works as requested, but the user could tap the wrong arrival."
+  ],
+  "updated_files": ["/app/frontend/src/components/boat/departure/AllDoneDialog.jsx", "/app/backend/tests/seed_mv_trip.py"],
+  "success_rate": {"backend": "skipped (frontend only)", "frontend": "100% after fix (one bug found and fixed)"},
+  "seed_data_creation": "I put TEST_ trip plans (TEST_Home/TEST_Bay/TEST_Cove, event 'TEST_NextStep Trip') on test-admin-1 model_vessel and main using seed_mv_trip.py <leg1 type> <leg2 type|none> [boat]. Both boats were restored from a mongoexport backup afterwards, and the one trip_archives record I created (archive_id f2ea214c-...) was deleted by its id.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The fastest setup is `python3 /app/backend/tests/seed_mv_trip.py mooring dock [boat]`, which writes the plan straight into user_boats.boat and bumps boat_ts. Plans need an event_name or DEPART is blocked. Back up first with mongoexport and restore with mongoimport --mode=upsert --upsertFields=owner_id,boat_id. Close the Model Vessel training window (training-close-btn) or it covers the buttons. Levels: click every [data-testid$=-half] in levels-confirm-dialog, then levels-confirm-btn. The archive prompt is trip-finish-dialog / trip-finish-confirm-btn.",
+  "not_tested": "Two regression items: the full Model Vessel Trip Planning guide flow (iterations 227/228), and crew boats seeing none of the next steps. For crew I only read the code: every next-step render in BoatPrep.jsx is guarded by !crew."
+}

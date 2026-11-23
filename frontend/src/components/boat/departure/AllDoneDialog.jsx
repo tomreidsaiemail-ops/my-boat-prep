@@ -63,7 +63,7 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndT
             )}
             {!plan.blocked && !depart && <ActualFinish plan={plan} onFinish={onFinish} />}
             {!plan.blocked && !depart && plan.finish?.length !== 16 && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="all-done-actual-error">Enter the actual finish date and time to log your arrival.</p>}
-            {!plan.blocked && plan.choices && <Choices choices={plan.choices} busy={busy} disabled={plan.finish?.length !== 16} onPick={onConfirm} />}
+            {!plan.blocked && plan.choices && <Choices choices={plan.choices} busy={busy} disabled={plan.finish?.length !== 16} onPick={onConfirm} planned={planned} />}
             <div className="flex gap-2">
               {!plan.blocked && !plan.choices && (
                 <button type="button" className="btn-solid h-11 flex-1 justify-center gap-2" onClick={() => onConfirm()} disabled={busy || plan.checking || (!depart && plan.finish?.length !== 16)} data-testid="all-done-confirm-btn">
