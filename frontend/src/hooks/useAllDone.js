@@ -94,9 +94,10 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     const sig = arrivalSummary(lb, lb.depart || {}, a, arrivalUsage(lb, lb.depart || {}, a), "", listName);
     const stop = listId === "arrivingDest";
     const legs = b.legs?.[u.trip_id] || [];
-    // The last planned leg (or Returning to Dock) ends the trip, so its logs are folded; the skipper can change that.
-    const canFold = !!u.trip_id && legs.some((l) => l.logs?.length);
-    const endTrip = canFold && (listId === "returningDock" || !nextLeg(b, routeTrips(state.registry, b).find((t) => t.id === u.trip_id)));
+    // Only the last planned leg (or Returning to Dock) offers ending the trip, folding its logs; the skipper can untick it.
+    const lastOne = listId === "returningDock" || !nextLeg(b, routeTrips(state.registry, b).find((t) => t.id === u.trip_id));
+    const canFold = !!u.trip_id && legs.some((l) => l.logs?.length) && lastOne;
+    const endTrip = canFold;
     const choices = stop ? ARRIVE_KINDS.map((k) => {
       const n = arrivalTicks(list, k.key).size;
       return { ...k, text: `Ticks ${plural(n, "item")}: the ones for every arrival, plus everything under ${k.heading.replace(/^if/, "If")}` };

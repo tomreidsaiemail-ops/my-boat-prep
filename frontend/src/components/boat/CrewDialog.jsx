@@ -155,7 +155,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
         <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
         <RoutesCrewHelp online={online} />
         {trip && onSingleHand && noCrew && (
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3 py-2 text-sm font-bold" data-testid="crew-single-hand">
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3 py-2 text-sm font-bold" data-autosave data-testid="crew-single-hand">
             <Checkbox checked={trip.single} onCheckedChange={(v) => onSingleHand(!!v)} className="h-5 w-5" data-testid="crew-single-hand-checkbox" />
             Single hand <span className="font-normal text-[var(--muted)]">I'm sailing this trip on my own</span>
           </label>

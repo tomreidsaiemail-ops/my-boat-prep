@@ -153,10 +153,10 @@ export const TripListGuide = ({ guide, listId, busy, onShipsLog, onTripPlanning 
       {reached(s, "returning") && <HeadHome guide={guide} listId={listId} />}
     </div>
   );
-  return reached(s, "returning") && (
+  // Returning to Dock: its yellow Next step says it all; only the end-of-guide panel shows under it.
+  return s === "complete" && (
     <div className="flex flex-col gap-2" data-testid="trip-guide-home">
-      <HeadHome guide={guide} listId={listId} />
-      {s === "complete" && <Complete guide={guide} onShipsLog={onShipsLog} onTripPlanning={onTripPlanning} />}
+      <Complete guide={guide} onShipsLog={onShipsLog} onTripPlanning={onTripPlanning} />
     </div>
   );
 };

@@ -1453,7 +1453,7 @@ export default function BoatPrep({ boatId, boats }) {
       {/* Not underway: the ARRIVED card sits under the Trip Planning and Returning to Dock bubbles (underway, it's the one above the list picker). */}
       {!crew && !boat.underway?.trip_id && (active.id === "arrivingDest" || active.id === "returningDock") && (
         <ArrivedCard underway={boat.underway} next={ended ? "" : nextDeparture(hopTrip)} label={active.id === "arrivingDest" ? "Arrived, all arrival checks done" : undefined} onArrive={() => doneGuard() && allDone.openArrive(active.id, active.name)}
-          noArrive={!!archiveStep || (active.id === "arrivingDest" && !!stopHint)} />
+          noArrive={!!archiveStep || active.id === "returningDock" || (active.id === "arrivingDest" && !!stopHint)} />
       )}
       {!crew && active.id === "leavingDock" && (
         <DepartRoute trips={routeTrips(state.registry, boat)} boat={boat} onPick={(id) => mutate((s) => ({ ...s, boat: { ...s.boat, route_trip: id, route_trip_day: today() } }))}

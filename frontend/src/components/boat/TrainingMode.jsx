@@ -118,7 +118,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false, paused = f
     <>
       <div ref={strip} data-training-window className={`pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 ${admin ? "bg-orange-700" : "bg-emerald-700"} px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden`} role="status" data-testid="training-mode-strip">
         <GraduationCap className="h-4 w-4 shrink-0" /> &ldquo;Model Vessel&rdquo; Training Mode
-        {shut && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
+        {shut && !paused && steps.length > 0 && <button type="button" onClick={() => close(false)} className="ml-2 rounded-full bg-white px-2.5 py-0.5 text-[11px] text-emerald-800" data-testid="training-show-btn">Show steps</button>}
       </div>
       {win && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} wiz={wiz} at={at} path={path} answers={answers} mini={mini}
         onMove={move} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); move(0, [], {}); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }}

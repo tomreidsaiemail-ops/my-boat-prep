@@ -31,7 +31,7 @@ export const TripTodos = ({ boatId, online, single, provisioned }) => {
   return (
     <ul className="flex flex-col gap-1.5 rounded-md border-[1.5px] border-[var(--line)] bg-white px-3 py-2" data-testid="trip-todos">
       <Todo n={1} label="Crew prep and invite" done={crew > 0 || single} testId="trip-todo-crew"
-        extra={single && !crew ? <span className="no-underline" data-testid="trip-todo-crew-single">(S)</span> : null}
+        extra={single && !crew ? <span className="inline-block" data-testid="trip-todo-crew-single">(S)</span> : null}
         onClick={() => spot(["route-crew-btn", "route-prep-btn", "route-roles-btn"])} />
       <Todo n={2} label="Provisioning" done={provisioned} testId="trip-todo-provisions" onClick={() => spot(["route-provisions-btn"])} />
     </ul>
