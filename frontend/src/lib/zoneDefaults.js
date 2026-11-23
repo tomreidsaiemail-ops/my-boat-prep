@@ -13,10 +13,19 @@ export const ZONE_CUPBOARDS = {
 
 const key = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
 
-// New cupboards for the placed zone colours, skipping any name the boat already has.
-export const zoneDefaultAreas = (swatches, areas) => {
-  const have = new Set(areas.filter((a) => !a.parent_id).map((a) => key(a.name)));
-  return swatches.flatMap((s) => (ZONE_CUPBOARDS[key(s.label)] || [])
-    .filter(([name]) => !have.has(key(name)) && have.add(key(name)))
-    .map(([name, flags = {}]) => ({ id: newAreaItemId(), name, items: [], zone: { label: s.label, colour: s.colour }, ...flags })));
+export const usualCupboards = (label) => (ZONE_CUPBOARDS[key(label)] || []).map(([name]) => name);
+
+// The usual cupboards for these zones: new ones are added, and a same-named cupboard not yet in any zone
+// (zoned: ids already in one) is filed under it. Never doubles one up. count: cupboards added or filed.
+export const withZoneDefaults = (swatches, areas, zoned = {}) => {
+  const byName = new Map(areas.filter((a) => !a.parent_id).map((a) => [key(a.name), a]));
+  const filed = {};
+  const fresh = [];
+  swatches.forEach((s) => (ZONE_CUPBOARDS[key(s.label)] || []).forEach(([name, flags = {}]) => {
+    const zone = { label: s.label, colour: s.colour };
+    const have = byName.get(key(name));
+    if (!have) { const a = { id: newAreaItemId(), name, items: [], zone, ...flags }; byName.set(key(name), a); fresh.push(a); }
+    else if (!have.zone && !zoned[have.id] && !filed[have.id]) filed[have.id] = zone;
+  }));
+  return { areas: [...areas.map((a) => (filed[a.id] ? { ...a, zone: filed[a.id] } : a)), ...fresh], count: fresh.length + Object.keys(filed).length };
 };

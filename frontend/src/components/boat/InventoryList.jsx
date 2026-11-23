@@ -17,7 +17,7 @@ import { MoveAreaDialog } from "@/components/boat/MoveAreaDialog";
 import { newAreaItemId } from "@/lib/inventoryMove";
 import { CupboardPhotoButton, areaPhotos, areaPhotoUrl, uploadAreaPhoto, withPhotos } from "@/components/boat/inventory/CupboardPhoto";
 import { ZonePhotosButton } from "@/components/boat/zone/ZonePhotosButton";
-import { zoneDefaultAreas } from "@/lib/zoneDefaults";
+import { withZoneDefaults } from "@/lib/zoneDefaults";
 import { areaZones, boatZones, rainbowGroups, zonePhotos } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
@@ -282,11 +282,15 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     onChange((list) => [...list, ...names.filter((n) => !list.some((a) => same(a.name, n))).map((name) => ({ id: ids[name], name, items: [] }))]);
     return ids;
   };
-  // Magically Place Colours found these zones: give each its usual cupboards (Galley: Fridge, Pantry...), never doubling one up.
+  // Magically Place Colours found these zones, or an empty zone asked: give each its usual cupboards (Galley: Fridge, Pantry...), never doubling one up.
   const addZoneDefaults = (swatches) => {
-    const fresh = zoneDefaultAreas(swatches, areas);
-    if (fresh.length) onChange((list) => [...list, ...zoneDefaultAreas(swatches, list)]);
-    return fresh.length;
+    const { count } = withZoneDefaults(swatches, areas, areaZones(boat, areas));
+    if (count) onChange((list) => withZoneDefaults(swatches, list, areaZones(boat, list)).areas);
+    return count;
+  };
+  const addUsual = (z) => {
+    const n = addZoneDefaults([z]);
+    if (n) toast.success(`${n} usual ${n === 1 ? "cupboard" : "cupboards"} added to ${z.label}. Rename or remove any you don't have.`);
   };
   const [focus, setFocus] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
@@ -578,7 +582,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
         onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
-        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} />
+        onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} onUsual={readOnly ? undefined : addUsual} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper

@@ -81,7 +81,8 @@ import { InventoryLocked } from "@/components/boat/InventoryLocked";
 import { AreaFilter, AreaPicker, NO_AREA } from "@/components/boat/AreaFilter";
 import { ListSearch, searchableList } from "@/components/boat/ListSearch";
 import { FishWhispererDialog } from "@/components/boat/fish/FishWhispererDialog";
-import { boatZones } from "@/lib/zoneColours";
+import { areaZones, boatZones } from "@/lib/zoneColours";
+import { withZoneDefaults } from "@/lib/zoneDefaults";
 import { pendingQr, qrBoatKey } from "@/lib/qrScan";
 import { matches } from "@/components/boat/Highlight";
 import { BoatWatermark } from "@/components/boat/BoatWatermark";
@@ -1227,6 +1228,12 @@ export default function BoatPrep({ boatId, boats }) {
   // Hop bubbles (Trip Planning, Route...); on Crew Roles they sit under the list instead of above it.
   const transitNow = allDone.transitLeg();
   const TRIP_HOPS = new Set(["leavingDock", "arrivingDest", "returningDock"]);
+  // Set Up Wizard: the placed zones get their usual cupboards (Galley: Fridge, Freezer...) in Boat Inventory.
+  const setupZoneDefaults = (swatches) => {
+    const { count } = withZoneDefaults(swatches, areas, areaZones(boats.current, areas));
+    if (count) mutate((s) => ({ ...s, areas: withZoneDefaults(swatches, s.areas || [], areaZones(boats.current, s.areas || [])).areas }));
+    return count;
+  };
   // Until the guide's Quick Draft Plan is done, Trip Planning shows only the bubbles, START and DESTINATION.
   const guideEarly = !!guide && active.id === DEFAULT_TRIP && !reached(guide.stage, "filled");
   // Days to go only matter before leaving: shown on Trip Planning and Leaving Dock, gone once the trip has departed.
@@ -1473,7 +1480,7 @@ export default function BoatPrep({ boatId, boats }) {
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
-      {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField}
+      {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField} onZoneDefaults={setupZoneDefaults}
         onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(mapId || true), 1400); }} />}
       <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />
       <GoListDialog list={goList} onGo={() => { setActiveId(goList.id); setGoList(null); window.scrollTo({ top: 0, behavior: "smooth" }); }} onStay={() => setGoList(null)} />
