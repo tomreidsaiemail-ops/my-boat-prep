@@ -65,15 +65,17 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
   };
 
   const archive = async (id, mail = {}) => {
-    if (!online) { toast.error("Archiving a trip needs a signal"); return; }
+    if (!online) { toast.error("Archiving a trip needs a signal"); return false; }
     setBusy(true);
     try {
       const { data } = await api.post(base, { ...archivePayload(stateRef.current, id), email_shore: mail.shore !== false, email_crew: mail.crew !== false });
       mutate((s) => addLogEntry(resetTrip(s, id), data));
       setArchives((l) => [data, ...(l || [])]);
       toast.success(`${data.name} archived. The wrap-up email goes out in 3 minutes unless you Undo`, { id: data.archive_id, duration: 10000, action: { label: "Undo", onClick: () => restore(data) } });
+      return true;
     } catch (e) {
       toast.error(apiError(e, "Couldn't archive the trip, please try again"));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -93,7 +95,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
   const askArchive = (id, name) => setAsk({ id, name, manual: true });
   const setMail = (k, v) => setAsk((a) => (a ? { ...a, mail: { shore: true, crew: true, ...(a.mail || {}), [k]: v } } : a));
   const closeAsk = () => { if (ask && !ask.manual) snoozeTrip(boat.key, ask.id); setAsk(null); };
-  const confirmAsk = () => { const { id, mail } = ask; setAsk(null); archive(id, mail); };
+  const confirmAsk = () => { const { id, mail } = ask; setAsk(null); return archive(id, mail); };
 
   return { archives, ask, busy, askArchive, closeAsk, confirmAsk, setMail, restore, similar, similarCheck, remove, load: (id) => api.get(`${base}/${id}`).then(({ data }) => data) };
 }

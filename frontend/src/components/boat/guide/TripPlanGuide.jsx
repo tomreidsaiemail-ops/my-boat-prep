@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Bullets, GoOn, GuideSection, GuideText, P } from "@/components/boat/guide/GuideParts";
-import { reached, spot, useGuideSteps, useHold } from "@/lib/tripGuide";
+import { reached, spot, useGuideSteps, useHold, usePressed } from "@/lib/tripGuide";
 
 const Intro = ({ guide }) => {
   const active = guide.stage === "intro";
@@ -63,11 +63,18 @@ const Quick = ({ guide, onQuick }) => {
 };
 
 const FILLED = ["route-start-input", "route-dest-input", "navigator-event-name-input", "navigator-depart-at-field", "navigator-finish-at-field"];
-const FILLED_STEPS = [FILLED, ["navigator-depart-at-set-now-btn", "navigator-finish-at-set-now-btn"], ["route-leaving-dock-btn"]];
+const SET_NOW = "navigator-depart-at-set-now-btn";
+const SET_NOW_2 = "navigator-finish-at-set-now-btn";
+const FILLED_STEPS = [FILLED, [SET_NOW, SET_NOW_2], ["route-leaving-dock-btn"]];
 
 const Filled = ({ guide }) => {
   const active = guide.stage === "filled";
   const n = useGuideSteps(guide, "filled", FILLED_STEPS, active);
+  // Once highlighted, "set now" and "set now + 2hr" each stay yellow until pressed.
+  useHold(SET_NOW, active && n >= 1 && !guide.seen.setNow);
+  useHold(SET_NOW_2, active && n >= 1 && !guide.seen.setNow2);
+  usePressed(SET_NOW, active, () => guide.see("setNow"));
+  usePressed(SET_NOW_2, active, () => guide.see("setNow2"));
   return (
     <GuideSection title="Prepare to leave today - override date and time defaults" active={active} testId="trip-guide-filled" onSkip={guide.skip}>
       <GuideText testId="trip-guide-filled-text">These are filled out for you: START and DESTINATION, EVENT OR TRIP NAME, DEPARTURE DATE AND TIME and ESTIMATED FINISH DATE AND TIME.</GuideText>
@@ -78,6 +85,16 @@ const Filled = ({ guide }) => {
   );
 };
 
+// From the guide's finish: the archive button below stays yellow until the trip is archived, which ends the guide.
+const ArchiveHint = () => {
+  useHold("archive-trip-btn");
+  useEffect(() => {
+    const t = setTimeout(() => document.querySelector('[data-testid="archive-trip-btn"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 700);
+    return () => clearTimeout(t);
+  }, []);
+  return <GuideText testId="trip-guide-archive-text">Press &quot;Archive Trip Planning and reset&quot;, highlighted below, to archive this Model Vessel trip. You can then try the same trip again, or a variation with another midpoint.</GuideText>;
+};
+
 // Trip Planning on the Model Vessel, under START and DESTINATION: each part of the guide in turn, the finished ones folded.
 export const TripPlanGuide = ({ guide, onQuick }) => (
   <div className="flex flex-col gap-2" data-testid="trip-guide">
@@ -85,5 +102,6 @@ export const TripPlanGuide = ({ guide, onQuick }) => (
     {reached(guide.stage, "bubbles") && <Bubbles guide={guide} />}
     {reached(guide.stage, "quick") && <Quick guide={guide} onQuick={onQuick} />}
     {reached(guide.stage, "filled") && <Filled guide={guide} />}
+    {guide.stage === "complete" && guide.archive && <ArchiveHint />}
   </div>
 );

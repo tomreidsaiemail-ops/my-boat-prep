@@ -51,6 +51,14 @@ export const useHold = (testId, on = true) => useEffect(() => {
   return () => { clearInterval(t); document.querySelectorAll(`[data-testid="${testId}"]`).forEach((e) => e.classList.remove("mbp-glow")); };
 }, [testId, on]);
 
+// Calls back when the skipper presses this element, matched by its test id as it may re-render.
+export const usePressed = (testId, on, cb) => useEffect(() => {
+  if (!on) return undefined;
+  const f = (e) => { if (e.target.closest?.(`[data-testid="${testId}"]`)) cb(); };
+  document.addEventListener("click", f, true);
+  return () => document.removeEventListener("click", f, true);
+}, [testId, on]); // eslint-disable-line react-hooks/exhaustive-deps
+
 // Scrolls the first of these into view if it's off screen, then highlights them all yellow together.
 export const spot = (ids, ms = 5000) => {
   const el = ids.map((id) => document.querySelector(`[data-testid="${id}"]`)).find(Boolean);

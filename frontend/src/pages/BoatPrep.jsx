@@ -40,7 +40,7 @@ import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import useAllDone from "@/hooks/useAllDone";
 import { TRIP_GUIDE, between, guideAfter, guideRestart, reached, useTripGuide } from "@/lib/tripGuide";
 import { TripListGuide } from "@/components/boat/guide/TripListGuide";
-import { DepartGuide } from "@/components/boat/guide/DialogGuides";
+import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
 import { routeTrips, today } from "@/lib/allDone";
 import { ITEM_PHOTO_LISTS } from "@/components/boat/ItemPhoto";
@@ -1393,7 +1393,7 @@ export default function BoatPrep({ boatId, boats }) {
         </button>
       )}
       {hopRow}
-      {guide && TRIP_HOPS.has(active.id) && <TripListGuide guide={guide} listId={active.id} busy={!!allDone.plan || !!allDone.levelsAsk.ask} onShipsLog={() => pickList("shipsLog")} />}
+      {guide && TRIP_HOPS.has(active.id) && <TripListGuide guide={guide} listId={active.id} busy={!!allDone.plan || !!allDone.levelsAsk.ask} onShipsLog={() => pickList("shipsLog")} onTripPlanning={() => pickList(DEFAULT_TRIP)} />}
       {!crew && prepClones.length > 0 && (
         <div className="flex flex-wrap items-center gap-2" data-testid="crew-prep-clones">
           {prepClones.map((l) => {
@@ -1546,7 +1546,8 @@ export default function BoatPrep({ boatId, boats }) {
         onDepart={async (kind, leg) => { setInterim(false); if (await allDone.interimDepart(kind, leg)) guideLogged("interim"); }} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onClose={allDone.close}
         onConfirm={(how) => { const p = allDone.plan; allDone.confirm(how); guideLogged(p?.kind === "depart" ? "depart" : p?.listId); }}
-        help={guide && allDone.plan?.kind === "depart" && between(guide.stage, "leave", "leaveOk") ? <DepartGuide guide={guide} /> : null} />
+        help={!guide ? null : allDone.plan?.kind === "depart" && between(guide.stage, "leave", "leaveOk") ? <DepartGuide guide={guide} />
+          : allDone.plan?.kind === "arrive" && allDone.plan.listId === "arrivingDest" && between(guide.stage, "underway", "click") ? <EndTripGuide /> : null} />
       <LevelsConfirmDialog ask={allDone.levelsAsk.ask} boat={boat} onConfirm={allDone.levelsAsk.confirm} onClose={allDone.levelsAsk.close} />
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
@@ -1558,7 +1559,8 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={() => { remove(dialog.item.id); setDialog(null); }} onClose={() => setDialog(null)} />
       <DeleteGroupDialog group={dialog?.type === "deleteGroup" ? dialog.group : null} labelFor={labelFor} onHeadOnly={(id) => { remove(id); setDialog(null); }}
         onConfirm={(ids) => { removeMany(ids); setDialog(null); }} onClose={() => setDialog(null)} />
-      <TripFinishPrompt ask={trips.ask} onConfirm={trips.confirmAsk} onClose={trips.closeAsk} onMail={trips.setMail} />
+      <TripFinishPrompt ask={trips.ask} onClose={trips.closeAsk} onMail={trips.setMail}
+        onConfirm={async () => { const g = guide; if ((await trips.confirmAsk()) && g?.stage === "complete") g.to("done"); }} />
       {emailPrompt}
     </main>
     </CrewDietContext.Provider>

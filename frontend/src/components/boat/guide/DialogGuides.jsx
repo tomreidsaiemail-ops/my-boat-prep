@@ -23,6 +23,23 @@ export const DepartGuide = ({ guide }) => {
   );
 };
 
+// Top of "About to log your arrival" at the midpoint: why End of trip stays unticked; Continue folds this and keeps ARRIVE MOORING yellow until pressed.
+export const EndTripGuide = () => {
+  const [folded, setFolded] = useState(false);
+  useHold("all-done-end-trip", !folded);
+  useHold("all-done-choice-mooring", folded);
+  const go = () => {
+    setFolded(true);
+    setTimeout(() => document.querySelector('[data-testid="all-done-choice-mooring"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+  };
+  return (
+    <GuideSection title="End of trip instructions" active={!folded} testId="trip-guide-end-trip">
+      <GuideText testId="trip-guide-end-trip-text">Since this is a midpoint arrival, we leave &quot;End of trip&quot; unchecked. The system will check it for us when arriving on our last leg.</GuideText>
+      {!folded && <GoOn onClick={go} testId="trip-guide-end-trip-continue-btn" />}
+    </GuideSection>
+  );
+};
+
 // Top of the Quick Draft Plan window: how to zoom and tap the three points; Continue folds it.
 // destination: the DESTINATION's popup is up, so its 3rd option (come back to the start) is highlighted.
 export const MapGuide = ({ destination }) => {

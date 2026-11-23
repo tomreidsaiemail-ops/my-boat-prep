@@ -1,4 +1,4 @@
-import { BookOpen, PartyPopper } from "lucide-react";
+import { BookOpen, PartyPopper, Route } from "lucide-react";
 import { Bullets, GoOn, GuideSection, GuideText, P } from "@/components/boat/guide/GuideParts";
 import { reached, useGuideSteps, useHold } from "@/lib/tripGuide";
 
@@ -118,7 +118,7 @@ const HeadHome = ({ guide, listId }) => {
   );
 };
 
-const Complete = ({ guide, onShipsLog }) => (
+const Complete = ({ guide, onShipsLog, onTripPlanning }) => (
   <section className="flex flex-col gap-2 rounded-md border-2 border-yellow-500 bg-yellow-100 p-3" data-testid="trip-guide-complete">
     <p className="flex items-center gap-2 font-display text-base font-extrabold text-[var(--navy)]"><PartyPopper className="h-5 w-5" /> Trip Planning guide complete</p>
     <P testId="trip-guide-complete-text">Well done! You planned a trip on the Model Vessel, left the dock, arrived at your destination, set off again and returned to the dock. Every step was logged in the Model Vessel&apos;s Ship&apos;s Log. You can go through this guide again any time from Help &gt; Model Vessel.</P>
@@ -126,12 +126,16 @@ const Complete = ({ guide, onShipsLog }) => (
       <button type="button" className="btn-ghost h-11 gap-2 px-4" onClick={onShipsLog} data-testid="trip-guide-complete-log-btn"><BookOpen className="h-4 w-4" /> Open the Ship&apos;s Log</button>
       <GoOn onClick={() => guide.to("done")} label="Finish guide" testId="trip-guide-complete-finish-btn" />
     </div>
+    <P testId="trip-guide-complete-archive-text">Reminder: archive this Model Vessel guide trip to try the same trip again, or to try a variation with another midpoint.</P>
+    <button type="button" onClick={() => { guide.set({ archive: true }); onTripPlanning(); }}
+      className="inline-flex min-h-8 items-center gap-1.5 self-start rounded-full border-2 border-[var(--navy)] bg-white px-3 py-1 text-left text-xs font-extrabold text-[var(--navy)] shadow-sm hover:bg-slate-100 active:scale-95 [transition:background-color_.15s,transform_.1s]"
+      data-testid="trip-guide-complete-archive-btn"><Route className="h-3.5 w-3.5 shrink-0" /> Take me to &quot;Trip Planning&quot; where I can archive the trip</button>
   </section>
 );
 
 // Leaving the Dock, Arriving at Destination and Returning to Dock on the Model Vessel: the guide's parts for that list, under its bubbles.
 // busy: an ARRIVED window is open.
-export const TripListGuide = ({ guide, listId, busy, onShipsLog }) => {
+export const TripListGuide = ({ guide, listId, busy, onShipsLog, onTripPlanning }) => {
   const s = guide.stage;
   if (listId === "leavingDock") return reached(s, "leave") && (
     <div className="flex flex-col gap-2" data-testid="trip-guide-leaving">
@@ -152,7 +156,7 @@ export const TripListGuide = ({ guide, listId, busy, onShipsLog }) => {
   return reached(s, "returning") && (
     <div className="flex flex-col gap-2" data-testid="trip-guide-home">
       <HeadHome guide={guide} listId={listId} />
-      {s === "complete" && <Complete guide={guide} onShipsLog={onShipsLog} />}
+      {s === "complete" && <Complete guide={guide} onShipsLog={onShipsLog} onTripPlanning={onTripPlanning} />}
     </div>
   );
 };
