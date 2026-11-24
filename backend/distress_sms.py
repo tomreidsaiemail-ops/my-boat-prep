@@ -13,6 +13,7 @@ from twilio.rest import Client
 from auth import get_current_user
 from db import db
 from distress_email import distress_subject
+from shore import phone_e164
 from shore_alert import _aboard
 
 log = logging.getLogger(__name__)
@@ -44,8 +45,8 @@ def _twilio():
 
 
 async def _phones(doc: dict) -> list:
-    """Every shore contact with a phone: those watching and those still invited."""
-    joined = [c.get("phone") for c in (doc.get("shore") or {}).values()]
+    """Every shore contact with a phone: the boat's own (MAYDAY set up), those watching and those still invited."""
+    joined = [phone_e164((doc.get("boat") or {}).get("shore_phone", ""))] + [c.get("phone") for c in (doc.get("shore") or {}).values()]
     invited = [i.get("phone") async for i in db.shore_invites.find({"owner_id": doc["owner_id"], "boat_id": doc["boat_id"], "phone": {"$nin": ["", None]}}, {"_id": 0, "phone": 1})]
     return list(dict.fromkeys(p for p in joined + invited if p))
 

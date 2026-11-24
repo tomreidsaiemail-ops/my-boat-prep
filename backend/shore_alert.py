@@ -20,7 +20,7 @@ NEAR_M = 100
 NAMES = {"mayDay": "MAYDAY", "panPan": "PAN-PAN"}
 Owner = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{0,80}$")]
 BoatQ = Annotated[str, Query(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
-FIELDS = {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "boat.shore_email": 1, "shore": 1, "shore_ids": 1, "tracking": 1, "distress": 1, "crew_names": 1}
+FIELDS = {"_id": 0, "owner_id": 1, "boat_id": 1, "boat.vessel": 1, "boat.shore_email": 1, "boat.shore_phone": 1, "shore": 1, "shore_ids": 1, "tracking": 1, "distress": 1, "crew_names": 1}
 
 
 class Where(BaseModel):

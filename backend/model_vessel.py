@@ -95,7 +95,7 @@ async def ensure_model_vessel(user: dict, token: str | None):
     now = datetime.now(timezone.utc).isoformat()
     copy = {k: v for k, v in master.items() if k not in DROP}
     boat = dict(copy.get("boat") or {})
-    boat.update({"shore_email": "", "make": COVER_MAKE, "model": COVER_MODEL})
+    boat.update({"shore_email": "", "shore_phone": "", "make": COVER_MAKE, "model": COVER_MODEL})
     copy.update({"owner_id": uid, "boat_id": MODEL_BOAT_ID, "boat": boat, "model": True, "crew": [], "created_at": now, "updated_at": now, "synced_at": now})
     await db.user_boats.update_one({"owner_id": uid, "boat_id": MODEL_BOAT_ID}, {"$setOnInsert": copy}, upsert=True)
     for coll, key in (("item_photos", "photo_id"), ("item_files", "file_id")):

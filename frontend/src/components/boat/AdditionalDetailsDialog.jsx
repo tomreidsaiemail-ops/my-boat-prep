@@ -187,6 +187,7 @@ export const AdditionalDetailsDialog = ({ open, boat, onChange, onClose, returnF
           <label className="flex cursor-pointer items-end gap-2 pb-3 text-sm font-bold" data-testid="no-shore">
             <input type="checkbox" checked={!!boat.no_shore} onChange={(e) => onChange("no_shore", e.target.checked)} className="h-5 w-5 accent-[var(--navy)]" data-testid="no-shore-checkbox" /> No shore contact
           </label>
+          {!boat.no_shore && <div className="col-span-2"><TextField id="shore-phone" label="Shore contact phone (texted a confirmed MAYDAY or PAN-PAN)" value={boat.shore_phone || ""} placeholder="Mobile, e.g. +64 21 555 1234" onChange={(v) => onChange("shore_phone", v.slice(0, 30))} /></div>}
           <DetailsSection title="Vessel Telemetry / Vessel Dimensions" testId="dimensions-section"
             summary={[["LOA", boat.loa], ["LWL", boat.lwl], ["Beam", boat.beam], ["Draft", boat.draft], ["Mast", boat.mast_height]].filter(([, v]) => v).map(([k, v]) => `${k} ${v} ${unit}`).join(" · ") || "LOA, LWL, beam, draft and mast height"}>
             <div className="col-span-2"><UnitToggle value={unit} onChange={(u) => { if (u !== unit) switchWeights(boat, u, onChange); onChange("units", u); }} /></div>

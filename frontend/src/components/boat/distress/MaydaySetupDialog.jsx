@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { BoatTypeField } from "@/components/boat/AdditionalDetailsDialog";
 import { COLOURS } from "@/components/boat/telemetry/ColourField";
+import { phoneOk } from "@/components/boat/shore/ShoreContacts";
 
 const real = (v) => { const t = String(v ?? "").trim(); return /^todo$/i.test(t) ? "" : t; };
 const has = (k) => (b) => !!real(b[k]);
@@ -13,6 +14,7 @@ const OK = {
   mmsi: (b) => /^\d{9}$/.test(b.mmsi || ""),
   pob: (b) => (b.pob || 0) >= 1,
   shore_email: (b) => EMAIL_RE.test(real(b.shore_email)),
+  shore_phone: (b) => !!real(b.shore_phone) && phoneOk(real(b.shore_phone)),
 };
 // MAYDAY is set up once the script has everything it needs: name, callsign, MMSI (or none), POB, boat type, both colours and a shore contact (or none).
 export const maydayReady = (b = {}) => ["vessel", "callsign", "pob", "boat_type", "hull_colour", "deck_colour"].every((k) => OK[k](b))
@@ -157,6 +159,10 @@ export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
             <div className="grid grid-cols-2 gap-2.5">
               <SetupField k="shore_name" label="Shore contact name" boat={boat} onChange={change} input={{ maxLength: 60, placeholder: "Their name" }} />
               <SetupField k="shore_email" label="Shore contact email" boat={boat} onChange={change} clean={(v) => v.slice(0, 254)} input={{ type: "email", placeholder: "shore@email.com" }} />
+              <div className="col-span-2"><SetupField k="shore_phone" label="Shore contact phone (optional)" boat={boat} onChange={change} clean={(v) => v.slice(0, 30)} input={{ type: "tel", placeholder: "Mobile, e.g. +64 21 555 1234" }} /></div>
+              <p className={`col-span-2 -mt-1 text-xs ${real(boat.shore_phone) && !OK.shore_phone(boat) ? "font-bold text-[var(--red)]" : "text-[var(--muted)]"}`} data-testid="mayday-setup-shore-phone-note">
+                {real(boat.shore_phone) && !OK.shore_phone(boat) ? "Use the international format, e.g. +64 21 555 1234" : "With a mobile, a confirmed MAYDAY or PAN-PAN is also texted to them."}
+              </p>
             </div>
           )}
           <NoneTick checked={!!boat.no_shore} onChange={(v) => change("no_shore", v)} label="No shore contact" testId="mayday-setup-no-shore" />
