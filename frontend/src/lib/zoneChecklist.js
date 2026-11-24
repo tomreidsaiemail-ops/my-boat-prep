@@ -57,14 +57,21 @@ const DEFAULT = [
 const builtIn = (label) => (LISTS.find(([re]) => re.test(String(label || "").toLowerCase())) || [null, DEFAULT])[1];
 
 export const ZONE_CAPTURE = "Admin - Zone by Zone - Make sure you capture";
-// "Admin - Zone by Zone - Make sure you capture": a zone name, then its bullets indented under it.
-const byZone = (items = []) => items.reduce((acc, i) => (i.indent ? (acc.length ? [...acc.slice(0, -1), { ...acc[acc.length - 1], bullets: [...acc[acc.length - 1].bullets, i.label] }] : acc)
-  : [...acc, { zone: i.label.trim().toLowerCase(), bullets: [] }]), []);
+const ZONE_WORDS = new Set("port starboard fore forward aft guest other galley saloon nav station cockpit lazarette deck transom cabin cabins stateroom head heads engine room rooms anchor locker fly mast base coachroof top ama zones zone v-berth forepeak".split(" "));
+const tidy = (l) => String(l || "").trim().replace(/^\d+[.)]\s*/, "").replace(/:$/, "").trim().toLowerCase();
+// A zone name: every word is a zone word (Galley, Port Forward cabin, Other zones), or the zone being shown.
+const isZoneName = (l, own) => { const t = tidy(l); return !!t && (t === own || t.split(/\s+/).every((w) => ZONE_WORDS.has(w))); };
+// "Admin - Zone by Zone - Make sure you capture": a zone name, then its bullets under it (indented, or just the lines that follow it).
+const byZone = (items = [], own = "") => {
+  const indented = items.some((i) => i.indent);
+  return items.reduce((acc, i) => ((indented ? i.indent : !isZoneName(i.label, own)) ? (acc.length ? [...acc.slice(0, -1), { ...acc[acc.length - 1], bullets: [...acc[acc.length - 1].bullets, i.label.trim()] }] : acc)
+    : [...acc, { zone: tidy(i.label), bullets: [] }]), []);
+};
 // The zone's own entry, else the longest zone name inside its label (Port Forward cabin -> Forward cabin; Aft Head -> Heads), else "Other zones".
 export const zoneChecklist = (label, items) => {
-  const zones = byZone(items).filter((z) => z.bullets.length);
-  if (!zones.length) return builtIn(label);
   const l = String(label || "").trim().toLowerCase();
+  const zones = byZone(items, l).filter((z) => z.bullets.length);
+  if (!zones.length) return builtIn(label);
   const hit = zones.find((z) => z.zone === l)
     || [...zones].sort((a, b) => b.zone.length - a.zone.length).find((z) => l.includes(z.zone) || l.includes(z.zone.replace(/s$/, "")))
     || zones.find((z) => z.zone.startsWith("other"));
