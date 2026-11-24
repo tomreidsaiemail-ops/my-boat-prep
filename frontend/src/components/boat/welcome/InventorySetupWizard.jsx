@@ -137,7 +137,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
         {step === "failed" && <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => go()} data-testid="setup-retry-btn"><RotateCcw className="h-4 w-4" />Try again</button>}
         {tapping && <>
           <ZoneTapPanel key={`${step}-${colours.length}`} boat={boat} map={map} online={online} colours={colours} big={blank} onMaps={onMaps}
-            text={`${ZONES[step].text}${step === "galley" && blank ? " The bow is on the right." : ""}`} />
+            text={ZONES[step].text} />
           {!["galley", "engines"].includes(step) && <MoreZones step={step} more={more} setMore={setMore} onSkip={skip} />}
           <Nav onBack={() => setStep(i ? ORDER[i - 1] : "details")} onNext={forward} label={ends ? "Finish" : step === "galley" && colours.length && !placed ? "Tap the Galley on the drawing first" : "Next"}
             disabled={step === "galley" && colours.length > 0 && !placed} />
