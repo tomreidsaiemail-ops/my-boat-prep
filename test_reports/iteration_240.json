@@ -1,0 +1,36 @@
+{
+  "summary": "Tested ADMIN - MAYDAY / PAN-PAN TEMPLATE lists and how they replace the skipper's lists, the header Set up and grey buttons, the MAYDAY set up dialog, the Welcome tick and the confirm flow. Backend: 13/13 pytest pass (admin-lists for beta/free/admin, 10 labels each with exact text and no numbering, PAN-PAN has no MAYDAY line, 401 without auth, admin template-lists shows both as private, fill_radio rules). Frontend (390px, beta own boat and pro own boat): everything requested works except one layout bug on phones. On sign-in, pro's old 13-line Mayday and 12-line Pan-Pan lists ('Check GPS position', 'Wait for a response...') were replaced by the 10 radioFill steps. Filled text checked: 'This is Bacchus, Bacchus, Bacchus', 'Callsign ZMA1234', 'MAYDAY Bacchus ZMA1234', 'at position Lat 36° 50.40' S / Long 174° 45.60' E', and 'Other information - there are 4 persons on board (POB). The boat is a white Catamaran. Length 12 m.' With MMSI and a blue deck: '...The boat is a Catamaran with a white hull and blue deck. Length 12 m. MMSI 512345678.' Pan-Pan shows ALL STATIONS and no MAYDAY line. Missing details keep their tags ('<BOAT NAME>', '<CALLSIGN>', '<BOAT COLOUR> Yacht - Sloop', 'Length <LENGTH>.'); 'None' never appears and with no MMSI nothing is added. Header: data-ready=false gives grey bg-slate-200 MAYDAY/PAN-PAN and a red Set up button; grey buttons still open the call screens; when everything is filled the buttons are red/orange and Set up is gone. Crew (test_session_welcome_crew on pro/main) sees grey buttons and no Set up. Dialog: no 'No MMSI' tick; label 'Length (m)' / 'Length (ft)' follows boat units; MMSI note present; 10 script lines. Lit lines: vessel lights 3 and 5, callsign lights 4 and 5, Length/POB/hull/deck/MMSI light 8 (mbp-glow, data-lit=true), and the glow clears after 5 s. Status turns to 'MAYDAY is set up' with a tick without MMSI, and the header turns red/orange right away without a reload. Values are saved to user_boats.boat. No-shore path works (shore fields hidden, ready once Length is entered). Welcome shows welcome-mayday-done when set up, otherwise welcome-mayday-setup-btn, which opens the dialog. Confirm flow: CONFIRM led to POST /api/distress-email 200, 'Shore contact emailed' (to test.shore@example.com), no page errors, no distress state stored, so there was nothing to stand down.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST ship log (server.py ~566 ctx mmsi)", "issue": "The ship log ctx uses b.mmsi when it is 9 digits and ignores boat.no_mmsi. The frontend ctx (BoatPrep.jsx:530) drops MMSI when no_mmsi is true, and AdditionalDetailsDialog.jsx:184 still has a 'No MMSI' checkbox. So a skipper with an MMSI who ticks No MMSI gets it in the exported PDF/email but not in the app. Either remove the No MMSI checkbox from Additional details (and stop reading no_mmsi in ctx), or apply it in the backend too."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Header distress row on phones", "issue": "At 390px and 360px wide, when not set up, the red Set up pill overlaps the Date input (setup x=107..154 vs date x=16..134 at 390; x=77..124 at 360) and covers the date and calendar icon. At 360px the GPS text 'Long' is also cut off. This is fine at 768 and 1920. The row is SET UP + MAYDAY + PAN-PAN with whitespace-nowrap in an items-end column, so it overflows to the left over the date. Fix, for example: put Set up on its own line or above the buttons, use a smaller icon-only Set up, or let the date label/input shrink (min-w-0) and give the distress row flex-wrap justify-end.", "selector": "[data-testid=distress-setup-btn], [data-testid=date-input]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MAYDAY set up dialog", "issues": ["POB counts as done when it is the default 1 (a new boat shows a ticked '1'), so a never-entered POB is never flagged as missing. The frontend ctx also uses pob || 1, so <POB> can never show. Optional: treat POB as missing until pob_manual is set."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_radio_templates.py", "/app/test_reports/pytest/radio_templates.xml"],
+  "action_items": [
+    "Fix the mobile header overlap: the red Set up pill covers the Date input at 390px and 360px (and cuts the GPS 'Long' text at 360px)",
+    "Make 'No MMSI' consistent: remove the checkbox in AdditionalDetailsDialog (and the no_mmsi check in the BoatPrep ctx), or apply no_mmsi in the backend ship log ctx too",
+    "Optional: decide whether a default POB of 1 should count as set up"
+  ],
+  "critical_code_review_comments": [
+    "radioScript.js and radio_templates.py fill_radio match each other (pair rule, optional MMSI, tags kept when missing). Both are tested.",
+    "BoatPrep ctx uses callsign/vessel straight from the boat, so a literal 'TODO' value shows in the script while the dialog's real() treats it as blank. This is an edge case.",
+    "The replacement effect resets checked=false on all steps when the template differs (pro's old Mayday had one checked item). This is expected but worth knowing.",
+    "Crew whose skipper hasn't signed in since this release still see the old lines, because the replacement only runs for the owner. This is by design."
+  ],
+  "updated_files": ["/app/backend/tests/test_radio_templates.py"],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "95% (all flows pass; 1 mobile layout bug)"},
+  "seed_data_creation": "None. test-user-beta/main boat fields were changed via Mongo and the dialog, then restored to their original values (backup in /tmp/beta_boat_backup.json). Side effects: opening Mayday/Pan-Pan on beta showed 'Mayday/Pan-Pan list added back to this boat', so those lists are now in beta's registry/data (an existing app behaviour). test-user-pro/main data.mayDay/panPan were replaced by the new template on sign-in; that is the feature under test, and pro's boat fields were not changed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mongo helper pattern: owner_id + boat_id='main' in user_boats; boat.* fields. Beta own boat: click shore-chooser-own-main then press Escape twice. The Welcome list needs welcome-promo-continue-btn clicked, then welcome-help-toggle and welcome-crew-toggle if they are collapsed. Confirm only appears when a shore contact (name+email) is set; stand-down only appears when registered shore app contacts exist. test_session_welcome_crew is crew on pro/main with no own boat, which makes it a good crew check."
+}
