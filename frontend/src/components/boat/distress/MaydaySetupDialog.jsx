@@ -64,7 +64,7 @@ const BoatTypeSetup = ({ boat, onChange }) => {
   if (!edit) return <Shown k="boat_type" label="Boat type" value={boat.boat_type} onEdit={() => setEdit(true)} />;
   return (
     <div className="flex min-w-0 items-end gap-2" data-testid={tid("boat_type")}>
-      <div className="min-w-0 flex-1"><BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v)} /></div>
+      <div className="min-w-0 flex-1"><BoatTypeField value={boat.boat_type || ""} onChange={(v) => onChange("boat_type", v, true)} /></div>
       {OK.boat_type(boat) && <Tick testId={`${tid("boat_type")}-tick`} />}
     </div>
   );
@@ -80,12 +80,12 @@ const ColourSetup = ({ k, label, boat, onChange }) => {
     <div className="flex min-w-0 flex-col gap-1" data-testid={tid(k)}>
       <label htmlFor={tid(k)} className="field-label">{label}</label>
       <div className="flex items-center gap-2">
-        <select id={tid(k)} value={pick} onChange={(e) => { setPick(e.target.value); onChange(k, e.target.value); }} className="field-input min-w-0 flex-1" data-testid={`${tid(k)}-select`}>
+        <select id={tid(k)} value={pick} onChange={(e) => { setPick(e.target.value); onChange(k, e.target.value, true); }} className="field-input min-w-0 flex-1" data-testid={`${tid(k)}-select`}>
           {[...(COLOURS.includes(pick) ? [] : [pick]), ...COLOURS].map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        {ok ? <Tick testId={`${tid(k)}-tick`} />
-          : <button type="button" onClick={() => onChange(k, pick)} className="btn-solid h-11 shrink-0 px-3 !border-2 !border-yellow-500 !bg-yellow-300 !text-[var(--navy)] hover:!bg-yellow-400" data-testid={`${tid(k)}-confirm`}>Confirm</button>}
+        {ok && <Tick testId={`${tid(k)}-tick`} />}
       </div>
+      {!ok && <button type="button" onClick={() => onChange(k, pick, true)} className="btn-solid h-10 justify-center !border-2 !border-yellow-500 !bg-yellow-300 !text-[var(--navy)] hover:!bg-yellow-400" data-testid={`${tid(k)}-confirm`}>Confirm {pick}</button>}
     </div>
   );
 };
@@ -101,8 +101,9 @@ const useLit = () => {
   const [lit, setLit] = useState({});
   const timers = useRef({});
   useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
-  const flash = (k) => {
+  const flash = (k, scroll) => {
     setLit((s) => ({ ...s, [k]: true }));
+    if (scroll) setTimeout(() => document.querySelector('[data-testid="mayday-setup-script"] li[data-lit="true"]')?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
     clearTimeout(timers.current[k]);
     timers.current[k] = setTimeout(() => setLit((s) => ({ ...s, [k]: false })), 5000);
   };
@@ -113,10 +114,11 @@ const useLit = () => {
 // lines: the MAYDAY list as { text, dynamic, label }.
 export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
   const [lit, flash] = useLit();
-  const change = (k, v) => {
+  // scroll: a pick or tick (not typing) brings the lit line into view.
+  const change = (k, v, scroll = false) => {
     onChange(k, v);
     const key = k === "no_mmsi" ? "mmsi" : k;
-    if (LINES[key] && (k === "no_mmsi" ? v : OK[k]({ ...boat, [k]: v }))) flash(key);
+    if (LINES[key] && (k === "no_mmsi" ? v : OK[k]({ ...boat, [k]: v }))) flash(key, scroll);
   };
   const glowing = (l) => Object.keys(lit).some((k) => lit[k] && LINES[k].includes(lineKey(l)));
   const setPob = (v) => {
@@ -137,7 +139,7 @@ export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
           <SetupField k="callsign" label="Callsign" boat={boat} onChange={change} input={{ maxLength: 20, placeholder: "e.g. ZMA1234" }} />
           <div className="flex min-w-0 flex-col gap-1">
             {!boat.no_mmsi && <SetupField k="mmsi" label="MMSI" boat={boat} onChange={change} clean={(v) => v.replace(/\D/g, "").slice(0, 9)} input={{ inputMode: "numeric", placeholder: "9 digits", className: "field-input min-w-0 flex-1 font-mono" }} />}
-            <NoneTick checked={!!boat.no_mmsi} onChange={(v) => change("no_mmsi", v)} label="No MMSI" testId="mayday-setup-no-mmsi" />
+            <NoneTick checked={!!boat.no_mmsi} onChange={(v) => change("no_mmsi", v, true)} label="No MMSI" testId="mayday-setup-no-mmsi" />
           </div>
           <SetupField k="pob" label="Persons on board (POB)" boat={boat} onChange={change} save={setPob} clean={(v) => v.replace(/\D/g, "").slice(0, 3)} input={{ inputMode: "numeric", placeholder: "e.g. 4" }} />
           <div className="col-span-2"><BoatTypeSetup boat={boat} onChange={change} /></div>

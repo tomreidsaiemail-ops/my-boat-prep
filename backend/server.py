@@ -72,6 +72,7 @@ from stores_ai import router as stores_ai_router  # noqa: E402
 from go_decision import router as go_decision_router  # noqa: E402
 import setup_stripe  # noqa: E402
 from distress_email import router as distress_email_router  # noqa: E402
+from distress_sms import router as distress_sms_router  # noqa: E402
 from quick_invite import router as quick_invite_router, claim_quick  # noqa: E402
 from area_photos import router as area_photos_router  # noqa: E402
 from crew_photo import router as crew_photo_router  # noqa: E402
@@ -668,6 +669,7 @@ app.include_router(quota.router)
 app.include_router(crew_register_router)
 app.include_router(zone_schematics_router)
 app.include_router(distress_email_router)
+app.include_router(distress_sms_router)
 app.include_router(quick_invite_router)
 app.include_router(area_photos_router)
 app.include_router(crew_photo_router)

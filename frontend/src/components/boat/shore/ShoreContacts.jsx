@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, MapPinned, MessageCircle, Send, Trash2, UserRound } from "lucide-react";
+import { Copy, Loader2, MapPinned, MessageCircle, Phone, Send, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
@@ -17,6 +17,32 @@ const shoreMessage = ({ name, email, vessel, link }) =>
   `Hi ${name}, I've added you as the shore contact for ${vessel || "our boat"} on My Boat Prep, so you can see where we are while we're out.\n\nOpen this link and sign in with ${email}:\n${link}`;
 
 const same = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+const PHONE_RE = /^\+[1-9]\d{6,14}$/;
+export const phoneOk = (v) => !v.trim() || PHONE_RE.test(v.replace(/[\s\-().]/g, "").replace(/^00/, "+"));
+const PHONE_HELP = "Use the international format for the phone number, e.g. +64 21 555 1234";
+
+// A shore contact's mobile, texted if MAYDAY or PAN-PAN is confirmed: shown, or "Add phone" to type it in.
+const ContactPhone = ({ boatId, c, onSaved }) => {
+  const [edit, setEdit] = useState(false);
+  const [v, setV] = useState(c.phone || "");
+  const save = async () => {
+    if (!phoneOk(v)) { toast.error(PHONE_HELP); return; }
+    try {
+      const { data } = await api.put(`/boats/${boatId}/shore/contacts/${c.key}/phone`, { phone: v });
+      setEdit(false); onSaved();
+      toast.success(data.phone ? `MAYDAY and PAN-PAN will be texted to ${c.name || c.email} too` : "Phone number removed");
+    } catch (err) { toast.error(apiError(err, "Couldn't save the phone number")); }
+  };
+  if (edit) return (
+    <span className="flex items-center gap-1.5" data-testid={`shore-contact-${c.key}-phone-edit`}>
+      <input type="tel" value={v} onChange={(e) => setV(e.target.value)} maxLength={30} placeholder="+64 21 555 1234" className="field-input h-9 min-h-0 min-w-0 flex-1 text-sm" data-testid={`shore-contact-${c.key}-phone-input`} autoFocus />
+      <button type="button" onClick={save} className="btn-solid h-9 min-h-0 px-3 text-xs" data-testid={`shore-contact-${c.key}-phone-save`}>Save</button>
+    </span>
+  );
+  return c.phone
+    ? <button type="button" onClick={() => setEdit(true)} className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--navy)]" data-testid={`shore-contact-${c.key}-phone`}><Phone className="h-3 w-3" />{c.phone}</button>
+    : <button type="button" onClick={() => setEdit(true)} className="flex items-center gap-1 text-xs font-bold text-[var(--navy)] underline" data-testid={`shore-contact-${c.key}-add-phone`}><Phone className="h-3 w-3" />Add phone</button>;
+};
 
 // Clearing the Boat details shore contact email offers to remove that shore contact too.
 export const offerShoreRemoval = async (boatId, email, stillCleared = () => true) => {
@@ -36,13 +62,15 @@ const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
   const [email, setEmail] = useState(prefill || "");
   useEffect(() => { if (prefill) setEmail((e) => e || prefill); if (prefillName) setName((n) => n || prefillName); }, [prefill, prefillName]);
   const [busy, setBusy] = useState("");
+  const [phone, setPhone] = useState("");
   const [link, setLink] = useState("");
   const [message, setMessage] = useState("");
   const send = async (mode) => {
     if (!name.trim() || !email.trim()) { toast.error("Enter their name and email"); return; }
+    if (!phoneOk(phone)) { toast.error(PHONE_HELP); return; }
     setBusy(mode);
     try {
-      const { data } = await api.post(`/boats/${boatId}/shore/invites`, { name: name.trim(), email: email.trim(), send_email: mode === "email" });
+      const { data } = await api.post(`/boats/${boatId}/shore/invites`, { name: name.trim(), email: email.trim(), phone: phone.trim(), send_email: mode === "email" });
       setLink(data.link);
       if (mode === "whatsapp") {
         const text = shoreMessage({ name: name.trim(), email: email.trim(), vessel, link: data.link });
@@ -52,7 +80,7 @@ const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
         setMessage("");
         toast.success(data.emailed ? `Invite emailed to ${email.trim()}` : "Invite made. Copy the link and send it to them.");
       }
-      setName(""); setEmail("");
+      setName(""); setEmail(""); setPhone("");
       onSent();
     } catch (err) { toast.error(apiError(err, "Couldn't make the invite")); }
     setBusy("");
@@ -62,7 +90,9 @@ const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Their name" className="field-input" data-testid="shore-invite-name" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="Their email" className="field-input" data-testid="shore-invite-email" />
+        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} placeholder="Their mobile, e.g. +64 21 555 1234 (optional)" className="field-input sm:col-span-2" data-testid="shore-invite-phone" />
       </div>
+      <p className="-mt-1 text-xs text-[var(--muted)]" data-testid="shore-invite-phone-note">With a mobile number, a confirmed MAYDAY or PAN-PAN is also texted to them.</p>
       {prefill && same(email, prefill) && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-invite-prefill-note">{prefillName && name === prefillName ? "Name and email filled in from Boat details. Send the invite." : "Email filled in from Boat details. Add their name, then send the invite."}</p>}
       <button type="submit" disabled={!!busy} className="btn-solid min-h-11 justify-center gap-2" data-testid="shore-invite-send-btn">
         {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send email invite
@@ -160,7 +190,8 @@ export const ShoreContacts = ({ boat, vessel, online, shoreEmail = "", shoreName
         {info.contacts.map((c) => (
           <li key={c.key} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2" data-testid={`shore-contact-${c.key}`}>
             <UserRound className="h-4 w-4 shrink-0" />
-            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{c.name || c.email}</span><span className="block truncate text-xs text-[var(--muted)]">{c.email}</span></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{c.name || c.email}</span><span className="block truncate text-xs text-[var(--muted)]">{c.email}</span>
+              <ContactPhone key={c.phone || ""} boatId={boat.boat_id} c={c} onSaved={load} /></span>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${c.status === "joined" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`} data-testid={`shore-contact-${c.key}-status`}>{c.status === "joined" ? "Watching" : "Invited"}</span>
             <button type="button" disabled={!!t.on} className="icon-btn h-9 w-9 hover:text-[var(--red)] disabled:opacity-40 disabled:hover:text-inherit" onClick={() => remove(c)} aria-label={`Remove ${c.name || c.email}`} title={t.on ? "Untick Share position with shore contacts first" : undefined} data-testid={`shore-contact-${c.key}-remove`}><Trash2 className="h-4 w-4" /></button>
           </li>

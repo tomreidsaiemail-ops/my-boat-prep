@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -75,10 +76,25 @@ async def ensure_indexes():
 
 # ---------- Skipper: shore contacts and the tracking switch ----------
 
+def phone_e164(v: str) -> str:
+    """International mobile number (+64 21 555 1234 -> +64215551234); blank if it isn't one."""
+    s = re.sub(r"[\s\-().]", "", v or "")
+    s = "+" + s[2:] if s.startswith("00") else s
+    return s if re.fullmatch(r"\+[1-9]\d{6,14}", s) else ""
+
+
+PHONE_HELP = "Use the international format for the phone number, e.g. +64 21 555 1234"
+
+
 class ShoreInviteIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     email: str = Field(min_length=3, max_length=120)
+    phone: str = Field(default="", max_length=30)
     send_email: bool = True
+
+
+class PhoneIn(BaseModel):
+    phone: str = Field(default="", max_length=30)
 
 
 class TrackingIn(BaseModel):
@@ -108,7 +124,7 @@ class RouteIn(BaseModel):
 
 
 def _contacts(doc: dict) -> list:
-    return [{"key": uid, "name": c.get("name", ""), "email": c.get("email", ""), "status": "joined", "joined_at": c.get("joined_at")}
+    return [{"key": uid, "name": c.get("name", ""), "email": c.get("email", ""), "phone": c.get("phone", ""), "status": "joined", "joined_at": c.get("joined_at")}
             for uid, c in (doc.get("shore") or {}).items()]
 
 
@@ -118,7 +134,7 @@ async def get_shore(boat_id: BoatPath, user: dict = Depends(get_current_user)):
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     invites = await db.shore_invites.find({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "token_hash": 0}).sort("created_at", 1).to_list(50)
-    out = _contacts(doc) + [{"key": i["invite_id"], "name": i["name"], "email": i["email"], "status": "invited", "created_at": i["created_at"]} for i in invites]
+    out = _contacts(doc) + [{"key": i["invite_id"], "name": i["name"], "email": i["email"], "phone": i.get("phone", ""), "status": "invited", "created_at": i["created_at"]} for i in invites]
     return {"contacts": out, "tracking": {**(doc.get("tracking") or {}), **status_of(doc.get("tracking"))}}
 
 
@@ -137,6 +153,9 @@ def _invite_html(skipper: str, vessel: str, name: str, link: str) -> str:
 async def invite_shore(boat_id: BoatPath, payload: ShoreInviteIn, request: Request, user: dict = Depends(get_current_user)):
     doc = await owned_boat(user, boat_id)
     email, name = payload.email.strip(), payload.name.strip()
+    phone = phone_e164(payload.phone)
+    if payload.phone.strip() and not phone:
+        raise HTTPException(status_code=400, detail=PHONE_HELP)
     key = email_key(email)
     if "@" not in key or "." not in key.split("@")[-1]:
         raise HTTPException(status_code=400, detail="Please enter a valid email")
@@ -148,7 +167,7 @@ async def invite_shore(boat_id: BoatPath, payload: ShoreInviteIn, request: Reque
     now = _now()
     await db.shore_invites.delete_many({"owner_id": user["user_id"], "boat_id": boat_id, "email_key": key})
     await db.shore_invites.insert_one({"invite_id": str(uuid.uuid4()), "token_hash": _hash(token), "owner_id": user["user_id"], "boat_id": boat_id,
-                                       "email": email, "email_key": key, "name": name, "created_at": now.isoformat(), "expires_at": (now + timedelta(days=30)).isoformat()})
+                                       "email": email, "email_key": key, "name": name, "phone": phone, "created_at": now.isoformat(), "expires_at": (now + timedelta(days=30)).isoformat()})
     link = f"{public_base(request)}/shore/join/{token}"
     vessel = (doc.get("boat") or {}).get("vessel") or "the boat"
     sent = False
@@ -158,6 +177,20 @@ async def invite_shore(boat_id: BoatPath, payload: ShoreInviteIn, request: Reque
         except Exception as e:  # noqa: BLE001
             log.warning("Shore invite email failed: %s", e)
     return {"link": link, "emailed": sent}
+
+
+@router.put("/boats/{boat_id}/shore/contacts/{key}/phone")
+async def set_phone(boat_id: BoatPath, key: KeyPath, payload: PhoneIn, user: dict = Depends(get_current_user)):
+    """The mobile a MAYDAY / PAN-PAN is texted to; blank removes it."""
+    phone = phone_e164(payload.phone)
+    if payload.phone.strip() and not phone:
+        raise HTTPException(status_code=400, detail=PHONE_HELP)
+    res = await db.shore_invites.update_one({"owner_id": user["user_id"], "boat_id": boat_id, "invite_id": key}, {"$set": {"phone": phone}})
+    if not res.matched_count:
+        res = await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id, f"shore.{key}": {"$exists": True}}, {"$set": {f"shore.{key}.phone": phone}})
+        if not res.matched_count:
+            raise HTTPException(status_code=404, detail="That shore contact isn't on this boat any more")
+    return {"phone": phone}
 
 
 @router.delete("/boats/{boat_id}/shore/contacts/{key}")
@@ -332,7 +365,7 @@ async def join_shore(payload: JoinIn, user: dict = Depends(get_current_user)):
 
 async def _accept(inv: dict, user: dict) -> bool:
     """Links the user to the invited boat as its shore contact (one user can watch several boats)."""
-    contact = {"name": inv["name"] or user.get("name", ""), "email": user["email"], "joined_at": _now().isoformat()}
+    contact = {"name": inv["name"] or user.get("name", ""), "email": user["email"], "phone": inv.get("phone", ""), "joined_at": _now().isoformat()}
     res = await db.user_boats.update_one({"owner_id": inv["owner_id"], "boat_id": inv["boat_id"]},
                                          {"$set": {f"shore.{user['user_id']}": contact}, "$addToSet": {"shore_ids": user["user_id"]}})
     await db.shore_invites.delete_one({"invite_id": inv["invite_id"]})

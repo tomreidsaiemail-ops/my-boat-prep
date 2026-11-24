@@ -114,6 +114,8 @@ import { BackToInviteBar } from "@/components/boat/BackToInviteBar";
 import { INTROS, ListIntro } from "@/components/boat/ListIntro";
 import { DistressEmailBar } from "@/components/boat/distress/DistressEmailBar";
 import useDistressEmail from "@/components/boat/distress/useDistressEmail";
+import useDistressSms from "@/hooks/useDistressSms";
+import { DistressSmsTick } from "@/components/boat/distress/DistressSmsTick";
 import { Checklist } from "@/components/boat/Checklist";
 import { stampTicks } from "@/components/boat/TickBadge";
 import { AddItemForm } from "@/components/boat/AddItemForm";
@@ -518,13 +520,15 @@ export default function BoatPrep({ boatId, boats }) {
   useEffect(() => { const q = pendingQr(); if (q && qrBoatKey(q, user.user_id) === boats.current.key) setActiveId(INVENTORY_LIST.id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: !boat.no_mmsi && boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), hull: (boat.hull_colour || "").trim(), deck: (boat.deck_colour || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
-  const distress = useDistressEmail({ online, shore: boat.shore_email, build: (kind) => {
+  const buildDistress = (kind) => {
     const position = distressPosition(gps);
     const intro = INTROS[kind];
     const pctx = { ...ctx, position };
     const lines = [intro.title, intro.text, ...(state.emergency_checked?.[kind] ? [intro.confirm] : []), ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
     return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
-  } });
+  };
+  const distress = useDistressEmail({ online, shore: boat.shore_email, build: buildDistress });
+  const distressSms = useDistressSms({ online, owner: crew ? boats.current.owner_id : "", boatId: boats.current.boat_id, build: buildDistress });
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -1384,10 +1388,11 @@ export default function BoatPrep({ boatId, boats }) {
       {/* Reset and Export live at the bottom; the "still loading" warning stays up here where the skipper is. */}
       <ValidationBar show={warn === "top" && !ready} testId="top-validation-bar" />
       <ListSelector sections={dropdownSections(org, INVENTORY_LIST.id, hiddenLists, active.id)} activeColours={org.byId[active.id]?.colours} activeId={active.id} onChange={setActiveId} onCreate={openCreate} onClone={ownerOnly(askClone)} onRename={ownerOnly(askRename)} homeId={homeList.id} onSetHome={crew ? undefined : setHome} updatedIds={updatedIds} />
-      {EMERGENCY[active.id] && !distressDone[active.id] && (shoreAlert.canRaise(active.id) || distress.canSend(active.id)) && (
+      {EMERGENCY[active.id] && !distressDone[active.id] && (shoreAlert.canRaise(active.id) || distress.canSend(active.id) || distressSms.canSend(active.id)) && (
         <DistressConfirm kind={active.id} onIgnore={() => setDistressDone((d) => ({ ...d, [active.id]: true }))}
-          onConfirm={() => { shoreAlert.raise(active.id); distress.opened(active.id); setDistressDone((d) => ({ ...d, [active.id]: true })); }} />
+          onConfirm={() => { shoreAlert.raise(active.id); distress.opened(active.id); distressSms.opened(active.id); setDistressDone((d) => ({ ...d, [active.id]: true })); }} />
       )}
+      {EMERGENCY[active.id] && <DistressSmsTick sms={distressSms.state[active.id]} />}
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && !EMERGENCY[active.id] && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
       {!crew && SERVICE_LOGS[active.id] ? (

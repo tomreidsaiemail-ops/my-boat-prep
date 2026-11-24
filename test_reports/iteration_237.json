@@ -1,0 +1,30 @@
+{
+  "summary": "Frontend-only test at 390x844 (pro user test_session_pro_1) of the MaydaySetupDialog follow-up: Boat type, Hull/Deck colour confirm, the boat description in the MAYDAY script, and the 5-second line glow. Everything in the briefing passed on the main boat and on Model Vessel. (1) Colours: with empty hull/deck colours, the hull and deck selects start on 'White' with a yellow Confirm button and no tick. Boat type with a tick and a pencil shows the boat-type-select in the dialog. Choosing 'Choose...' clears the type, removes the tick and the line reads '[BOAT TYPE]'. (2) Clicking hull Confirm saved White to the DB, showed the tick and hid Confirm. The POB line got mbp-glow and data-lit=true; it was still lit at 4.3s and off at 5.8s. Choosing Blue for deck showed the deck tick and lit the same line. (3) Script text: with no colours the line reads '...white Yacht - Sloop. NOTE: If not white state correct colour of boat.' With both White it reads 'There are 3 persons on board POB. The boat is a white Yacht - Sloop.' (no NOTE). With deck Blue it reads '...a Yacht - Sloop with a white hull and blue deck.' On Model Vessel, Navy blue hull gives '...with a navy blue hull and white deck.' (4) Glow: vessel lights 'This is X, X, X' and 'MAYDAY X Y'. Callsign lights 'Callsign ...' and 'MAYDAY X Y'. A partial MMSI lights nothing. 9 digits lights 'Callsign ZMA123, MMSI 512345678' and the static 'State Call Sign MMSI number...' line. Ticking No MMSI lights the same two lines; unticking lights nothing. POB via the pencil plus typing 4 lights the POB line, which reads 'There are 4 persons...'. Clearing a field, opening a pencil only, and the shore name and No shore contact inputs light nothing. Every glow ended after 5s. (5) Status: it read 'MAYDAY is set up' only with everything done. Clearing the boat type turned it back off. With deck_colour emptied in the DB and everything else done, Welcome showed the setup button, not welcome-mayday-done, until deck Confirm was clicked. After that, welcome-mayday-done appeared. After a reload, Additional details showed boat-type-select 'Yacht - Sloop' and hull-colour-select / deck-colour-select 'White'. (6) Regressions checked: tick/pencil fields, MMSI digits only, No MMSI and No shore contact hide their fields, and mayday-btn, panpan-btn and gps-position glow while the Welcome MAYDAY line shows and stop once it is set up. The MAYDAY list (mayday-btn) shows the updated line 'There are 4 persons on board POB. The boat is a white Yacht - Sloop.' scrollWidth stays 390 (no horizontal overflow) on Welcome, the dialog and Model Vessel. Not retested this round: the crew window shore prefill. All changed fields on test-user-pro main and model_vessel were put back from a backup, with boat_ts bumped to now, and last_boat=main.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MaydaySetupDialog at 390x844", "issues": [
+        "Before confirming, the Hull/Deck colour select shares half the row with the Confirm button, so it shows 'Whit' (cut off). Consider putting Confirm under the select, or making the select wider on mobile.",
+        "The lit POB/description line (line 11) is below the fold when the skipper confirms a colour, changes boat type or POB, so the 5s glow is usually not seen without scrolling. Consider scrolling the lit line into view, or a short 'see line 11' hint."
+      ]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional UX: stop the colour select being cut off ('Whit') next to the Confirm button at 390px",
+    "Optional UX: scroll the lit MAYDAY line into view (scrollIntoView with block 'nearest') when a field change lights it, as the POB/description line sits below the fold on mobile"
+  ],
+  "critical_code_review_comments": [
+    "If the skipper confirms only one colour, ColourSetup/displayLabel treat the other as white and drop the NOTE. For example, hull White with deck still unconfirmed reads 'a white Yacht - Sloop' before the deck is confirmed. Acceptable, but the NOTE could stay until both are confirmed.",
+    "Choosing 'Other...' boat type calls change() on every keystroke, so the 5s timer restarts on each key. Harmless.",
+    "ColourSetup keeps its own 'pick' state and does not resync if boat[k] changes from elsewhere (another device or Additional details) while the dialog is open. Minor."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped as requested)", "frontend": "100%"},
+  "seed_data_creation": "None. Changed test-user-pro main/model_vessel boat fields during testing, then restored them from /tmp/mbp/backup_pro_boats.json (main: pob 3, pob_manual false, hull/deck '', no_mmsi/no_shore false; MV: pob_manual false, shore_name/no_mmsi/no_shore unset).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test-user-pro main has active trip-finish and 'Arrived?' alert dialogs on load. Dismiss them by clicking 'Not now' / 'Not yet' inside [role=alertdialog]. Open Welcome with window event mbp:open-list 'welcome', then welcome-promo-continue-btn, then welcome-crew-toggle if needed. Field saves are debounced: wait about 2-3s before closing the page or the last change is lost. Restore script pattern: /tmp/mbp/restore.js (compare against backup, bump boat_ts)."
+}
