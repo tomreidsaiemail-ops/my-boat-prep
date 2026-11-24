@@ -90,7 +90,7 @@ const InviteForm = ({ boatId, vessel, prefill, prefillName, onSent }) => {
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Their name" className="field-input" data-testid="shore-invite-name" />
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={120} placeholder="Their email" className="field-input" data-testid="shore-invite-email" />
-        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} placeholder="Their mobile, e.g. +64 21 555 1234 (optional)" className="field-input sm:col-span-2" data-testid="shore-invite-phone" />
+        <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={30} placeholder="Mobile, e.g. +64 21 555 1234" className="field-input sm:col-span-2" data-testid="shore-invite-phone" />
       </div>
       <p className="-mt-1 text-xs text-[var(--muted)]" data-testid="shore-invite-phone-note">With a mobile number, a confirmed MAYDAY or PAN-PAN is also texted to them.</p>
       {prefill && same(email, prefill) && <p className="-mt-1 text-xs font-semibold text-[var(--muted)]" data-testid="shore-invite-prefill-note">{prefillName && name === prefillName ? "Name and email filled in from Boat details. Send the invite." : "Email filled in from Boat details. Add their name, then send the invite."}</p>}

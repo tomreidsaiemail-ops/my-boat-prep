@@ -1,0 +1,38 @@
+{
+  "summary": "Tested shore contact phone numbers and the background distress SMS sent through Twilio. Only the unassigned number +9991234567 was used; Twilio refused it with error 21211. Backend: 16 of 16 pytest tests passed, plus a manual check that the daily limit of 30 SMS per user returns 429. Frontend (390x844, admin's own boat with only invited contacts that have phones, and crew test_session_free_1 on pro/main): the phone field, its note, the invalid-phone toast, Add phone > input > Save, the phone shown on contact rows, MAYDAY Confirm (line hides, POST /distress-sms fires, polling stops after one GET with status failed, no tick, no toast, no spinner, no dialog, list stays usable), PAN-PAN Ignore, and crew Confirm sending owner_id=test-user-pro all worked. One bug: the count of shore contact phones is fetched only once, so a phone added in the same session is not texted when Confirm is pressed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "logging (twilio.http_client)", "issue": "Twilio SDK logs every request and response at INFO level in backend.err.log, including the Account SID in the URL. Set logging.getLogger('twilio.http_client').setLevel(logging.WARNING)."},
+      {"endpoint": "_phones (distress_sms.py)", "issue": "Expired shore invites (expires_at in the past) are still texted. This may be intended ('still invited'), but it isn't filtered."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "useDistressSms (phones count)", "issue": "GET /distress-sms/phones runs only when [online, owner, boatId] change. If a skipper adds a phone (new invite or Add phone) and then presses MAYDAY Confirm in the same session, canSend is false and no POST /distress-sms is made until the page is reloaded. Reproduced: admin invited TEST_Stale with +9991234567, closed the Crew window, opened MAYDAY and pressed Confirm. Only POST /distress-email fired. Fix: refetch phones when the MAYDAY or PAN-PAN list opens (or when ShoreContacts saves), or have the backend decide (always POST and let it return count 0).", "selector": "[data-testid=distress-confirm-btn]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Crew window > Shore Contacts invite form (390px)", "issues": ["The shore-invite-phone placeholder 'Their mobile, e.g. +64 21 555 1234 (optional)' is cut off at '(op'. Shorten it, e.g. 'Mobile, e.g. +64 21 555 1234'."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_distress_sms.py", "/app/test_reports/pytest/distress_sms.xml"],
+  "action_items": [
+    "Refresh the shore-phone count in useDistressSms when the MAYDAY or PAN-PAN list opens or after a phone or invite is saved, so a newly added phone is texted without a reload",
+    "Set the twilio.http_client logger to WARNING",
+    "Optional: shorten the phone placeholder on mobile; decide whether expired invites should get the SMS"
+  ],
+  "critical_code_review_comments": [
+    "The TWILIO_* keys are not in backend/.env; they come only from the pod environment. Make sure production/deploy gets them, otherwise /distress-sms/phones quietly returns 0 and nothing is sent.",
+    "The _send_all background tasks live only in process memory. A backend reload mid-send leaves the doc stuck at 'sending'. Harmless to the UI (no tick, polling stops after 40 tries) but worth knowing.",
+    "The daily limit is checked only after phones are found, and it counts per user across all boats. Fine.",
+    "Status logic: if any message is delivered and all are final, the status is 'delivered' and the tick reads 'N of M'. Matches the brief."
+  ],
+  "updated_files": ["/app/backend/tests/test_distress_sms.py"],
+  "success_rate": {"backend": "100% (16/16 + 429 manual)", "frontend": "90% (1 same-session stale phones bug)"},
+  "seed_data_creation": "None kept. Removed: all TEST shore invites on admin/main, 4 distress_sms docs I created (plus 29 temporary limit-test docs), 2 distress_emails docs from admin's Confirm. Restored: admin/main boat.shore_email='' and shore_name='' (invites auto-fill it); pro/main distress and tracking from a snapshot (crew Confirm had raised an active mayDay alert); test-shore-only phone cleared.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use admin (test_session_admin_1) own main for SMS UI tests; it has no joined contacts. On load press Escape, then the 'Not now' button on the Trip finished dialog. Inviting a shore contact auto-fills boat.shore_email, so reset it in the DB afterwards. Crew: test_session_free_1, boat-selector > boat-option-c_test-user-pro_main. Snapshot pro/main distress and tracking before any Confirm and restore them afterwards. Run pytest with -n 0 (the tests depend on order).",
+  "rca of the issue": "useDistressSms.js loads `phones` once in a useEffect keyed on online/owner/boatId. canSend(kind) needs phones > 0, so contacts or phones added later in the session are invisible until boatId changes or the page reloads."
+}

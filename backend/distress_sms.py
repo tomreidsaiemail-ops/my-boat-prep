@@ -16,6 +16,7 @@ from distress_email import distress_subject
 from shore_alert import _aboard
 
 log = logging.getLogger(__name__)
+logging.getLogger("twilio.http_client").setLevel(logging.WARNING)  # its INFO lines carry the account id
 router = APIRouter(prefix="/api")
 DAILY_LIMIT = 30
 MAX_BODY = 1500

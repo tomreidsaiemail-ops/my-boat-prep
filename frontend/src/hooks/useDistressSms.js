@@ -6,7 +6,8 @@ const POLL_TIMES = 40;
 
 // Background Mayday / Pan-Pan text to every shore contact with a phone, once confirmed (once per session per kind).
 // Never blocks the VHF call; state[kind] becomes "delivered" for the small SMS tick.
-export default function useDistressSms({ online, owner, boatId, build }) {
+// listId: the open list; opening MAYDAY or PAN-PAN re-counts the phones, so one added this session is texted too.
+export default function useDistressSms({ online, owner, boatId, build, listId }) {
   const [phones, setPhones] = useState(0);
   const [st, setSt] = useState({});
   const done = useRef({});
@@ -14,7 +15,7 @@ export default function useDistressSms({ online, owner, boatId, build }) {
   useEffect(() => {
     if (!online || !boatId) return;
     api.get("/distress-sms/phones", { params: { owner_id: owner, boat_id: boatId } }).then(({ data }) => setPhones(data.phones)).catch(() => {});
-  }, [online, owner, boatId]);
+  }, [online, owner, boatId, listId]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const poll = (kind, id, n = 0) => {
     if (n >= POLL_TIMES) return;

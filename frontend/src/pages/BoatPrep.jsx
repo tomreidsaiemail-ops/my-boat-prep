@@ -528,7 +528,7 @@ export default function BoatPrep({ boatId, boats }) {
     return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
   };
   const distress = useDistressEmail({ online, shore: boat.shore_email, build: buildDistress });
-  const distressSms = useDistressSms({ online, owner: crew ? boats.current.owner_id : "", boatId: boats.current.boat_id, build: buildDistress });
+  const distressSms = useDistressSms({ online, owner: crew ? boats.current.owner_id : "", boatId: boats.current.boat_id, build: buildDistress, listId: EMERGENCY[active.id] ? active.id : "" });
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
