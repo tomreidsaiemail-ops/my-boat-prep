@@ -28,13 +28,13 @@ export const INTROS = {
   },
   mayDay: {
     cls: "border-[var(--red)] bg-[var(--red)] text-white", Icon: Siren, testId: "mayday-banner",
-    title: "MAYDAY · VHF Channel 16", text: "Grave and imminent danger to vessel or life. Read each line aloud, tick as you go.",
-    confirm: "I, the Skipper, have checked the Mayday list below and confirm it is a valid Mayday call for the waters I am in.",
+    title: "MAYDAY · VHF Channel 16", directive: "Activate distress beacon if carried. Wear lifejackets. Switch radio to full power.",
+    text: "Grave and imminent danger to vessel or life. Read each line aloud, tick as you go.",
   },
   panPan: {
-    cls: "border-[var(--amber)] bg-[var(--amber)] text-white", Icon: Radio, testId: "panpan-banner",
-    title: "PAN-PAN · VHF Channel 16", text: "Urgent situation, no immediate danger to life. Read each line aloud, tick as you go.",
-    confirm: "I, the Skipper, have checked the Pan-Pan list below and confirm it is a valid Pan-Pan call for the waters I am in.",
+    cls: "border-orange-600 bg-orange-600 text-white", Icon: Radio, testId: "panpan-banner",
+    title: "PAN-PAN · VHF Channel 16", directive: "Distress beacon prepared, if carried. Wear lifejackets. Switch radio to full power.",
+    text: "Urgent situation, no immediate danger to life. Read each line aloud, tick as you go.",
   },
 };
 
@@ -48,12 +48,12 @@ const AdminHelp = ({ items, prefix }) => (
   </div>
 );
 
-export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSkipperCheck, helpItems }) => {
+export const ListIntro = ({ listId, canHide, onLockedHide, helpItems }) => {
   const intro = INTROS[listId];
   const [stored, setHidden] = useState(() => !!intro?.hideKey && localStorage.getItem(intro.hideKey) === "1");
   const hidden = stored && canHide;
   if (!intro) return null;
-  const { cls, Icon, title, text, tip, testId, hideKey, showLabel, confirm, prefix } = intro;
+  const { cls, Icon, title, directive, text, tip, testId, hideKey, showLabel, prefix } = intro;
   const collapsible = !!hideKey;
   const setHide = (v) => {
     if (v && !canHide) { onLockedHide(); return; }
@@ -74,14 +74,8 @@ export const ListIntro = ({ listId, canHide, onLockedHide, skipperChecked, onSki
       <Icon className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="text-sm leading-relaxed">
         {title && <div className="mb-0.5 font-display text-base font-extrabold tracking-wide">{title}</div>}
+        {directive && <p className="my-2 rounded-md border-2 border-white/80 px-3 py-2 text-[15px] font-extrabold leading-snug" data-testid={`${listId}-directive`}>{directive}</p>}
         {helpItems?.length ? <AdminHelp items={helpItems} prefix={prefix} /> : text}
-        {confirm && (
-          <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-md border-2 border-white/70 bg-white/10 p-3 font-bold" data-testid={`${listId}-skipper-check-label`}>
-            <input type="checkbox" checked={!!skipperChecked} onChange={(e) => onSkipperCheck(e.target.checked)}
-              className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-white" data-testid={`${listId}-skipper-check`} />
-            <span>{confirm}</span>
-          </label>
-        )}
         {tip && !helpItems?.length && <p className="mt-2" data-testid={`${prefix}-skipper-tip`}><b className="text-[var(--blue)]">Skipper's Tip:</b> {tip}</p>}
         {collapsible && (
           <button type="button" onClick={() => setHide(true)} data-testid={`${prefix}-help-hide-btn`}

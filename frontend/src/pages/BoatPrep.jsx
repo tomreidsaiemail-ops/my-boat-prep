@@ -205,7 +205,7 @@ const serviceLogLine = (key, e, items) => {
 };
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const verbose = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-NZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" }); };
-const EMERGENCY = { mayDay: "red", panPan: "amber" };
+const EMERGENCY = { mayDay: "red", panPan: "orange" };
 const MEDIA_KINDS = ["youtube", "movies"];
 const NO_TOPUP = ["shipsLog", "myTodo"];
 const FREE_TODO_LIMIT = 5;
@@ -533,7 +533,7 @@ export default function BoatPrep({ boatId, boats }) {
     const position = distressPosition(gps);
     const intro = INTROS[kind];
     const pctx = { ...ctx, position };
-    const lines = [intro.title, intro.text, ...(state.emergency_checked?.[kind] ? [intro.confirm] : []), ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
+    const lines = [intro.title, intro.text, ...(state.data[kind] || []).map((i) => displayLabel(i, pctx))];
     return { kind, vessel: ctx.vessel, callsign: ctx.callsign, position, lines: lines.filter(Boolean).map((t) => String(t).slice(0, 600)).slice(0, 120) };
   };
   const distress = useDistressEmail({ online, shore: boat.shore_email, build: buildDistress });
@@ -1413,8 +1413,7 @@ export default function BoatPrep({ boatId, boats }) {
           onExport={() => exportService(SERVICE_LOGS[active.id])} locked={!premium} exporting={exporting} online={online} onUpgrade={() => askUpgrade("Magic Marine Engineer")}
           cruise={boat.cruise_kn} onCruise={(v) => updateBoat("cruise_kn", v)} cruiseHint={<HullSpeedHint boat={boat} onUse={(v) => updateBoat("cruise_kn", v)} testId="engine-hull-speed" />}
           onDelete={(id) => guard() && mutate((s) => ({ ...s, [SERVICE_LOGS[active.id]]: (s[SERVICE_LOGS[active.id]] || []).filter((e) => e.id !== id) }))} 
-          help={<ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
-        skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />} />
+          help={<ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />} />
       ) : (
         <>
         {/^first aid kit/i.test(active.name || "") && (
@@ -1425,8 +1424,7 @@ export default function BoatPrep({ boatId, boats }) {
               logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} crew={crew} onLogged={logMmd} />
           </MagicPanel>
         )}
-        <ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")}
-        skipperChecked={state.emergency_checked?.[active.id]} onSkipperCheck={crew ? ownerOnly(() => {}) : (v) => mutate((s) => ({ ...s, emergency_checked: { ...(s.emergency_checked || {}), [active.id]: v } }))} />
+        <ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />
         </>
       )}
       {listDescription && (

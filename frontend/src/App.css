@@ -73,6 +73,7 @@ body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + var(--m
 }
 .tick-red { border-color: var(--red); }
 .tick-amber { border-color: var(--amber); }
+.tick-orange { border-color: #ea580c; }
 .is-checked .tick-box { background: var(--green); border-color: var(--green); transform: scale(1.05); }
 .item-text { font-size: 16px; font-weight: 500; line-height: 1.4; word-break: break-word; max-width: 100%; }
 .is-checked .item-text { color: #14532d; }
