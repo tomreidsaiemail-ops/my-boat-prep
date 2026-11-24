@@ -6,6 +6,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Image, SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, PageBreak
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
+from radio_templates import fill_radio
 
 TITLE = ParagraphStyle("t", fontName="Helvetica-Bold", fontSize=22, leading=26, spaceAfter=4)
 META = ParagraphStyle("m", fontName="Helvetica", fontSize=10, leading=14)
@@ -48,6 +49,8 @@ def _pob_words(ctx: dict) -> str:
 
 
 def _label(it: dict, ctx: dict) -> str:
+    if it.get("dynamic") == "radioFill":
+        return fill_radio(it.get("label", ""), ctx)
     v, c, pos = ctx["vessel"], ctx["callsign"], ctx["position"]
     mmsi = f", MMSI {ctx['mmsi']}" if ctx.get("mmsi") else ""
     return {

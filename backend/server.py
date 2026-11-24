@@ -566,7 +566,8 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
         "mmsi": b.mmsi if len(b.mmsi) == 9 else "",
     }
     ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"], "pob": log["pob"],
-           "boat_type": log["boat_type"], "children": log["children"], "mmsi": log["mmsi"], "pets": [p.model_dump() for p in b.pets]}
+           "boat_type": log["boat_type"], "children": log["children"], "mmsi": log["mmsi"], "pets": [p.model_dump() for p in b.pets],
+           "hull": b.hull_colour, "deck": b.deck_colour, "length": f"{b.loa.strip()} {b.units}" if b.loa.strip() else ""}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
     numbered = {r.get("id") for r in state.registry if r.get("kind") in ("youtube", "movies", "tips")}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
@@ -807,6 +808,8 @@ async def create_indexes():
     await seed_zone_capture()
     await seed_terms_template()
     await seed_colour_presets()
+    from radio_templates import seed_radio_templates
+    await seed_radio_templates()
 
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]

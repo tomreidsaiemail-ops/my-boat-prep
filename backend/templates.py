@@ -150,7 +150,8 @@ async def boat_types(_: dict = Depends(get_current_user)):
     return {"types": types or DEFAULT_BOAT_TYPES}
 
 
-ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ", "admin - global config ", "admin - zone by zone - ")
+ADMIN_LIST_PREFIXES = ("admin - help panel - ", "admin - list template - ", "admin - boat budget ", "admin - master ", "admin - common ", "admin - model vessel ", "admin - global config ", "admin - zone by zone - ",
+                       "admin - mayday template ", "admin - pan-pan template ")
 
 
 @router.get("/admin-lists")

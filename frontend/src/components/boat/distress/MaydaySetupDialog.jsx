@@ -6,6 +6,7 @@ import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { BoatTypeField } from "@/components/boat/AdditionalDetailsDialog";
 import { COLOURS } from "@/components/boat/telemetry/ColourField";
 import { phoneOk } from "@/components/boat/shore/ShoreContacts";
+import { lineFields, radioFields } from "@/lib/radioScript";
 
 const real = (v) => { const t = String(v ?? "").trim(); return /^todo$/i.test(t) ? "" : t; };
 const has = (k) => (b) => !!real(b[k]);
@@ -13,19 +14,14 @@ const OK = {
   vessel: has("vessel"), callsign: has("callsign"), boat_type: has("boat_type"), hull_colour: has("hull_colour"), deck_colour: has("deck_colour"), shore_name: has("shore_name"),
   mmsi: (b) => /^\d{9}$/.test(b.mmsi || ""),
   pob: (b) => (b.pob || 0) >= 1,
+  loa: (b) => Number(String(b.loa ?? "").replace(",", ".")) > 0,
   shore_email: (b) => EMAIL_RE.test(real(b.shore_email)),
   shore_phone: (b) => !!real(b.shore_phone) && phoneOk(real(b.shore_phone)),
 };
-// MAYDAY is set up once the script has everything it needs: name, callsign, MMSI (or none), POB, boat type, both colours and a shore contact (or none).
-export const maydayReady = (b = {}) => ["vessel", "callsign", "pob", "boat_type", "hull_colour", "deck_colour"].every((k) => OK[k](b))
-  && (b.no_mmsi || OK.mmsi(b)) && (b.no_shore || (OK.shore_name(b) && OK.shore_email(b)));
-
-// The MAYDAY lines each detail fills in, lit yellow for 5 seconds when it's entered or ticked.
-const LINES = {
-  vessel: ["maydayVessel", "maydayVesselCallsign"], callsign: ["maydayCallsign", "maydayVesselCallsign"], mmsi: ["maydayCallsign", "mmsi"],
-  pob: ["pobDescription"], boat_type: ["pobDescription"], hull_colour: ["pobDescription"], deck_colour: ["pobDescription"],
-};
-const lineKey = (l) => l.dynamic || (/mmsi/i.test(l.label || "") ? "mmsi" : "");
+const SCRIPT = ["vessel", "callsign", "pob", "boat_type", "hull_colour", "deck_colour", "loa"];
+// MAYDAY is set up once the MAYDAY and PAN-PAN scripts (items) have every detail their tags need (MMSI is optional), and a shore contact (or none).
+export const maydayReady = (b = {}, items = []) => { const need = radioFields(items); return (need.length ? need : SCRIPT).every((k) => (OK[k] || has(k))(b))
+  && (b.no_shore || (OK.shore_name(b) && OK.shore_email(b))); };
 
 const Tick = ({ testId }) => <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--green)]" data-testid={testId} />;
 const tid = (k) => `mayday-setup-${k.replace(/_/g, "-")}`;
@@ -113,16 +109,17 @@ const useLit = () => {
 };
 
 // Welcome's "Help me set that up": the MAYDAY script with GPS, and just what it needs, saved to Boat details and Additional details.
-// lines: the MAYDAY list as { text, dynamic, label }.
-export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
+// lines: the MAYDAY list as { text, dynamic, label }. ready: maydayReady for the boat's MAYDAY and PAN-PAN lists.
+export const MaydaySetupDialog = ({ boat, lines, ready, onChange, onClose }) => {
   const [lit, flash] = useLit();
   // scroll: a pick or tick (not typing) brings the lit line into view.
   const change = (k, v, scroll = false) => {
     onChange(k, v);
-    const key = k === "no_mmsi" ? "mmsi" : k;
-    if (LINES[key] && (k === "no_mmsi" ? v : OK[k]({ ...boat, [k]: v }))) flash(key, scroll);
+    if (k === "mmsi" && boat.no_mmsi) onChange("no_mmsi", false);
+    if ([...SCRIPT, "mmsi"].includes(k) && OK[k]({ ...boat, [k]: v })) flash(k, scroll);
   };
-  const glowing = (l) => Object.keys(lit).some((k) => lit[k] && LINES[k].includes(lineKey(l)));
+  // The MAYDAY lines a detail fills in, lit yellow for 5 seconds when it's entered or ticked.
+  const glowing = (l) => Object.keys(lit).some((k) => lit[k] && lineFields(l.label).includes(k));
   const setPob = (v) => {
     const n = Math.floor(Number(v));
     if (!v || n < 1 || n > 999) return;
@@ -134,19 +131,20 @@ export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
       <DialogContent className="flex max-h-[92vh] max-w-lg flex-col gap-3 overflow-y-auto rounded-lg border-2 border-[var(--red)]" data-testid="mayday-setup-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Help me set MAYDAY up</DialogTitle>
-          <DialogDescription className="text-left text-sm">Your MAYDAY script fills itself in from these and your GPS position. They save to your boat details.</DialogDescription>
+          <DialogDescription className="text-left text-sm">Your MAYDAY and PAN-PAN scripts fill themselves in from these and your GPS position. They save to your boat details.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2.5">
           <SetupField k="vessel" label="Vessel name" boat={boat} onChange={change} input={{ maxLength: 60, placeholder: "e.g. Bacchus" }} />
           <SetupField k="callsign" label="Callsign" boat={boat} onChange={change} input={{ maxLength: 20, placeholder: "e.g. ZMA1234" }} />
-          <div className="flex min-w-0 flex-col gap-1">
-            {!boat.no_mmsi && <SetupField k="mmsi" label="MMSI" boat={boat} onChange={change} clean={(v) => v.replace(/\D/g, "").slice(0, 9)} input={{ inputMode: "numeric", placeholder: "9 digits", className: "field-input min-w-0 flex-1 font-mono" }} />}
-            <NoneTick checked={!!boat.no_mmsi} onChange={(v) => change("no_mmsi", v, true)} label="No MMSI" testId="mayday-setup-no-mmsi" />
-          </div>
           <SetupField k="pob" label="Persons on board (POB)" boat={boat} onChange={change} save={setPob} clean={(v) => v.replace(/\D/g, "").slice(0, 3)} input={{ inputMode: "numeric", placeholder: "e.g. 4" }} />
+          <SetupField k="loa" label={`Length (${boat.units === "ft" ? "ft" : "m"})`} boat={boat} onChange={change} clean={(v) => v.replace(/[^\d.]/g, "").slice(0, 6)} input={{ inputMode: "decimal", placeholder: "e.g. 12" }} />
           <div className="col-span-2"><BoatTypeSetup boat={boat} onChange={change} /></div>
           <ColourSetup k="hull_colour" label="Hull colour" boat={boat} onChange={change} />
           <ColourSetup k="deck_colour" label="Deck colour" boat={boat} onChange={change} />
+          <div className="col-span-2 flex flex-col gap-1">
+            <SetupField k="mmsi" label="MMSI (optional)" boat={boat} onChange={change} clean={(v) => v.replace(/\D/g, "").slice(0, 9)} input={{ inputMode: "numeric", placeholder: "9 digits", className: "field-input min-w-0 flex-1 font-mono" }} />
+            <p className="text-xs text-[var(--muted)]" data-testid="mayday-setup-mmsi-note">Added to Other information. Leave it empty if you have no MMSI.</p>
+          </div>
         </div>
         <ol className="flex list-decimal flex-col gap-1 rounded-md border-2 border-[var(--red)] bg-red-50 py-3 pl-8 pr-3 text-sm" data-testid="mayday-setup-script">
           {lines.map((l, i) => (
@@ -167,8 +165,8 @@ export const MaydaySetupDialog = ({ boat, lines, onChange, onClose }) => {
           )}
           <NoneTick checked={!!boat.no_shore} onChange={(v) => change("no_shore", v)} label="No shore contact" testId="mayday-setup-no-shore" />
         </div>
-        <p className={`flex items-center gap-2 text-sm font-bold ${maydayReady(boat) ? "text-emerald-800" : "text-[var(--muted)]"}`} data-testid="mayday-setup-status">
-          {maydayReady(boat) ? <><Tick testId="mayday-setup-ready-tick" /> MAYDAY is set up</> : "Fill in or confirm anything without a tick to finish setting MAYDAY up."}
+        <p className={`flex items-center gap-2 text-sm font-bold ${ready ? "text-emerald-800" : "text-[var(--muted)]"}`} data-testid="mayday-setup-status">
+          {ready ? <><Tick testId="mayday-setup-ready-tick" /> MAYDAY is set up</> : "Fill in or confirm anything without a tick to finish setting MAYDAY up."}
         </p>
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="mayday-setup-done-btn">Done</button>
       </DialogContent>

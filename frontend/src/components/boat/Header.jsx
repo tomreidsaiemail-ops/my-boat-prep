@@ -18,7 +18,11 @@ export const BrandMark = () => (
   </svg>
 );
 
-export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer, welcome, listTools }) => {
+const PILL = "h-6 whitespace-nowrap rounded-md px-1.5 text-[10px] font-extrabold uppercase shadow-sm [transition:transform_.1s] active:scale-95 sm:px-2.5 sm:text-[11px] sm:tracking-wide";
+// Light grey until MAYDAY set up has everything the scripts need; they still open the call.
+const GREY = "border border-slate-300 bg-slate-200 text-slate-600";
+
+export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcast, broadcastSent, tripDate, onDateChange, onOpenFaq, onBartender, onFish, onShopScan, onSyncStores, onBuilder, onImport, onMayday, onPanPan, distressReady = true, onDistressSetup, helpPanels, onModelWalkthrough, wizards, onTransfer, onRequestTransfer, welcome, listTools }) => {
   const held = useDistressHighlight() ? "mbp-glow" : "";
   return (
   <header className="flex flex-col gap-3 border-b-2 border-[var(--navy)] pb-4" data-testid="app-header">
@@ -44,9 +48,10 @@ export const Header = ({ gps, online, pending, onGoOffline, onGoOnline, broadcas
           <span className="flex flex-col items-end" data-testid="gps-position-text">{gps.text.split(" / ").map((line) => <span key={line} className="whitespace-nowrap">{line}</span>)}</span>
         </div>
         {onMayday && (
-          <div className="flex gap-1" data-testid="distress-buttons">
-            <button type="button" onClick={onMayday} className={`h-6 whitespace-nowrap rounded-md bg-[var(--red)] px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95 ${held}`} data-testid="mayday-btn">Mayday</button>
-            <button type="button" onClick={onPanPan} className={`h-6 whitespace-nowrap rounded-md bg-orange-500 px-1.5 text-[10px] font-extrabold uppercase sm:px-2.5 sm:text-[11px] sm:tracking-wide text-white shadow-sm [transition:transform_.1s] active:scale-95 ${held}`} data-testid="panpan-btn">Pan-Pan</button>
+          <div className="flex gap-1" data-testid="distress-buttons" data-ready={distressReady}>
+            {!distressReady && onDistressSetup && <button type="button" onClick={onDistressSetup} className={`${PILL} bg-[var(--red)] text-white`} data-testid="distress-setup-btn">Set up</button>}
+            <button type="button" onClick={onMayday} className={`${PILL} ${distressReady ? "bg-[var(--red)] text-white" : GREY} ${held}`} data-testid="mayday-btn">Mayday</button>
+            <button type="button" onClick={onPanPan} className={`${PILL} ${distressReady ? "bg-orange-500 text-white" : GREY} ${held}`} data-testid="panpan-btn">Pan-Pan</button>
           </div>
         )}
       </div>

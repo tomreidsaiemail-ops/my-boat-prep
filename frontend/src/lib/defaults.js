@@ -4,6 +4,7 @@ import { CREW_ROLES } from "@/lib/crewRoles";
 import { budgetLabel, budgetResetOption } from "@/lib/budget";
 import { maintLabel } from "@/lib/maint";
 import { cocktailLabel } from "@/lib/bartender";
+import { fillRadio, radioItems } from "@/lib/radioScript";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -35,7 +36,6 @@ const upgradePob = (data) => {
 };
 
 
-const RADIO_WAIT = "Wait for a response from either Coastguard Radio or Maritime Radio or nearby vessel. They will then ask for more information and confirm assistance is being sent to you as soon as possible. In addition, relay calls will be issued to alert any nearby vessels to your position - this is the benefit of making your Mayday call on the VHF.";
 
 export const DEFAULT_REGISTRY = [
   { id: "welcome", name: "Welcome", isSystem: true },
@@ -75,35 +75,8 @@ export const DEFAULT_DATA = {
   myTodo: [],
   shipsLog: mk(87, [{ dynamic: "logDate", label: "Departed [DATE] at <Time> for <Destination> with <Persons on Board> POB, expected arrival time <Time>." }]),
   grabBag: mk(88, ["EPIRB Activate and ensure it stays clear of obstructions", "Handheld VHF Radio Set to Channel 16 High Power", "Handheld GPS and spare batteries", "SART Search and Rescue Transponder", "Distress Flares Hand flares parachute rockets smoke signals", "Thermal Protective Aids TPAs Space blankets", "Waterproof torch flashlight and spare batteries", "Vessel documentation crew passports and ship logs", "Emergency drinking water and high energy rations", "First aid kit and critical personal medications", "Multi tool pocket knife and signaling mirror", "Handheld laser flare whistle"]),
-  mayDay: mk(100, [
-    "Check GPS position Confirm exact Latitude Longitude and milestones",
-    "Tune VHF Radio to Channel 16",
-    "Transmit: MAYDAY MAYDAY MAYDAY",
-    { dynamic: "maydayVessel", label: "This is [Vessel Name], [Vessel Name], [Vessel Name]" },
-    { dynamic: "maydayCallsign", label: "Callsign <Callsign>" },
-    { dynamic: "maydayVesselCallsign", label: "MAYDAY [Vessel Name] [Callsign]" },
-    "State Call Sign MMSI number and a brief description of the boat",
-    { dynamic: "maydayGps", label: "Report position [Position]" },
-    "Nature of distress sinking fire medical emergency",
-    "Immediate assistance required",
-    { dynamic: "pobDescription", label: POB_LABEL },
-    "OVER",
-    RADIO_WAIT,
-  ]),
-  panPan: mk(113, [
-    { dynamic: "panPanGps", label: "Check GPS position [Position]" },
-    "Tune VHF Radio to Channel 16",
-    "Transmit: PAN-PAN PAN-PAN PAN-PAN",
-    ALL_STATIONS,
-    { dynamic: "panPanVessel", label: PANPAN_VESSEL },
-    MMSI_ITEM,
-    { dynamic: "panPanPosition", label: "Report position [Position]" },
-    "State Nature of urgency loss of steering steering breakdown",
-    "State Intended action assistance required non emergency tow",
-    { dynamic: "pobDescription", label: POB_LABEL },
-    "OVER",
-    RADIO_WAIT,
-  ]),
+  mayDay: radioItems("mayDay"),
+  panPan: radioItems("panPan"),
 };
 
 export const freshState = () => ({
@@ -260,6 +233,7 @@ export const displayLabel = (item, ctx) => {
   const c = ctx.callsign || "Callsign";
   switch (item.dynamic) {
     case "logDate": return item.label.replace("[DATE]", ctx.verboseDate);
+    case "radioFill": return fillRadio(item.label, ctx);
     case "maydayVessel": return `This is ${v}, ${v}, ${v}`;
     case "maydayCallsign": return `Callsign ${c}${ctx.mmsi ? `, MMSI ${ctx.mmsi}` : ""}`;
     case "maydayVesselCallsign": return `MAYDAY ${v} ${c}`;

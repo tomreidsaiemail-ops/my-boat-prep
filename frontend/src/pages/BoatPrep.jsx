@@ -107,6 +107,7 @@ import { ListSelector } from "@/components/boat/ListSelector";
 import { CrewOrganiseButton, OrganiseDialog } from "@/components/boat/OrganiseDialog";
 import useListCategories from "@/hooks/useListCategories";
 import useAdminLists from "@/hooks/useAdminLists";
+import { RADIO_TEMPLATES, radioItems, sameScript } from "@/lib/radioScript";
 import useCrewHidden from "@/hooks/useCrewHidden";
 import { dropdownSections, organiseLists } from "@/lib/listCategories";
 import { CREW_ROLES, crewRolesList, hasRole, INVITE_DRAFT, roleBriefings, roleGroups, setRoleBriefing } from "@/lib/crewRoles";
@@ -251,6 +252,14 @@ export default function BoatPrep({ boatId, boats }) {
       }).catch(() => {});
     }
   }, [loaded, online, !pending, crew, boats.current.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // At sign-in (and whenever the admin edits them) the skipper's MAYDAY and PAN-PAN lists follow ADMIN - MAYDAY / PAN-PAN TEMPLATE, filled in from the boat when shown.
+  const radioTpl = { mayDay: useAdminLists(RADIO_TEMPLATES.mayDay, online), panPan: useAdminLists(RADIO_TEMPLATES.panPan, online) };
+  useEffect(() => {
+    if (!loaded || !online || pending || crew || boats.current.charter_lock || boats.current.model) return;
+    const next = Object.fromEntries(Object.keys(RADIO_TEMPLATES).map((k) => [k, radioItems(k, radioTpl[k].find((l) => l.name.toLowerCase() === RADIO_TEMPLATES[k].toLowerCase())?.items.map((i) => i.label))])
+      .filter(([k, items]) => !sameScript(state.data[k], items)));
+    if (Object.keys(next).length) mutate((st) => ({ ...st, data: { ...st.data, ...next } }), { count: false });
+  }, [loaded, online, !pending, crew, boats.current.key, radioTpl.mayDay, radioTpl.panPan]); // eslint-disable-line react-hooks/exhaustive-deps
   // Signing out asks for the Skipper's Phone while it's blank, so a shore contact can call in an emergency.
   const phoneMissing = loaded && !crew && !boats.current.charter_lock && !(state.boat?.skipper_phone || "").trim().replace(/^todo$/i, "");
   useEffect(() => {
@@ -518,7 +527,7 @@ export default function BoatPrep({ boatId, boats }) {
   const listSearch = searchableList(active.name) && !active.isInventory;
   useEffect(() => { setAreaFilter(""); setListQuery(""); }, [active.id]);
   useEffect(() => { const q = pendingQr(); if (q && qrBoatKey(q, user.user_id) === boats.current.key) setActiveId(INVENTORY_LIST.id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: !boat.no_mmsi && boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), hull: (boat.hull_colour || "").trim(), deck: (boat.deck_colour || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
+  const ctx = useMemo(() => ({ vessel: boat.vessel.trim(), callsign: boat.callsign.trim(), position: gps.text, verboseDate: VERBOSE_DATE, pob: boat.pob || 1, children: boat.children || 0, mmsi: !boat.no_mmsi && boat.mmsi?.length === 9 ? boat.mmsi : "", boatType: (boat.boat_type || "").trim(), length: String(boat.loa || "").trim() ? `${String(boat.loa).trim()} ${boat.units === "ft" ? "ft" : "m"}` : "", hull: (boat.hull_colour || "").trim(), deck: (boat.deck_colour || "").trim(), pets: boat.pets || [], currency: budgetCurrency(boat), yearBuilt: boat.year_built }), [boat, gps.text, VERBOSE_DATE]);
   const labelFor = (item) => displayLabel(item, ctx);
   const buildDistress = (kind) => {
     const position = distressPosition(gps);
@@ -529,6 +538,7 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const distress = useDistressEmail({ online, shore: boat.shore_email, build: buildDistress });
   const distressSms = useDistressSms({ online, owner: crew ? boats.current.owner_id : "", boatId: boats.current.boat_id, build: buildDistress, listId: EMERGENCY[active.id] ? active.id : "" });
+  const radioReady = maydayReady(boat, [...(state.data.mayDay || []), ...(state.data.panPan || [])]);
   const shown = listSearch && listQ ? shownByArea.filter((i) => matches(labelFor(i), listQ)) : shownByArea;
 
   const ready = !!(boat.vessel.trim() && boat.skipper.trim() && boat.callsign.trim());
@@ -1357,7 +1367,7 @@ export default function BoatPrep({ boatId, boats }) {
         onBuilder={crew ? undefined : () => guard() && setDialog({ type: "builder" })}
         onImport={crew ? undefined : () => guard() && setDialog({ type: "import" })}
         onTransfer={crew || boats.current.model || boats.current.charter || notFor("sell") ? undefined : startTransfer} onRequestTransfer={notFor("sell") ? undefined : () => setDialog({ type: "requestTransfer" })}
-        onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} />
+        onMayday={() => openDistress("mayDay")} onPanPan={() => openDistress("panPan")} distressReady={radioReady} onDistressSetup={crew || boats.current.model ? undefined : () => setMaydaySetup(true)} />
       <SyncBanner online={online} pending={pending} />
       <ShoreAlertBar sa={shoreAlert} />
       {shopBar && <ShoppingAheadBar />}
@@ -1495,7 +1505,7 @@ export default function BoatPrep({ boatId, boats }) {
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
           {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
-            mayday={crew ? undefined : { ready: maydayReady(boat), onSetup: () => setMaydaySetup(true) }}
+            mayday={crew ? undefined : { ready: radioReady, onSetup: () => setMaydaySetup(true) }}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id, open = false) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
               if (open) pickList(id); // "Make Home, and Open Boat Inventory": straight there, set up first if needed
@@ -1530,7 +1540,7 @@ export default function BoatPrep({ boatId, boats }) {
       {user.is_admin && !crew && templateIds(templates).includes(active.id) && (
         <PublishTemplateBar list={active} items={items} template={templates[active.id]} online={online} onPublish={publishTemplate} />
       )}
-      {maydaySetup && <MaydaySetupDialog boat={boat} lines={(state.data.mayDay || []).map((i) => ({ text: labelFor(i), dynamic: i.dynamic || "", label: i.label || "" }))} onChange={changeBoatField} onClose={() => setMaydaySetup(false)} />}
+      {maydaySetup && <MaydaySetupDialog boat={boat} lines={(state.data.mayDay || []).map((i) => ({ text: labelFor(i), dynamic: i.dynamic || "", label: i.label || "" }))} ready={radioReady} onChange={changeBoatField} onClose={() => setMaydaySetup(false)} />}
       {setupOpen && <InventorySetupWizard open onClose={() => setSetupOpen(false)} boat={boats.current} details={boat} online={online} onField={changeBoatField} onZoneDefaults={setupZoneDefaults}
         onMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })} onInventory={(mapId) => { setSetupOpen(false); setActiveId("boatInventory"); setTimeout(() => window.dispatchEvent(new CustomEvent("mbp:show-zone-map", { detail: { mapId } })), 400); setTimeout(() => setZoneTip(mapId || true), 1400); }} />}
       <ZoneTipDialog open={!!zoneTip} onClose={() => { glowFirstZone(zoneTip); setZoneTip(false); }} />
