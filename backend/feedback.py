@@ -4,7 +4,7 @@ from html import escape
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from db import db
-from auth import get_current_user, to_user_out, ADMIN_EMAIL
+from auth import get_current_user, to_user_out, CONTACT_EMAIL
 from email_service import send_email
 
 router = APIRouter(prefix="/api")
@@ -49,7 +49,7 @@ async def submit_feedback(payload: FeedbackIn, user: dict = Depends(get_current_
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     try:
-        email_id = await send_email(to=[ADMIN_EMAIL], subject=f"Feedback: {payload.title}", html=feedback_html(fb))
+        email_id = await send_email(to=[CONTACT_EMAIL], subject=f"Feedback: {payload.title}", html=feedback_html(fb))
     except ValueError:
         raise HTTPException(status_code=400, detail="Your feedback couldn't be sent as written. Please remove any links and try again.")
     await db.feedback.insert_one({**fb, "email_id": email_id})

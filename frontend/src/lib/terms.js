@@ -1,6 +1,6 @@
 export const TERMS_VERSION = "2026-06-magic50";
 export const TERMS_UPDATED = "June 2026";
-export const TERMS_CONTACT = "tomreidsaiemail@gmail.com";
+export const TERMS_CONTACT = "tomreid@myboatprep.com";
 
 export const TERMS_SECTIONS = [
   {

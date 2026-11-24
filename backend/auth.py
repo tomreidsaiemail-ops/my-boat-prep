@@ -17,6 +17,7 @@ from launch import first200_cached, first200_running
 from tier_log import log_tier, tier_log
 
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"].strip().lower()
+CONTACT_EMAIL = "tomreid@myboatprep.com"  # feedback and "contact us"; also TERMS_CONTACT in frontend/src/lib/terms.js
 # Extra admins honoured only on requests to the preview site (see server.py middleware), never on the live app.
 PREVIEW_ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("PREVIEW_ADMIN_EMAILS", "").split(",") if e.strip()}
 PREVIEW_HOST_SUFFIX = ".preview.emergentagent.com"

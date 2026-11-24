@@ -10,7 +10,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, EmailStr, Field
 from db import db
-from auth import ADMIN_EMAIL, create_session, provider_of, get_current_user, signed_in_user
+from auth import CONTACT_EMAIL, create_session, provider_of, get_current_user, signed_in_user
 from twofa import CODE_TRIES, CODES_PER_HOUR, RESEND_SECONDS, code_hash, expiry, is_special, new_code
 from email_service import send_email, EMAIL_FROM_NAME
 from urls import public_base
@@ -139,7 +139,7 @@ async def password_alert(email: str, base: str, was_set: bool) -> None:
         f'<p>The password for <b>{escape(email)}</b> was {what} on <b>{when}</b>.</p>'
         '<p>If this was you, there is nothing else to do.</p>'
         '<p style="background:#fef3c7;padding:12px;border-radius:8px"><b>Wasn\'t you?</b> Reset your password straight away, '
-        f'then <a href="mailto:{ADMIN_EMAIL}">contact us</a> so we can check your account.</p>'
+        f'then <a href="mailto:{CONTACT_EMAIL}">contact us</a> so we can check your account.</p>'
         f'<p><a href="{base}/forgot-password" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">Reset my password</a></p>'
         f'<p style="font-size:12px;color:#64748b">Sent by {escape(EMAIL_FROM_NAME)}. We never ask for your password or card details by email.</p></div>'
     )
