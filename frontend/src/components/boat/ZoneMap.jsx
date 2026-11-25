@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { HelpPanel } from "@/components/boat/HelpPanel";
-import { HelpDialog } from "@/components/boat/HelpMenu";
+import { NoWalkthroughDialog } from "@/components/boat/zone/NoWalkthroughDialog";
 import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
@@ -22,7 +22,6 @@ import { RemoveMapConfirm, SkipperComment } from "@/components/boat/zone/Skipper
 const HELP_PREFIX = "Admin - Help Panel - ";
 const HELP_NAME = "admin - help panel - how to make a zone map";
 const WALK_HELP_NAME = "admin - help panel - creating crew walkthroughs";
-const WALK_HELP_DEFAULT = "Have a look at the detailed help in \"How To Make A Zone Map\". Label a zone map photo (e.g. tap the fridge on your Galley photo and label it Fridge), then crew can walk through it.";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the cupboards onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
@@ -100,7 +99,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const helpLists = useAdminLists(HELP_PREFIX, online);
   const help = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === HELP_NAME)?.items;
   const walkHelpItems = helpLists.find((l) => l.name.toLowerCase().replace(/\s+/g, " ") === WALK_HELP_NAME)?.items;
-  const [walkHelp, setWalkHelp] = useState(null);
+  const [walkHelp, setWalkHelp] = useState(false);
   // Gold stars: the skipper marks key stops while stepping through; only the skipper sees them.
   const starStop = async (key) => {
     if (!online) { toast.error("Go online to give a stop a gold star"); return; }
@@ -154,6 +153,8 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   }, [expanded, canEdit, overviews.length, online]); // eslint-disable-line react-hooks/exhaustive-deps
   const pics = own.length ? own.map((m) => ({ key: m.id, src: boatMapUrl(boat, m), map: m }))
     : version && !failed.admin && !overviews.length ? [{ key: "admin", src: mapUrl(version) }] : [];
+  const galleySwatch = canEdit && onZone ? overviews.flatMap((m) => m.swatches || []).find((s) => /galley/i.test(s.label || "")) : null;
+  const galley = galleySwatch && { label: galleySwatch.label, colour: galleySwatch.colour };
   const steps = walkSteps(pics.filter((p) => p.map), boat?.walk_skip || [], areas, boat);
   const sectionRef = useRef(null);
   useEffect(() => {
@@ -195,7 +196,6 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </HelpPanel>
       )}
       {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
-      <HelpDialog help={walkHelp} onClose={() => setWalkHelp(null)} />
       {hasFoodPins && foodOn && (
         <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
           onClick={() => setFoodOnly((f) => !f)} aria-pressed={foodOnly} data-testid="zone-map-food-filter">
@@ -262,6 +262,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       </Dialog>
       {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff}
         stars={boat?.walk_stars || []} onStar={canEdit && boat && !boat.owner_id ? starStop : undefined} />}
+      <NoWalkthroughDialog open={walkHelp} galley={galley} help={walkHelpItems} onClose={() => setWalkHelp(false)} onGalley={() => { setWalkHelp(false); onZone(galley); }} />
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
       {steps.length > 0 && (
@@ -270,7 +271,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </button>
       )}
       {!steps.length && canEdit && (
-        <button type="button" className="btn-ghost h-10 justify-center gap-2 text-sm" onClick={() => setWalkHelp({ title: "Creating Crew Walkthroughs", items: walkHelpItems?.length ? walkHelpItems : [{ label: WALK_HELP_DEFAULT }] })} data-testid="crew-walkthrough-help-btn">
+        <button type="button" className="btn-ghost h-10 justify-center gap-2 text-sm" onClick={() => setWalkHelp(true)} data-testid="crew-walkthrough-help-btn">
           <Footprints className="h-4 w-4" /> I would like to create a Crew walkthrough
         </button>
       )}
