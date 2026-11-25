@@ -38,7 +38,7 @@ from sync_merge import galley_crew, keep_pushed, merge_state, merge_crew  # noqa
 from crew import router as crew_router, backfill_invite_keys, add_racing_roles  # noqa: E402
 from crew_register import router as crew_register_router, record_walkthrough  # noqa: E402
 from zone_schematics import router as zone_schematics_router  # noqa: E402
-from templates import reword_route_view_step, add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes, seed_trim_briefings, seed_zone_capture  # noqa: E402
+from templates import reword_route_view_step, reword_cupboard_photo_help, add_spars_attributes, seed_budget_template, seed_common_names, seed_log_help, seed_master_attributes, seed_trim_briefings, seed_zone_capture  # noqa: E402
 from role_briefings import resync_role_briefings, seed_role_briefing_bullets, seed_role_safety_briefings  # noqa: E402
 from paper_log import router as paper_log_router  # noqa: E402
 from crew_agreement import router as crew_agreement_router, seed_terms_template, crew_skip  # noqa: E402
@@ -788,6 +788,7 @@ async def create_indexes():
     await add_spars_attributes()
     await seed_log_help()
     await reword_route_view_step()
+    await reword_cupboard_photo_help()
     await quota.migrate_running_total()
     await seed_later_rows()
     await sync_rows_once()

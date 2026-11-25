@@ -578,6 +578,14 @@ async def reword_route_view_step():
     await db.migrations.insert_one({"_id": "route_bubble_step", "at": datetime.now(timezone.utc).isoformat()})
 
 
+async def reword_cupboard_photo_help():
+    """Adds the missing "the" to the cupboard photo line in admin help panels (idempotent)."""
+    old, new = "this can be one you use to scan it", "this can be the one you use to scan it"
+    async for t in db.list_templates.find({"name": {"$regex": "^admin - help panel - ", "$options": "i"}, "items.label": {"$regex": old}}, {"_id": 1, "items": 1}):
+        items = [{**i, "label": i["label"].replace(old, new)} for i in t.get("items", [])]
+        await db.list_templates.update_one({"_id": t["_id"]}, {"$set": {"items": items, "updated_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"version": 1}})
+
+
 async def seed_common_names():
     """Runs once: adds the Galley cupboard pick list offered while batch scanning the Galley zone."""
     if await db.migrations.find_one({"_id": "common_galley_names"}):
