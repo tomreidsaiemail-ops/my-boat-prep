@@ -5,11 +5,12 @@ import time
 from collections import OrderedDict
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from auth import get_current_user
 from land import HEADERS
+from my_places import my_place_name
 from water_map import land_parts, shore_water, water_path
 
 log = logging.getLogger(__name__)
@@ -90,10 +91,13 @@ _name_at = [0.0]
 
 
 @router.get("/place-name")
-async def place_name(lat: float, lon: float, user: dict = Depends(get_current_user)):
+async def place_name(lat: float, lon: float, boat_id: str = Query("", max_length=40), user: dict = Depends(get_current_user)):
     """The nearest bay, headland, marina or place name for a map tap, e.g. "Off Cape Terawhiti" (blank when OpenStreetMap has none).
-    Cached, and at most one lookup a second, as OpenStreetMap's Nominatim asks."""
+    The skipper's own name for a point within about 500 m comes first. Map names are cached, and at most one lookup a second, as Nominatim asks."""
     _limit(user)
+    mine = await my_place_name(user["user_id"], boat_id, lat, lon)
+    if mine:
+        return {"name": mine, "mine": True}
     key = (round(lat, 3), round(lon, 3))
     if key in _names:
         return {"name": _names[key]}

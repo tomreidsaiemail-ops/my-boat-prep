@@ -207,7 +207,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
         )}
       </div>
       {!interim && sure > 0 && <ReplaceWarning step={sure} onYes={() => (sure === 1 ? setSure(2) : (setSure(0), setQuick({})))} onNo={() => setSure(0)} />}
-      {quick && <QuickPlanDialog open onClose={() => setQuick(false)} onApply={applyQuick} draft={draft && !quick.fresh ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret && !quick.fresh} guide={guide?.stage === "map"}
+      {quick && <QuickPlanDialog open boatId={boatId} onClose={() => setQuick(false)} onApply={applyQuick} draft={draft && !quick.fresh ? current() : null} select={quick.select ?? null} add={quick.add ?? null} ret={ret && !quick.fresh} guide={guide?.stage === "map"}
         seed={quick.seed ? { legs: [{ ...current()[0], start_pos: null, dest_pos: null, path: null }], back: isReturn ? legsNow[0] : null } : null} />}
       <div className="flex gap-2">
         <RouteField id="route-start" label="START" value={start} onChange={(v) => setRoute("route_start", v)} placeholder="e.g. Mana" />

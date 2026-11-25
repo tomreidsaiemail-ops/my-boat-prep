@@ -90,7 +90,7 @@ const TripMiles = ({ legs }) => {
 // ret: a return trip, so the DESTINATION's tap also makes Leg 2 back to the START.
 // seed: a typed-in return trip ({ legs: [Leg 1], back: its Leg 2 or null }); its names and times are kept, only the pins are tapped in.
 // guide: the Model Vessel's Trip Planning guide is on this step, so its map help shows at the top of a wider window.
-export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false, seed = null, guide = false }) => {
+export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select = null, add = null, ret = false, seed = null, guide = false, boatId = "" }) => {
   const adding = draft && add !== null;
   const [fresh, setFresh] = useState(!draft && !seed);
   const [legs, setLegs] = useState(() => (adding ? (add < 0 ? withFront(draft) : withSlot(draft, add)) : draft || seed?.legs || [newLeg(1)]));
@@ -145,7 +145,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       setNoName(false);
       const none = () => { if (asking.current === pos) setNoName(true); };
       // A point confirmed before its name arrived is called "Point n" until the name comes in.
-      api.get("/place-name", { params: { lat: pos.lat, lon: pos.lon } }).then(({ data }) => {
+      // The skipper's own name for a point within about 500 m comes first (the Model Vessel keeps its own names).
+      api.get("/place-name", { params: { lat: pos.lat, lon: pos.lon, boat_id: boatId } }).then(({ data }) => {
         if (!data.name) return none();
         if (asking.current === pos) setName((n) => n || data.name);
         const ls2 = latest.current;
