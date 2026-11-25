@@ -1,0 +1,16 @@
+{
+  "summary": "Frontend-only test (430x900, test-user-pro, TEST_Kia Ora main) of 3 requests. (1) DEPART 'About to depart' Planned arrivals: depart-leg-type-0 'Leg 1 to Mana Island · Mooring' has bg-yellow-200 (computed rgb(254,240,138)); depart-leg-type-1 'Leg 2 to Tawa Bay · Mooring' has bg-[var(--panel)] (rgb(226,232,240)). PASS. (2) After Depart now: vessel-arrived-card + vessel-arrived-underway ('UNDERWAY 0 min · since ...') shown at top; route-plan-underway count 0 (also after reload); Route Plan card keeps summary + Departure/Estimated arrival rows; only one visible UNDERWAY text element on Leaving Dock. PASS. (3) While underway, Trip Planning archive-trip-btn shows error toast 'The boat is Underway on this trip. Log your arrival first, then archive it.', no trip-finish dialog, Archived Trips count stays (0). PASS. Then logged Leg 1 arrival (Arriving at Destination -> vessel-arrived-all-done-btn -> all-done-choice-mooring); boat no longer underway; archive-trip-btn now opens the normal 'Archive Trip Planning?' confirm; pressed Cancel, nothing archived (count still 0). PASS.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Note: after arriving at the Leg 1 destination (midpoint, Leg 2 still planned) the boat is not Underway, so archive is allowed at the midpoint. That matches the implementation (block only while boat.underway.trip_id === trip id); confirm that is the intended behaviour."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "seed_data_creation": "None. State changed by test: test-user-pro/main departed Leg 1 and logged Leg 1 arrival (Mooring), Ship's Log entries added. Trip NOT archived. Main agent restores data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Arrival window has no all-done-confirm-btn; pick an arrival type via all-done-choice-{berth|anchor|mooring}. Archive button: archive-trip-btn; confirm dialog testids start with trip-finish (Cancel button). Archived count: archived-trips-count."
+}
