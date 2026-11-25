@@ -50,19 +50,24 @@ const hrLabel = (m) => (m ? `set now + ${m / 60}hr` : "set now");
 export const When = ({ id, label, value, onChange, warn, onLeave, action = null, nowHours = null }) => {
   const [date, time] = [(value || "").slice(0, 10), (value || "").slice(11, 16)];
   const join = (d, t) => onChange(d ? (t ? `${d}T${t}` : d) : "");
-  const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""}`;
+  // A "set now" tap lights the date and time it filled yellow for 2 seconds.
+  const [glow, setGlow] = useState(false);
+  const glowTimer = useRef(null);
+  useEffect(() => () => clearTimeout(glowTimer.current), []);
+  const setNow = (v) => { onChange(v); setGlow(true); clearTimeout(glowTimer.current); glowTimer.current = setTimeout(() => setGlow(false), 2000); };
+  const box = `field-input w-full !text-sm ${warn ? "!border-[var(--red)] bg-red-50" : ""} ${glow ? "mbp-glow" : ""}`;
   return (
     <div className="flex min-w-0 flex-col gap-1.5" data-testid={`${id}-field`}>
       <div className="flex items-center gap-2">
         <span className={`field-label flex flex-wrap items-center gap-x-1 gap-y-1 ${warn ? "!text-[var(--red)]" : ""}`}>
           <label htmlFor={id}>{label}</label>
-          {nowHours !== null && <span className="whitespace-nowrap">(<SetNow id={id} base={nowHours * 60} onSet={onChange} label={hrLabel}
+          {nowHours !== null && <span className="whitespace-nowrap">(<SetNow id={id} base={nowHours * 60} onSet={setNow} label={hrLabel}
             className="mx-0.5 rounded-full border border-[var(--navy)] bg-white px-2 py-0.5 text-[11px] normal-case tracking-normal text-[var(--navy)] hover:bg-slate-50" />)</span>}
           {action}
         </span>
       </div>
       <div className="grid grid-cols-[3fr_2fr] gap-2">
-        <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} onBlur={onLeave} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-testid={`${id}-input`} />
+        <input id={id} type="date" value={date} onChange={(e) => join(e.target.value, time)} onBlur={onLeave} aria-invalid={!!warn} aria-label={`${label}: date`} className={box} data-glow={glow || undefined} data-testid={`${id}-input`} />
         <input type="time" value={time} disabled={!date} onChange={(e) => join(date, e.target.value)} aria-label={`${label}: time`} className={`${box} disabled:opacity-50`} data-testid={`${id}-time-input`} />
       </div>
     </div>
