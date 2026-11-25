@@ -1201,3 +1201,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Leaving Dock while Underway: no "New departure" button on the Leaving the Dock status check (DepartureCheck underway prop); Leaving Dock next step names the coming arrival type: "Next step - Arriving at Destination (Transit|Mooring|Anchor|Berth)" (dock stays "Next step - Returning to Dock"). Checked by screenshot; test data restored.
 
 - 2026-06: Transit window main button now "TRANSIT COMPLETE [tick]" / "CONTINUE" on two lines, transit icon on the left, wider than Cancel. Checked by screenshot; test data restored.
+
+- 2026-06: Trip Planning transit hint now names the next leg route: "...an auto depart to Leg 2 (Point 2 to Point 3) will be created." (user kept Leg 2 numbering). Underway line "Point 2 to Point 3": user said leave as is for now.

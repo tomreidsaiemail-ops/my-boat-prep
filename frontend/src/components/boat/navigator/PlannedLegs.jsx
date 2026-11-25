@@ -66,9 +66,9 @@ const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
 
 // Before a Transit point: how its passing is logged; "Arriving at Destination" opens that list.
 const openArriving = () => window.dispatchEvent(new CustomEvent("mbp:open-list", { detail: "arrivingDest" }));
-const TransitHint = ({ leg }) => (
+const TransitHint = ({ leg, next }) => (
   <li className="list-none rounded-md bg-yellow-200 px-3 py-2 text-xs font-bold text-[var(--navy)]" data-testid={`transit-hint-leg-${leg}`}>
-    After Leg {leg} depart, log transit passing on &quot;<button type="button" onClick={openArriving} className="font-extrabold underline underline-offset-2" data-testid={`transit-hint-leg-${leg}-link`}>Arriving at Destination</button>&quot;, an auto depart to Leg {leg + 1} will be created.
+    After Leg {leg} depart, log transit passing on &quot;<button type="button" onClick={openArriving} className="font-extrabold underline underline-offset-2" data-testid={`transit-hint-leg-${leg}-link`}>Arriving at Destination</button>&quot;, an auto depart to Leg {leg + 1} ({next?.route_start || `Point ${leg + 1}`} to {next?.route_dest || `Point ${leg + 2}`}) will be created.
   </li>
 );
 
@@ -145,10 +145,10 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
       {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Draft Plan map.</p>}
       {legs.length > 0 && (
         <ul className="flex flex-col gap-1.5">
-          {first.arrive_type === "transit" && <TransitHint leg={1} />}
+          {first.arrive_type === "transit" && <TransitHint leg={1} next={legs[0]} />}
           {legs.map((l, n) => [
             <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />,
-            l.arrive_type === "transit" && n < legs.length - 1 && <TransitHint key={`hint-${l.id ?? n}`} leg={n + 2} />,
+            l.arrive_type === "transit" && n < legs.length - 1 && <TransitHint key={`hint-${l.id ?? n}`} leg={n + 2} next={legs[n + 1]} />,
           ])}
         </ul>
       )}
