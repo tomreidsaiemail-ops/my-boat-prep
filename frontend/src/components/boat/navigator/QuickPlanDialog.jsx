@@ -44,7 +44,7 @@ const withSlot = (ls, j) => {
   if (j === ls.length) return [...ls, newLeg(j + 1, nameOf(ls, j))];
   const old = ls[j];
   // On a Day Trip (back where it started) a point slotted in on the way round is passed, not stopped at.
-  return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: backHome(ls) ? "transit" : "mooring" },
+  return [...ls.slice(0, j), { ...old, route_dest: "", dest_pos: null, path: null, arrive_type: "mooring" },
     { id: Date.now(), route_start: "", route_dest: old.route_dest, dest_pos: old.dest_pos, arrive_type: old.arrive_type, depart_at: old.finish_at, finish_at: later(old.finish_at, 3), path: null }, ...ls.slice(j + 1)];
 };
 // A new START before point 1: the new first leg ends at the old START.
@@ -203,8 +203,6 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
     const end = ls[ls.length - 1];
     // A new last leg that comes back to the start is Returning to Dock rather than the Mooring default.
     if (end.arrive_type === "mooring" && !known.current.has(end.id) && backHome(ls)) ls[ls.length - 1] = { ...end, arrive_type: "dock" };
-    // A Day Trip's points on the way round are Transiting unless the skipper picked another type.
-    if (backHome(ls) && ls.length !== 2) ls.forEach((l, n) => { if (n < ls.length - 1 && l.arrive_type === "mooring" && !known.current.has(l.id)) ls[n] = { ...l, arrive_type: "transit" }; });
     onApply(ls, fresh);
     onClose();
   };

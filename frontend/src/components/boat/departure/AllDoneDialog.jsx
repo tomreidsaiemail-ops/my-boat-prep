@@ -36,7 +36,8 @@ const ActualFinish = ({ plan, onFinish }) => (
 );
 
 // What DEPART or ARRIVED is about to tick and log, shown before anything changes. help: guide text at the top.
-export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndTrip, help = null, planned = "" }) => {
+// legTypes: on DEPART, the planned arrival types to confirm or change.
+export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndTrip, help = null, planned = "", legTypes = null }) => {
   const depart = plan?.kind === "depart";
   return (
     <Dialog open={!!plan} onOpenChange={(o) => !o && !busy && onClose()}>
@@ -61,6 +62,7 @@ export const AllDoneDialog = ({ plan, busy, onConfirm, onClose, onFinish, onEndT
                 <span>End of trip: group the trip&apos;s Ship&apos;s Log entries into a trip folder, with a folder per leg{plan.listId === "returningDock" ? "" : ". Ticked when no planned legs are left in the Route Plan"}</span>
               </label>
             )}
+            {!plan.blocked && depart && legTypes}
             {!plan.blocked && !depart && <ActualFinish plan={plan} onFinish={onFinish} />}
             {!plan.blocked && !depart && plan.finish?.length !== 16 && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid="all-done-actual-error">Enter the actual finish date and time to log your arrival.</p>}
             {!plan.blocked && plan.choices && <Choices choices={plan.choices} busy={busy} disabled={plan.finish?.length !== 16} onPick={onConfirm} planned={planned} />}

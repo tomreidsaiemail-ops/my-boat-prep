@@ -64,6 +64,14 @@ const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
   );
 };
 
+// Before a Transit point: how its passing is logged; "Arriving at Destination" opens that list.
+const openArriving = () => window.dispatchEvent(new CustomEvent("mbp:open-list", { detail: "arrivingDest" }));
+const TransitHint = ({ leg }) => (
+  <li className="list-none rounded-md bg-yellow-200 px-3 py-2 text-xs font-bold text-[var(--navy)]" data-testid={`transit-hint-leg-${leg}`}>
+    After Leg {leg} depart, log transit passing on &quot;<button type="button" onClick={openArriving} className="font-extrabold underline underline-offset-2" data-testid={`transit-hint-leg-${leg}-link`}>Arriving at Destination</button>&quot;, an auto depart to Leg {leg + 1} will be created.
+  </li>
+);
+
 const LegRow = ({ leg, n, onEdit, onType }) => (
   <li className="flex items-center gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] py-2 pl-3 pr-1 text-sm" data-testid={`planned-leg-${n}`}>
     <div className="min-w-0 flex-1">
@@ -135,7 +143,15 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
       <span className="field-label">Legs of the trip</span>
       <p className="text-xs text-[var(--muted)]">Leg 1 is the START and DESTINATION above. Add each further leg in order, ending with one Returning to Dock.</p>
       {onDraft && <p className="text-xs font-semibold text-amber-800" data-testid="planned-legs-draft-hint">Adding a leg, or Delete Leg in a leg's edit window, opens the Draft Plan map.</p>}
-      {legs.length > 0 && <ul className="flex flex-col gap-1.5">{legs.map((l, n) => <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />)}</ul>}
+      {legs.length > 0 && (
+        <ul className="flex flex-col gap-1.5">
+          {first.arrive_type === "transit" && <TransitHint leg={1} />}
+          {legs.map((l, n) => [
+            <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />,
+            l.arrive_type === "transit" && n < legs.length - 1 && <TransitHint key={`hint-${l.id ?? n}`} leg={n + 2} />,
+          ])}
+        </ul>
+      )}
       <button type="button" className="btn-ghost h-11 justify-center gap-1.5" onClick={() => setPlacing(true)} data-testid="add-leg-btn"><Plus className="h-4 w-4" /> Add Leg...</button>
       <AddLegPosition open={placing} points={points} onPick={pick} onClose={() => setPlacing(false)} />
       <Dialog open={!!edit} onOpenChange={(o) => { if (!o) { setEdit(null); setLegDirty(false); } }}>

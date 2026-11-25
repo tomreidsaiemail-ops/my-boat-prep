@@ -34,6 +34,8 @@ import { DepartureCheck } from "@/components/boat/departure/DepartureCheck";
 import { DepartRoute } from "@/components/boat/departure/RoutePlanCard";
 import { ArrivedCard, nextDepartureLine } from "@/components/boat/departure/ArrivedCard";
 import { AllDoneDialog } from "@/components/boat/departure/AllDoneDialog";
+import { TransitDialog } from "@/components/boat/departure/TransitDialog";
+import { DepartLegTypes } from "@/components/boat/departure/DepartLegTypes";
 import { LevelsConfirmDialog } from "@/components/boat/departure/LevelsConfirmDialog";
 import { InterimDepartureDialog } from "@/components/boat/departure/InterimDepartureDialog";
 import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
@@ -1254,7 +1256,9 @@ export default function BoatPrep({ boatId, boats }) {
   // A list's checks (Select All .. Ask The Magic Mariner); on Trip Planning they sit below Archived Trips.
   // Hop bubbles (Trip Planning, Route...); on Crew Roles they sit under the list instead of above it.
   const transitNow = allDone.transitLeg();
+  // A Transit leg under way: "LOG PASSING TRANSIT 2" on Arriving at Destination, a "Passing Mana Island" button on the other trip lists.
   const TRIP_HOPS = new Set(["leavingDock", "arrivingDest", "returningDock"]);
+  const passingBtn = !crew && !!transitNow && active.id !== "arrivingDest" && (TRIP_HOPS.has(active.id) || isTripList(active));
   // Set Up Wizard: the placed zones get their usual cupboards (Galley: Fridge, Freezer...) in Boat Inventory.
   const setupZoneDefaults = (swatches) => {
     const { count } = withZoneDefaults(swatches, areas, areaZones(boats.current, areas));
@@ -1386,10 +1390,11 @@ export default function BoatPrep({ boatId, boats }) {
               hasMap: (boats.current.zone_maps || []).some((m) => m.kind === "overview"), cupboards: Object.keys(areaZones(boats.current, areas)).length > 0, onSetup: () => setSetupOpen(true) }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" next={underwayNext} />
-        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
-            step={underwayNext} noArrive={active.id === "arrivingDest" && toDock} planned={active.id === (toDock ? "returningDock" : "arrivingDest")}
+        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={transitNow ? `Log passing transit ${transitNow.n + 1}` : active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+            step={underwayNext} noArrive={(active.id === "arrivingDest" && toDock) || passingBtn} planned={active.id === (toDock ? "returningDock" : "arrivingDest")}
             onArrive={() => {
               if (!doneGuard()) return;
+              if (transitNow) { allDone.openTransit(); return; }
               // Heading back to the dock (or on Returning to Dock) this ends the trip there; otherwise it's an arrival at the next destination.
               const id = active.id === "returningDock" || toDock ? "returningDock" : "arrivingDest";
               setActiveId(id); allDone.openArrive(id, allLists.find((l) => l.id === id)?.name || (id === "returningDock" ? "Returning to Dock" : "Arriving at Destination"));
@@ -1441,9 +1446,9 @@ export default function BoatPrep({ boatId, boats }) {
           shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
           onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
-      {!crew && transitNow && (TRIP_HOPS.has(active.id) || isTripList(active)) && (
-        <button type="button" className="btn-solid h-12 justify-center" onClick={allDone.passTransit} data-testid="transit-passed-btn">
-          <Navigation2 className="h-4 w-4" /> Passed {transitNow.route_dest || `Point ${transitNow.n + 1}`}
+      {passingBtn && (
+        <button type="button" className="btn-solid h-12 justify-center" onClick={() => doneGuard() && allDone.openTransit()} data-testid="transit-passed-btn">
+          <Navigation2 className="h-4 w-4" /> Passing {transitNow.route_dest || `Point ${transitNow.n + 1}`}
         </button>
       )}
       {hopRow}
@@ -1451,6 +1456,7 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && active.id === "leavingDock" && (departLive ? leaveStep && <NextStep label={leaveStep.label} onClick={leaveStep.onClick} testId="route-plan-next-step" />
         : ended ? archiveStep : <NextHint testId="leaving-next-hint">Next step: perform Leaving Dock checks, then click DEPART</NextHint>)}
       {!crew && active.id === "arrivingDest" && uwId && (toDock ? <NextStep label="Next step - Returning to Dock" onClick={() => setActiveId("returningDock")} testId="arriving-next-step" />
+        : transitNow ? <NextHint testId="arriving-next-hint">Next step: &apos;LOG PASSING TRANSIT {transitNow.n + 1}&apos;</NextHint>
         : <NextHint testId="arriving-next-hint">Next step: perform arrival checks, and click "ARRIVED"</NextHint>)}
       {!crew && active.id === "returningDock" && toDock && <NextHint testId="returning-next-hint">Next step, Go over 'Returning to Dock' checks, and click 'ARRIVED, ALL CHECKS DONE'</NextHint>}
       {!crew && !uwId && (active.id === "arrivingDest" || active.id === "returningDock") && (archiveStep || (active.id === "arrivingDest" && stopHint && <NextHint testId="arrived-next-hint">{stopHint}</NextHint>))}
@@ -1612,7 +1618,9 @@ export default function BoatPrep({ boatId, boats }) {
       <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} leaving={leftBy} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); if (await allDone.interimDepart(kind, leg)) guideLogged("interim"); }} />
+      <TransitDialog transit={allDone.transit} onAt={allDone.setTransitAt} onConfirm={() => allDone.passTransit(gps)} onClose={allDone.closeTransit} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} planned={plannedArrival} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onClose={allDone.close}
+        legTypes={allDone.plan?.kind === "depart" ? <DepartLegTypes legs={allDone.departLegs} onType={allDone.setLegType} /> : null}
         onConfirm={(how) => { const p = allDone.plan; allDone.confirm(how); guideLogged(p?.kind === "depart" ? "depart" : p?.listId); }}
         help={!guide ? null : allDone.plan?.kind === "depart" && between(guide.stage, "leave", "leaveOk") ? <DepartGuide guide={guide} />
           : allDone.plan?.kind === "arrive" && allDone.plan.listId === "arrivingDest" && between(guide.stage, "underway", "click") ? <EndTripGuide /> : null} />
