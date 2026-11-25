@@ -6,19 +6,19 @@ import { api, apiError } from "@/lib/api";
 import { BoatTypeField, TextField } from "@/components/boat/AdditionalDetailsDialog";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { ZoneTapPanel } from "@/components/boat/welcome/ZoneTapPanel";
+import { isCabin, isEngineRoom, isHead } from "@/lib/zoneGroups";
 
 const FIELDS = ["vessel", "boat_type", "make", "model", "year_built"];
 // The blank schematic matching the boat type: 2 hulls for a catamaran, 3 for a trimaran, else a monohull.
 const blankFor = (type) => (/trimaran/i.test(type || "") ? "/blank-trimaran.png" : /catamaran/i.test(type || "") ? "/blank-catamaran.png" : "/blank-hull.png");
-const word = (w) => (l) => new RegExp(`\\b${w}\\b`, "i").test(l);
 // Each tap step: one colour (Galley, Cockpit, Nav station) or every Admin colour naming that kind of space.
 const ZONES = {
   galley: { one: /galley/i, text: "Tap the drawing roughly where the Galley is on your boat." },
   cockpit: { one: /cockpit/i, text: "Now tap roughly where the Cockpit is." },
   nav: { one: /nav station/i, text: "Tap roughly where the Nav Station is." },
-  heads: { all: word("head"), text: "Tap a head's colour, then tap roughly where that head is. Do the same for each head on your boat." },
-  cabins: { all: (l) => word("cabin")(l) && !/cabin top/i.test(l), text: "Tap a cabin's colour, then tap roughly where that cabin is. Do the same for each cabin on your boat." },
-  engines: { all: word("engine room"), text: "Tap an engine room's colour, then tap roughly where it is." },
+  heads: { all: isHead, text: "Tap a head's colour, then tap roughly where that head is. Do the same for each head on your boat." },
+  cabins: { all: isCabin, text: "Tap a cabin's colour, then tap roughly where that cabin is. Do the same for each cabin on your boat." },
+  engines: { all: isEngineRoom, text: "Tap an engine room's colour, then tap roughly where it is." },
 };
 const ORDER = Object.keys(ZONES);
 const coloursFor = (step, presets) => {
