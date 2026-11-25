@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
 import { CropDialog, useCropStep } from "@/components/boat/zone/CropDialog";
+import { BlankSchematicButtons } from "@/components/boat/zone/BlankSchematicButtons";
 
 const blobError = async (e, fallback) => {
   try { return JSON.parse(await e.response.data.text()).detail || fallback; } catch { return apiError(e, fallback); }
@@ -127,6 +128,7 @@ export const ZoneSchematicsDialog = ({ open, boat, boatId, online, onDone, onClo
           <ImagePlus className="h-4 w-4" /> Upload My Own Diagram
         </button>
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="zone-search-upload-input" />
+        <BlankSchematicButtons boatId={boatId} online={online} disabled={busy} onDone={onDone} />
         {extra}
         {search && !againUsed && (
           <button type="button" className="flex items-center justify-center gap-1.5 text-xs font-bold text-[var(--muted)] underline" disabled={loading || busy} onClick={again} data-testid="zone-search-again-btn">

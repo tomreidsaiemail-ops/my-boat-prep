@@ -6,6 +6,7 @@ import { shrink } from "@/components/boat/PhotoPicker";
 import { CropDialog, useCropStep } from "@/components/boat/zone/CropDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ZoneSchematicsDialog } from "@/components/boat/zone/ZoneSchematicsDialog";
+import { BlankSchematicButtons } from "@/components/boat/zone/BlankSchematicButtons";
 
 // Boat type, make, model and year are needed to search the web for the boat's schematic.
 export const identityFull = (b = {}) => !!(b.boat_type?.trim() && b.make?.trim() && b.model?.trim() && /^\d{4}$/.test(b.year_built || ""));
@@ -69,6 +70,7 @@ export const CreateOverviewButton = ({ boat, details, online, count, max, onMaps
           <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={() => { setChoose(false); setPlans(true); }} data-testid="zone-overview-magic-btn">
             <Search className="h-4 w-4" /> Search the web for my schematic
           </button>
+          <BlankSchematicButtons boatId={boat.boat_id} online={online} onDone={(maps) => { onMaps(maps); setChoose(false); }} />
         </DialogContent>
       </Dialog>
       <ZoneSchematicsDialog open={plans} boat={details} boatId={boat.boat_id} online={online} onDone={(maps) => { onMaps(maps); setPlans(false); }} onClose={() => setPlans(false)} />

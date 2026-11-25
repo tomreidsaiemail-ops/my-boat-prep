@@ -6,11 +6,10 @@ import { api, apiError } from "@/lib/api";
 import { BoatTypeField, TextField } from "@/components/boat/AdditionalDetailsDialog";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { ZoneTapPanel } from "@/components/boat/welcome/ZoneTapPanel";
+import { blankFor } from "@/components/boat/zone/BlankSchematicButtons";
 import { isCabin, isEngineRoom, isHead } from "@/lib/zoneGroups";
 
 const FIELDS = ["vessel", "boat_type", "make", "model", "year_built"];
-// The blank schematic matching the boat type: 2 hulls for a catamaran, 3 for a trimaran, else a monohull.
-const blankFor = (type) => (/trimaran/i.test(type || "") ? "/blank-trimaran.png" : /catamaran/i.test(type || "") ? "/blank-catamaran.png" : "/blank-hull.png");
 // Each tap step: one colour (Galley, Cockpit, Nav station) or every Admin colour naming that kind of space.
 const ZONES = {
   galley: { one: /galley/i, text: "Tap the drawing roughly where the Galley is on your boat." },
