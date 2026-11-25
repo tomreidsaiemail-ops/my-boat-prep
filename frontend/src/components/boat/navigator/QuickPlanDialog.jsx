@@ -98,6 +98,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const [pending, setPending] = useState(null);
   const [sel, setSel] = useState(draft ? select : null);
   const [name, setName] = useState("");
+  const [noName, setNoName] = useState(false);
   const [busy, setBusy] = useState(0); // legs being routed round land
   const [sure, setSure] = useState(0);
   const [times, setTimes] = useState({ depart_at: "", finish_at: "" });
@@ -141,14 +142,16 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
       setName(seed ? nameOf(ls, i) || "" : "");
       setTimes(i < ls.length ? { depart_at: ls[i].depart_at, finish_at: ls[i].finish_at } : { depart_at: at(i + 1, "06"), finish_at: at(i + 1, "09") });
       asking.current = pos;
+      setNoName(false);
+      const none = () => { if (asking.current === pos) setNoName(true); };
       // A point confirmed before its name arrived is called "Point n" until the name comes in.
       api.get("/place-name", { params: { lat: pos.lat, lon: pos.lon } }).then(({ data }) => {
-        if (!data.name) return;
+        if (!data.name) return none();
         if (asking.current === pos) setName((n) => n || data.name);
         const ls2 = latest.current;
         const k = stopsOf(ls2).findIndex((s) => s.pos === pos);
         if (k >= 0 && nameOf(ls2, k) === `Point ${i + 1}`) put(renamed(ls2, k, data.name));
-      }).catch(() => {});
+      }).catch(none);
     } else {
       if (i > 0) route(i - 1);
       if (i < latest.current.length && posOf(latest.current, i + 1)) route(i);
@@ -249,7 +252,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
           onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
-            <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} home={homing && pending === 1} name={name} onConfirm={confirm}
+            <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} home={homing && pending === 1} name={name} noName={noName} onConfirm={confirm}
               onIgnore={() => { asking.current = null; put(setPos(latest.current, pending, null)); setPending(null); setName(""); }} />
           ) } : idle && sel !== null && posOf(legs, sel) ? { pos: posOf(legs, sel), node: (
             <PointPopup j={sel} last={legs.length} name={nameOf(legs, sel) || ""} setName={(v) => put(renamed(latest.current, sel, v))}

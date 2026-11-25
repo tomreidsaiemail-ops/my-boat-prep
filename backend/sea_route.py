@@ -111,6 +111,28 @@ COAST_TAGS = ("natural:bay", "natural:cape", "natural:peninsula", "natural:beach
 NEAR_M = {"bay": 800, "marina": 300, "beach": 120}
 
 
+NOM = "nominatim.openstreetmap.org"
+_down: dict = {}  # map server -> when to try it again after it refused or rate-limited this server
+
+
+async def _fetch(client: httpx.AsyncClient, host: str, path: str, params, pause: bool = False) -> httpx.Response:
+    """A map server call that backs off when the server refuses or blocks us, so the block can lift."""
+    if time.monotonic() < _down.get(host, 0):
+        raise ValueError(f"{host} backing off")
+    if pause:
+        await asyncio.sleep(1.1)  # Nominatim asks for one lookup a second
+    try:
+        r = await client.get(f"https://{host}{path}", params=params)
+    except httpx.TransportError:
+        _down[host] = time.monotonic() + 120
+        raise
+    if r.status_code in (403, 429, 629) or r.status_code >= 500:
+        _down[host] = time.monotonic() + 300
+        log.warning("%s answered %s, backing off for 5 minutes", host, r.status_code)
+        raise ValueError(f"{host} {r.status_code}")
+    return r
+
+
 def _metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dy = math.radians(lat2 - lat1) * 6371000
     dx = math.radians(lon2 - lon1) * 6371000 * math.cos(math.radians((lat1 + lat2) / 2))
@@ -120,7 +142,7 @@ def _metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 async def _coast_name(client: httpx.AsyncClient, lat: float, lon: float) -> str:
     """The nearest bay, headland, beach, island or marina within 10 km (Photon, built on OpenStreetMap)."""
     params = [("lat", lat), ("lon", lon), ("limit", 6), ("radius", 10)] + [("osm_tag", t) for t in COAST_TAGS]
-    r = await client.get("https://photon.komoot.io/reverse", params=params)
+    r = await _fetch(client, "photon.komoot.io", "/reverse", params)
     if r.status_code != 200:
         raise ValueError(f"Photon {r.status_code}")
     best = None
@@ -144,12 +166,11 @@ COAST_TYPES = {"marina", "bay", "cape", "peninsula", "beach", "reef", "island", 
 
 async def _nominatim_coast(client: httpx.AsyncClient, lat: float, lon: float) -> str:
     """When Photon can't be reached: the marina, bay, headland, beach or island Nominatim finds at street level, same "Off" rule."""
-    r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18, "layer": "poi,natural"})
+    r = await _fetch(client, NOM, "/reverse", {"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18, "layer": "poi,natural"})
     d = r.json() if r.status_code == 200 else {}
-    if not d.get("name") or d.get("type") not in COAST_TYPES:
-        await asyncio.sleep(1.1)  # then a marina within about 500 m, the usual departing point
+    if not d.get("name") or d.get("type") not in COAST_TYPES:  # then a marina within about 500 m, the usual departing point
         box = f"{lon - 0.006},{lat + 0.0045},{lon + 0.006},{lat - 0.0045}"
-        r = await client.get("https://nominatim.openstreetmap.org/search", params={"format": "jsonv2", "q": "marina", "viewbox": box, "bounded": 1, "limit": 1})
+        r = await _fetch(client, NOM, "/search", {"format": "jsonv2", "q": "marina", "viewbox": box, "bounded": 1, "limit": 1}, pause=True)
         d = next((m for m in (r.json() if r.status_code == 200 else []) if m.get("type") == "marina" and m.get("name")), {})
         if not d:
             return ""
@@ -173,14 +194,11 @@ async def _lookup(lat: float, lon: float, key: tuple) -> str:
                 except (httpx.HTTPError, ValueError, KeyError, TypeError):
                     pass
             if not name:  # far from the coast: the bay, strait or sea it lies in
-                if asked:
-                    await asyncio.sleep(1.1)  # Nominatim asks for one lookup a second
-                r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 16, "layer": "natural"})
+                r = await _fetch(client, NOM, "/reverse", {"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 16, "layer": "natural"}, pause=asked)
                 d = r.json() if r.status_code == 200 else {}
                 name = d.get("name") if d.get("type") in ("bay", "strait", "sea", "sound", "fjord") else ""
             if not name:
-                await asyncio.sleep(1.1)  # Nominatim asks for one lookup a second
-                r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 14, "addressdetails": 1})
+                r = await _fetch(client, NOM, "/reverse", {"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 14, "addressdetails": 1}, pause=True)
                 d = r.json() if r.status_code == 200 else {}
                 a = d.get("address") or {}
                 name = d.get("name") or next((a[k] for k in ("bay", "marina", "harbour", "beach", "island", "hamlet", "village", "suburb", "locality", "town", "city") if a.get(k)), "")

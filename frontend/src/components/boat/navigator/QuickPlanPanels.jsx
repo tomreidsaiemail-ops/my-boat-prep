@@ -25,10 +25,15 @@ const DeleteBtn = ({ onClick, testId }) => (
 // A newly tapped point, shown right where it was tapped: confirm it, end the trip there, or ignore the tap.
 // mid: a stop slotted in between two others. Times take their defaults; tap the pin later to change them.
 // home: a return trip's DESTINATION, which also makes Leg 2 back to the start. Any new end point can also come back to the start.
-export const ConfirmPopup = ({ i, mid, home, name, onConfirm, onIgnore }) => (
+// noName: the map servers found no name (or couldn't be reached), so it is called "Point n" until renamed.
+export const ConfirmPopup = ({ i, mid, home, name, noName, onConfirm, onIgnore }) => (
   <div className="flex w-[min(250px,calc(100vw-56px))] flex-col gap-1.5 rounded-lg border-2 border-amber-500 bg-white p-2 shadow-lg" data-testid="quick-plan-confirm">
     <p className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">{i === 0 ? "Departing point" : `Point ${i + 1}`}</p>
-    <p className="break-words text-sm font-bold" data-testid="quick-plan-confirm-name">{name || <span className="font-semibold italic text-[var(--muted)]">Finding the place name...</span>}</p>
+    <p className="break-words text-sm font-bold" data-testid="quick-plan-confirm-name">{name || (
+      <span className="font-semibold italic text-[var(--muted)]">
+        {noName ? `No place name found. It will be called Point ${i + 1} - tap its pin later to rename it.` : "Finding the place name..."}
+      </span>
+    )}</p>
     <button type="button" className="btn-solid h-10 min-h-0 justify-center gap-1.5 px-2 text-sm" onClick={() => onConfirm(false)} data-testid="quick-plan-confirm-btn">
       <Check className="h-4 w-4 shrink-0" /> {home ? "DESTINATION, then return to start" : mid ? "Add this stop" : i === 0 ? "Departing point" : `Arriving (Leg ${i + 1} Departing point)`}
     </button>
