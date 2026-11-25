@@ -7,7 +7,7 @@ import { PLANNED } from "@/components/boat/departure/NextStep";
 const span = (m) => (m >= 60 ? `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`);
 // "logged 15 min late" when the transit is logged ahead of time or afterwards (a couple of minutes either way counts as now).
 export const offsetText = (at) => {
-  const m = Math.round((Date.now() - new Date(at).getTime()) / 60000);
+  const m = Math.round((Math.floor(Date.now() / 60000) * 60000 - new Date(at).getTime()) / 60000);
   return Number.isNaN(m) || Math.abs(m) < 2 ? "" : `logged ${span(Math.abs(m))} ${m > 0 ? "late" : "early"}`;
 };
 const nowLabel = (m) => (m ? `Set to Now - ${-m} minutes` : "Set to Now");
