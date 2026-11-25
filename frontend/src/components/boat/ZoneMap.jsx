@@ -280,6 +280,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       <NoWalkthroughDialog open={walkHelp} galley={galley} help={walkHelpItems} onClose={() => setWalkHelp(false)} onGalley={() => { setWalkHelp(false); onZone(galley); }} />
       <ConfirmDelete item={askRemove} title="Are you sure?" testId="zone-map-remove-confirm" confirmLabel="Remove" onClose={() => setAskRemove(null)}
         note={askRemove?.kind === "overview" ? "This removes the zone schematic and the zone colours placed on it. Your cupboards stay in Boat Inventory." : "This removes the zone map photo and its labels. Your cupboards stay in Boat Inventory."}
+        body={askRemove?.kind === "overview" && <p className="text-center text-sm text-muted-foreground sm:text-left" data-testid="zone-map-remove-confirm-replace-note">It is normal to replace a schematic overview with a better one, all you will have to do is tap the colours onto the new schematic again.</p>}
         onConfirm={() => { const m = askRemove; setAskRemove(null); removeMap(m, true); }} />
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}

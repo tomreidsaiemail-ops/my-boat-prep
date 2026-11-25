@@ -1175,3 +1175,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: MAYDAY / PAN-PAN <CALLSIGN> now reads the callsign then its NATO phonetics: "ZMT123 - Zulu Mike Tango 123" (letters spelled, digit runs kept). phonetic() in frontend lib/radioScript.js (also legacy dynamic lines in lib/defaults.js) and backend radio_templates.py (fill_radio + ship_log legacy lines). No letters -> callsign unchanged. Checked in the Mayday list on preview + tests/test_radio_templates.py (13 passed).
 
 - 2026-06: Example (admin default) zone schematic: the text under it is gone; a "? Help" button sits bottom-right on the picture (owners/editors) and opens HelpDialog "Help: Zone schematic" with the new 3-paragraph text (SCHEMATIC_HELP in ZoneMap.jsx; typos "a just an"/"toi" fixed). Checked by screenshot with a temporary preview default map (removed after).
+
+- 2026-06: Remove zone schematic overview "Are you sure?" adds a 2nd paragraph: "It is normal to replace a schematic overview with a better one, all you will have to do is tap the colours onto the new schematic again." (ZoneMap.jsx ConfirmDelete body, overview only). Checked by screenshot.
