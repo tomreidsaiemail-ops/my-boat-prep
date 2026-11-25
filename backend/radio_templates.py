@@ -51,10 +51,20 @@ def _colour(c: dict) -> str:
     return "" if not h or not d else h if h == d else f"{h} hull and {d} deck"
 
 
+_NATO = dict(zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliet Kilo Lima Mike November Oscar Papa Quebec Romeo Sierra Tango Uniform Victor Whiskey X-ray Yankee Zulu".split()))
+
+
+def phonetic(cs) -> str:
+    """ "ZMT123" reads "ZMT123 - Zulu Mike Tango 123"."""
+    s = str(cs or "").strip()
+    parts = re.findall(r"[A-Z]|\d+", s.upper())
+    return f"{s} - {' '.join(_NATO.get(p, p) for p in parts)}" if any(p in _NATO for p in parts) else s
+
+
 def _value(key: str, c: dict):
     """The tag's text, "" when the detail is blank, None for a tag the scripts don't know."""
     mmsi = c.get("mmsi") or ""
-    vals = {"BOATNAME": c.get("vessel"), "VESSEL": c.get("vessel"), "VESSELNAME": c.get("vessel"), "CALLSIGN": c.get("callsign"), "GPS": c.get("position"),
+    vals = {"BOATNAME": c.get("vessel"), "VESSEL": c.get("vessel"), "VESSELNAME": c.get("vessel"), "CALLSIGN": phonetic(c.get("callsign")), "GPS": c.get("position"),
             "POSITION": c.get("position"), "POB": c.get("pob"), "BOATCOLOUR": _colour(c), "BOATCOLOR": _colour(c), "BOATTYPE": c.get("boat_type"),
             "LENGTH": c.get("length"), "MMSI": mmsi, "OPTIONALMMSINUMBER": f"MMSI {mmsi}." if mmsi else ""}
     return str(vals[key] or "").strip() if key in vals else None

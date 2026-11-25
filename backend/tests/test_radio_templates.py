@@ -74,7 +74,7 @@ C = {"vessel": "Bacchus", "callsign": "ZMA1234", "position": "36.8S 174.7E", "po
 def test_fill_full_same_colour_no_mmsi():
     assert fill_radio(MAYDAY[7], C) == "Other information - there are 4 persons on board (POB). The boat is a white Catamaran. Length 12 m."
     assert fill_radio(MAYDAY[2], C) == "This is Bacchus, Bacchus, Bacchus"
-    assert fill_radio(MAYDAY[4], C) == "MAYDAY Bacchus ZMA1234"
+    assert fill_radio(MAYDAY[4], C) == "MAYDAY Bacchus ZMA1234 - Zulu Mike Alpha 1234"
     assert fill_radio(MAYDAY[5], C).endswith("at position 36.8S 174.7E")
 
 

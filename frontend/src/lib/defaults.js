@@ -4,7 +4,7 @@ import { CREW_ROLES } from "@/lib/crewRoles";
 import { budgetLabel, budgetResetOption } from "@/lib/budget";
 import { maintLabel } from "@/lib/maint";
 import { cocktailLabel } from "@/lib/bartender";
-import { fillRadio, radioItems } from "@/lib/radioScript";
+import { fillRadio, phonetic, radioItems } from "@/lib/radioScript";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -230,7 +230,7 @@ export const displayLabel = (item, ctx) => {
   if (item.maint) return maintLabel(item, ctx.yearBuilt);
   if (item.cocktail) return cocktailLabel(item);
   const v = ctx.vessel || "Vessel Name";
-  const c = ctx.callsign || "Callsign";
+  const c = phonetic(ctx.callsign) || "Callsign";
   switch (item.dynamic) {
     case "logDate": return item.label.replace("[DATE]", ctx.verboseDate);
     case "radioFill": return fillRadio(item.label, ctx);

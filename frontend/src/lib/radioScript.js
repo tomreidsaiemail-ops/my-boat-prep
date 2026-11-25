@@ -27,8 +27,15 @@ const TAG = /<\s*([A-Za-z][A-Za-z ]*[A-Za-z])\s*>/g;
 const tagKey = (t) => t.toUpperCase().replace(/[^A-Z]/g, "");
 const low = (v) => String(v || "").trim().toLowerCase();
 const colour = (c) => { const h = low(c.hull), d = low(c.deck); return !h || !d ? "" : h === d ? h : `${h} hull and ${d} deck`; };
+const NATO = { A: "Alpha", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo", F: "Foxtrot", G: "Golf", H: "Hotel", I: "India", J: "Juliet", K: "Kilo", L: "Lima", M: "Mike",
+  N: "November", O: "Oscar", P: "Papa", Q: "Quebec", R: "Romeo", S: "Sierra", T: "Tango", U: "Uniform", V: "Victor", W: "Whiskey", X: "X-ray", Y: "Yankee", Z: "Zulu" };
+// "ZMT123" reads "ZMT123 - Zulu Mike Tango 123".
+export const phonetic = (cs) => {
+  const s = String(cs || "").trim(), parts = s.toUpperCase().match(/[A-Z]|\d+/g) || [];
+  return parts.some((p) => NATO[p]) ? `${s} - ${parts.map((p) => NATO[p] || p).join(" ")}` : s;
+};
 const VALUES = {
-  BOATNAME: (c) => c.vessel, VESSEL: (c) => c.vessel, VESSELNAME: (c) => c.vessel, CALLSIGN: (c) => c.callsign, GPS: (c) => c.position, POSITION: (c) => c.position,
+  BOATNAME: (c) => c.vessel, VESSEL: (c) => c.vessel, VESSELNAME: (c) => c.vessel, CALLSIGN: (c) => phonetic(c.callsign), GPS: (c) => c.position, POSITION: (c) => c.position,
   POB: (c) => (c.pob ? String(c.pob) : ""), BOATCOLOUR: colour, BOATCOLOR: colour, BOATTYPE: (c) => c.boatType, LENGTH: (c) => c.length, MMSI: (c) => c.mmsi,
   OPTIONALMMSINUMBER: (c) => (c.mmsi ? `MMSI ${c.mmsi}.` : ""),
 };
