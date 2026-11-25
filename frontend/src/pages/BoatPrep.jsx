@@ -45,6 +45,7 @@ import { TripListGuide } from "@/components/boat/guide/TripListGuide";
 import { DistressConfirm } from "@/components/boat/shore/DistressConfirm";
 import { NextHint, NextStep } from "@/components/boat/departure/NextStep";
 import { arriveType, nextStepName } from "@/components/boat/navigator/ArriveType";
+import { SHORT } from "@/components/boat/navigator/QuickPlanPanels";
 import { DepartGuide, EndTripGuide } from "@/components/boat/guide/DialogGuides";
 import { ArchiveHint } from "@/components/boat/guide/TripPlanGuide";
 import { legBoat, liveLog, nextLeg, withTripLog } from "@/lib/tripFold";
@@ -1286,7 +1287,8 @@ export default function BoatPrep({ boatId, boats }) {
   const uwType = uwId ? arriveType(legNow(uwId)?.arrive_type) : null;
   const toDock = uwType?.key === "dock";
   const goNext = () => setActiveId(toDock ? "returningDock" : "arrivingDest");
-  const leaveStep = uwId ? { label: `Next step - ${nextStepName(uwType?.key)}`, onClick: goNext } : null;
+  // Leaving Dock names the coming arrival's type: "Next step - Arriving at Destination (Transit)".
+  const leaveStep = uwId ? { label: `Next step - ${toDock || !SHORT[uwType?.key] ? nextStepName(uwType?.key, false) : `Arriving at Destination (${SHORT[uwType.key]})`}`, onClick: goNext } : null;
   const departLive = !!uwId && pickTrip(routeTrips(state.registry, boat), boat.route_trip, boat.route_trip_day)?.id === uwId;
   const underwayNext = uwId && active.id !== (toDock ? "returningDock" : "arrivingDest") ? { label: `Next: ${nextStepName(uwType?.key, false)}`, onClick: goNext } : null;
   const plannedArrival = ["berth", "anchor", "mooring"].includes(uwType?.key) ? uwType.key : "";
@@ -1480,7 +1482,7 @@ export default function BoatPrep({ boatId, boats }) {
           onDepart={() => doneGuard() && allDone.openDepart()} ended={!!ended} />
       )}
       {!crew && active.id === "leavingDock" && (
-        <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
+        <DepartureCheck boat={liveLog(boat, state.data.shipsLog)} underway={!!boat.underway?.trip_id} onBoatChange={updateBoat} engineType={engineType} premium={premium} online={online}
           onUpgrade={() => askUpgrade("Magic Mariner passage calculation")} onLog={logDeparture} onUnlog={unlogDeparture} onRelog={relogDeparture} onTankLog={logTank} />
       )}
       {!crew && (active.id === "arrivingDest" || active.id === "returningDock") && (

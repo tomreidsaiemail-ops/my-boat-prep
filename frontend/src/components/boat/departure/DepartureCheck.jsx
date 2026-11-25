@@ -32,7 +32,8 @@ export const SetupPrompt = ({ boat, onChange, testId }) => {
   );
 };
 
-export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog, onRelog, onTankLog }) => {
+// underway: no New departure from the dock while the boat is already away.
+export const DepartureCheck = ({ boat, underway = false, onBoatChange, engineType, premium, online, onUpgrade, onLog, onUnlog, onRelog, onTankLog }) => {
   const depart = boat.depart || {};
   const setDepart = (patch) => onBoatChange("depart", { ...depart, ...patch });
   const levels = depart.levels || {};
@@ -52,7 +53,7 @@ export const DepartureCheck = ({ boat, onBoatChange, engineType, premium, online
             {collapsed ? <>Show <ChevronDown className="h-3.5 w-3.5" /></> : <>Hide <ChevronUp className="h-3.5 w-3.5" /></>}
           </button>
         )}
-        <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("depart", {})} data-testid="departure-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New departure</button>
+        {!underway && <button type="button" className="btn-ghost h-9 min-h-0 gap-1 px-2.5 text-xs" onClick={() => onBoatChange("depart", {})} data-testid="departure-reset-btn"><RotateCcw className="h-3.5 w-3.5" /> New departure</button>}
         </div>
       </div>
       {collapsed ? (
