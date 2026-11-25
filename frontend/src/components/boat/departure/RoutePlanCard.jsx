@@ -1,6 +1,5 @@
 import { AlertTriangle, ArrowRight, Map as MapIcon, Navigation } from "lucide-react";
 import { dmyt, pickTrip, tripIssue, tripLine } from "@/lib/allDone";
-import { UnderwayBubble } from "@/components/boat/departure/UnderwayBubble";
 import { PLANNED } from "@/components/boat/departure/NextStep";
 
 // Opens the Route Plan list and lands on its Departure or Estimated Finish date.
@@ -52,7 +51,6 @@ export const RoutePlanCard = ({ trips, trip, issue, underway, onPick, onDepart, 
           </button>
         </div>
       )}
-      {live && <UnderwayBubble underway={underway} testId="route-plan-underway" />}
       {!live && !ended && (
         <button type="button" className={`btn-solid h-14 justify-center gap-2 text-base font-extrabold uppercase tracking-wide ${PLANNED}`} onClick={onDepart} disabled={!trip} data-testid="depart-all-done-btn">
           <Navigation className="h-5 w-5" /> Depart, all checks done

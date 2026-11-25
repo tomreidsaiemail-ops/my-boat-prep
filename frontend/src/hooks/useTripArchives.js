@@ -13,6 +13,12 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
   stateRef.current = state;
   const asked = useRef("");
   const base = `/boats/${boat.boat_id}/trip-archives`;
+  // A trip still Underway can't be archived: log the arrival first.
+  const underwayOn = (id) => {
+    if (stateRef.current.boat?.underway?.trip_id !== id) return false;
+    toast.error("The boat is Underway on this trip. Log your arrival first, then archive it.");
+    return true;
+  };
 
   useEffect(() => {
     setArchives(null);
@@ -23,7 +29,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     if (!enabled || !online || asked.current === boat.key) return;
     asked.current = boat.key;
     const t = finishedTrip(stateRef.current, boat.key);
-    if (t) setAsk({ id: t.id, name: t.name, finish: t.finish });
+    if (t && stateRef.current.boat?.underway?.trip_id !== t.id) setAsk({ id: t.id, name: t.name, finish: t.finish });
   }, [enabled, online, boat.key]);
 
   const restore = async (a) => {
@@ -66,6 +72,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
 
   const archive = async (id, mail = {}) => {
     if (!online) { toast.error("Archiving a trip needs a signal"); return false; }
+    if (underwayOn(id)) return false;
     setBusy(true);
     try {
       const { data } = await api.post(base, { ...archivePayload(stateRef.current, id), email_shore: mail.shore !== false, email_crew: mail.crew !== false });
@@ -92,7 +99,7 @@ export default function useTripArchives({ boat, state, mutate, online, enabled }
     }
   };
 
-  const askArchive = (id, name) => setAsk({ id, name, manual: true });
+  const askArchive = (id, name) => { if (!underwayOn(id)) setAsk({ id, name, manual: true }); };
   const setMail = (k, v) => setAsk((a) => (a ? { ...a, mail: { shore: true, crew: true, ...(a.mail || {}), [k]: v } } : a));
   const closeAsk = () => { if (ask && !ask.manual) snoozeTrip(boat.key, ask.id); setAsk(null); };
   const confirmAsk = () => { const { id, mail } = ask; setAsk(null); return archive(id, mail); };
