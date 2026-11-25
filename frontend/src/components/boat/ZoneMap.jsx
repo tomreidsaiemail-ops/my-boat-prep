@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Footprints, ImagePlus, Loader2, Map, MapPin, Trash2 } from "lucide-react";
+import { ChevronDown, CircleHelp, Footprints, ImagePlus, Loader2, Map, MapPin, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { api, API, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
-import { HelpPanel } from "@/components/boat/HelpPanel";
+import { HelpDialog } from "@/components/boat/HelpMenu";
 import { NoWalkthroughDialog } from "@/components/boat/zone/NoWalkthroughDialog";
 import { PinnedPhoto } from "@/components/boat/PinnedPhoto";
 import { ZonePinEditor } from "@/components/boat/ZonePinEditor";
 import { CrewWalkthrough, walkSteps } from "@/components/boat/CrewWalkthrough";
-import { LinkedText } from "@/components/boat/LinkedText";
 import { MapColourPicker } from "@/components/boat/zone/MapColourPicker";
 import { MapNameField } from "@/components/boat/zone/MapNameField";
 import { ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
@@ -145,6 +144,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const [removing, setRemoving] = useState(null);
   const [warnRemove, setWarnRemove] = useState(null);
   const [askRemove, setAskRemove] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const all = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
   const overviews = all.filter((m) => m.kind === "overview");
   const own = all.filter((m) => m.kind !== "overview");
@@ -184,20 +184,17 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   };
   return (
     <section ref={sectionRef} className="flex flex-col gap-2 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid="zone-map">
-      <button type="button" onClick={toggle} aria-expanded={expanded} className="flex items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
-        <Map className="h-4 w-4" /> {all.length > 1 ? `Zone maps (${all.length})` : "Zone map"}
-        <ChevronDown className={`ml-auto h-5 w-5 [transition:transform_.15s] ${expanded ? "rotate-180" : ""}`} />
-      </button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={toggle} aria-expanded={expanded} className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="zone-map-toggle">
+          <Map className="h-4 w-4 shrink-0" /> {all.length > 1 ? `Zone maps (${all.length})` : "Zone map"}
+        </button>
+        {canEdit && <button type="button" onClick={() => setHelpOpen(true)} className="btn-ghost h-8 shrink-0 gap-1 px-2.5 text-xs" data-testid="zone-map-help-btn"><CircleHelp className="h-4 w-4" /> Help</button>}
+        <button type="button" onClick={toggle} aria-expanded={expanded} aria-label={expanded ? "Fold the zone map" : "Open the zone map"} className="shrink-0 text-[var(--navy)]" data-testid="zone-map-chevron-btn">
+          <ChevronDown className={`h-5 w-5 [transition:transform_.15s] ${expanded ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      <HelpDialog help={helpOpen ? { title: "How to make a zone map", items: help?.length ? help : [{ label: DEFAULT_HELP }] } : null} onClose={() => setHelpOpen(false)} />
       {expanded && <>
-      {canEdit && (
-        <HelpPanel storageKey="mbp_zone_map_help_seen" title="How to make a zone map" testId="zone-map-help">
-          {help?.length ? help.map((i, k) => (
-            <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""} data-testid={`zone-map-help-line-${k}`}>
-              <LinkedText text={i.label} testId={`zone-map-help-link-${k}`} />
-            </p>
-          )) : <p data-testid="zone-map-help-default">{DEFAULT_HELP}</p>}
-        </HelpPanel>
-      )}
       {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
       {hasFoodPins && foodOn && (
         <button type="button" className={`flex h-10 items-center justify-center gap-2 rounded-md border-[1.5px] text-sm font-bold ${foodOnly ? "border-emerald-700 bg-emerald-700 text-white" : "border-[var(--line)]"}`}
