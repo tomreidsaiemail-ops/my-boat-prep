@@ -810,6 +810,8 @@ async def create_indexes():
     await seed_colour_presets()
     from radio_templates import seed_radio_templates
     await seed_radio_templates()
+    from special_cleanup import cleanup_special_users
+    await cleanup_special_users()
 
 
 OLD_POB = ["Number of persons on board POB and vital information", "State Number of persons on board POB and vessel description"]
