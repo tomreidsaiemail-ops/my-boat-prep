@@ -57,7 +57,7 @@ export const sailingLeg = (boat, trip) => {
   if (!trip || !n || boat.underway?.trip_id !== trip.id) return null;
   const tb = tripBoat(boat, trip.id);
   const w = tb.weather || {};
-  const leg = [{ route_start: tb.route_start, route_dest: tb.route_dest, arrive_type: w.arrive_type }, ...(w.legs || [])][n - 1];
+  const leg = [{ route_start: tb.route_start, route_dest: tb.route_dest, arrive_type: w.arrive_type, dest_pos: w.dest_pos }, ...(w.legs || [])][n - 1];
   return leg ? { ...leg, n } : null;
 };
 

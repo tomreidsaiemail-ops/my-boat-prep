@@ -10,7 +10,7 @@ import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
 import { ARRIVE_KINDS, arrivalTicks, foldTrip, legBoat, legHead, nextLeg, sailingLeg, tripHead } from "@/lib/tripFold";
 import { allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
-import { offsetText } from "@/components/boat/departure/TransitDialog";
+import { offsetText, transitBearing } from "@/components/boat/departure/TransitDialog";
 import { distressPosition } from "@/hooks/useGps";
 import { LEG_KINDS, dmyt, headingItems, legIds, legTrip, levelsText, pickTrip, routeTrips, shorePlan, tankSummary, today, tripIssue, tripLine, tripTimes } from "@/lib/allDone";
 
@@ -258,7 +258,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
   const transitLeg = () => { const l = sailingLeg(state.boat || {}, interimTrip()); return l?.arrive_type === "transit" ? l : null; };
   const openTransit = () => {
     const cur = transitLeg();
-    if (cur) setTransit({ pin: cur.n + 1, point: cur.route_dest || `Point ${cur.n + 1}`, next: nextLeg(state.boat || {}, interimTrip()), at: localNow() });
+    if (cur) setTransit({ pin: cur.n + 1, point: cur.route_dest || `Point ${cur.n + 1}`, pos: cur.dest_pos, next: nextLeg(state.boat || {}, interimTrip()), at: localNow() });
   };
   const passTransit = (gps) => {
     const trip = interimTrip();
@@ -267,12 +267,13 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     const when = new Date(at);
     const off = offsetText(at);
     const pos = `(Transit GPS: ${distressPosition(gps)}${off ? `, ${off} so approximate` : ""})`;
+    const side = transitBearing(gps, transit.pos, pin);
     const nextName = next ? `${next.route_dest || "point not set"}, ${arriveType(next.arrive_type)?.label || "type not set"}` : "";
     mutate((s) => {
       const b = s.boat;
       const legs = b.legs?.[trip.id] || [];
       const last = legs[legs.length - 1];
-      const entry = { id: Date.now(), checked: false, label: `${legHead(b)} - Passing transit ${pin} ${point} at ${dmyt(at)} - Route Plan: ${trip.name}${next ? ` - next stop ${nextName}` : ""} ${pos} - ${stamp()}` };
+      const entry = { id: Date.now(), checked: false, label: `${legHead(b)} - Passing transit ${pin} ${point} at ${dmyt(at)} - ${side} - Route Plan: ${trip.name}${next ? ` - next stop ${nextName}` : ""} ${pos} - ${stamp()}` };
       const closed = { ...last, arrived_at: when.toISOString(), actual_finish_at: at, arrival: "transit", arrived_list: "Passed", logs: [...(last?.logs || []), entry.id] };
       const rec = next && { id: entry.id + 1, kind: "transit", start: next.route_start || point, dest: next.route_dest || "", depart_at: at, finish_at: next.finish_at || "",
         arrive_type: next.arrive_type || "", at: when.toISOString(), logs: [entry.id + 1] };
@@ -283,6 +284,12 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     });
     toast.success(`Passing transit ${pin} ${point} logged in the Ship's Log${next ? `. Underway to ${next.route_dest || "the next stop"}` : ""}`);
     setTransit(null);
+    // Shore contacts see the passing on their page straight away (no shore contact, or sharing off: nothing to tell).
+    if (!online) return;
+    const text = `Passed transit ${pin} ${point} at ${dmyt(at)}${off ? ` (${off})` : ""}. ${side}.${next ? ` Next stop ${nextName}.` : ""}`;
+    api.post(`/boats/${boatId}/shore/transit`, { text: text.slice(0, 600) })
+      .then(() => toast.success("Your shore contacts can see the transit passing"))
+      .catch((e) => { if (e?.response?.status !== 400) toast.error(apiError(e, "Couldn't tell your shore contacts about the transit")); });
   };
 
   // DEPART: the planned arrival types are confirmed, and any can be changed in the trip plan.

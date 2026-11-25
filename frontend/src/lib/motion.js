@@ -16,6 +16,13 @@ const bearing = (a, b) => {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 };
 
+const SIDES = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+// True bearing from the boat to a transit mark, and the side it was passed on: a mark due east (090°) was passed to the west.
+export const passing = (me, mark) => {
+  const deg = Math.round(bearing(me, mark)) % 360;
+  return { deg, side: SIDES[Math.round(((deg + 180) % 360) / 45) % 8], nm: metres(me, mark) / 1852 };
+};
+
 const ms = (v) => (typeof v === "number" ? v : Date.parse(v));
 
 // Returns { stopped } or { knots, course, point }, or null with fewer than two positions.

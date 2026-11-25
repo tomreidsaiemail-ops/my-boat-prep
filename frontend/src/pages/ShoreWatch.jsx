@@ -95,6 +95,16 @@ export default function ShoreWatch() {
             </div>
             <button type="button" className="btn-ghost min-h-10 gap-2 px-3 text-sm" onClick={load} data-testid="shore-watch-refresh"><RefreshCw className="h-4 w-4" /> Refresh</button>
           </div>
+          {track?.plan?.passes?.length > 0 && (
+            <section className="rounded-lg border-2 border-emerald-700 bg-white p-3.5" data-testid="shore-watch-transits">
+              <p className="field-label">Transit points passed</p>
+              <ul className="mt-1 flex flex-col gap-2">
+                {[...track.plan.passes].reverse().map((p, i) => (
+                  <li key={`${p.at}-${i}`} className="text-sm font-semibold" data-testid={`shore-watch-transit-${i}`}>{p.text}<span className="block text-xs font-normal text-[var(--muted)]">shared {when(p.at)}</span></li>
+                ))}
+              </ul>
+            </section>
+          )}
           {track?.plan?.text && (
             <section className="rounded-lg border-2 border-[var(--navy)] bg-white p-3.5" data-testid="shore-watch-plan">
               <p className="field-label">Route plan · shared {when(track.plan.at)}</p>

@@ -225,17 +225,46 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
 @router.put("/boats/{boat_id}/shore/plan")
 async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(get_current_user)):
     """DEPART shares the route plan on the shore contact page (no email)."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan.route": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan.route": 1, "shore_plan.passes": 1, "shore_plan.trip_id": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id})
     if not n:
         raise HTTPException(status_code=400, detail="Invite a shore contact before you share your route plan")
     plan = {"text": payload.text.strip(), "at": _now().isoformat(), "trip_id": (doc.get("tracking") or {}).get("trip_id")}
-    if route := (doc.get("shore_plan") or {}).get("route"):
+    old = doc.get("shore_plan") or {}
+    if route := old.get("route"):
         plan["route"] = route  # the app sends the route map again for each new trip
+    if old.get("passes") and old.get("trip_id") == plan["trip_id"]:
+        plan["passes"] = old["passes"]  # transit passings stay for the rest of the trip
     await db.user_boats.update_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"$set": {"shore_plan": plan}})
     return {**plan, "contacts": n}
+
+
+class TransitIn(BaseModel):
+    text: str = Field(min_length=1, max_length=600)
+
+
+@router.post("/boats/{boat_id}/shore/transit")
+async def share_transit(boat_id: BoatPath, payload: TransitIn, user: dict = Depends(get_current_user)):
+    """Passing a transit point shows on the shore contact page straight away, with its bearing."""
+    q = {"owner_id": user["user_id"], "boat_id": boat_id}
+    doc = await db.user_boats.find_one(q, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
+    n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents(q)
+    if not n:
+        raise HTTPException(status_code=400, detail="No shore contact to tell")
+    trip = (doc.get("tracking") or {}).get("trip_id")
+    if not trip:
+        raise HTTPException(status_code=400, detail="Position sharing isn't on, so shore contacts can't see this trip")
+    now = _now().isoformat()
+    plan = doc.get("shore_plan") or {}
+    if plan.get("trip_id") != trip:
+        plan = {"text": "", "at": now, "trip_id": trip}
+    plan["passes"] = [*(plan.get("passes") or []), {"text": payload.text.strip(), "at": now}][-30:]
+    await db.user_boats.update_one(q, {"$set": {"shore_plan": plan}})
+    return {"passes": plan["passes"], "contacts": n}
 
 
 def _nz(iso: str) -> str:

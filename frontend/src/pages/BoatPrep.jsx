@@ -1618,7 +1618,7 @@ export default function BoatPrep({ boatId, boats }) {
       <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} leaving={leftBy} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
         onDepart={async (kind, leg) => { setInterim(false); if (await allDone.interimDepart(kind, leg)) guideLogged("interim"); }} />
-      <TransitDialog transit={allDone.transit} onAt={allDone.setTransitAt} onConfirm={() => allDone.passTransit(gps)} onClose={allDone.closeTransit} />
+      <TransitDialog transit={allDone.transit} gps={gps} onAt={allDone.setTransitAt} onConfirm={() => allDone.passTransit(gps)} onClose={allDone.closeTransit} />
       <AllDoneDialog plan={allDone.plan} busy={allDone.busy} planned={plannedArrival} onFinish={allDone.setFinish} onEndTrip={allDone.setEndTrip} onClose={allDone.close}
         legTypes={allDone.plan?.kind === "depart" ? <DepartLegTypes legs={allDone.departLegs} onType={allDone.setLegType} /> : null}
         onConfirm={(how) => { const p = allDone.plan; allDone.confirm(how); guideLogged(p?.kind === "depart" ? "depart" : p?.listId); }}
