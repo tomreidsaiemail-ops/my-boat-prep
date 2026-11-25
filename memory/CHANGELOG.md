@@ -192,3 +192,5 @@
 - 2026-06: Under the UNDERWAY badge (ArrivedCard arrivalLine, arrival={legNow(uwId)} from BoatPrep) the line is now just the leg under way and its arrival: 'Off Kurakura Point to Te Moana-o-Raukawa / Cook Strait, arriving Tomorrow 1:16 AM, Mooring' (Today / Tomorrow / 'Fri, 28 Nov'; type from ARRIVE_TYPES label). No plan/event name, no Route Plan date range. underway.line and Ship's Log text unchanged. Self-tested by screenshot with test-user-pro set underway in Mongo (restored).
 
 - 2026-06: Quick Draft Plan tap popup: 'Arriving (End of Trip point)' (quick-plan-end-btn) is now red-outlined like 'Arriving, then return to start', as both end in the red end circle.
+
+- 2026-06: Quick/Edit Draft Plan leg list (TripMiles rows -> quick-plan-leg-btn-n): tapping a leg lights the row and its two pins yellow (drawRoute glow -> .route-pin-glow) and shows its arrival type (LegTypeFlash, quick-plan-leg-type-flash) in yellow above the stop it ends at, all for 5 seconds, for every boat. StopsMap gains glow/flash props; MapPopup now measures its own width to stay inside the map. Self-tested by screenshot (2 pins lit, 'Mooring' above pin 3, gone after 5 s).

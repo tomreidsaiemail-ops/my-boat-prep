@@ -12,17 +12,18 @@ const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat
 const same = (a, b) => a && b && a.lat === b.lat && a.lon === b.lon;
 
 // popup: shown beside its spot on the map (above it, else below, else as near as fits), kept inside the map.
-const MapPopup = ({ at, box, children }) => {
+const MapPopup = ({ at, box, children, testId = "stops-map-popup" }) => {
   const ref = useRef(null);
-  const [h, setH] = useState(0);
-  // Re-measured every render (the name can wrap); an unchanged height doesn't render again.
-  useLayoutEffect(() => { setH(ref.current?.offsetHeight || 0); }); // eslint-disable-line react-hooks/exhaustive-deps
+  const [[pw, h], setSize] = useState([0, 0]);
+  // Re-measured every render (the name can wrap); an unchanged size doesn't render again.
+  useLayoutEffect(() => { const e = ref.current; if (e && (e.offsetWidth !== pw || e.offsetHeight !== h)) setSize([e.offsetWidth, e.offsetHeight]); }); // eslint-disable-line react-hooks/exhaustive-deps
   const [w, bh] = [box?.clientWidth || 0, box?.clientHeight || 0];
+  const half = pw / 2 + 4;
   let top = at.y - 16 - h;
   if (top < 4) top = at.y + 16;
   if (top + h > bh - 4) top = Math.max(4, bh - 4 - h);
   return (
-    <div ref={ref} className="absolute z-[1100]" style={{ left: Math.min(Math.max(at.x, 132), Math.max(132, w - 132)), top, transform: "translateX(-50%)", visibility: h ? "visible" : "hidden" }} data-testid="stops-map-popup">
+    <div ref={ref} className="absolute z-[1100]" style={{ left: Math.min(Math.max(at.x, half), Math.max(half, w - half)), top, transform: "translateX(-50%)", visibility: h ? "visible" : "hidden" }} data-testid={testId}>
       {children}
     </div>
   );
@@ -31,7 +32,8 @@ const MapPopup = ({ at, box, children }) => {
 // Map tab: pick a stop, tap the map to drop its pin. Only pins are shown; each leg's water route is worked out behind the scenes.
 // quick (Quick Draft Plan): the next stop without a pin is always the one a tap drops, and the stop list is hidden.
 // onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted. overlay: drawn over the map.
-export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null }) => {
+// glow: pins lit yellow. flash: a yellow note shown above its spot ({ pos, node }).
+export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null, glow = [], flash = null }) => {
   const gps = useGps();
   const stops = stopsOf(legs);
   const lines = legLines(legs);
@@ -49,7 +51,7 @@ export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, p
     if (!g) return;
     g.clearLayers();
     // Just the pins: no lines are drawn between them (the water route is still worked out for the miles).
-    drawRoute(map.current, g, { stops, lines: lines.map(() => null), miles, badges: quick, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
+    drawRoute(map.current, g, { stops, lines: lines.map(() => null), miles, badges: quick, glow, pick: quick && mark !== null ? mark : pick, onPin: quick ? (i) => live.current.onPinTap(i) : setPick, onPinDrag: (i, pos) => live.current.onPlace(i, pos), onTag: (s) => live.current.onPrepare(arriveType(s.type)),
       tagFor: (s) => { const t = arriveType(s?.type); return t && { cls: "stop-prepare", text: t.prep }; } });
   };
   live.current = { pick, stops, onPlace, onPrepare, onPinTap, draw };
@@ -88,7 +90,7 @@ export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, p
     if (boat.current) boat.current.setLatLng(ll); else boat.current = L.marker(ll, { icon: BOAT, title: "Your boat", interactive: false }).addTo(m);
   }, [gps]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { draw(); }, [legs, pick, mark]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { draw(); }, [legs, pick, mark, glow.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = stops.findIndex((s) => !s.pos);
   useEffect(() => { if (quick) setPick(paused ? -1 : open); }, [quick, paused, open, stops.length]);
 
@@ -98,6 +100,7 @@ export const StopsMap = ({ legs, onPlace, onPrepare = () => {}, quick = false, p
         <div ref={el} className="h-full w-full" data-testid="stops-map-canvas" />
         {overlay}
         {popup && map.current && <MapPopup at={map.current.latLngToContainerPoint([popup.pos.lat, popup.pos.lon])} box={el.current}>{popup.node}</MapPopup>}
+        {flash && map.current && <MapPopup at={map.current.latLngToContainerPoint([flash.pos.lat, flash.pos.lon])} box={el.current} testId="stops-map-flash">{flash.node}</MapPopup>}
       </div>
       {!quick && <p className="text-xs text-[var(--muted)]" data-testid="stops-map-hint">{pick < 0 ? "Tap a stop below to drop or move its pin." : "Tap the map to drop the picked stop's pin."} Drag a pin to move a stop. Not for navigation.</p>}
       {!quick && <ol className="flex flex-col gap-1.5">

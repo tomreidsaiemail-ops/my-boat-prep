@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Pencil, RotateCcw, Undo2, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
-import { ConfirmPopup, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
+import { ConfirmPopup, LegTypeFlash, PointPopup, ReplaceWarning } from "@/components/boat/navigator/QuickPlanPanels";
 import { legMiles, milesText, returnsToStart, stopsOf } from "@/lib/tripStops";
 import { api } from "@/lib/api";
 import { MapGuide } from "@/components/boat/guide/DialogGuides";
@@ -61,8 +61,8 @@ const backHome = (ls) => {
   return !!(same || near);
 };
 
-// Each drawn leg's distance (along its bends) and the trip total, under the map.
-const TripMiles = ({ legs }) => {
+// Each drawn leg's distance (along its bends) and the trip total, under the map. A tapped leg lights up (lit: its number).
+const TripMiles = ({ legs, lit = null, onLeg }) => {
   const miles = legMiles(legs);
   const rows = legs.map((l, n) => ({ n, l, nm: miles[n] })).filter((r) => r.nm != null);
   if (!rows.length) return null;
@@ -71,9 +71,12 @@ const TripMiles = ({ legs }) => {
     <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm" data-testid="quick-plan-miles">
       <ul className="flex flex-col gap-1">
         {rows.map(({ n, l, nm }) => (
-          <li key={l.id ?? n} className="flex items-baseline gap-2" data-testid={`quick-plan-miles-leg-${n}`}>
-            <span className="min-w-0 flex-1 break-words"><b>Leg {n + 1}</b> · {l.route_start || "Start"} to {l.route_dest || "next stop"}</span>
-            <span className="shrink-0 font-bold tabular-nums">{milesText(nm)}</span>
+          <li key={l.id ?? n} data-testid={`quick-plan-miles-leg-${n}`}>
+            <button type="button" onClick={() => onLeg(n)} aria-label={`Show Leg ${n + 1} on the map`}
+              className={`-mx-1.5 flex w-[calc(100%+0.75rem)] items-baseline gap-2 rounded px-1.5 py-0.5 text-left [transition:background-color_.15s] ${lit === n ? "mbp-glow" : "hover:bg-white"}`} data-testid={`quick-plan-leg-btn-${n}`}>
+              <span className="min-w-0 flex-1 break-words"><b>Leg {n + 1}</b> · {l.route_start || "Start"} to {l.route_dest || "next stop"}</span>
+              <span className="shrink-0 font-bold tabular-nums">{milesText(nm)}</span>
+            </button>
           </li>
         ))}
       </ul>
@@ -107,6 +110,11 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
   const snap = useRef(adding && add < draft.length ? draft : null); // the legs before a stop was slotted in, for Stop adding
   const asking = useRef(null); // the tapped spot whose place name is being looked up
   const [undo, setUndo] = useState([]); // how things were before each confirmed point, newest last
+  // A tapped leg: its two pins light yellow and its arrival type shows above the stop it ends at, for 5 seconds.
+  const [lit, setLit] = useState(null);
+  const litTimer = useRef(null);
+  useEffect(() => () => clearTimeout(litTimer.current), []);
+  const showLeg = (n) => { setSel(null); setLit(n); clearTimeout(litTimer.current); litTimer.current = setTimeout(() => setLit(null), 5000); };
   const known = useRef(new Set([...(draft || seed?.legs || []).map((l) => l.id), ...(adding && add < 0 ? [legs[1].id] : []), ...(seed?.back ? [seed.back.id] : [])])); // legs already in Trip Planning keep their arriving type
 
   const initial = useRef(null);
@@ -251,6 +259,8 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
           <button type="button" className="btn-ghost h-10 justify-center text-sm" onClick={stopAdding} data-testid="quick-plan-stop-adding-btn">Stop adding stops</button>
         )}
         {open && <StopsMap quick paused={pending !== null || wait === null} mark={sel} onPinTap={(i) => idle && setSel((s) => (s === i ? null : i))} legs={legs} onPlace={onPlace}
+          glow={lit !== null && legs[lit] ? [lit, lit + 1] : []}
+          flash={lit !== null && legs[lit] && posOf(legs, lit + 1) ? { pos: posOf(legs, lit + 1), node: <LegTypeFlash type={legs[lit].arrive_type} /> } : null}
           onPath={(k, pts) => put(latest.current.map((l, n) => (n === k ? { ...l, path: pts } : l)))} onRedraw={() => {}}
           popup={pending !== null && posOf(legs, pending) ? { pos: posOf(legs, pending), node: (
             <ConfirmPopup i={pending} mid={pending > 0 && pending < legs.length} home={homing && pending === 1} name={name} noName={noName} onConfirm={confirm}
@@ -260,7 +270,7 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
               type={sel > 0 ? legs[sel - 1].arrive_type : ""} setType={(t) => setType(sel, t)}
               onDelete={() => removePoint(sel)} onAddAfter={() => addAfter(sel)} onClose={() => setSel(null)} busy={busy > 0} />
           ) } : null} />}
-        <TripMiles legs={legs} />
+        <TripMiles legs={legs} lit={lit} onLeg={showLeg} />
       </DialogContent>
     </Dialog>
   );

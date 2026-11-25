@@ -82,3 +82,13 @@ export const PointPopup = ({ j, last, name, setName, type, setType, onDelete, on
   </div>
 );
 export const SHORT = { anchor: "Anchor", berth: "Berth", mooring: "Mooring", transit: "Transit", dock: "Dock" };
+
+// A tapped leg's arrival type, shown in yellow above the stop it ends at.
+export const LegTypeFlash = ({ type }) => {
+  const t = ARRIVE_TYPES.find((x) => x.key === type);
+  return (
+    <p className="mbp-glow inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-amber-500 px-3 py-1 text-sm font-extrabold shadow-lg" data-testid="quick-plan-leg-type-flash">
+      {t ? <><t.Icon className="h-4 w-4 shrink-0" /> {t.label}</> : "Arrival type not set"}
+    </p>
+  );
+};
