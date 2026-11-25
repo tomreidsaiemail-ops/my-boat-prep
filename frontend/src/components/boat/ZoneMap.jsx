@@ -275,7 +275,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           {open?.map && <SkipperComment text={open.map.comment} testId="zone-map-full-comment" />}
         </DialogContent>
       </Dialog>
-      {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff}
+      {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)}
         stars={boat?.walk_stars || []} onStar={canEdit && boat && !boat.owner_id ? starStop : undefined} />}
       <NoWalkthroughDialog open={walkHelp} galley={galley} help={walkHelpItems} onClose={() => setWalkHelp(false)} onGalley={() => { setWalkHelp(false); onZone(galley); }} />
       <ConfirmDelete item={askRemove} title="Are you sure?" testId="zone-map-remove-confirm" confirmLabel="Remove" onClose={() => setAskRemove(null)}
