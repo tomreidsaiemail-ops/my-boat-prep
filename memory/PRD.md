@@ -1199,3 +1199,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: DEPART Planned arrivals: Leg 1 row always yellow. Route Plan card no longer shows its own UNDERWAY bubble (top underway card only). Trip archive blocked while the boat is Underway on that trip (useTripArchives underwayOn: toast "The boat is Underway on this trip. Log your arrival first, then archive it.", also no automatic finished-trip archive prompt). Tested iteration_243 (all pass). Note: at a mid-trip arrival (not underway) archive is allowed.
 
 - 2026-06: Leaving Dock while Underway: no "New departure" button on the Leaving the Dock status check (DepartureCheck underway prop); Leaving Dock next step names the coming arrival type: "Next step - Arriving at Destination (Transit|Mooring|Anchor|Berth)" (dock stays "Next step - Returning to Dock"). Checked by screenshot; test data restored.
+
+- 2026-06: Transit window main button now "TRANSIT COMPLETE [tick]" / "CONTINUE" on two lines, transit icon on the left, wider than Cancel. Checked by screenshot; test data restored.

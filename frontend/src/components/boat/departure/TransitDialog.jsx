@@ -1,4 +1,4 @@
-import { Navigation2 } from "lucide-react";
+import { Check, Navigation2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SetNow, When } from "@/components/boat/navigator/NavigatorExtras";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
@@ -51,8 +51,12 @@ export const TransitDialog = ({ transit, gps, onAt, onConfirm, onClose }) => {
               </div>
             </div>
             <div className="flex gap-2">
-              <button type="button" className={`btn-solid h-12 flex-1 justify-center gap-2 font-extrabold uppercase tracking-wide ${PLANNED}`} onClick={onConfirm} disabled={!ok} data-testid="transit-dialog-confirm-btn">
-                <Navigation2 className="h-4 w-4" /> Transiting through
+              <button type="button" className={`btn-solid h-auto min-h-12 flex-[2] justify-center gap-2 py-1.5 font-extrabold uppercase ${PLANNED}`} onClick={onConfirm} disabled={!ok} data-testid="transit-dialog-confirm-btn">
+                <Navigation2 className="h-4 w-4 shrink-0" />
+                <span className="flex flex-col items-center leading-tight">
+                  <span className="flex items-center gap-1 whitespace-nowrap">Transit complete <Check className="h-4 w-4" strokeWidth={3} /></span>
+                  <span>Continue</span>
+                </span>
               </button>
               <button type="button" className="btn-ghost h-12 flex-1 justify-center" onClick={onClose} data-testid="transit-dialog-cancel-btn">Cancel</button>
             </div>
