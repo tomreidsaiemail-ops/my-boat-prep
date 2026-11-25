@@ -1,7 +1,7 @@
 import { DetailsSection } from "@/components/boat/telemetry/DetailsSection";
 import { NumField } from "@/components/boat/telemetry/NumField";
 import { BatteriesEditor } from "@/components/boat/telemetry/BatteriesEditor";
-import { batteriesOf, num, tankUnit, telemetryConfigured } from "@/lib/telemetry";
+import { batteriesOf, num, tankUnit } from "@/lib/telemetry";
 
 const Group = ({ title, children, testId }) => (
   <div className="col-span-2 grid grid-cols-3 items-end gap-2" data-testid={testId}>
@@ -30,7 +30,7 @@ export const TelemetrySection = ({ boat, onChange }) => {
   const u = tankUnit(boat);
   const f = (key) => ({ value: boat[key], onChange: (v) => onChange(key, v) });
   return (
-    <DetailsSection title="Vessel Telemetry (tank levels and battery status)" summary={summaryOf(boat, u)} defaultOpen={!telemetryConfigured(boat)} testId="telemetry-section">
+    <DetailsSection title="Vessel Telemetry (tank levels and battery status)" summary={summaryOf(boat, u)} testId="telemetry-section">
       <UnitPick value={u} onChange={(v) => onChange("tank_units", v)} />
       <Group title="Fuel" testId="telemetry-fuel">
         <NumField id="fuel-tank" label="Tank size" unit={u} {...f("fuel_tank")} />

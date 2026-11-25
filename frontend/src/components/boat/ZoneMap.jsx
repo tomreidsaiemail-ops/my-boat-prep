@@ -18,6 +18,7 @@ import useAdminLists from "@/hooks/useAdminLists";
 import { useFeature } from "@/lib/features";
 import { CreateOverviewButton } from "@/components/boat/zone/CreateOverviewButton";
 import { RemoveMapConfirm, SkipperComment } from "@/components/boat/zone/SkipperComment";
+import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 
 const HELP_PREFIX = "Admin - Help Panel - ";
 const HELP_NAME = "admin - help panel - how to make a zone map";
@@ -143,6 +144,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const [failed, setFailed] = useState({});
   const [removing, setRemoving] = useState(null);
   const [warnRemove, setWarnRemove] = useState(null);
+  const [askRemove, setAskRemove] = useState(null);
   const all = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
   const overviews = all.filter((m) => m.kind === "overview");
   const own = all.filter((m) => m.kind !== "overview");
@@ -175,6 +177,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const removeMap = async (m, sure = false) => {
     if (!online) { toast.error("You need a signal to remove a zone map"); return; }
     if (!sure && (m.comment || "").trim()) { setWarnRemove(m); return; }
+    if (!sure) { setAskRemove(m); return; }
     setRemoving(m.id);
     try { onBoatMaps((await api.delete(`/boats/${boat.boat_id}/zone-maps/${m.id}`)).data.zone_maps); toast.success("Zone map removed"); }
     catch (e) { toast.error(apiError(e, "Couldn't remove the zone map")); } finally { setRemoving(null); }
@@ -231,6 +234,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
           {p.map && canEdit && (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <MapNameField boat={boat} map={p.map} online={online} onMaps={onBoatMaps} />
+              {!p.map.pins?.length && !(p.map.comment || "").trim() && <p role="alert" className="basis-full text-sm font-bold text-[var(--red)]" data-testid={`boat-zone-map-unlabelled-${p.key}`}>The zone photo should be labelled to show in a walkthrough.</p>}
               <MapColourPicker boat={boat} map={p.map} maps={own} online={online} onMaps={onBoatMaps} />
               <button type="button" className="btn-ghost h-9 px-3 text-xs" onClick={() => (online ? setLabelling(p) : toast.error("You need a signal to label a zone map"))} data-testid={`boat-zone-map-label-${p.key}`}>
                 <MapPin className="h-3.5 w-3.5" /> {p.map.pins?.length ? `Edit labels (${p.map.pins.length})` : "Label this map"}
@@ -263,6 +267,9 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       {walking && <CrewWalkthrough steps={steps} areas={areas} boat={boat} onClose={() => setWalking(false)} onOpenArea={(id) => onOpenArea?.(id)} onSignOff={onSignOff}
         stars={boat?.walk_stars || []} onStar={canEdit && boat && !boat.owner_id ? starStop : undefined} />}
       <NoWalkthroughDialog open={walkHelp} galley={galley} help={walkHelpItems} onClose={() => setWalkHelp(false)} onGalley={() => { setWalkHelp(false); onZone(galley); }} />
+      <ConfirmDelete item={askRemove} title="Are you sure?" testId="zone-map-remove-confirm" confirmLabel="Remove" onClose={() => setAskRemove(null)}
+        note={askRemove?.kind === "overview" ? "This removes the zone schematic and the zone colours placed on it. Your cupboards stay in Boat Inventory." : "This removes the zone map photo and its labels. Your cupboards stay in Boat Inventory."}
+        onConfirm={() => { const m = askRemove; setAskRemove(null); removeMap(m, true); }} />
       <RemoveMapConfirm map={warnRemove} onClose={() => setWarnRemove(null)} onConfirm={() => { const m = warnRemove; setWarnRemove(null); removeMap(m, true); }} />
       {labelling && <ZonePinEditor pic={labelling} boat={boat} areas={areas} online={online} onAddAreas={onAddAreas} onMaps={onBoatMaps} onClose={() => setLabelling(null)} />}
       {steps.length > 0 && (

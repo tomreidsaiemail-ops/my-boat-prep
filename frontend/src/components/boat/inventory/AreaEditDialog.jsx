@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Move } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CupboardPhotoField, areaPhotos } from "@/components/boat/inventory/CupboardPhoto";
@@ -13,8 +13,17 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
   const [comment, setComment] = useState("");
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
-  useEffect(() => { if (area) { setName(area.name || ""); setWhere(area.where || ""); setComment(area.comment || ""); setPhotos(areaPhotos(area)); setError(""); } }, [area]);
+  // A cupboard with a photo but no comment: the first Save asks for one (it's optional), the next Save goes ahead.
+  const [askComment, setAskComment] = useState(false);
+  const commentBox = useRef(null);
+  useEffect(() => { if (area) { setName(area.name || ""); setWhere(area.where || ""); setComment(area.comment || ""); setPhotos(areaPhotos(area)); setError(""); setAskComment(false); } }, [area]);
+  const asking = askComment && !comment.trim();
   const save = () => {
+    if (!area?.parent_id && photos.length && !comment.trim() && !askComment) {
+      setAskComment(true);
+      setTimeout(() => { commentBox.current?.scrollIntoView({ block: "center", behavior: "smooth" }); commentBox.current?.focus(); }, 0);
+      return false;
+    }
     const res = onSave(name.trim(), where.trim().slice(0, WHERE_MAX), comment.trim().slice(0, AREA_COMMENT_MAX), photos);
     if (typeof res === "string") setError(res);
     return res === true;
@@ -35,8 +44,9 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
             <span className="text-right text-xs text-[var(--muted)]" data-testid="inventory-where-count">{where.length}/{WHERE_MAX}</span></label>
           {!area?.parent_id && (
             <label className="flex flex-col gap-1"><span className="field-label">Cupboard comment (optional)</span>
-              <textarea value={comment} maxLength={AREA_COMMENT_MAX} rows={4} onChange={(e) => setComment(e.target.value)} placeholder="e.g. The seacock is behind the bin, close it before leaving the boat"
-                className="field-input !h-auto min-h-[64px] !py-2" data-testid="inventory-comment-input" />
+              <textarea ref={commentBox} value={comment} maxLength={AREA_COMMENT_MAX} rows={4} onChange={(e) => setComment(e.target.value)} placeholder="e.g. The seacock is behind the bin, close it before leaving the boat"
+                className={`field-input !h-auto min-h-[64px] !py-2 ${asking ? "mbp-glow" : ""}`} data-testid="inventory-comment-input" />
+              {asking && <span role="status" className="rounded-md bg-amber-50 px-2 py-1.5 text-sm font-bold text-amber-900" data-testid="inventory-comment-prompt">A comment is required for the cupboard to be in a walkthrough. Add one, or save without it.</span>}
               <span className="flex justify-between gap-2 text-xs text-[var(--muted)]"><span>Crew see it on this cupboard&apos;s stop in the walkthrough, if you keep it as a stop.</span><span data-testid="inventory-comment-count">{comment.length}/{AREA_COMMENT_MAX}</span></span></label>
           )}
           {boat && !boat.owner_id && <CupboardPhotoField boat={boat} online={online} photos={photos} onChange={setPhotos} />}
@@ -44,7 +54,7 @@ export const AreaEditDialog = ({ area, zoneName, onSave, onClose, boat, online, 
           {error && <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="inventory-rename-error">{error}</div>}
           <DialogFooter className="flex-row justify-end gap-2">
             <button type="button" className="btn-ghost px-5" onClick={onClose} data-testid="inventory-rename-cancel-btn">Cancel</button>
-            <button type="submit" className="btn-solid px-6" data-testid="inventory-rename-confirm-btn">Save</button>
+            <button type="submit" className="btn-solid px-6" data-testid="inventory-rename-confirm-btn">{asking ? "Save without a comment" : "Save"}</button>
           </DialogFooter>
         </form>
       </DialogContent>

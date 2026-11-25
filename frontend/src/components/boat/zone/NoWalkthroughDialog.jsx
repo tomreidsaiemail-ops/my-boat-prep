@@ -16,6 +16,7 @@ export const NoWalkthroughDialog = ({ open, galley, help, onGalley, onClose }) =
         <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-800">
           <p data-testid="no-walkthrough-galley-tip">A crew walkthrough needs you to, say, take a photo of the Galley and then label where the pantry is.</p>
           <p data-testid="no-walkthrough-locker-tip">Alternatively you can take a photo of your technical locker, and include it in the walkthrough for a more technically minded crew member.</p>
+          <p className="font-bold text-[var(--navy)]" data-testid="no-walkthrough-comment-rule">Cupboards must be commented for a walkthrough.</p>
           {help?.length > 0 && (
             <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className="flex items-center gap-1 self-start font-bold text-[var(--blue)]" data-testid="no-walkthrough-more-btn">
               More help <ChevronDown className={`h-4 w-4 [transition:transform_.15s] ${more ? "rotate-180" : ""}`} />
