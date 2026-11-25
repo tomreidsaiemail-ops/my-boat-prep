@@ -7,6 +7,7 @@ import { ZONE_COLOURS } from "@/lib/zoneColours";
 import { CalloutPlan, ink } from "@/components/boat/zone/Callouts";
 import { useCollapsed } from "@/components/boat/departure/BatteryStatus";
 import { AddZoneWindow, ZoneDropdowns } from "@/components/boat/zone/ZoneDropdowns";
+import { ReplaceSchematicButton } from "@/components/boat/zone/ReplaceSchematicButton";
 
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const newId = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -238,9 +239,14 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             </button>
           )}
           </AddZoneWindow>
-          {onRemove && <button type="button" className="btn-ghost h-9 self-end px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
-            {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this overview
-          </button>}
+          {onRemove && (
+            <div className="flex flex-wrap justify-end gap-2" data-testid={`${t}-actions`}>
+              <ReplaceSchematicButton boat={boat} map={map} online={online} onMaps={onMaps} t={t} />
+              <button type="button" className="btn-ghost h-9 px-3 text-xs hover:text-[var(--red)]" disabled={removing} onClick={onRemove} data-testid={`${t}-remove-btn`}>
+                {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove this schematic
+              </button>
+            </div>
+          )}
         </>
       )}
       </>)}

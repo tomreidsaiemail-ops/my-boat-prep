@@ -120,6 +120,24 @@ async def add_boat_map(boat_id: BoatPath, file: UploadFile = File(...), zone: st
     return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
 
 
+@router.put("/boats/{boat_id}/zone-maps/{map_id}/image")
+async def replace_boat_map(boat_id: BoatPath, map_id: MapPath, file: UploadFile = File(...), user: dict = Depends(require_premium)):
+    """A better picture for a zone map: the new one is saved first, then takes the old one's place, keeping its colours, labels and name."""
+    key = {"owner_id": user["user_id"], "boat_id": boat_id}
+    if not await db.user_boats.find_one({**key, "zone_maps.id": map_id}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Zone map not found")
+    data = await _read_picture(file)
+    path = f"{APP_NAME}/boat-zone-maps/{user['user_id']}/{uuid.uuid4()}.{TYPES[file.content_type]}"
+    try:
+        await asyncio.to_thread(put_object, path, data, file.content_type)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Couldn't save the picture right now, please try again")
+    await db.user_boats.update_one({**key, "zone_maps.id": map_id}, {
+        "$set": {"zone_maps.$.path": path, "zone_maps.$.content_type": file.content_type, "zone_maps.$.updated_at": datetime.now(timezone.utc).isoformat()},
+        "$unset": {"zone_maps.$.source_url": "", "zone_maps.$.source_title": ""}})
+    return {"zone_maps": boat_maps(await db.user_boats.find_one(key, {"_id": 0, "zone_maps": 1}))}
+
+
 @router.delete("/boats/{boat_id}/zone-maps/{map_id}")
 async def remove_boat_map(boat_id: BoatPath, map_id: MapPath, user: dict = Depends(get_current_user)):
     key = {"owner_id": user["user_id"], "boat_id": boat_id}
