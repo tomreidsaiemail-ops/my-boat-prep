@@ -39,7 +39,7 @@ export const ZoneDropdowns = ({ presets, used, onPick, t }) => (
 // "Add Zone to schematic window": the plan again with every colour, for anything unusual.
 export const AddZoneWindow = ({ open, onClose, t, children }) => (
   <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-    <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-2xl flex-col gap-2 overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-3" data-testid={`${t}-window`} onOpenAutoFocus={(e) => e.preventDefault()}>
+    <DialogContent className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-2xl flex-col gap-2 overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-3 [&>*]:shrink-0" data-testid={`${t}-window`} onOpenAutoFocus={(e) => e.preventDefault()}>
       <DialogHeader>
         <DialogTitle className="font-display text-xl font-extrabold">Add Zone to schematic</DialogTitle>
         <DialogDescription className="text-left text-xs">Every zone colour, for anything unusual on your boat.</DialogDescription>
