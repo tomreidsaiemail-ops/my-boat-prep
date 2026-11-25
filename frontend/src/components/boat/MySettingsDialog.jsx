@@ -10,8 +10,8 @@ import { TIDE_WARNING } from "@/components/boat/navigator/TideWarning";
 import { TrainingProgress } from "@/components/boat/TrainingProgress";
 
 const WARNING = "Admin - Help Panel - Ignore 300 metre warning";
-const FeatureToggle = ({ id, name, note, user, busy, online, save }) => (
-  <label className="flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm" data-testid={`feature-${id}-label`}>
+const FeatureToggle = ({ id, name, note, user, busy, online, save, green = false }) => (
+  <label className={`flex items-start gap-3 rounded-md border-[1.5px] border-[var(--navy)] p-3 text-sm ${green && user?.[id] ? "bg-green-100" : ""}`} data-testid={`feature-${id}-label`}>
     <input type="checkbox" checked={!!user?.[id]} disabled={busy || !online} onChange={(e) => save("/me/features", { [id]: e.target.checked }, e.target.checked ? `${name} will show` : `${name} is hidden`)} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid={`feature-${id}-checkbox`} />
     <span><b>Show {name}.</b>{note && <span className="block text-xs text-[var(--muted)]">{note}</span>}</span>
   </label>
@@ -23,6 +23,14 @@ const SHOW_FEATURES = [
 const MAGIC_ICONS = [
   ["show_fish_icon", "\"Magic Fish Whisperer\" icon on home page", "The Magic Fish Whisperer is always in the menu."],
   ["show_bar_icon", "\"Magic Bartender\" icon on home page", "The Magic Bartender is always in the menu."],
+];
+// On unless the skipper turns them off; a ticked one sits on light green.
+const MAGIC_ON = [
+  ["show_magic_provisions", "Magic Provisioning Assistant on Provisions node", ""],
+  ["show_magic_meal_plan", "Magic Provisioning Assistant and Make Shopping List on Meal Plan - Sample node", ""],
+  ["show_magic_doctor", "MAGIC MARINE DOCTOR on First Aid nodes", ""],
+  ["show_magic_electrical", "MAGIC MARINE ENGINEER on Electrical Service node", ""],
+  ["show_magic_engine", "MAGIC MARINE ENGINEER on Engine Service node", ""],
 ];
 const MAGIC_MORE = [
   ["show_nav_ask", "\"ASK THE MAGIC MARINE NAVIGATOR\" after START and DESTINATION in Trip Planning", ""],
@@ -131,6 +139,7 @@ export const MySettingsDialog = ({ open, onClose }) => {
             <span><b>Show Sundowners.</b> From sunset, show the SUNDOWNER TIME cocktail pick from the Magic Bartender.</span>
           </label>
           {MAGIC_MORE.map(([key, name, note]) => <FeatureToggle key={key} id={key} name={name} note={note} user={user} busy={busy} online={online} save={save} />)}
+          {MAGIC_ON.map(([key, name, note]) => <FeatureToggle key={key} id={key} name={name} note={note} user={user} busy={busy} online={online} save={save} green />)}
           {!online && <p className="text-xs text-[var(--muted)]">Go online to change this setting.</p>}
         </section>
         </TabsContent>

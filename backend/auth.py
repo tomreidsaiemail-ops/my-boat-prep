@@ -64,6 +64,11 @@ class UserOut(BaseModel):
     show_weather_photos: bool = False
     show_topup: bool = False
     show_post_departure: bool = False
+    show_magic_provisions: bool = True
+    show_magic_meal_plan: bool = True
+    show_magic_doctor: bool = True
+    show_magic_electrical: bool = True
+    show_magic_engine: bool = True
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
@@ -73,6 +78,7 @@ class UserOut(BaseModel):
 
 
 HIDDEN_FEATURES = ("show_fish_icon", "show_bar_icon", "show_print_cards", "show_hide_area", "show_nav_ask", "show_weather_photos", "show_topup", "show_post_departure")
+SHOWN_FEATURES = ("show_magic_provisions", "show_magic_meal_plan", "show_magic_doctor", "show_magic_electrical", "show_magic_engine")
 
 
 def provider_of(u: dict) -> str:
@@ -100,6 +106,7 @@ def to_user_out(u: dict) -> UserOut:
         show_sundowners=bool((u.get("features") or {}).get("show_sundowners")),
         show_list_footer=bool((u.get("features") or {}).get("show_list_footer")),
         **{k: bool((u.get("features") or {}).get(k)) for k in HIDDEN_FEATURES},
+        **{k: bool((u.get("features") or {}).get(k, True)) for k in SHOWN_FEATURES},
         tide_datum="MSL" if (u.get("prefs") or {}).get("tide_datum") == "MSL" else "CD",
         show_tides=bool((u.get("prefs") or {}).get("show_tides")), tide_ack_date=str((u.get("prefs") or {}).get("tide_ack_date") or ""),
         welcome_no=[k for k, v in ((u.get("welcome") or {}).get("answers") or {}).items() if v == "no"],

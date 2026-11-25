@@ -885,6 +885,8 @@ export default function BoatPrep({ boatId, boats }) {
   };
   // Magic Mariner builds "First Aid Kit - Pets" sized to the pets; an existing kit list gets its items replaced after asking.
   const showMpa = !crew && (active.id === "provisions" || active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id));
+  // My settings > Magic features: the Magic Provisioning Assistant on Provisions, and on meal plans (with Make shopping list).
+  const mpaOn = active.id === "provisions" ? user.show_magic_provisions : user.show_magic_meal_plan;
   // Crew with a Provision Manager or Galley Lead / Chef role look after the Provisions list and the meal plans.
   const galley = crew && (boats.current.my_roles || []).some((r) => /provision manager|galley lead|chef/i.test(r));
   const canEditList = !crew || (galley && (active.id === "provisions" || mealLists.some((l) => l.id === active.id)));
@@ -1310,7 +1312,7 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!areaFilter && (
         <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
-          {showMpa && (
+          {showMpa && mpaOn && (
             <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>
@@ -1325,7 +1327,7 @@ export default function BoatPrep({ boatId, boats }) {
           <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
         </button>
       )}
-      {canEditList && mealLists.some((l) => l.id === active.id) && (
+      {canEditList && user.show_magic_meal_plan && mealLists.some((l) => l.id === active.id) && (
         <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
           <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
         </button>
@@ -1404,7 +1406,7 @@ export default function BoatPrep({ boatId, boats }) {
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && !EMERGENCY[active.id] && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
       {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} sms={distressSms.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
       {!crew && SERVICE_LOGS[active.id] ? (
-        <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} boat={boat} onBoatChange={updateBoat} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
+        <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} magic={active.id === "electricalService" ? user.show_magic_electrical : user.show_magic_engine} boat={boat} onBoatChange={updateBoat} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
           onAdd={(entry) => logService(SERVICE_LOGS[active.id], active.id)(entry)}
           due={(state.data.myTodo || []).find((i) => i.id === `due_${active.id}`)} onSetDue={(d) => setServiceDue(active.id, d)} dueWarn={warn === "due" && !ready}
@@ -1414,7 +1416,7 @@ export default function BoatPrep({ boatId, boats }) {
           help={<ListIntro key={`intro-${active.id}`} listId={active.id} helpItems={active.id === "shipsLog" ? helpNamed("admin - help panel - ships log") : undefined} canHide={premium} onLockedHide={() => askUpgrade("Hide help panels")} />} />
       ) : (
         <>
-        {/^first aid kit/i.test(active.name || "") && (
+        {user.show_magic_doctor && /^first aid kit/i.test(active.name || "") && (
           <MagicPanel key={`mmd-${active.id}`} id={`${active.id}-mmd`} title="Magic Marine Doctor" icon={<MagicDoctorIcon className="h-5 w-5 text-[var(--navy)]" />} testId="mmd-group">
             <DoctorAsk key={active.id} kitName={active.name} kit={items.map((i) => labelFor(i)).filter(Boolean)} adults={(boat.pob || 1) - Math.min(boat.children || 0, (boat.pob || 1) - 1)}
               children={Math.min(boat.children || 0, (boat.pob || 1) - 1)} pets={(boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim())} units={boat.units === "ft" ? "lb" : "kg"}
@@ -1518,7 +1520,7 @@ export default function BoatPrep({ boatId, boats }) {
               tripId={active.id} provisioned={(state.data.provisions || []).some((i) => i.checked)} endStep={active.id === ended ? archiveStep : null} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />
           )}
           {crew && isTripList(active) && <WeatherPhotos boat={tripBoat(boat, active.id)} readOnly boatId={boats.current.boat_id} owner={boats.current.owner_id} online={online} />}
-          {showMpa && (
+          {showMpa && mpaOn && (
             <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="mpa-open-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
             </button>

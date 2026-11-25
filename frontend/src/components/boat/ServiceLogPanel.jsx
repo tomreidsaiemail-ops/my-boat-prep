@@ -46,9 +46,13 @@ const EngineTypeHead = ({ type }) => (
 
 const NOTES_MAX = 2000;
 
-export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint, boat, onBoatChange, help }) => {
+// With the Magic Marine Engineer turned off in My settings (`magic` false), the engine and electrical inputs still show, without it.
+const Plain = ({ children }) => <div className="flex flex-col gap-2">{children}</div>;
+
+export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onDelete, due, onSetDue, dueWarn, onExport, locked, exporting, online, onUpgrade, cruise, onCruise, cruiseHint, boat, onBoatChange, help, magic = true }) => {
   const k = KINDS[kind];
   const engine = kind === "engine_log";
+  const Wrap = magic ? MagicPanel : Plain;
   const [value, setValue] = useState("");
   const [date, setDate] = useState(today);
   const [notes, setNotes] = useState("");
@@ -71,7 +75,7 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
   return (
     <>
     {(engine || (kind === "electrical_log" && boat)) && (
-      <MagicPanel id={`${k.prefix}-mme`} title="Magic Marine Engineer" icon={<MagicEngineerIcon className="h-5 w-5 text-[var(--navy)]" />} testId={`${k.prefix}-mme-group`}>
+      <Wrap id={`${k.prefix}-mme`} title="Magic Marine Engineer" icon={<MagicEngineerIcon className="h-5 w-5 text-[var(--navy)]" />} testId={`${k.prefix}-mme-group`}>
         {engine && <div className="flex flex-col gap-2 rounded-md border-[1.5px] border-[var(--line)] bg-[var(--panel)] p-2.5" data-testid="engine-inputs">
         <div className="grid grid-cols-[1.4fr_1fr] items-end gap-2" data-testid="engine-type-row">
           <label className="flex min-w-0 flex-col gap-1"><span className="field-label">Engine type</span>
@@ -87,12 +91,12 @@ export const ServiceLogPanel = ({ kind, entries, today, ticked, warn, onAdd, onD
         {cruiseHint}
         </div>}
         {kind === "electrical_log" && boat && <ElectricalInputs boat={boat} onBoatChange={onBoatChange} />}
-        {kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+        {magic && kind === "electrical_log" && boat && <EngineerAsk electrical={electricalContext(boat)} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
-        {engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
+        {magic && engine && <EngineerAsk engineType={engineType} entries={sorted} online={online} locked={locked} onUpgrade={onUpgrade}
           onFocusType={() => document.querySelector('[data-testid="engine-type-input"]')?.focus()}
           onAddToNotes={(text) => setNotes((n) => (n ? `${n} | ${text}` : text).slice(0, NOTES_MAX))} />}
-      </MagicPanel>
+      </Wrap>
     )}
     {help}
     <section className="flex flex-col gap-3 rounded-lg border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={k.panelId}>

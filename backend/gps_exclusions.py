@@ -38,6 +38,11 @@ class FeaturesIn(BaseModel):
     show_weather_photos: Optional[bool] = None
     show_topup: Optional[bool] = None
     show_post_departure: Optional[bool] = None
+    show_magic_provisions: Optional[bool] = None
+    show_magic_meal_plan: Optional[bool] = None
+    show_magic_doctor: Optional[bool] = None
+    show_magic_electrical: Optional[bool] = None
+    show_magic_engine: Optional[bool] = None
 
 
 @router.put("/me/features")
