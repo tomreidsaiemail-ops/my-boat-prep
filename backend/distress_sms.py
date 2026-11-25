@@ -125,4 +125,5 @@ async def sms_status(sms_id: SmsId, user: dict = Depends(get_current_user)):
     msgs = doc["messages"]
     delivered = sum(m.get("status") == "delivered" for m in msgs)
     done = all(m.get("status") in FINAL for m in msgs)
-    return {"status": "delivered" if delivered and done else "failed" if done else "sending", "delivered": delivered, "total": len(msgs)}
+    return {"status": "delivered" if delivered and done else "failed" if done else "sending", "delivered": delivered, "total": len(msgs),
+            "to": [m["to"] for m in msgs if m.get("status") == "delivered"]}

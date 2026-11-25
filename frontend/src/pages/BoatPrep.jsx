@@ -116,7 +116,6 @@ import { INTROS, ListIntro } from "@/components/boat/ListIntro";
 import { DistressEmailBar } from "@/components/boat/distress/DistressEmailBar";
 import useDistressEmail from "@/components/boat/distress/useDistressEmail";
 import useDistressSms from "@/hooks/useDistressSms";
-import { DistressSmsTick } from "@/components/boat/distress/DistressSmsTick";
 import { Checklist } from "@/components/boat/Checklist";
 import { stampTicks } from "@/components/boat/TickBadge";
 import { AddItemForm } from "@/components/boat/AddItemForm";
@@ -1402,9 +1401,8 @@ export default function BoatPrep({ boatId, boats }) {
         <DistressConfirm kind={active.id} onIgnore={() => setDistressDone((d) => ({ ...d, [active.id]: true }))}
           onConfirm={() => { shoreAlert.raise(active.id); distress.opened(active.id); distressSms.opened(active.id); setDistressDone((d) => ({ ...d, [active.id]: true })); }} />
       )}
-      {EMERGENCY[active.id] && <DistressSmsTick sms={distressSms.state[active.id]} />}
       {(!premium || (user.launch_free && !user.has_subscription && !user.is_admin)) && !crew && !EMERGENCY[active.id] && <First5000Banner variant="app" launchFree={!!user.launch_free} onUpgrade={() => askUpgrade("FIRST5000 launch offer")} />}
-      {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
+      {EMERGENCY[active.id] && <DistressEmailBar online={online} status={distress.state[active.id]} sms={distressSms.state[active.id]} onRetryShore={() => distress.retryShore(active.id)} />}
       {!crew && SERVICE_LOGS[active.id] ? (
         <ServiceLogPanel key={active.id} kind={SERVICE_LOGS[active.id]} boat={boat} onBoatChange={updateBoat} entries={state[SERVICE_LOGS[active.id]] || []} today={todayISO()}
           ticked={(state.data[active.id] || []).filter((i) => i.checked).map((i) => i.label)} warn={warn === "service" && !ready}
