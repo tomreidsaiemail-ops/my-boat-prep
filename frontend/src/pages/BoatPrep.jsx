@@ -1392,7 +1392,7 @@ export default function BoatPrep({ boatId, boats }) {
               hasMap: (boats.current.zone_maps || []).some((m) => m.kind === "overview"), cupboards: Object.keys(areaZones(boats.current, areas)).length > 0, onSetup: () => setSetupOpen(true) }} />}
       {/* Underway: the trip and, for the skipper, the one-tap ARRIVED, right under VESSEL. */}
       {boat.underway?.trip_id && (crew ? <UnderwayBubble underway={boat.underway} big testId="trip-underway-bubble" next={underwayNext} />
-        : <ArrivedCard underway={boat.underway} next={nextDeparture(hopTrip)} big label={transitNow ? `Log passing transit ${transitNow.n + 1}` : active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
+        : <ArrivedCard underway={boat.underway} arrival={legNow(uwId)} next={nextDeparture(hopTrip)} big label={transitNow ? `Log passing transit ${transitNow.n + 1}` : active.id === "returningDock" || toDock ? undefined : "Arrived, all arrival checks done"} testId="vessel-arrived"
             step={underwayNext} noArrive={(active.id === "arrivingDest" && toDock) || passingBtn} planned={active.id === (toDock ? "returningDock" : "arrivingDest")}
             onArrive={() => {
               if (!doneGuard()) return;
