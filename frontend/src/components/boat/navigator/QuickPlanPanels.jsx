@@ -38,7 +38,7 @@ export const ConfirmPopup = ({ i, mid, home, name, noName, onConfirm, onIgnore }
       <Check className="h-4 w-4 shrink-0" /> {home ? "DESTINATION, then return to start" : mid ? "Add this stop" : i === 0 ? "Departing point" : `Arriving (Leg ${i + 1} Departing point)`}
     </button>
     {i > 0 && !mid && !home && (
-      <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 px-2 text-sm !border-emerald-700 !text-emerald-800" onClick={() => onConfirm(true)} data-testid="quick-plan-end-btn">
+      <button type="button" className="btn-ghost h-10 min-h-0 justify-center gap-1.5 px-2 text-sm !border-[var(--red)] !text-[var(--red)]" onClick={() => onConfirm(true)} data-testid="quick-plan-end-btn">
         <Flag className="h-4 w-4 shrink-0" /> Arriving (End of Trip point)
       </button>
     )}
