@@ -1,6 +1,6 @@
 // "!!-!!Highlight Lists" on a Model Vessel wizard step: while that step is on screen, the button or box named "Lists"
 // (and its label or entry box) glows light green. Several: "!!-!!Highlight Hamburger, !!-!!Highlight Lists".
-// A name is the thing's data-hl name (e.g. the menu button is "Hamburger"), else its label, aria-label, words or title.
+// A name is the thing's data-hl name (e.g. the menu button is "Hamburger"), else its label, aria-label, words or title; "*" matches anything.
 const HL = /,?\s*!!-!!\s*highlight\s+([^,]*?)\s*(?=,|$|@@|!!-!!)/gi;
 const TARGET = 'button, a[href], input, textarea, select, label, [role="button"], [role="tab"], [role="combobox"], [role="menuitem"], [role="checkbox"], [role="switch"], [data-hl]';
 const clean = (s = "") => String(s).replace(/\s+/g, " ").replace(/(\.{3}|…)$/, "").replace(/[*:]+$/, "").trim();
@@ -20,10 +20,18 @@ export const nameOf = (el) => {
 };
 
 const onScreen = (el) => el.getClientRects().length > 0 && !el.closest("[data-training-window]");
+// "*" stands for anything: "ZONE MAPS*" finds "ZONE MAPS (7)", "GALLEY - *" finds "GALLEY - 9".
+const esc = (s) => s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+const matcher = (name) => {
+  const p = String(name).replace(/\s+/g, " ").trim().toLowerCase();
+  if (!p.includes("*")) { const k = norm(name); return (n) => n === k; }
+  const re = new RegExp(`^${p.split("*").map((part) => esc(part).replace(/ /g, "\\s*")).join(".*")}$`);
+  return (n) => re.test(n);
+};
 // Everything on screen with that name (not the parts inside another match), with its label or entry box.
 const findByName = (name) => {
-  const k = norm(name);
-  const all = [...document.querySelectorAll(TARGET)].filter((el) => onScreen(el) && norm(nameOf(el)) === k);
+  const hit = matcher(name);
+  const all = [...document.querySelectorAll(TARGET)].filter((el) => onScreen(el) && hit(norm(nameOf(el))));
   return all.filter((el) => !all.some((o) => o !== el && o.contains(el)))
     .flatMap((el) => [el, ...(el.tagName === "LABEL" && el.control ? [el.control] : []), ...(el.labels ? [...el.labels] : [])]);
 };
