@@ -1,5 +1,6 @@
 // Model Vessel walkthroughs: every "Admin - Model Vessel - <title>" list is one wizard.
 import { splitDoItForMe } from "@/lib/doItForMe";
+import { splitHighlights } from "@/lib/highlight";
 
 export const WIZARD_PREFIX = "Admin - Model Vessel";
 export const BASIC = "basic introduction walkthrough";
@@ -90,6 +91,8 @@ const finishBlock = (nodes) => {
   for (let i = nodes.length - 1, next = false; i >= 0; i -= 1) next = inBlock[i] = nodes[i].type === "finish" || (nodes[i].type === "if" && next);
   return inBlock;
 };
+// A step's own words: without its "!!-!!Highlight" names and "@@DOITFORME" boxes.
+const own = (line) => splitDoItForMe(splitHighlights(line).text);
 export const parseWizard = (lines = []) => {
   const nodes = group(lines.map((line) => ({ ...classify(line), line })).filter((n) => n.type));
   addAnswers(nodes);
@@ -106,9 +109,11 @@ export const parseWizard = (lines = []) => {
   let k = 0;
   return {
     nodes, visible, finish: finish.filter((f) => f.text),
-    steps: visible.map((i) => (nodes[i].type === "question" ? nodes[i].text : rich(i) ? nodes[i].items.map((f) => f.text).join(" · ") : withNext(splitDoItForMe(nodes[i].line).text))),
+    steps: visible.map((i) => (nodes[i].type === "question" ? splitHighlights(nodes[i].text).text.trim() : rich(i) ? nodes[i].items.map((f) => f.text).join(" · ") : withNext(own(nodes[i].line).text))),
     // "Do it for me" boxes and values for a step ending with @@DOITFORME,KEY=value,...
-    fill: visible.map((i) => (nodes[i].type === "step" ? splitDoItForMe(nodes[i].line).fill : null)),
+    fill: visible.map((i) => (nodes[i].type === "step" ? own(nodes[i].line).fill : null)),
+    // Names lit light green while the step is up: "!!-!!Highlight Lists, !!-!!Highlight Hamburger".
+    highlight: visible.map((i) => (rich(i) ? [] : splitHighlights(nodes[i].line).names)),
     raw: visible.map((i) => (rich(i) ? "" : nodes[i].line)),
     // Ideas-and-links panels (no Edit Step); editAt is a step's number on the server, which doesn't count those panels.
     rich: visible.map((i) => (rich(i) ? nodes[i].items.filter((f) => f.text) : null)),

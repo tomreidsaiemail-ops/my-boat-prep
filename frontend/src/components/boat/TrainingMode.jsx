@@ -6,7 +6,8 @@ import { EditFinishDialog } from "@/components/boat/training/EditFinishDialog";
 import { BASIC, CONFIG, WIZARD_PREFIX, parseWizard, startingWizard, wizardsFrom } from "@/lib/wizard";
 import { WizardWindow } from "@/components/boat/training/WizardWindow";
 import useWizardsDone, { wizardEvent } from "@/hooks/useWizardsDone";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, apiError } from "@/lib/api";
 
 const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const RESTART = "mbp-model-walkthrough";
@@ -114,6 +115,16 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false, paused = f
     return () => { ro.disconnect(); window.removeEventListener("scroll", put); window.removeEventListener("resize", put); root.removeAttribute("data-training-top"); root.style.removeProperty("--mbp-top"); };
   }, []);
   const shrink = (v) => { setMini(v); localStorage.setItem(k.mini, JSON.stringify(v)); };
+  // Admin "?": add "!!-!!Highlight <name>" to the end of this step's line.
+  const addHighlight = async (name) => {
+    const line = raw[at] || "";
+    try {
+      await api.post("/admin/wizard-step", { wizard: wizard.key, step: wiz.editAt[at], expect: line, text: `${line.trimEnd()}${/!!-!!/.test(line) ? "," : ""} !!-!!Highlight ${name}`, before: 0, after: 0 });
+      toast.success(`"!!-!!Highlight ${name}" added to step ${at + 1}.`, { position: "top-center" });
+      refreshAdminLists();
+      return true;
+    } catch (e) { toast.error(apiError(e, "Couldn't add that. Please try again."), { position: "top-center" }); return false; }
+  };
   return (
     <>
       <div ref={strip} data-training-window className={`pointer-events-auto sticky top-0 z-[70] flex items-center justify-center gap-2 ${admin ? "bg-orange-700" : "bg-emerald-700"} px-3 py-1.5 text-center text-xs font-extrabold uppercase tracking-wide text-white print:hidden`} role="status" data-testid="training-mode-strip">
@@ -123,7 +134,7 @@ export const TrainingMode = ({ uid, online, copy = "", admin = false, paused = f
       {win && <WizardWindow title={wizard.key === BASIC ? "Training" : wizard.title} wiz={wiz} at={at} path={path} answers={answers} mini={mini}
         onMove={move} onShrink={shrink} onClose={() => close(true)} onFinish={() => { wizardEvent(uid, wizard.key, "finish"); move(0, [], {}); close(true); opened.current = ""; sessionStorage.removeItem(openKey(wizard.key)); }}
         wizards={wizards} onOpen={(w) => { wizardEvent(uid, wizard.key, "finish"); restartWalkthrough(uid, w.key); }} onEdit={admin && online ? () => setEditing(true) : undefined}
-        onEditFinish={admin && online ? () => setEditingFinish(true) : undefined} />}
+        onEditFinish={admin && online ? () => setEditingFinish(true) : undefined} onAddHighlight={admin && online ? addHighlight : undefined} />}
       {admin && show && done && <EditFinishDialog open={editingFinish} wizard={wizard} raw={finishRaw} onClose={() => setEditingFinish(false)}
         onSaved={() => { setEditingFinish(false); refreshAdminLists(); }} />}
       {admin && show && !done && <EditStepDialog open={editing} wizard={wizard} step={wiz.editAt[at]} raw={raw[at] || ""} onClose={() => setEditing(false)}

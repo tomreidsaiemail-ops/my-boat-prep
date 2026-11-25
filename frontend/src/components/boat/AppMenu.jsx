@@ -18,7 +18,7 @@ export const AppMenu = ({ onOpenFaq, onBartender, onFish, onShopScan, onSyncStor
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Menu" data-testid="app-menu-btn"
+          <button type="button" aria-label="Menu" data-hl="Hamburger" data-testid="app-menu-btn"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] [transition:background-color_.15s,transform_.1s] hover:bg-slate-50 active:scale-95">
             <Menu className="h-5 w-5" strokeWidth={2.5} />
           </button>

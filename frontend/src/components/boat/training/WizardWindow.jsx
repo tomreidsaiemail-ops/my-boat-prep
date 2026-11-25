@@ -1,8 +1,10 @@
-import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, GraduationCap, Lightbulb, Pencil, Trophy, Wand2, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, CircleHelp, GraduationCap, Lightbulb, Pencil, Trophy, Wand2, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { doItForMe } from "@/lib/doItForMe";
 import { finishFor, linkedWizard, nextPanel } from "@/lib/wizard";
+import { highlightNames } from "@/lib/highlight";
+import { NamePicker } from "@/components/boat/training/NamePicker";
 
 const SHELL = "pointer-events-auto fixed inset-x-0 bottom-0 z-[70] border-t-4 border-emerald-600 bg-white print:hidden";
 
@@ -89,7 +91,8 @@ const Answers = ({ q, onBack, at, onAnswer, t }) => {
 
 // One wizard on screen: a quarter-screen step window (20% taller when a step's text needs a scroll bar) (or a one-line bar), then the Finish panel after the last step.
 // Question panels show one button per answer; Next, answers and "???" jumps go through nextPanel, Back retraces the path taken.
-export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers = {}, mini, onMove, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, t = "training" }) => {
+// onAddHighlight (admin): the "?" button names a thing on screen and can add "!!-!!Highlight <name>" to this step.
+export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers = {}, mini, onMove, onShrink, onClose, onFinish, wizards = [], onOpen, onEdit, onEditFinish, onAddHighlight, t = "training" }) => {
   const { steps } = wiz;
   const next = (ans = answers) => onMove(nextPanel(wiz, at, ans), [...path, at], ans);
   const back = () => (path.length ? onMove(path[path.length - 1], path.slice(0, -1), answers) : onMove(Math.max(0, at - 1), [], answers));
@@ -98,6 +101,10 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
   const fill = wiz.fill[at];
   const text = useRef(null);
   const [tallAt, setTallAt] = useState(null);
+  const [picking, setPicking] = useState(false);
+  const lit = (wiz.highlight?.[at] || []).join("|");
+  useEffect(() => highlightNames(lit ? lit.split("|") : []), [lit, at]);
+  useEffect(() => setPicking(false), [at]);
   const key = `${at}|${steps[at] || ""}`;
   const tall = tallAt === key && !mini && at < steps.length;
   // Measured at the normal height for each step; only a step that overflows gets the taller window.
@@ -119,10 +126,12 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
         <h2 className="flex min-w-0 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>
         {fill?.length > 0 && <DoItForMe fill={fill} t={t} />}
         <span className="flex-1" />
+        {onAddHighlight && !rich && <button type="button" onClick={() => setPicking(true)} className="icon-btn text-emerald-800" aria-label="Name a button for !!-!!Highlight" title="Tap, then tap a button or box to get its name" data-testid={`${t}-name-pick-btn`}><CircleHelp className="h-5 w-5" /></button>}
         {onEdit && !rich && <button type="button" onClick={onEdit} className="btn-ghost h-9 min-h-0 shrink-0 gap-1 border-emerald-700 px-2.5 text-xs font-bold text-emerald-800" aria-label="Edit Step" data-testid={`${t}-edit-step-btn`}><Pencil className="h-3.5 w-3.5" /><span className="hidden sm:inline">Edit Step</span></button>}
         <button type="button" onClick={() => onShrink(true)} className="icon-btn" aria-label="Shrink to one line" title="Shrink to one line" data-testid={`${t}-shrink-btn`}><ChevronsDown className="h-5 w-5" /></button>
         <button type="button" onClick={onClose} className="icon-btn" aria-label="Close training" data-testid={`${t}-close-btn`}><X className="h-5 w-5" /></button>
       </div>
+      {picking && <NamePicker onAdd={onAddHighlight} onClose={() => setPicking(false)} t={t} />}
       {rich ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto text-[15px] leading-snug text-[var(--navy)]" data-testid={`${t}-step-ideas`}>
           {finishFor(rich, answers).map((f, n) => <FinishLine key={n} f={f} n={n} wizards={wizards} onOpen={onOpen} t={`${t}-step`} />)}
