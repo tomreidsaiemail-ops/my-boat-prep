@@ -57,6 +57,18 @@ const PinForm = ({ pin, areas, zoneName, prefer, onSave, onDelete, onCancel, onN
   );
 };
 
+// The next cupboard to label: the walkthrough's one first, then the first cupboard in this zone not yet on the photo.
+const nextFree = (pic, boat, areas, ps, focusArea) => {
+  const z = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
+  const zs = areaZones(boat, areas);
+  const free = (a) => a && !ps.some((p) => p.area_id === a.id);
+  return free(focusArea) ? focusArea : areas.find((a) => !a.parent_id && (!z || zs[a.id]?.colour === z) && free(a));
+};
+
+// Mid-photo, or the nearest open spot to it so a new label doesn't sit on top of one not yet moved.
+const SPOTS = [[0.5, 0.5], [0.5, 0.62], [0.5, 0.38], [0.32, 0.5], [0.68, 0.5], [0.32, 0.62], [0.68, 0.38], [0.32, 0.38], [0.68, 0.62]];
+const openSpot = (ps) => SPOTS.find(([x, y]) => !ps.some((p) => Math.hypot(p.x - x, p.y - y) < 0.08)) || SPOTS[0];
+
 // `focusArea` (from Walkthrough stops) is the cupboard the skipper came to label; it's picked for the next new label.
 export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, onClose, focusArea }) => {
   const img = useRef(null);
@@ -66,18 +78,18 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const [comment, setComment] = useState("");
   const [prefer, setPrefer] = useState(focusArea?.id);
   const [auto, setAuto] = useState(null);
-  // Opening with a cupboard in this zone not yet labelled here: a label is dropped mid-photo with that cupboard picked, ready to move.
+  // While a cupboard in this zone isn't labelled here yet, a label is dropped mid-photo with it picked, ready to move: on opening and after each new label.
+  const drop = (ps) => {
+    const first = nextFree(pic, boat, areas, ps, focusArea);
+    if (!first) { setEditing(null); setAuto(null); return; }
+    const [x, y] = openSpot(ps);
+    const pin = { id: pinId(), x, y, label: "", area_id: null };
+    setPrefer(first.id); setAuto(pin.id); setEditing({ pin, isNew: true });
+  };
   useEffect(() => {
     const ps = pic?.map.pins || [];
     setPins(ps); setComment(pic?.map.comment || ""); setEditing(null); setAuto(null);
-    if (!pic) return;
-    const z = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
-    const zs = areaZones(boat, areas);
-    const free = (a) => a && !ps.some((p) => p.area_id === a.id);
-    const first = free(focusArea) ? focusArea : areas.find((a) => !a.parent_id && (!z || zs[a.id]?.colour === z) && free(a));
-    if (!first) return;
-    const pin = { id: pinId(), x: 0.5, y: 0.5, label: "", area_id: null };
-    setPrefer(first.id); setAuto(pin.id); setEditing({ pin, isNew: true });
+    if (pic) drop(ps);
   }, [pic]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!pic) return null;
   // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
@@ -90,7 +102,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
     const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
     setEditing({ pin: { id: pinId(), x, y, label: "", area_id: null }, isNew: true });
   };
-  const keep = (p) => { setPins((ps) => (editing.isNew ? [...ps, p] : ps.map((x) => (x.id === p.id ? p : x)))); setEditing(null); if (p.area_id === prefer) setPrefer(undefined); };
+  const keep = (p) => {
+    const next = editing.isNew ? [...pins, p] : pins.map((x) => (x.id === p.id ? p : x));
+    setPins(next);
+    if (p.area_id === prefer) setPrefer(undefined);
+    if (editing.isNew) drop(next); else setEditing(null);
+  };
   const movePin = (id, x, y) => {
     const at = { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) };
     setPins((ps) => ps.map((p) => (p.id === id ? { ...p, ...at } : p)));
@@ -130,7 +147,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         {editing && <PinForm key={editing.pin.id} pin={editing.pin} areas={choicesFor(editing.pin)} prefer={prefer} zoneName={zone ? pic.map.zone || pic.map.name || zone : ""} onSave={keep} onCancel={() => setEditing(null)}
           onNudge={(dx, dy) => movePin(editing.pin.id, editing.pin.x + dx, editing.pin.y + dy)}
           onDelete={editing.isNew ? null : () => { setPins((ps) => ps.filter((x) => x.id !== editing.pin.id)); setEditing(null); }} />}
-        {!editing && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}
+        {(!editing || editing.pin.id === auto) && <p className="text-xs text-[var(--muted)]" data-testid="zone-pin-count">{pins.length ? `${pins.length} ${pins.length === 1 ? "label" : "labels"}: ${pins.map((p) => pinName(p, areas)).join(", ")}` : "No labels yet. Tap the photo to add one."}</p>}
         <label className="flex flex-col gap-1" htmlFor="zone-map-comment">
           <span className="field-label">Skipper&apos;s comment</span>
           <textarea id="zone-map-comment" value={comment} maxLength={500} rows={2} onChange={(e) => setComment(e.target.value)} placeholder="e.g. Above the Nav Desk is the switch board"
@@ -139,7 +156,7 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
         </label>
         <DialogFooter className="gap-2">
           <button type="button" className="btn-ghost" onClick={onClose} data-testid="zone-pin-editor-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid" disabled={busy || !!editing} onClick={save} data-testid="zone-pin-editor-save-btn">
+          <button type="button" className="btn-solid" disabled={busy || (!!editing && editing.pin.id !== auto)} onClick={save} data-testid="zone-pin-editor-save-btn">
             {busy && <Loader2 className="h-4 w-4 animate-spin" />} Save labels
           </button>
         </DialogFooter>
