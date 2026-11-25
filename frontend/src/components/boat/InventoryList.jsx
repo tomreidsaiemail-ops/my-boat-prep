@@ -382,14 +382,19 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     openArea(firstId);
   };
   const { user } = useAuth();
-  // The first zone window this person ever opens gets yellow help; in the Galley its Cutlery Drawer is made ready for a first Magic Scan.
+  // Yellow help in the first zone window this person ever opens, and in the Galley every time while it has no Galley photo and no cupboard photos;
+  // in the Galley its Cutlery Drawer is made ready for a first Magic Scan.
   const helpKey = `mbp_zone_help:${user.user_id}`;
   const [zoneHelp, setZoneHelp] = useState(null);
   useEffect(() => {
     if (!zone) { setZoneHelp(null); return; }
-    if (readOnly || !boat || boat.owner_id || localStorage.getItem(helpKey)) return;
+    if (readOnly || !boat || boat.owner_id) return;
+    const galley = same(zone.label || "", "Galley");
+    const inZone = (a) => zoneKey(a) === zone.colour || zoneKey(areas.find((p) => p.id === a.parent_id) || {}) === zone.colour;
+    const bare = galley && !zonePhotos(boat, zone).length && !areas.some((a) => areaPhotos(a).length && inZone(a));
+    if (!bare && localStorage.getItem(helpKey)) return;
     localStorage.setItem(helpKey, "1");
-    if (!same(zone.label || "", "Galley")) { setZoneHelp({ kind: "other" }); return; }
+    if (!galley) { setZoneHelp({ kind: "other" }); return; }
     const cut = (a) => !a.parent_id && same(a.name, "Cutlery Drawer");
     const have = zoneTops(zone.colour).find(cut) || areas.find((a) => cut(a) && !zoneKey(a));
     const place = { label: zone.label, colour: zone.colour };
