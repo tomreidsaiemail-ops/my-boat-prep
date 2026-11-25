@@ -65,7 +65,20 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
   const [prefer, setPrefer] = useState(focusArea?.id);
-  useEffect(() => { setPins(pic?.map.pins || []); setComment(pic?.map.comment || ""); setEditing(null); }, [pic]);
+  const [auto, setAuto] = useState(null);
+  // Opening with a cupboard in this zone not yet labelled here: a label is dropped mid-photo with that cupboard picked, ready to move.
+  useEffect(() => {
+    const ps = pic?.map.pins || [];
+    setPins(ps); setComment(pic?.map.comment || ""); setEditing(null); setAuto(null);
+    if (!pic) return;
+    const z = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
+    const zs = areaZones(boat, areas);
+    const free = (a) => a && !ps.some((p) => p.area_id === a.id);
+    const first = free(focusArea) ? focusArea : areas.find((a) => !a.parent_id && (!z || zs[a.id]?.colour === z) && free(a));
+    if (!first) return;
+    const pin = { id: pinId(), x: 0.5, y: 0.5, label: "", area_id: null };
+    setPrefer(first.id); setAuto(pin.id); setEditing({ pin, isNew: true });
+  }, [pic]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!pic) return null;
   // Only the cupboards in this map's zone (plus the one a label already points at); a map with no colour offers them all.
   const zone = ZONE_COLOURS[pic.map.colour] ? pic.map.colour : "";
@@ -104,9 +117,12 @@ export const ZonePinEditor = ({ pic, boat, areas, online, onAddAreas, onMaps, on
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[94vh] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-3" data-testid="zone-pin-editor">
         <DialogHeader>
-          <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-tight">Label this zone map</DialogTitle>
+          <DialogTitle className="flex flex-wrap items-center gap-2 font-display text-lg font-extrabold uppercase tracking-tight" data-testid="zone-pin-editor-title">
+            {zone ? <>Label <span className="h-4 w-4 shrink-0 rounded-[4px] border border-black/20" style={{ backgroundColor: ZONE_COLOURS[zone] }} data-testid="zone-pin-editor-title-colour" /> {pic.map.zone || pic.map.name || zone} zone photo</> : "Label this zone map"}
+          </DialogTitle>
+          {editing?.pin.id === auto && <p className="rounded-md bg-yellow-200 px-3 py-2 text-sm font-bold text-[var(--navy)]" data-testid="zone-pin-auto-hint">The System did an auto-tap for you, you should move this orange icon to where the selected cupboard is, and click Place label, then tap the zone photo for the next label.</p>}
           <DialogDescription>Tap the photo where a cupboard, lazarette, drawer or fridge is, then pick its cupboard. Drag a label to move it, or tap it to fine-tune with the arrows, change or remove it.</DialogDescription>
-          {focusArea && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900" data-testid="zone-pin-focus-hint">Tap the photo where {focusArea.name} is, then Place label and Save labels.</p>}
+          {focusArea && editing?.pin.id !== auto && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900" data-testid="zone-pin-focus-hint">Tap the photo where {focusArea.name} is, then Place label and Save labels.</p>}
         </DialogHeader>
         <PinnedPhoto src={pic.src} alt="Zone map to label" pins={shown} areas={areas} imgRef={img} onImage={editing ? undefined : place}
           onPin={(p) => { if (!editing?.isNew) setEditing({ pin: p, isNew: false }); }} onDrag={(p, x, y) => movePin(p.id, x, y)}
