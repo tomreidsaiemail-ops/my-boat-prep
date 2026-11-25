@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only test of the '!!-!!Highlight <Name>' training directive and the admin '?' name picker, run on the Model Vessel 'Basic Introduction Walkthrough' at 1920x1080 and 390x844, as admin (test_session_admin_1) and non-admin (test_session_beta_1). Every requested feature works on desktop. 1) Directive hidden: 'Tap Lists. Press Next !!-!!Highlight Lists' shows 'Tap Lists.  Press Next'. 2) Lists (boat-details-organise-btn) gets .training-hl. 'Hamburger, Lists' lights both app-menu-btn and Lists. Next to a step without the directive clears the class, Back puts it back, it stays in the mini bar, and the Finish panel has none. 3) Matching ignores case ('date', 'search INVENTORY'). The Date label lights together with #trip-date, and the inventory-search label with its input (aria-label 'Search inventory'). 4) A step with '@@DOITFORME,SEARCH INVENTORY=impeller' plus 2 highlights shows training-do-it-btn, fills 'impeller' with nothing extra, and shows the toast 'Filled in SEARCH INVENTORY'. 5) The ? button shows for admin only (beta sees no ? and no Edit Step but does see the highlights). Waiting text and Cancel are right. Tapping the hamburger gives 'Hamburger' and the menu stays closed. Tapping Lists gives 'Lists' and the list and dialogs stay the same. Other names: 'Search inventory', 'Trip Planning', 'Search Boat Inventory', 'Boat', 'MAYDAY', 'Date', 'Home (Boat Inventory)'. Tap another and both Cancel buttons work, and taps go back to normal afterwards (the menu opens). Back inside the training window still works while picking and closes the picker. 6) 'Add to this step' sends the right POST /api/admin/wizard-step: with a comma when the line already has a directive ('..., !!-!!Highlight Hamburger'), without one when it doesn't (step 6). The toast reads '\"!!-!!Highlight Hamburger\" added to step 1.', the picker closes, the item glows after the refresh, and the Edit Step dialog shows the raw directive. One UI bug on phones (see ui_bugs).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "WizardWindow + NamePicker (mobile 390x844)", "issue": "The picker result (name, Add to this step, Tap another, Cancel) wraps to about 156px inside the fixed h-[25vh] training window, which has overflow visible. The step text shrinks to 0px, Back and Next are pushed below the screen (top 873px, viewport 844px), Cancel is cut off (bottom 847px), and the name text sits under the Add button. Fix: let the window grow while picking (e.g. max-h-[75vh] like rich/question panels), or make the result row more compact or scrollable on small screens.", "selector": "[data-testid=training-name-pick-result]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Training window header, mobile", "issues": ["With the ? and Edit Step buttons the title is cut to 'TRAI... · STEP 1 OF 6' at 390px."]},
+      {"screen": "Non-admin training mode (light-green page background)", "issues": ["The light-green .training-hl glow (#4ade80 / rgba(134,239,172)) shows up poorly on the green training background for skippers. It is much clearer on the admin orange background. A darker outline (e.g. #16a34a) would help."]},
+      {"screen": "Search box highlight", "issues": ["The wrapping label and its input both get .training-hl, so you see 2 nested green outlines. Cosmetic."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix the mobile overflow of the NamePicker result inside the 25vh training window: Back/Next and Cancel are pushed off screen at 390x844.",
+    "Optional: give .training-hl more contrast on the green non-admin training background.",
+    "Optional: picked names that contain a comma, or end with '.', can't round-trip through the directive (splitHighlights splits on ',' and strips a trailing '.', but nameOf doesn't). Warn, or strip them in the picker."
+  ],
+  "critical_code_review_comments": [
+    "highlight.js: the names that come back are not checked for ',' or '!!-!!'. A button whose name contains a comma gives a directive that is split wrongly when it is read back.",
+    "highlightNames repaints every 800ms over the whole document (querySelectorAll on TARGET plus nameOf, which reads innerText and forces layout). This is fine for small screens but heavy on big lists. A MutationObserver or a longer interval would be lighter.",
+    "POST /api/admin/wizard-step joins whitespace (' '.join(text.split())), so 'Add to this step' also turns double spaces in the existing step text into single spaces. This matches how Edit Step already behaves; mentioning it so it isn't a surprise."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend only)", "frontend": "~95% (all requested flows pass on desktop; mobile picker layout bug)"},
+  "seed_data_creation": "Changed the walkthrough items in Mongo for testing (ids 15, 3, 4 set to directive test lines) and added Hamburger to id 15 and Lists to id 7 via the picker. RESTORED: ids 15, 3, 4, 7 are back to their exact original labels, and the 5 template_versions snapshots taken during testing (updated_at >= 2026-11-23T21:58:28) were fixed for those ids. NOTE: the real preview admin (user_cd2a5bd996a9) was using Edit Step / the picker on this list at the same time: id 5 now ends with '!!-!!Highlight ZONE MAPS (7)' and id 6 ends with '!!-!!Highlight GALLEY - 9, !!-!!Highlight Add cupboard'. Those are the user's own edits and were left alone. The list doc's version/updated_at/updated_by (test-admin-1) were not rolled back. Backup is at /tmp/hl/full_backup.json. The admin and beta test sessions were switched to the Model Vessel and the walkthrough was opened (progress events recorded).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "To open Training: add the session_token cookie, go to /app, press Escape 3 times, then app-menu-btn > app-menu-help-item > app-menu-help-model-vessel-item > app-menu-help-model-wizard-basic-introduction-walkthrough > model-walkthrough-switch-btn (a fresh browser opens on the admin's TODO boat each time). For beta, click shore-chooser-own-main first. The walkthrough list is list_id tpl_a469ac3a3f. The real admin user edits it live, so restore only the item ids you changed. Edit Step placeholder pre-select ('New step: write the instructions...') was NOT tested."
+}

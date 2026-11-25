@@ -120,7 +120,7 @@ export const WizardWindow = ({ title = "Training", wiz, at, path = [], answers =
   if (at >= steps.length) return <FinishPanel title={title} finish={finishFor(wiz.finish, answers)} onBack={back} onClose={onClose} onFinish={onFinish} wizards={wizards} onOpen={onOpen} onEditFinish={onEditFinish} t={t} />;
   if (mini) return <MiniBar steps={steps} at={at} onBack={back} onNext={() => next()} asking={!!q} onShrink={onShrink} t={t} />;
   return (
-    <section data-training-window className={`${SHELL} flex ${q?.answers.length > 2 || rich ? "max-h-[75vh] min-h-[170px]" : tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
+    <section data-training-window className={`${SHELL} flex ${q?.answers.length > 2 || rich || picking ? "max-h-[75vh] min-h-[170px]" : tall ? "h-[30vh] min-h-[204px]" : "h-[25vh] min-h-[170px]"} flex-col gap-2 px-4 pb-3 pt-2 shadow-[0_-8px_24px_rgba(6,78,59,0.25)]`} role="dialog" aria-label="Model Vessel training" data-testid={`${t}-window`}>
       <div className="flex items-center gap-2">
         <GraduationCap className="h-5 w-5 shrink-0 text-emerald-700" />
         <h2 className="flex min-w-0 font-display text-sm font-extrabold uppercase tracking-wide text-emerald-800" data-testid={`${t}-step-count`}><span className="truncate">{title}</span><span className="shrink-0 whitespace-pre"> · Step {at + 1} of {steps.length}</span></h2>

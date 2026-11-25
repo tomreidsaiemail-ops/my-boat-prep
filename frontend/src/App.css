@@ -168,5 +168,5 @@ body.training-finish .mbp-dialog { top: calc((100vh - max(50vh, 260px) + var(--m
 @keyframes mbp-pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); } 50% { transform: scale(1.35); box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); } }
 .mbp-glow-soft { background-color: #eef0f3; transition: background-color 0.3s; }
 /* Training "!!-!!Highlight <name>": light green glow while the step is up. */
-.training-hl { outline: 3px solid #4ade80 !important; outline-offset: 2px; box-shadow: 0 0 0 6px rgba(134, 239, 172, 0.55), 0 0 18px 6px rgba(134, 239, 172, 0.75) !important; border-radius: 8px; animation: training-hl-pulse 1.6s ease-in-out infinite; }
+.training-hl { outline: 3px solid #16a34a !important; outline-offset: 2px; box-shadow: 0 0 0 6px rgba(134, 239, 172, 0.55), 0 0 18px 6px rgba(134, 239, 172, 0.75) !important; border-radius: 8px; animation: training-hl-pulse 1.6s ease-in-out infinite; }
 @keyframes training-hl-pulse { 50% { box-shadow: 0 0 0 9px rgba(134, 239, 172, 0.35), 0 0 24px 10px rgba(134, 239, 172, 0.55); } }
