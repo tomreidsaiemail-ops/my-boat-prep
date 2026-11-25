@@ -1203,3 +1203,5 @@ Recreational skippers and crew (NZ/AU) who want boat routines on their phone at 
 - 2026-06: Transit window main button now "TRANSIT COMPLETE [tick]" / "CONTINUE" on two lines, transit icon on the left, wider than Cancel. Checked by screenshot; test data restored.
 
 - 2026-06: Trip Planning transit hint now names the next leg route: "...an auto depart to Leg 2 (Point 2 to Point 3) will be created." (user kept Leg 2 numbering). Underway line "Point 2 to Point 3": user said leave as is for now.
+
+- 2026-06: Quick Draft Plan tap names (GET /api/place-name, sea_route.py): Photon (photon.komoot.io) refuses connections from the preview server, so marina/bay names fell back to broad Nominatim names (e.g. "Te Awarua-o-Porirua Harbour" instead of "Mana Marina"). Fix: when Photon fails, _nominatim_coast() tries Nominatim street-level reverse (marina/bay/cape/beach/reef/island, same at/Off rule) then a "marina" search within ~500 m; Nominatim calls paced 1/s incl. after a lookup; blank names are not cached. Verified "Mana Marina" for taps by the marina before Nominatim started throttling the preview IP (HTTP 629).

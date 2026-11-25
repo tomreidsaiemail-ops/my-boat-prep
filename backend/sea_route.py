@@ -101,8 +101,9 @@ async def place_name(lat: float, lon: float, user: dict = Depends(get_current_us
         wait = 1.1 - (time.monotonic() - _name_at[0])
         if wait > 0:
             await asyncio.sleep(wait)
-        _name_at[0] = time.monotonic()
-        return {"name": await _lookup(lat, lon, key)}
+        name = await _lookup(lat, lon, key)
+        _name_at[0] = time.monotonic()  # a lookup can make several Nominatim calls: the next one waits a second after the last
+        return {"name": name}
 
 
 # Nearby named coast features; a tap within NEAR_M of one (or inside its outline) is "at" it, else "Off" it.
@@ -120,8 +121,10 @@ async def _coast_name(client: httpx.AsyncClient, lat: float, lon: float) -> str:
     """The nearest bay, headland, beach, island or marina within 10 km (Photon, built on OpenStreetMap)."""
     params = [("lat", lat), ("lon", lon), ("limit", 6), ("radius", 10)] + [("osm_tag", t) for t in COAST_TAGS]
     r = await client.get("https://photon.komoot.io/reverse", params=params)
+    if r.status_code != 200:
+        raise ValueError(f"Photon {r.status_code}")
     best = None
-    for f in (r.json().get("features") or []) if r.status_code == 200 else []:
+    for f in r.json().get("features") or []:
         p, (flon, flat) = f.get("properties") or {}, f["geometry"]["coordinates"]
         if not p.get("name"):
             continue
@@ -136,15 +139,42 @@ async def _coast_name(client: httpx.AsyncClient, lat: float, lon: float) -> str:
     return p["name"] if inside or d <= NEAR_M.get(p.get("osm_value"), 0) else f"Off {p['name']}"
 
 
+COAST_TYPES = {"marina", "bay", "cape", "peninsula", "beach", "reef", "island", "islet"}
+
+
+async def _nominatim_coast(client: httpx.AsyncClient, lat: float, lon: float) -> str:
+    """When Photon can't be reached: the marina, bay, headland, beach or island Nominatim finds at street level, same "Off" rule."""
+    r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18, "layer": "poi,natural"})
+    d = r.json() if r.status_code == 200 else {}
+    if not d.get("name") or d.get("type") not in COAST_TYPES:
+        await asyncio.sleep(1.1)  # then a marina within about 500 m, the usual departing point
+        box = f"{lon - 0.006},{lat + 0.0045},{lon + 0.006},{lat - 0.0045}"
+        r = await client.get("https://nominatim.openstreetmap.org/search", params={"format": "jsonv2", "q": "marina", "viewbox": box, "bounded": 1, "limit": 1})
+        d = next((m for m in (r.json() if r.status_code == 200 else []) if m.get("type") == "marina" and m.get("name")), {})
+        if not d:
+            return ""
+    bb = [float(x) for x in d.get("boundingbox") or []]  # south, north, west, east
+    inside = len(bb) == 4 and bb[0] <= lat <= bb[1] and bb[2] <= lon <= bb[3]
+    near = _metres(lat, lon, float(d["lat"]), float(d["lon"])) <= NEAR_M.get(d["type"], 0)
+    return d["name"] if inside or near else f"Off {d['name']}"
+
+
 async def _lookup(lat: float, lon: float, key: tuple) -> str:
-    name = ""
+    name, asked = "", False
     try:
         async with httpx.AsyncClient(headers=HEADERS, timeout=10) as client:
             try:
                 name = await _coast_name(client, lat, lon)
             except (httpx.HTTPError, ValueError, KeyError, TypeError):
-                log.warning("Coast name lookup failed for %s", key)
+                log.warning("Coast name lookup failed for %s, trying Nominatim", key)
+                try:
+                    asked = True
+                    name = await _nominatim_coast(client, lat, lon)
+                except (httpx.HTTPError, ValueError, KeyError, TypeError):
+                    pass
             if not name:  # far from the coast: the bay, strait or sea it lies in
+                if asked:
+                    await asyncio.sleep(1.1)  # Nominatim asks for one lookup a second
                 r = await client.get("https://nominatim.openstreetmap.org/reverse", params={"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 16, "layer": "natural"})
                 d = r.json() if r.status_code == 200 else {}
                 name = d.get("name") if d.get("type") in ("bay", "strait", "sea", "sound", "fjord") else ""
@@ -156,7 +186,8 @@ async def _lookup(lat: float, lon: float, key: tuple) -> str:
                 name = d.get("name") or next((a[k] for k in ("bay", "marina", "harbour", "beach", "island", "hamlet", "village", "suburb", "locality", "town", "city") if a.get(k)), "")
     except (httpx.HTTPError, ValueError):
         pass
-    _names[key] = name
+    if name:  # a blank may be a busy map server, so it's asked again next time
+        _names[key] = name
     if len(_names) > 2000:
         _names.popitem(last=False)
     return name
