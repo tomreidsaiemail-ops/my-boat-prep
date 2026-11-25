@@ -28,7 +28,7 @@ const showTutorial = async () => {
   closeMenu("help");
   closeMenu("menu");
 };
-// The boat list drops down and scrolls to the Model Vessel (yellow, 2 seconds), then back to the current boat (yellow, 2 seconds); nothing is selected.
+// The boat list drops down and scrolls to the Model Vessel (yellow, 5 seconds), then back to the current boat (yellow, 2 seconds); nothing is selected.
 const showBoats = async () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
   await wait(400);
@@ -39,7 +39,7 @@ const showBoats = async () => {
   const model = opts.find((o) => o.dataset.testid === "boat-option-model_vessel");
   for (const o of [model !== cur && model, cur].filter(Boolean)) {
     o.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    await glow(o.dataset.testid, 2000);
+    await glow(o.dataset.testid, o === model ? 5000 : 2000);
   }
   closeMenu("boats");
 };
