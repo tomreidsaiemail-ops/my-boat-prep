@@ -12,8 +12,12 @@ export const SkipperComment = ({ text, testId, label = "Skipper's comment" }) =>
   </div>
 ) : null;
 
-export const CupboardName = ({ name, testId }) => (
-  <p className="text-sm text-[var(--navy)]" data-testid={testId}><span className="field-label mr-1">Cupboard:</span><b className="break-words">{name}</b></p>
+// `hex`: the cupboard's zone colour, as a dot in front.
+export const CupboardName = ({ name, testId, hex }) => (
+  <p className="text-sm text-[var(--navy)]" data-testid={testId}>
+    {hex && <span className="mr-1.5 inline-block h-3.5 w-3.5 rounded-full border border-black/20 align-[-2px]" style={{ backgroundColor: hex }} data-testid={`${testId}-colour`} />}
+    <span className="field-label mr-1">Cupboard:</span><b className="break-words">{name}</b>
+  </p>
 );
 
 const copy = (text) => {

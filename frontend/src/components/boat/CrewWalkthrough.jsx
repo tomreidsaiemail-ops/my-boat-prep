@@ -6,7 +6,7 @@ import { StopContents } from "@/components/boat/inventory/FolderPeek";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { CupboardName, SkipperComment } from "@/components/boat/zone/SkipperComment";
 import { CupboardPhoto, areaPhotoUrl } from "@/components/boat/inventory/CupboardPhoto";
-import { areaZones } from "@/lib/zoneColours";
+import { ZONE_COLOURS, areaZones } from "@/lib/zoneColours";
 
 // Stops, photo by photo in the order the labels were placed. A photo with no labels but a Skipper's comment is one stop of its own.
 // Every labelled cupboard is a stop. Cupboards not labelled on any photo need their own photo and a comment, and go just before
@@ -59,23 +59,30 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
   const last = n === steps.length - 1;
   const note = isCommentStop(step);
   const ask = () => setLeaving(true);
+  // The stop's zone: its cupboard's, else the zone map photo's colour.
+  const pm = step.pic.map || {};
+  const zone = (area && areaZones(boat, areas)[area.id]) || (ZONE_COLOURS[pm.colour] ? { hex: ZONE_COLOURS[pm.colour], map: pm.zone || pm.name } : null);
   return (
     <Dialog open onOpenChange={(o) => !o && ask()}>
       <DialogContent guard={false} className="flex h-[92vh] max-w-2xl flex-col gap-3 rounded-lg border-2 border-[var(--navy)] p-4" data-testid="walkthrough-dialog">
         <DialogHeader>
           <div className="flex items-start gap-2 pr-6">
-            <DialogTitle className="min-w-0 flex-1 font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">{pinName(step.pin, areas)}</DialogTitle>
+            <DialogTitle className="min-w-0 flex-1 font-display text-lg font-extrabold uppercase tracking-tight" data-testid="walkthrough-title">
+              {zone && <span className="mr-2 inline-block h-4 w-4 rounded-full border border-black/20 align-[-2px]" style={{ backgroundColor: zone.hex }} data-testid="walkthrough-title-colour" />}
+              {zone?.map && !note ? `${zone.map} zone - ` : ""}{pinName(step.pin, areas)}
+            </DialogTitle>
             {onStar && (
-              <button type="button" onClick={() => onStar(stopKey(step))} aria-pressed={stars.includes(stopKey(step))} className="icon-btn h-9 w-9 shrink-0 [transition:transform_.1s] active:scale-90"
+              <button type="button" onClick={() => onStar(stopKey(step))} aria-pressed={stars.includes(stopKey(step))} className="icon-btn mbp-glow h-9 w-9 shrink-0 [transition:transform_.1s] active:scale-90"
                 aria-label={stars.includes(stopKey(step)) ? "Remove the gold star" : "Give this stop a gold star"} title="Gold star (only you see it)" data-testid="walkthrough-star-btn">
                 <Star className={`h-5 w-5 ${stars.includes(stopKey(step)) ? "fill-amber-400 text-amber-500" : "text-[var(--muted)]"}`} />
               </button>
             )}
           </div>
           <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · {note ? "read the skipper's comment on this photo." : "here's what's stowed in this spot."}</DialogDescription>
+          {onStar && <p className="rounded-md bg-yellow-200 px-2.5 py-1.5 text-left text-xs font-bold text-[var(--navy)]" data-testid="walkthrough-star-hint">Star a walkthrough stop to help include mandatory stops for all crew (like Toilet Rules) say. Non-starred stops might be for no crew, or maybe just a specific crew member, like someone&apos;s cabin.</p>}
         </DialogHeader>
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1" data-testid="walkthrough-body">
-        {!note && <CupboardName name={pinName(step.pin, areas)} testId="walkthrough-cupboard-name" />}
+        {!note && <CupboardName name={pinName(step.pin, areas)} hex={zone?.hex} testId="walkthrough-cupboard-name" />}
         <PinnedPhoto key={step.pic.src} src={step.pic.src} alt={`Zone map showing ${pinName(step.pin, areas)}`} pins={step.pic.map.pins.filter((p) => steps.some((s) => s.pic.key === step.pic.key && s.pin.id === p.id))} areas={areas} highlight={step.pin.id}
           imgClass="max-h-[40vh] w-full rounded-md object-contain" testId="walkthrough-photo" />
         <SkipperComment text={step.pic.map?.comment} testId="walkthrough-skipper-comment" />
