@@ -24,6 +24,12 @@ const HELP_NAME = "admin - help panel - how to make a zone map";
 const WALK_HELP_NAME = "admin - help panel - creating crew walkthroughs";
 const DEFAULT_HELP = "Take high level photos of your boat, and annotate the cupboards onto these photos. You can ask google how to do that for your device. This way crew members without being too boat savvy, will know where the Cockpit - Port Lazarette is. Another good approach is to annotate the high level photo and more take detailed photos of say your cabin or flybridge where cupboards or shelves may exist.";
 
+const SCHEMATIC_HELP = [
+  "This is just an example zone schematic. If you have the blank one from set up, that is fine to get you scanning, but if you can get a schematic from your boat's owners manual and upload it, crew will find it quite useful after you label your boat's schematic with your zones like SALOON and GALLEY.",
+  "This is especially so when you take zone and cupboard photographs with comments.",
+  "Once a zone is labelled with cupboard names, and the cupboards have photos with comments you can build a general walkthrough. This can then be tailored to individual crew members.",
+].map((label) => ({ label }));
+
 const mapUrl = (v) => `${API}/inventory/zone-map?v=${encodeURIComponent(v)}`;
 const MAX_MAPS = 100;
 const schematicLabel = (b) => {
@@ -145,6 +151,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
   const [warnRemove, setWarnRemove] = useState(null);
   const [askRemove, setAskRemove] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [schematicHelp, setSchematicHelp] = useState(false);
   const all = (boat?.zone_maps || []).filter((m) => !failed[m.id]);
   const overviews = all.filter((m) => m.kind === "overview");
   const own = all.filter((m) => m.kind !== "overview");
@@ -194,6 +201,7 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </button>
       </div>
       <HelpDialog help={helpOpen ? { title: "How to make a zone map", items: help?.length ? help : [{ label: DEFAULT_HELP }] } : null} onClose={() => setHelpOpen(false)} />
+      <HelpDialog help={schematicHelp ? { title: "Zone schematic", items: SCHEMATIC_HELP } : null} onClose={() => setSchematicHelp(false)} />
       {expanded && <>
       {canEdit && boat?.boat_id && <CreateOverviewButton boat={boat} details={details} online={online} count={all.length} max={MAX_MAPS} onMaps={onBoatMaps} />}
       {hasFoodPins && foodOn && (
@@ -225,8 +233,15 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
       {(photosOpen || !own.length) && pics.filter((p) => !foodOnly || pinsFor(p.map?.pins).length).map((p, n) => (
         <div key={p.key} className="flex flex-col gap-1 rounded-md border-l-[6px] pl-2" style={{ borderLeftColor: p.map ? ZONE_COLOURS[p.map.colour] || "transparent" : "transparent" }} data-testid={`zone-map-item-${p.key}`}>
           {p.map && !canEdit && p.map.name && <p className="text-sm font-bold text-[var(--navy)]" data-testid={`boat-zone-map-title-${p.key}`}>{p.map.name}</p>}
-          <PinnedPhoto src={p.src} alt={p.map?.name || `Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
-            onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
+          <div className="relative">
+            <PinnedPhoto src={p.src} alt={p.map?.name || `Boat zone map ${n + 1}`} pins={pinsFor(p.map?.pins)} areas={areas} onPin={tapPin} onImage={() => setOpen(p)}
+              onError={() => setFailed((f) => ({ ...f, [p.key]: true }))} testId={p.key === "admin" ? "zone-map-default" : `boat-zone-map-${p.key}`} />
+            {p.key === "admin" && canEdit && (
+              <button type="button" onClick={() => setSchematicHelp(true)} aria-label="Zone schematic help" className="btn-ghost absolute bottom-1.5 right-1.5 h-8 gap-1 bg-white px-2.5 text-xs shadow-sm" data-testid="zone-map-schematic-help-btn">
+                <CircleHelp className="h-4 w-4" /> Help
+              </button>
+            )}
+          </div>
           <SkipperComment text={p.map?.comment} testId={`boat-zone-map-comment-${p.key}`} />
           {p.map && canEdit && (
             <div className="flex flex-wrap items-center justify-end gap-2">
@@ -244,7 +259,6 @@ export const ZoneMap = ({ version, admin, online, onChanged, boat, details = {},
         </div>
       ))}
       {!pics.length && !overviews.length && <p className="text-sm text-[var(--muted)]" data-testid="zone-map-empty">No zone map yet. Upload a layout picture showing your cupboards and lockers.</p>}
-      {own.length === 0 && pics.length > 0 && canEdit && <p className="text-xs text-[var(--muted)]" data-testid="zone-map-default-note">This is the default map to give you an idea. Upload photos of your own boat and annotate the photos with cupboards, so annotate cupboards, lazarettes, drawers, shelves, fridges etc's so a new crew member knows that cupboard. You can do that after taking the boat inventory. You can rename cupboards later should the zone map photo have a better name.</p>}
       {canEdit && zonePhotoOn && <OwnerTools boat={boat} count={all.length} online={online} onMaps={onBoatMaps} />}
       {admin && (
         <div className="flex flex-col gap-1 border-t border-[var(--line)] pt-2">
