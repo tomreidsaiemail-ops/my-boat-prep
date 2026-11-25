@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
+
+const PLACEHOLDER = "New step: write the instructions for this step here.";
 
 // Admin only: change this one step's line in its "Admin - Model Vessel - *" list, and add placeholder steps around it.
 // onDeleted: the step is gone and the next one has taken its place. only: it is the walkthrough's only step.
@@ -12,7 +14,20 @@ export const EditStepDialog = ({ open, wizard, step, raw, onSaved, onDeleted, on
   const [after, setAfter] = useState(0);
   const [busy, setBusy] = useState(false);
   const [sure, setSure] = useState(false);
+  const box = useRef(null);
   useEffect(() => { if (open) { setText(raw); setBefore(0); setAfter(0); setSure(false); } }, [open, raw]);
+  // Opening a new placeholder step selects its placeholder text, ready to type over; otherwise the cursor goes to the end.
+  useEffect(() => {
+    if (!open) return undefined;
+    const id = setTimeout(() => {
+      const el = box.current;
+      if (!el) return;
+      el.focus();
+      const at = raw.indexOf(PLACEHOLDER);
+      if (at >= 0) el.setSelectionRange(at, at + PLACEHOLDER.length); else el.setSelectionRange(raw.length, raw.length);
+    }, 60);
+    return () => clearTimeout(id);
+  }, [open, raw]);
   const remove = async () => {
     setBusy(true);
     try {
@@ -39,12 +54,12 @@ export const EditStepDialog = ({ open, wizard, step, raw, onSaved, onDeleted, on
   );
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-w-md flex-col gap-3 rounded-lg border-2 border-[var(--navy)]" data-testid="edit-step-dialog">
+      <DialogContent className="flex max-w-md flex-col gap-3 rounded-lg border-2 border-[var(--navy)]" data-testid="edit-step-dialog" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold">Edit Step {step + 1}</DialogTitle>
           <DialogDescription>Only this step&apos;s line in &quot;Admin - Model Vessel - {wizard.title}&quot; is changed. &quot;Press Next&quot; is added for you if it isn&apos;t at the end.</DialogDescription>
         </DialogHeader>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} maxLength={4000} className="field-input !h-auto min-h-[9rem] resize-y !py-2 text-base leading-snug" aria-label="Step text" data-testid="edit-step-text" />
+        <textarea ref={box} value={text} onChange={(e) => setText(e.target.value)} rows={6} maxLength={4000} className="field-input !h-auto min-h-[9rem] resize-y !py-2 text-base leading-snug" aria-label="Step text" data-testid="edit-step-text" />
         <div className="flex gap-2">
           <Add n={before} set={setBefore} label="Add step before" id="before" />
           <Add n={after} set={setAfter} label="Add step after" id="after" />
