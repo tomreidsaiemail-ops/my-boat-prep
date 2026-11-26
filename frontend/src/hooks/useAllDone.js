@@ -10,7 +10,7 @@ import { DEFAULT_TRIP, tripBoat } from "@/lib/trips";
 import { ARRIVE_KINDS, arrivalTicks, foldTrip, legBoat, legHead, nextLeg, sailingLeg, tripHead } from "@/lib/tripFold";
 import { allLevelsPicked } from "@/components/boat/departure/TankLevels";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
-import { offsetText, transitBearing } from "@/components/boat/departure/TransitDialog";
+import { offsetText, transitBearing, transitFix } from "@/components/boat/departure/TransitDialog";
 import { distressPosition } from "@/hooks/useGps";
 import { LEG_KINDS, dmyt, headingItems, legIds, legTrip, levelsText, pickTrip, routeTrips, shorePlan, tankSummary, today, tripIssue, tripLine, tripTimes } from "@/lib/allDone";
 
@@ -287,7 +287,7 @@ export default function useAllDone({ state, mutate, tickedBy, online, boatId, tr
     // Shore contacts see the passing on their page straight away (no shore contact, or sharing off: nothing to tell).
     if (!online) return;
     const text = `Passed transit ${pin} ${point} at ${dmyt(at)}${off ? ` (${off})` : ""}. ${side}.${next ? ` Next stop ${nextName}.` : ""}`;
-    api.post(`/boats/${boatId}/shore/transit`, { text: text.slice(0, 600) })
+    api.post(`/boats/${boatId}/shore/transit`, { text: text.slice(0, 600), name: `Transit ${pin} ${point}`.slice(0, 120), ...(transitFix(gps, transit.pos) || {}) })
       .then(() => toast.success("Your shore contacts can see the transit passing"))
       .catch((e) => { if (e?.response?.status !== 400) toast.error(apiError(e, "Couldn't tell your shore contacts about the transit")); });
   };

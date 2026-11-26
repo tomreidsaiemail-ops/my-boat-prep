@@ -22,6 +22,12 @@ export const transitBearing = (gps, pos, pin) => {
   const p = passing(me, pos);
   return `Transit ${pin} was passed to the ${p.side} (transit bearing ${String(p.deg).padStart(3, "0")}°, not accounting for compass deviation, ${milesText(p.nm)}${me.last ? ", from the last known GPS" : ""})`;
 };
+// Where the boat was, the transit's pin and the bearing between them, for the shore map's TLOG mark (null without both).
+export const transitFix = (gps, pos) => {
+  const me = meOf(gps);
+  if (!me || pos?.lat == null || pos?.lon == null) return null;
+  return { boat: { lat: me.lat, lon: me.lon }, mark: { lat: pos.lat, lon: pos.lon }, bearing: passing(me, pos).deg };
+};
 const nowLabel = (m) => (m ? `Set to Now - ${-m} minutes` : "Set to Now");
 
 // Passing a Transit point: no checklist, just when it was passed and an automatic departure on to the next stop.

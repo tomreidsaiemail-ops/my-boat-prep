@@ -241,8 +241,18 @@ async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(ge
     return {**plan, "contacts": n}
 
 
+class LatLon(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
 class TransitIn(BaseModel):
     text: str = Field(min_length=1, max_length=600)
+    # For the shore map's TLOG mark: where the boat was when it logged the pass, the transit's map pin, and the bearing between them.
+    boat: Optional[LatLon] = None
+    mark: Optional[LatLon] = None
+    bearing: Optional[int] = Field(default=None, ge=0, le=359)
+    name: str = Field(default="", max_length=120)
 
 
 @router.post("/boats/{boat_id}/shore/transit")
@@ -262,7 +272,8 @@ async def share_transit(boat_id: BoatPath, payload: TransitIn, user: dict = Depe
     plan = doc.get("shore_plan") or {}
     if plan.get("trip_id") != trip:
         plan = {"text": "", "at": now, "trip_id": trip}
-    plan["passes"] = [*(plan.get("passes") or []), {"text": payload.text.strip(), "at": now}][-30:]
+    tlog = {k: v for k, v in payload.model_dump(exclude={"text"}).items() if v not in (None, "")} if payload.boat else {}
+    plan["passes"] = [*(plan.get("passes") or []), {"text": payload.text.strip(), "at": now, **tlog}][-30:]
     await db.user_boats.update_one(q, {"$set": {"shore_plan": plan}})
     return {"passes": plan["passes"], "contacts": n}
 

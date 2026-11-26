@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Anchor, ListChecks, Loader2, LogOut, RefreshCw, Ship } from "lucide-react";
+import { Anchor, ListChecks, Loader2, LogOut, MapPin, RefreshCw, Ship } from "lucide-react";
 import { ShorePosition } from "@/components/boat/shore/ShorePosition";
 import { toast } from "sonner";
 import { api, apiError } from "@/lib/api";
@@ -25,6 +25,10 @@ export default function ShoreWatch() {
   const [boats, setBoats] = useState(null);
   const [pick, setPick] = useState(0);
   const [track, setTrack] = useState(null);
+  // "Show me on the map": the transit pass (by when it was shared) shown as a TLOG mark.
+  const [shown, setShown] = useState(null);
+  const mapBox = useRef(null);
+  const showPass = (p) => { setShown(p.at); mapBox.current?.scrollIntoView({ behavior: "smooth", block: "center" }); };
   const shoreHome = !!(user?.shore_only || user?.home === "shore" || user?.shore_contact);
   const [choosing, setChoosing] = useState(() => shoreHome && !readPick(user?.user_id) && !want);
   const boat = choosing ? null : boats?.[pick];
@@ -40,6 +44,7 @@ export default function ShoreWatch() {
   const load = () => boat && api.get("/shore/track", { params: { owner_id: boat.owner_id, boat_id: boat.boat_id } }).then(({ data }) => setTrack(data)).catch(() => {});
   useEffect(() => {
     setTrack(null);
+    setShown(null);
     if (!boat) return undefined;
     load();
     const id = setInterval(load, (alertOn ? 15 : 60) * 1000);
@@ -100,7 +105,12 @@ export default function ShoreWatch() {
               <p className="field-label">Transit points passed</p>
               <ul className="mt-1 flex flex-col gap-2">
                 {[...track.plan.passes].reverse().map((p, i) => (
-                  <li key={`${p.at}-${i}`} className="text-sm font-semibold" data-testid={`shore-watch-transit-${i}`}>{p.text}<span className="block text-xs font-normal text-[var(--muted)]">shared {when(p.at)}</span></li>
+                  <li key={`${p.at}-${i}`} className="text-sm font-semibold" data-testid={`shore-watch-transit-${i}`}>{p.text}<span className="block text-xs font-normal text-[var(--muted)]">shared {when(p.at)}</span>
+                    {p.boat && (
+                      <button type="button" onClick={() => showPass(p)} data-testid={`shore-watch-transit-map-${i}`}
+                        className={`btn-ghost mt-1.5 min-h-9 gap-1.5 px-2.5 text-xs ${shown === p.at ? "mbp-glow" : ""}`}><MapPin className="h-3.5 w-3.5" /> Show me on the map</button>
+                    )}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -111,7 +121,9 @@ export default function ShoreWatch() {
               <p className="mt-1 whitespace-pre-line text-sm font-semibold" data-testid="shore-watch-plan-text">{track.plan.text}</p>
             </section>
           )}
-          {track && (track.points.length > 0 || alertOn || track.plan?.route) ? <ShoreMap points={track.points} alert={track.alert} route={track.plan?.route} /> : (
+          {track && (track.points.length > 0 || alertOn || track.plan?.route || shown) ? (
+            <div ref={mapBox}><ShoreMap points={track.points} alert={track.alert} route={track.plan?.route} tlog={(track.plan?.passes || []).find((p) => p.at === shown) || null} /></div>
+          ) : (
             <p className="rounded-lg bg-slate-100 p-4 text-sm" data-testid="shore-watch-no-points">No positions yet for this trip. They appear when the skipper turns on sharing and the app is open on a phone aboard.</p>
           )}
           <p className="text-xs text-[var(--muted)]">Updates every minute. Positions are sent every 1 km, or hourly when anchored, while My Boat Prep is open aboard. Offline means the hourly check-in was missed; you'll also get an email after two missed check-ins.</p>
