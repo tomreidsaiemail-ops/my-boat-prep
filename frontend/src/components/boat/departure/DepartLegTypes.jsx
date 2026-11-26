@@ -10,7 +10,7 @@ export const DepartLegTypes = ({ legs, onType }) => (
         return (
           <li key={l.id ?? n} className={`flex items-center gap-2 rounded-md py-1 pl-2.5 pr-1 text-sm ${n === 0 ? "bg-yellow-200" : "bg-[var(--panel)]"}`} data-testid={`depart-leg-type-${n}`}>
             <span className="min-w-0 flex-1 break-words"><b>Leg {n + 1}</b> to {l.route_dest || "Destination not set"} · <span className="font-bold" data-testid={`depart-leg-type-${n}-label`}>{t?.label || "Type not set"}</span></span>
-            <ArriveQuickPick value={l.arrive_type} onChange={(k) => onType(n, k)} legLabel={`Leg ${n + 1}`} testId={`depart-leg-type-${n}-pick`} />
+            <ArriveQuickPick value={l.arrive_type} onChange={(k) => onType(n, k)} legLabel={`Leg ${n + 1}`} testId={`depart-leg-type-${n}-pick`} end={n === legs.length - 1} />
           </li>
         );
       })}

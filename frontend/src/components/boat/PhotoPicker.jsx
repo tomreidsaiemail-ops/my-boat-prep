@@ -20,7 +20,8 @@ export const shrink = (file, max = 800) => new Promise((resolve, reject) => {
   img.src = URL.createObjectURL(file);
 });
 
-export const PhotoPicker = ({ boat, online, onChanged }) => {
+// extra: shown after the photo buttons (e.g. a Help button).
+export const PhotoPicker = ({ boat, online, onChanged, extra = null }) => {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
 
@@ -55,6 +56,7 @@ export const PhotoPicker = ({ boat, online, onChanged }) => {
       {boat.photo_v && (
         <button type="button" className="icon-btn hover:text-[var(--red)]" onClick={removePhoto} aria-label="Remove photo" data-testid="boat-photo-remove-btn"><Trash2 className="h-[18px] w-[18px]" /></button>
       )}
+      {extra}
       <input ref={input} type="file" accept="image/*" className="hidden" onChange={upload} data-testid="boat-photo-input" />
     </div>
   );

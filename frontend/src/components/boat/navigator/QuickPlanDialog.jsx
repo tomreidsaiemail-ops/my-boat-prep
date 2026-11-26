@@ -119,7 +119,13 @@ export const QuickPlanDialog = ({ open, onClose, onApply, draft = null, select =
 
   const initial = useRef(null);
   if (initial.current === null) initial.current = JSON.stringify(legs);
-  const put = (next) => { latest.current = next; setLegs(next); };
+  // The End of Trip can't be a transit: a transit left on the end (its stop after was removed) becomes Mooring.
+  const put = (next) => {
+    const end = next[next.length - 1];
+    const ls = end?.arrive_type === "transit" ? [...next.slice(0, -1), { ...end, arrive_type: "mooring" }] : next;
+    latest.current = ls;
+    setLegs(ls);
+  };
   const setPos = (ls, i, pos) => ls.map((l, n) => (i === 0 && n === 0 ? { ...l, start_pos: pos, path: null } : n === i - 1 ? { ...l, dest_pos: pos, path: null } : n === i ? { ...l, path: null } : l));
   // Leg k joins point k and k+1: route it round any land.
   const route = async (k) => {

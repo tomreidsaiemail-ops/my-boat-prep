@@ -4,7 +4,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { dmyt } from "@/lib/allDone";
 import { When } from "@/components/boat/navigator/NavigatorExtras";
-import { ArriveQuickPick, ArriveType, arriveType } from "@/components/boat/navigator/ArriveType";
+import { ArriveQuickPick, ArriveType, arriveType, END_TRANSIT } from "@/components/boat/navigator/ArriveType";
 import { TripConfirm } from "@/components/boat/navigator/TripConfirm";
 import { firstLeg } from "@/components/boat/navigator/PlannedRouteView";
 import { AddLegPosition } from "@/components/boat/navigator/AddLegPosition";
@@ -26,20 +26,22 @@ const NowButton = ({ label, testId, onClick }) => (
   <button type="button" className="btn-ghost -mt-1 h-9 min-h-0 self-end px-3 text-xs" onClick={onClick} data-testid={testId}>{label}</button>
 );
 
-const problem = (l) => {
+const problem = (l, end) => {
   if (!l.route_start.trim()) return "Add the START for this leg.";
   if (!l.route_dest.trim()) return "Add the DESTINATION for this leg.";
   if ((l.finish_at || "").length < 16) return "Enter the Estimated Finish date and time.";
   if (l.depart_at && l.finish_at < l.depart_at) return "The Estimated Finish is before the Departure. Check the times.";
   if (!l.arrive_type) return "Pick the Arriving at Destination Type.";
+  if (end && l.arrive_type === "transit") return `${END_TRANSIT} (Arriving at Destination Type)`;
   return "";
 };
 
-const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
+// end: the trip's last leg, so it can't end in a transit.
+const LegForm = ({ leg, n, end, onSave, onDelete, onDirty }) => {
   const [l, setL] = useState(leg);
   const [error, setError] = useState("");
   const set = (patch) => { const next = { ...l, ...patch }; setL(next); onDirty(JSON.stringify(next) !== JSON.stringify(leg)); setError(""); };
-  const save = () => { const why = problem(l); setError(why); if (!why) onSave({ ...l, route_start: l.route_start.trim(), route_dest: l.route_dest.trim() }); };
+  const save = () => { const why = problem(l, end); setError(why); if (!why) onSave({ ...l, route_start: l.route_start.trim(), route_dest: l.route_dest.trim() }); };
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-2">
@@ -52,7 +54,7 @@ const LegForm = ({ leg, n, onSave, onDelete, onDirty }) => {
       <When id="leg-finish-at" label="Estimated Finish date and time" value={l.finish_at} onChange={(v) => set({ finish_at: v })} warn={error.includes("Finish") ? error : ""} />
       <TideNote place={l.route_dest} pos={l.dest_pos} date={(l.finish_at || "").slice(0, 10)} testId="leg-finish-tides" noWarning />
       <NowButton label="Set Now + 2 hours" testId="leg-finish-now-btn" onClick={() => { set({ finish_at: nowPlus(120) }); focusTime("leg-finish-at"); }} />
-      <ArriveType id="leg-arrive-type" value={l.arrive_type} onChange={(v) => set({ arrive_type: v })} warn={error.includes("Type")} />
+      <ArriveType id="leg-arrive-type" value={l.arrive_type} onChange={(v) => set({ arrive_type: v })} warn={error.includes("Type")} end={end} />
       {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-[var(--red)]" data-testid="leg-error">{error}</p>}
       <button type="button" className="btn-solid h-12 justify-center" onClick={save} data-testid="leg-save-btn">Save Leg {n + 1}</button>
       {onDelete && (
@@ -72,13 +74,13 @@ const TransitHint = ({ leg, next }) => (
   </li>
 );
 
-const LegRow = ({ leg, n, onEdit, onType }) => (
+const LegRow = ({ leg, n, end, onEdit, onType }) => (
   <li className="flex items-center gap-2 rounded-md border-l-4 border-[var(--navy)] bg-[var(--panel)] py-2 pl-3 pr-1 text-sm" data-testid={`planned-leg-${n}`}>
     <div className="min-w-0 flex-1">
       <p className="break-words font-bold">Leg {n + 2}: {[leg.route_start, leg.route_dest].filter(Boolean).join(" to ")}</p>
       <p className="text-xs text-[var(--muted)]">{dmyt(leg.depart_at) || "Departure not set"} - {dmyt(leg.finish_at)} · {arriveType(leg.arrive_type)?.label}</p>
     </div>
-    <ArriveQuickPick value={leg.arrive_type} onChange={onType} legLabel={`Leg ${n + 2}`} testId={`planned-leg-type-${n}`} />
+    <ArriveQuickPick value={leg.arrive_type} onChange={onType} legLabel={`Leg ${n + 2}`} testId={`planned-leg-type-${n}`} end={end} />
     <button type="button" className="icon-btn" aria-label={`Edit leg ${n + 2}`} onClick={onEdit} data-testid={`planned-leg-edit-${n}`}><Pencil className="h-[18px] w-[18px]" /></button>
   </li>
 );
@@ -147,7 +149,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
         <ul className="flex flex-col gap-1.5">
           {first.arrive_type === "transit" && <TransitHint leg={1} next={legs[0]} />}
           {legs.map((l, n) => [
-            <LegRow key={l.id ?? n} leg={l} n={n} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />,
+            <LegRow key={l.id ?? n} leg={l} n={n} end={n === legs.length - 1} onEdit={() => setEdit({ at: n, leg: l })} onType={(t) => setType(n, t)} />,
             l.arrive_type === "transit" && n < legs.length - 1 && <TransitHint key={`hint-${l.id ?? n}`} leg={n + 2} next={legs[n + 1]} />,
           ])}
         </ul>
@@ -161,6 +163,7 @@ export const PlannedLegs = ({ start, dest, weather = {}, name, onChange, onDraft
             <DialogDescription>Plan this leg of the trip. Pick Returning to Dock for the last leg.</DialogDescription>
           </DialogHeader>
           {edit && <LegForm onDirty={setLegDirty} leg={edit.leg} n={edit.insert !== undefined ? Math.max(edit.insert, 0) : edit.at + 1} onSave={save}
+            end={edit.insert !== undefined ? edit.insert === points.length - 1 : edit.at === legs.length - 1}
             onDelete={edit.insert === undefined ? () => { const n = edit.at; setEdit(null); setLegDirty(false); remove(n); } : null} />}
         </DialogContent>
       </Dialog>

@@ -385,7 +385,8 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const { setVessel } = boats;
   useEffect(() => { if (boat.vessel?.trim()) setVessel(boatId, boat.vessel); }, [boat.vessel, boatId, setVessel]);
-  const updatedIds = registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
+  // The Model Vessel is refreshed by deleting it (a fresh copy comes back at sign-in), never merged with the master lists.
+  const updatedIds = boats.current?.model ? [] : registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const areas = state.areas || [];
   const linked = {};

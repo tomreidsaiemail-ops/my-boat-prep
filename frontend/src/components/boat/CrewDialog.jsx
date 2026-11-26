@@ -152,8 +152,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
             <span className="field-label">Event or trip name</span> <b className="text-sm">{trip.name}</b>
           </p>
         )}
-        <PhotoPicker boat={boat} online={online} onChanged={onPhoto} />
-        <RoutesCrewHelp online={online} />
+        <PhotoPicker boat={boat} online={online} onChanged={onPhoto} extra={<RoutesCrewHelp online={online} />} />
         {trip && onSingleHand && noCrew && (
           <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border-[1.5px] border-[var(--line)] px-3 py-2 text-sm font-bold" data-autosave data-testid="crew-single-hand">
             <Checkbox checked={trip.single} onCheckedChange={(v) => onSingleHand(!!v)} className="h-5 w-5" data-testid="crew-single-hand-checkbox" />

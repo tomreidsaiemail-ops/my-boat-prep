@@ -130,7 +130,7 @@ export const TripTiming = ({ weather = {}, onChange, interim, note = null, start
     {actualOpen && <When id="navigator-actual-finish-at" label="(Actual arrival date and time)" value={weather.actual_finish_at} onChange={(v) => onChange({ actual_finish_at: v })} />}
     {note}
     <TideNote place={dest} pos={weather.dest_pos} near={weather.start_pos} date={day(weather.finish_at)} testId="finish-tides" noWarning />
-    <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} />
+    <ArriveType id="navigator-arrive-type" value={weather.arrive_type || ""} onChange={(v) => onChange({ arrive_type: v })} end={!(weather.legs || []).length} />
     {/* Why we're going and Meet up are leaving-the-dock details, so a New departure from Arriving leaves them out. */}
     {!interim && why}
     {!interim && (

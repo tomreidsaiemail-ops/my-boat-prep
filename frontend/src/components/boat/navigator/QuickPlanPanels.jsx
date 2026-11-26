@@ -1,5 +1,5 @@
 import { Check, Flag, Plus, RotateCcw, Trash2, X, Zap } from "lucide-react";
-import { ARRIVE_TYPES } from "@/components/boat/navigator/ArriveType";
+import { ARRIVE_TYPES, END_TYPES } from "@/components/boat/navigator/ArriveType";
 
 // Two warnings before a draft can replace an existing route.
 export const ReplaceWarning = ({ step, onYes, onNo, testId = "quick-plan-replace" }) => (
@@ -66,7 +66,7 @@ export const PointPopup = ({ j, last, name, setName, type, setType, onDelete, on
     <input id="quick-plan-point-name" className="field-input h-10 min-h-0 text-sm" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} data-testid="quick-plan-point-name-input" />
     {j > 0 && (
       <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label="Arriving at Destination Type" data-testid="quick-plan-point-type">
-        {ARRIVE_TYPES.map(({ key, label, Icon }) => (
+        {(j === last ? END_TYPES : ARRIVE_TYPES).map(({ key, label, Icon }) => (
           <button key={key} type="button" role="radio" aria-checked={type === key} aria-label={label} title={label} onClick={() => setType(key)}
             className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-md border-2 border-[var(--navy)] text-[10px] font-bold leading-none [transition:background-color_.15s,color_.15s] ${type === key ? "bg-[var(--navy)] text-white" : "bg-white text-[var(--navy)]"}`}
             data-testid={`quick-plan-point-type-${key}`}>

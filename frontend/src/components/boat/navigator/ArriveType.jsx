@@ -12,6 +12,9 @@ export const ARRIVE_TYPES = [
   { key: "dock", label: "Returning to Dock", prep: "Prepare to return to Dock", leave: "Leave Dock", list: "returningDock", Icon: Home },
 ];
 export const arriveType = (key) => ARRIVE_TYPES.find((t) => t.key === key);
+// The End of Trip (the red circle) is arrived at, so it can't be a transit.
+export const END_TYPES = ARRIVE_TYPES.filter((t) => t.key !== "transit");
+export const END_TRANSIT = "The End of Trip can't be a transit. Pick how you'll arrive.";
 // The trip's next step while a leg that ends this way is under way: "Returning to Dock" or "Arriving at Destination, Mooring".
 export const nextStepName = (key, withType = true) => {
   const t = arriveType(key);
@@ -19,11 +22,13 @@ export const nextStepName = (key, withType = true) => {
   return `Arriving at Destination${withType && t?.list === "arrivingDest" ? `, ${t.label}` : ""}`;
 };
 
-export const ArriveType = ({ id, value, onChange, warn }) => (
+// end: this leg ends the trip, so Transiting isn't offered.
+export const ArriveType = ({ id, value, onChange, warn, end = false }) => (
   <div className="flex flex-col gap-1.5" role="radiogroup" aria-labelledby={`${id}-label`} data-testid={`${id}-field`}>
     <span id={`${id}-label`} className={`field-label ${warn ? "!text-[var(--red)]" : ""}`}>Arriving at Destination Type</span>
+    {end && value === "transit" && <p role="alert" className="text-sm font-bold text-[var(--red)]" data-testid={`${id}-end-transit`}>{END_TRANSIT}</p>}
     <div className="grid grid-cols-2 gap-2">
-      {ARRIVE_TYPES.map(({ key, label, Icon }) => {
+      {(end ? END_TYPES : ARRIVE_TYPES).map(({ key, label, Icon }) => {
         const on = value === key;
         return (
           <button key={key} type="button" role="radio" aria-checked={on} data-state={on ? "checked" : "unchecked"} onClick={() => onChange(on ? "" : key)}
@@ -38,7 +43,7 @@ export const ArriveType = ({ id, value, onChange, warn }) => (
 );
 
 // A leg row's arriving-type icon; tapping it picks the type straight from the list ("?" when not picked yet).
-export const ArriveQuickPick = ({ value, onChange, testId, legLabel }) => {
+export const ArriveQuickPick = ({ value, onChange, testId, legLabel, end = false }) => {
   const [open, setOpen] = useState(false);
   const t = arriveType(value);
   return (
@@ -50,7 +55,8 @@ export const ArriveQuickPick = ({ value, onChange, testId, legLabel }) => {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1.5" data-testid={`${testId}-menu`}>
         <p className="px-2 pb-1 pt-0.5 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Arriving at Destination Type</p>
-        {ARRIVE_TYPES.map(({ key, label, Icon }) => (
+        {end && value === "transit" && <p className="px-2 pb-1 text-xs font-bold text-[var(--red)]" data-testid={`${testId}-end-transit`}>{END_TRANSIT}</p>}
+        {(end ? END_TYPES : ARRIVE_TYPES).map(({ key, label, Icon }) => (
           <button key={key} type="button" onClick={() => { setOpen(false); if (key !== value) onChange(key); }}
             className={`flex min-h-11 w-full items-center gap-2 rounded-md px-2 text-left text-sm font-bold [transition:background-color_.15s] ${key === value ? "bg-[var(--navy)] text-white" : "text-[var(--navy)] hover:bg-slate-100"}`}
             aria-pressed={key === value} data-testid={`${testId}-${key}`}>
