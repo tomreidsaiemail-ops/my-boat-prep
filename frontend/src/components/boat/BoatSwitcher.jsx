@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Plus, Trash2, Users } from "lucide-react";
 import {
@@ -38,6 +38,16 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
   const [crewOpen, setCrewOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   useMenuOpen("boats", setListOpen);
+  // A Welcome "Show me" opens the list; iPhone Safari's toolbar resizing the window would close it at once, so hold it open for the tour.
+  const hold = useRef(0);
+  useEffect(() => {
+    const f = (e) => { if (e.detail === "boats") hold.current = Date.now() + 9000; };
+    const g = (e) => { if (e.detail === "boats") hold.current = 0; };
+    window.addEventListener("mbp:menu-open", f);
+    window.addEventListener("mbp:menu-close", g);
+    return () => { window.removeEventListener("mbp:menu-open", f); window.removeEventListener("mbp:menu-close", g); };
+  }, []);
+  const changeOpen = (o) => { if (!o && Date.now() < hold.current) return; setListOpen(o); };
   const [startInvite, setStartInvite] = useState(false);
   // The trip the crew window is for: the Trip Planning its Crew bubble was tapped on, else the one under way or in use.
   const [crewTrip, setCrewTrip] = useState("");
@@ -102,7 +112,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
 
   return (
     <div className="flex items-center gap-2" data-testid="boat-switcher">
-      <Select value={cur.key} onValueChange={boats.select} open={listOpen} onOpenChange={setListOpen}>
+      <Select value={cur.key} onValueChange={(v) => { hold.current = 0; boats.select(v); }} open={listOpen} onOpenChange={changeOpen}>
         <SelectTrigger className="h-14 min-w-0 flex-1 rounded-md border-2 border-[var(--navy)] bg-white pl-2 font-display text-base font-bold text-[var(--navy)]" data-testid="boat-selector" aria-label="Boat">
           <SelectValue />
         </SelectTrigger>
