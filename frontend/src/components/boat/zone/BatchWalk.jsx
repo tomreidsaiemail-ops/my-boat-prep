@@ -49,10 +49,11 @@ export const reviewLines = (n) => [
 ];
 export const scanReviewLines = (done) => [
   "Grouped by cupboard below",
-  "Each cupboard has a review tick",
+  "Each cupboard has a review tick (highlighted below)",
   "Under the cupboard are its items",
   "It is best to scroll down and up quickly",
   "Then just click each cupboard as Reviewed",
+  "Each cupboard will turn green as it is reviewed",
   `And press ${done}`,
 ];
 
