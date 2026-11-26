@@ -43,7 +43,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
   const waiting = zone ? existing.filter((a) => !batchNames.some((b) => same(b, a.name))) : [];
   // The walkthrough lights the next thing to do: the Cutlery Drawer, then where it is, then Confirm, and add another.
   const coach = walkOn && stage === "scan";
-  const lit = { where: coach && !!name.trim() && !where.trim() && !blob, another: coach && !!name.trim() && !!blob };
+  const lit = { where: coach && !!name.trim() && !where.trim() && !blob, photo: coach && !!name.trim() && !blob, another: coach && !!name.trim() && !!blob };
 
   const pick = async (e) => {
     const file = e.target.files?.[0];
@@ -70,7 +70,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
       <DialogContent ref={body} dirty={!!(name.trim() || blob || where.trim())} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
           {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
-          {walkOn && <BatchAreaWalk stage={stage} shown={shown} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))}
+          {walkOn && <BatchAreaWalk stage={stage} shown={shown} marks={{ where: !!where.trim(), photo: !!blob }} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))}
             onDone={() => { setStage("done"); setShown({ scan: false, another: false }); }} />}
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} cupboard` : "New cupboard"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
@@ -84,7 +84,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
             : `${clash.name} is already ${zone ? `in ${zone.label}` : "on your boat"}, empty. This scan fills it.`}</p>}
         <input value={where} maxLength={WHERE_MAX} onChange={(e) => setWhere(e.target.value)} placeholder={`Where is it${zone ? ` in the ${zone.label}` : ""}? e.g. Under the port bench (optional)`}
           aria-label="Where the cupboard is" className={`field-input ${lit.where ? "mbp-glow" : ""}`} data-testid="batch-area-where-input" />
-        <button type="button" onClick={() => input.current?.click()} className="flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)]" data-testid="batch-area-photo-btn">
+        <button type="button" onClick={() => input.current?.click()} className={`flex min-h-[140px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-[var(--navy)]/40 bg-[var(--panel)] text-sm font-bold text-[var(--navy)] ${lit.photo ? "mbp-glow" : ""}`} data-testid="batch-area-photo-btn">
           {preview ? <img src={preview} alt="Cupboard" className="max-h-56 w-full object-contain" data-testid="batch-area-photo-preview" />
             : <><Camera className="h-7 w-7" /> Take or choose a photo
               <span className="px-4 text-center text-xs font-medium text-[var(--muted)]" data-testid="batch-area-photo-hint">Consider laying some things out so Magic Scan sees everything you want</span></>}

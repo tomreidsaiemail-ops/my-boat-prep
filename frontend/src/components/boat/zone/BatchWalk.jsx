@@ -1,4 +1,4 @@
-import { ChevronDown, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, TriangleAlert } from "lucide-react";
 
 export const isGalley = (z) => String(z?.label || "").trim().toLowerCase() === "galley";
 
@@ -25,9 +25,9 @@ export const PLAN_LINES = [
   "Pick Galley below and we can get started",
 ];
 export const SCAN_LINES = [
-  "Select a drawer, the Cutlery Drawer",
+  "Select a drawer, e.g. the Cutlery Drawer",
   "Say where it is in the Galley, use the Fridge and Oven as reference points, eye height or waist height also good reference points",
-  "Take that photo",
+  "See below \"Take or choose a photo\"",
   "Now upload the Cutlery Drawer photo",
   "Press the Confirm, and add another button",
 ];
@@ -52,11 +52,17 @@ export const WalkSection = ({ title, open, onToggle, testId, children }) => (
   </section>
 );
 
-export const WalkList = ({ lines, numbered = false }) => {
+// ticks: line indexes done (green tick); bold: line indexes to stress.
+export const WalkList = ({ lines, numbered = false, ticks = [], bold = [], testId }) => {
   const Tag = numbered ? "ol" : "ul";
   return (
     <Tag className={`flex flex-col gap-1.5 pl-5 font-semibold ${numbered ? "list-decimal" : "list-disc"}`}>
-      {lines.map((l) => <li key={l} className="whitespace-pre-line">{l}</li>)}
+      {lines.map((l, i) => (
+        <li key={l} className={`whitespace-pre-line ${bold.includes(i) ? "font-black" : ""}`} data-testid={testId && `${testId}-line-${i + 1}`}>
+          {ticks.includes(i) && <Check className="mr-1 inline h-4 w-4 rounded-full bg-emerald-600 p-0.5 align-[-2px] text-white" strokeWidth={4} aria-label="Done" data-testid={testId && `${testId}-tick-${i + 1}`} />}
+          {l}
+        </li>
+      ))}
     </Tag>
   );
 };
