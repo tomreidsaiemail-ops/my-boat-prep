@@ -70,7 +70,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
       <DialogContent ref={body} dirty={!!(name.trim() || blob || where.trim())} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="batch-area-form">
         <DialogHeader>
           {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
-          {walkOn && <BatchAreaWalk stage={stage} shown={shown} marks={{ where: !!where.trim(), photo: !!blob }} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))}
+          {walkOn && <BatchAreaWalk stage={stage} shown={shown} marks={{ name: !!name.trim(), where: !!where.trim(), photo: !!blob }} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))}
             onDone={() => { setStage("done"); setShown({ scan: false, another: false }); }} />}
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} cupboard` : "New cupboard"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>

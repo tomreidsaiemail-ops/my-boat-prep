@@ -1,12 +1,12 @@
 import { ANOTHER_LINES, SCAN_LINES, WalkButton, WalkList, WalkSection } from "@/components/boat/zone/BatchWalk";
 
 // The Galley scan's yellow walkthrough: the first cupboard step by step, then how to carry on (stage: scan -> another -> done).
-// marks: where = location typed (tick 2), photo = photo chosen (tick 4); both make step 5 bold.
+// marks: name = cupboard picked or typed (tick 1), where = location typed (tick 2), photo = photo chosen (tick 4); both make step 5 bold.
 export const BatchAreaWalk = ({ stage, shown, marks, onToggle, onDone }) => (
   <div className="flex flex-col gap-2" data-testid="batch-area-walk">
     <WalkSection title="Batch Magic Scanning Instructions" open={shown.scan} onToggle={() => onToggle("scan")} testId="batch-area-walk-scan">
       <WalkList lines={SCAN_LINES} numbered testId="batch-area-walk-scan-list"
-        ticks={[marks.where && 1, marks.photo && 3].filter(Boolean)} bold={marks.where && marks.photo ? [4] : []} />
+        ticks={[marks.name && 0, marks.where && 1, marks.photo && 3].filter((i) => i !== false)} bold={marks.where && marks.photo ? [4] : []} />
     </WalkSection>
     {stage !== "scan" && (
       <WalkSection title="Adding another cupboard" open={shown.another} onToggle={() => onToggle("another")} testId="batch-area-walk-another">
