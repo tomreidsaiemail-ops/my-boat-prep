@@ -40,6 +40,13 @@ export const ANOTHER_LINES = [
   "Take a moment to put that box you scanned into the appropriate cupboard, the Pantry say",
   <>Repeat this for all cupboards in each zone, and then <b className="font-black">Review Batch</b></>,
 ];
+export const reviewLines = (n) => [
+  "If you scanned 4 cupboards it will say \"Review Batch (4 cupboards)\" below",
+  "This is what is meant by scanning a batch, a batch of 4 in that case",
+  "When starting out choose batches of 2 or 3 until you get into the swing of it",
+  `You can just review this batch of ${n}`,
+  <b className="font-black">Click Review Batch</b>,
+];
 
 // A yellow walkthrough section that folds away.
 export const WalkSection = ({ title, open, onToggle, testId, children }) => (
