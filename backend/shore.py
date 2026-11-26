@@ -225,7 +225,7 @@ async def set_tracking(boat_id: BoatPath, payload: TrackingIn, user: dict = Depe
 @router.put("/boats/{boat_id}/shore/plan")
 async def share_plan(boat_id: BoatPath, payload: PlanIn, user: dict = Depends(get_current_user)):
     """DEPART shares the route plan on the shore contact page (no email)."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan.route": 1, "shore_plan.passes": 1, "shore_plan.trip_id": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat_id": 1, "shore": 1, "tracking.trip_id": 1, "shore_plan.route": 1, "shore_plan.passes": 1, "shore_plan.trip_id": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents({"owner_id": user["user_id"], "boat_id": boat_id})
@@ -249,7 +249,7 @@ class TransitIn(BaseModel):
 async def share_transit(boat_id: BoatPath, payload: TransitIn, user: dict = Depends(get_current_user)):
     """Passing a transit point shows on the shore contact page straight away, with its bearing."""
     q = {"owner_id": user["user_id"], "boat_id": boat_id}
-    doc = await db.user_boats.find_one(q, {"_id": 0, "shore": 1, "tracking.trip_id": 1, "shore_plan": 1})
+    doc = await db.user_boats.find_one(q, {"_id": 0, "boat_id": 1, "shore": 1, "tracking.trip_id": 1, "shore_plan": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     n = len(doc.get("shore") or {}) + await db.shore_invites.count_documents(q)
@@ -465,7 +465,7 @@ async def watched_track(owner_id: Owner, boat_id: BoatQ, user: dict = Depends(ge
 @router.put("/boats/{boat_id}/shore/route")
 async def share_route(boat_id: BoatPath, payload: RouteIn, user: dict = Depends(get_current_user)):
     """DEPART, and any change underway, keeps the planned route map up to date on the shore contact page."""
-    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "shore_plan": 1, "tracking.trip_id": 1})
+    doc = await db.user_boats.find_one({"owner_id": user["user_id"], "boat_id": boat_id}, {"_id": 0, "boat_id": 1, "shore_plan": 1, "tracking.trip_id": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Boat not found. Wait for it to sync, then try again.")
     trip = (doc.get("tracking") or {}).get("trip_id")
