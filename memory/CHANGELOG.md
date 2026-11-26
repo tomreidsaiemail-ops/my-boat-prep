@@ -194,3 +194,5 @@
 - 2026-06: Quick Draft Plan tap popup: 'Arriving (End of Trip point)' (quick-plan-end-btn) is now red-outlined like 'Arriving, then return to start', as both end in the red end circle.
 
 - 2026-06: Quick/Edit Draft Plan leg list (TripMiles rows -> quick-plan-leg-btn-n): tapping a leg lights the row and its two pins yellow (drawRoute glow -> .route-pin-glow) and shows its arrival type (LegTypeFlash, quick-plan-leg-type-flash) in yellow above the stop it ends at, all for 5 seconds, for every boat. StopsMap gains glow/flash props; MapPopup now measures its own width to stay inside the map. Self-tested by screenshot (2 pins lit, 'Mooring' above pin 3, gone after 5 s).
+
+- 2026-06: Crew walkthrough: the yellow star help (walkthrough-star-hint) and the yellow-lit star button show on Stop 1 only; later stops keep a plain star button.

@@ -72,14 +72,15 @@ export const CrewWalkthrough = ({ steps, areas, onClose, onOpenArea, onSignOff, 
               {zone?.map && !note ? `${zone.map} zone - ` : ""}{pinName(step.pin, areas)}
             </DialogTitle>
             {onStar && (
-              <button type="button" onClick={() => onStar(stopKey(step))} aria-pressed={stars.includes(stopKey(step))} className="icon-btn mbp-glow h-9 w-9 shrink-0 [transition:transform_.1s] active:scale-90"
+              <button type="button" onClick={() => onStar(stopKey(step))} aria-pressed={stars.includes(stopKey(step))} className={`icon-btn ${n === 0 ? "mbp-glow" : ""} h-9 w-9 shrink-0 [transition:transform_.1s] active:scale-90`}
                 aria-label={stars.includes(stopKey(step)) ? "Remove the gold star" : "Give this stop a gold star"} title="Gold star (only you see it)" data-testid="walkthrough-star-btn">
                 <Star className={`h-5 w-5 ${stars.includes(stopKey(step)) ? "fill-amber-400 text-amber-500" : "text-[var(--muted)]"}`} />
               </button>
             )}
           </div>
           <DialogDescription data-testid="walkthrough-step">Stop {n + 1} of {steps.length} · {note ? "read the skipper's comment on this photo." : "here's what's stowed in this spot."}</DialogDescription>
-          {onStar && <p className="rounded-md bg-yellow-200 px-2.5 py-1.5 text-left text-xs font-bold text-[var(--navy)]" data-testid="walkthrough-star-hint">Star a walkthrough stop to help include mandatory stops for all crew (like Toilet Rules) say. Non-starred stops might be for no crew, or maybe just a specific crew member, like someone&apos;s cabin.</p>}
+          {/* The star help is lit on Stop 1 only. */}
+          {onStar && n === 0 && <p className="rounded-md bg-yellow-200 px-2.5 py-1.5 text-left text-xs font-bold text-[var(--navy)]" data-testid="walkthrough-star-hint">Star a walkthrough stop to help include mandatory stops for all crew (like Toilet Rules) say. Non-starred stops might be for no crew, or maybe just a specific crew member, like someone&apos;s cabin.</p>}
         </DialogHeader>
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1" data-testid="walkthrough-body">
         {!note && <CupboardName name={pinName(step.pin, areas)} hex={zone?.hex} testId="walkthrough-cupboard-name" />}
