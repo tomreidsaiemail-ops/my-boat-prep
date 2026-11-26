@@ -19,7 +19,7 @@ import { CupboardPhotoButton, areaPhotos, areaPhotoUrl, uploadAreaPhoto, withPho
 import { ZonePhotosButton } from "@/components/boat/zone/ZonePhotosButton";
 import { withZoneDefaults } from "@/lib/zoneDefaults";
 import { SAMPLE_CUTLERY } from "@/components/boat/zone/ZoneFirstHelp";
-import { areaZones, boatZones, rainbowGroups, zonePhotos } from "@/lib/zoneColours";
+import { areaZones, boatZones, rainbowGroups, ZONE_COLOURS, zonePhotos } from "@/lib/zoneColours";
 import { ZoneDialog } from "@/components/boat/zone/ZoneDialog";
 import { ZonePicker } from "@/components/boat/zone/ZonePicker";
 import { AreaZoneButton } from "@/components/boat/zone/AreaZoneButton";
@@ -63,7 +63,23 @@ const InventoryInstructions = ({ online, tools = null }) => {
 };
 
 const ADD_TIP_KEY = "mbp_add_area_tip";
-const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard, a box or a folder" }) => {
+// "Batch Magic Scan A Zone..." under the add row, with the same Help as Help > Magic Features > Batch Magic Scan...
+const BatchRow = ({ onBatch, help }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1 flex items-stretch gap-2" data-testid="inventory-batch-row">
+      <button type="button" onClick={onBatch} className="btn-ghost h-10 !min-h-0 flex-1 justify-center gap-1.5 px-3 text-[13px]" data-testid="inventory-batch-zone-btn">
+        <Sparkles className="h-4 w-4 shrink-0" /> Batch Magic Scan A Zone...
+      </button>
+      {help?.length > 0 && (
+        <button type="button" onClick={() => setOpen(true)} className="btn-ghost h-10 !min-h-0 gap-1.5 px-3 text-[13px]" data-testid="inventory-batch-help-btn"><HelpCircle className="h-4 w-4 shrink-0" /> Help</button>
+      )}
+      <HelpDialog help={open ? { title: "Batch Magic Scan...", items: help } : null} onClose={() => setOpen(false)} />
+    </div>
+  );
+};
+
+const AddArea = ({ onAdd, onBatch, batchHelp, placeholder = "Add a cupboard, a box or a folder" }) => {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [tip, setTip] = useState(() => localStorage.getItem(ADD_TIP_KEY) === "1");
@@ -85,6 +101,7 @@ const AddArea = ({ onAdd, onBatch, placeholder = "Add a cupboard, a box or a fol
           data-testid="inventory-batch-scan-btn"><Plus className="-mr-1.5 h-5 w-5" /><Plus className="h-5 w-5" /></button>}
       </div>
       {error && <p className="text-sm font-semibold text-[var(--red)]" data-testid="inventory-add-area-error">{error}</p>}
+      {onBatch && <BatchRow onBatch={onBatch} help={batchHelp} />}
     </form>
   );
 };
@@ -297,7 +314,13 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [zone, setZone] = useState(null);
   const [batchZone, setBatchZone] = useState(null);
   const [zonePrompt, setZonePrompt] = useState(false);
+  const [batchWalk, setBatchWalk] = useState(false);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
+  // The Batch Magic Scan zones: the Zone Map's, plus any a cupboard was filed under (e.g. a Galley made by Batch Magic Scan).
+  const promptZones = boat && !boat.owner_id && !readOnly
+    ? [...boatZoneList, ...areas.filter((a) => !a.parent_id && a.zone && ZONE_COLOURS[a.zone.colour]).map((a) => ({ label: a.zone.label, colour: a.zone.colour }))]
+      .filter((z, i, all) => all.findIndex((x) => String(x.label).trim().toLowerCase() === String(z.label).trim().toLowerCase()) === i)
+    : [];
   const cupZonesOn = useFeature("cupboards_by_zone");
   const zoneBatch = () => (online ? setZonePrompt(true) : toast.error("Batch Magic Scan needs a signal"));
   const pickZones = boat ? boatZones(boat) : [];
@@ -340,7 +363,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     if (!online) { toast.error("Batch Magic Scan needs a signal"); return; }
     setZone(null); setBatchZone(z); setBatchOpen(true);
   };
-  const closeBatch = () => { setBatchOpen(false); setBatchZone(null); };
+  const closeBatch = () => { setBatchOpen(false); setBatchZone(null); setBatchWalk(false); };
   const quickAdd = (z) => (name, where) => {
     const dup = zoneTops(z.colour).find((a) => same(a.name, name));
     if (dup) return `${dup.name} is already in ${z.label}`;
@@ -590,12 +613,19 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       {readOnly && crewFood && !q && <AddArea onAdd={(name) => addArea(name, { food: true })} placeholder="Add a Food area, e.g. Fridge or Dry Foods Store" />}
       {!readOnly && !q && (boatZoneList.length
         ? (cupZonesOn
-          ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={zoneBatch} /></ZonePicker>
-          : <AddArea onAdd={addArea} onBatch={zoneBatch} />)
-        : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? openBatch : undefined} />)}
-      <BatchZonePrompt open={zonePrompt} zones={boatZoneList} help={batchHelp} counts={zoneCounts} onClose={() => setZonePrompt(false)}
-        onZone={(z) => { setZonePrompt(false); scanZone(z); }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
-      {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} onClose={closeBatch} onConfirm={applyBatch} />}
+          ? <ZonePicker zones={boatZoneList} counts={zoneCounts} onPick={setZone}><AddArea onAdd={addArea} onBatch={zoneBatch} batchHelp={batchHelp} /></ZonePicker>
+          : <AddArea onAdd={addArea} onBatch={zoneBatch} batchHelp={batchHelp} />)
+        : <AddArea onAdd={addArea} onBatch={boat && !boat.owner_id ? zoneBatch : undefined} batchHelp={batchHelp} />)}
+      <BatchZonePrompt open={zonePrompt} zones={promptZones} counts={zoneCounts} onClose={() => setZonePrompt(false)}
+        onZone={(z, walk) => {
+          setZonePrompt(false);
+          const { fresh, ...pick } = z;
+          // A new Galley, or the walkthrough's Galley with nothing in it yet, gets its usual cupboards (Cutlery Drawer, Pantry...).
+          if (online && (fresh || (walk && !zoneTops(pick.colour).length))) onChange((list) => withZoneDefaults([pick], list).areas);
+          setBatchWalk(!!walk);
+          scanZone(pick);
+        }} onWholeBoat={() => { setZonePrompt(false); openBatch(); }} />
+      {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} walk={batchWalk} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
         onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}

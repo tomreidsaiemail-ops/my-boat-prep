@@ -23,7 +23,7 @@ const Progress = ({ entries, position }) => {
 };
 
 // Batch Magic Scan screen: queue several cupboards, review each one, then add them all at once.
-export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone, boat }) => {
+export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone, boat, walk = false }) => {
   const batch = useBatchScan(boatId);
   const { entries } = batch;
   const [form, setForm] = useState(true);
@@ -74,7 +74,7 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
             {entries.length === 1 ? "Done" : "Confirm Batch"}
           </button>
         </div>
-        <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={pool} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX}
+        <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={pool} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX} walk={walk}
           onAdd={add} onClose={() => setForm(false)} />
         <ConfirmDelete item={doomed} testId="batch-area-delete" note="Its photo and scanned contents are removed from this batch." cancelLabel="Keep"
           onConfirm={() => { batch.remove(doomed.key); setDoomed(null); }} onClose={() => setDoomed(null)} />
