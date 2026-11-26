@@ -71,7 +71,8 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
         <DialogHeader>
           {zone && <ZoneBanner zone={zone} boat={boat} testId="batch-area-zone-banner" />}
           {walkOn && <BatchAreaWalk stage={stage} shown={shown} marks={{ name: !!name.trim(), where: !!where.trim(), photo: !!blob }} onToggle={(k) => setShown((s) => ({ ...s, [k]: !s[k] }))}
-            onDone={() => { setStage("done"); setShown({ scan: false, another: false }); }} />}
+            onDone={() => { setStage("done"); setShown({ scan: false, another: false }); }}
+            onReview={() => { setStage("review"); setShown({ scan: false, another: false }); }} />}
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-tight">{zone ? `New ${zone.label} cupboard` : "New cupboard"}</DialogTitle>
           <DialogDescription>Name the cupboard, locker, fridge or drawer, then take a photo of what's inside.</DialogDescription>
         </DialogHeader>
@@ -96,7 +97,7 @@ export const BatchAreaForm = ({ open, zone, boat, existing, batchNames, full, on
           <button type="button" className="btn-solid h-12" onClick={() => confirm(false)} data-testid="batch-area-confirm-btn">Confirm</button>
           <button type="button" className={`btn-ghost h-12 ${lit.another ? "mbp-glow" : ""}`} disabled={full} onClick={() => confirm(true)} data-testid="batch-area-confirm-another-btn">Confirm, and add another</button>
           {batchNames.length > 0 && (
-            <button type="button" className="btn-ghost h-12 gap-2 border-[var(--navy)]" onClick={onClose} data-testid="batch-area-review-btn">
+            <button type="button" className={`btn-ghost h-12 gap-2 border-[var(--navy)] ${walkOn && stage === "review" ? "mbp-glow" : ""}`} onClick={onClose} data-testid="batch-area-review-btn">
               <ListChecks className="h-4 w-4" /> Review Batch ({batchNames.length} {batchNames.length === 1 ? "cupboard" : "cupboards"})
             </button>
           )}

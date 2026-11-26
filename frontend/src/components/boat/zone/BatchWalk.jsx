@@ -38,7 +38,7 @@ export const ANOTHER_LINES = [
   "Again you are going to click Confirm, and add another",
   "You are going to repeat this for each cupboard, and then the Galley is fully scanned.",
   "Take a moment to put that box you scanned into the appropriate cupboard, the Pantry say",
-  "Repeat this for all cupboards in each zone",
+  <>Repeat this for all cupboards in each zone, and then <b className="font-black">Review Batch</b></>,
 ];
 
 // A yellow walkthrough section that folds away.
@@ -58,7 +58,7 @@ export const WalkList = ({ lines, numbered = false, ticks = [], bold = [], testI
   return (
     <Tag className={`flex flex-col gap-1.5 pl-5 font-semibold ${numbered ? "list-decimal" : "list-disc"}`}>
       {lines.map((l, i) => (
-        <li key={l} className={`whitespace-pre-line ${bold.includes(i) ? "font-black" : ""}`} data-testid={testId && `${testId}-line-${i + 1}`}>
+        <li key={i} className={`whitespace-pre-line ${bold.includes(i) ? "font-black" : ""}`} data-testid={testId && `${testId}-line-${i + 1}`}>
           {ticks.includes(i) && <Check className="mr-1 inline h-4 w-4 rounded-full bg-emerald-600 p-0.5 align-[-2px] text-white" strokeWidth={4} aria-label="Done" data-testid={testId && `${testId}-tick-${i + 1}`} />}
           {l}
         </li>
