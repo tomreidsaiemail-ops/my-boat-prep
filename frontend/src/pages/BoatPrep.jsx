@@ -1271,7 +1271,12 @@ export default function BoatPrep({ boatId, boats }) {
   // Days to go only matter before leaving: shown on Trip Planning and Leaving Dock, gone once the trip has departed.
   const departed = (id) => {
     const plan = new Date(tripBoat(boat, id).weather?.depart_at || "").getTime();
-    return boat.underway?.trip_id === id || (boat.legs?.[id] || []).some((l) => l.at && new Date(l.at).getTime() >= plan - 86400000); // left no more than a day before the plan
+    if (boat.underway?.trip_id === id) return true;
+    const legs = boat.legs?.[id] || [];
+    const last = legs[legs.length - 1];
+    // Departure set for after the last arrival: a fresh departure, not the trip already sailed.
+    if (last?.arrived_at && plan > new Date(last.arrived_at).getTime()) return false;
+    return legs.some((l) => l.at && new Date(l.at).getTime() >= plan - 86400000); // left no more than a day before the plan
   };
   const daysFor = (id) => (departed(id) ? undefined : tripBoat(boat, id).weather?.depart_at);
   // The planned leg under way, or else the first one not yet sailed (for the Arrived card when nothing is underway).
