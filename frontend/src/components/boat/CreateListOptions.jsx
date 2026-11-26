@@ -1,4 +1,4 @@
-import { Copy, Plus, UtensilsCrossed } from "lucide-react";
+import { Copy, Plus, TableProperties, UtensilsCrossed } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MagicProvisionerIcon } from "@/components/boat/meals/MagicProvisionerIcon";
 
@@ -27,6 +27,10 @@ export const CreateListOptions = ({ open, listName, galleyOnly, onPick, onClose 
         <Option icon={<UtensilsCrossed className="h-6 w-6" strokeWidth={2.2} />} title="Create a Meal Plan using common meals, and add your own, and remember them" onClick={() => onPick("common")} testId="create-option-common-meals" />
         <Option icon={<MagicProvisionerIcon />} title="Ask the Magic Provisioner to Create a Meal Plan using what is onboard" sub="Uses the food in your Food (F) cupboards" onClick={() => onPick("onboard")} testId="create-option-magic-onboard" />
         <Option icon={<MagicProvisionerIcon />} title="Create a Meal Plan using the Magic Provisioner" sub="Fresh ideas for every meal of the trip" onClick={() => onPick("fresh")} testId="create-option-magic-fresh" />
+        {!galleyOnly && <>
+          <p className="pt-1 text-sm font-semibold text-[var(--navy)]" data-testid="create-option-builder-note">Want to create a bespoke list that can be exported to Excel at a later date, use the attribute list builder</p>
+          <Option icon={<TableProperties className="h-6 w-6" strokeWidth={2.2} />} title="Custom Attribute List Builder" onClick={() => onPick("builder")} testId="create-option-builder" />
+        </>}
       </div>
     </DialogContent>
   </Dialog>

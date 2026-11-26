@@ -906,6 +906,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (how === "clone") { setDialog(null); askClone(); return; }
     if (how === "standard") { setDialog({ type: "list" }); return; }
     if (how === "common") { setDialog({ type: "commonMeals" }); return; }
+    if (how === "builder") { if (guard()) setDialog({ type: "builder" }); else setDialog(null); return; }
     if (!crew && !needPro("The Magic Provisioner")) return;
     if (crew && !crewPro) { toast.error("The Magic Provisioner needs the skipper to have Pro"); return; }
     setDialog({ type: "magicMeals", mode: how });
