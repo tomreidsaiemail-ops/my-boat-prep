@@ -67,7 +67,8 @@ export const BatchZonePrompt = ({ open, zones, counts = {}, onZone, onWholeBoat,
   const [step, setStep] = useState("how");
   const [shut, setShut] = useState({});
   const [folds, setFolds] = useState({});
-  const restart = (on) => { setWalk(on); setStep("how"); setShut({}); };
+  const [dismissed, setDismissed] = useState(false);
+  const restart = (on) => { setWalk(on); setStep("how"); setShut({}); setDismissed(false); };
   useEffect(() => {
     if (!open) return;
     const f = firstBatchWalk();
@@ -76,7 +77,9 @@ export const BatchZonePrompt = ({ open, zones, counts = {}, onZone, onWholeBoat,
   const list = zones.some(isGalley) ? zones : [GALLEY, ...zones];
   const go = walk && step === "go";
   const option = (z) => <ZoneOption key={z.label} z={z} on={pick?.label === z.label} glow={go && isGalley(z)} count={counts[z.colour]} onPick={setPick} />;
-  const next = (s) => { setShut((x) => ({ ...x, [step]: true })); setStep(s); };
+  // Folding the first section away also dismisses the opt-in warning.
+  const shutOne = (k) => { if (k === "how" && !shut.how) setDismissed(true); setShut((x) => ({ ...x, [k]: !x[k] })); };
+  const next = (s) => { if (step === "how") setDismissed(true); setShut((x) => ({ ...x, [step]: true })); setStep(s); };
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-sm overflow-y-auto rounded-lg border-2 border-[var(--navy)] p-4" aria-describedby={undefined} data-testid="batch-zone-prompt">
@@ -92,8 +95,8 @@ export const BatchZonePrompt = ({ open, zones, counts = {}, onZone, onWholeBoat,
           </>
         ) : (
           <>
-            {!first && <WalkOptIn on={walk} onChange={restart} />}
-            {walk && <ZoneWalk step={step} shut={shut} onShut={(k) => setShut((x) => ({ ...x, [k]: !x[k] }))} onNext={next} />}
+            {!first && <WalkOptIn on={walk} warn={!dismissed} onChange={restart} />}
+            {walk && <ZoneWalk step={step} shut={shut} onShut={shutOne} onNext={next} />}
             <p className="text-sm text-[var(--muted)]">Pick one area of the boat, e.g. the Galley. Every cupboard you scan goes into that zone.</p>
             <div className="flex flex-col gap-2" role="radiogroup">
               <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--navy)]" data-testid="batch-zone-group-main">Main Zones</p>

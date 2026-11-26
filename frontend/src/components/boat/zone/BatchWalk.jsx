@@ -72,13 +72,13 @@ export const WalkButton = ({ onClick, testId, children = "Continue..." }) => (
 );
 
 // After the first time: the walkthrough only shows when the skipper ticks this.
-export const WalkOptIn = ({ on, onChange }) => (
+export const WalkOptIn = ({ on, warn = true, onChange }) => (
   <div className="flex flex-col gap-2" data-testid="batch-walk-optin">
     <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm font-bold text-[var(--navy)]">
       <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} className="h-5 w-5 shrink-0 accent-[var(--navy)]" data-testid="batch-walk-optin-checkbox" />
       Walk me through batch magic scan
     </label>
-    {on && (
+    {on && warn && (
       <p role="alert" className="flex gap-2 rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-900" data-testid="batch-walk-warning">
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> This walkthrough may refer to Cupboards where scanning is complete. So use as a guide only
       </p>
