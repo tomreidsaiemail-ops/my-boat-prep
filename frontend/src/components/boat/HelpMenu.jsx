@@ -90,7 +90,7 @@ export const HelpDialog = ({ help, onClose }) => (
   <Dialog open={!!help} onOpenChange={(o) => !o && onClose()}>
     <DialogContent className="max-h-[88vh] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="help-dialog">
       <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold" data-testid="help-dialog-title"><HelpCircle className="h-5 w-5" /> Help: {help?.title.replace(/\.\.\.$/, "")}</DialogTitle>
+        <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold" data-testid="help-dialog-title"><HelpCircle className="h-5 w-5" /> {help?.heading || `Help: ${help?.title.replace(/\.\.\.$/, "")}`}</DialogTitle>
         <DialogDescription className="sr-only">How this part of My Boat Prep works</DialogDescription>
       </DialogHeader>
       <div className="flex flex-col gap-2 text-sm leading-relaxed text-slate-800">

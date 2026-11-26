@@ -33,13 +33,11 @@ import { applyQr } from "@/lib/qrStock";
 import { useAuth } from "@/context/AuthContext";
 import useAdminLists from "@/hooks/useAdminLists";
 import { useFeature } from "@/lib/features";
-import { LinkedText } from "@/components/boat/LinkedText";
+import { HelpDialog } from "@/components/boat/HelpMenu";
 import { AreaEditDialog } from "@/components/boat/inventory/AreaEditDialog";
 
 const newId = newAreaItemId;
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
-const INSTR_KEY = "mbp_inventory_instructions_collapsed";
-
 const HELP_NAME = "admin - help panel - how to take your boat inventory";
 const DEFAULT_HELP = [
   "Make sure and get the zone schematic for yacht, if you have not done that, then expand the Boat drop down, and click \"Additional boat details...\", fill in boat type, make, model and year of manufacture.",
@@ -48,30 +46,18 @@ const DEFAULT_HELP = [
   "From here on just pick a colour like Orange and Batch Magic Scan your Galley cupboards. The sailing community have provided great defaults for your Galley cupboards like Dry Storage Locker, but you can add your own.",
 ].map((label) => ({ label }));
 
-const InventoryInstructions = ({ searching, online, tools = null }) => {
-  const [open, setOpenState] = useState(() => localStorage.getItem(INSTR_KEY) !== "1");
-  const setOpen = (v) => { setOpenState(v); localStorage.setItem(INSTR_KEY, v ? "0" : "1"); };
-  useEffect(() => { if (searching) setOpen(false); }, [searching]); // eslint-disable-line react-hooks/exhaustive-deps
+// Cupboard Help: a button (beside Expand / Collapse cupboards) that opens the help in a pop-up window.
+const InventoryInstructions = ({ online, tools = null }) => {
+  const [open, setOpen] = useState(false);
   const admin = useAdminLists("Admin - Help Panel - ", online).find((l) => l.name.toLowerCase().replace(/\s+/g, " ").trim() === HELP_NAME)?.items;
   const lines = admin?.length ? admin : DEFAULT_HELP;
   return (
-    <div className="flex flex-col gap-2" data-testid="inventory-instructions">
-      <div className="flex items-stretch gap-2">
-        {tools}
-        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-w-0 flex-1 items-center gap-1.5 whitespace-nowrap rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white px-2.5 py-2 text-left text-[13px] font-bold text-[var(--navy)] sm:px-4 sm:text-sm" data-testid="inventory-instructions-toggle">
-          <HelpCircle className="h-4 w-4 shrink-0" /> Zone Cupboard Help
-          <ChevronDown className={`ml-auto h-4 w-4 shrink-0 [transition:transform_.15s] ${open ? "rotate-180" : ""}`} />
-        </button>
-      </div>
-      {open && (
-        <div className="flex flex-col gap-2 rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white px-4 py-3 text-sm text-[var(--muted)]" data-testid="inventory-instructions-body">
-          {lines.map((i, k) => (
-            <p key={k} className={i.indent ? "relative pl-5 before:absolute before:left-1.5 before:content-['•']" : ""} data-testid={`inventory-instructions-line-${k}`}>
-              <LinkedText text={i.label} testId={`inventory-instructions-link-${k}`} />
-            </p>
-          ))}
-        </div>
-      )}
+    <div className="flex flex-wrap items-stretch gap-2" data-testid="inventory-instructions">
+      {tools}
+      <button type="button" onClick={() => setOpen(true)} className="btn-ghost h-10 !min-h-0 gap-1.5 px-3 text-[13px]" data-testid="inventory-instructions-toggle">
+        <HelpCircle className="h-4 w-4 shrink-0" /> Cupboard Help
+      </button>
+      <HelpDialog help={open ? { title: "Cupboard Help", heading: "Cupboard Help", items: lines } : null} onClose={() => setOpen(false)} />
     </div>
   );
 };
@@ -555,10 +541,11 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         {areas.length === 0 && <p className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="inventory-empty">The skipper hasn't added any cupboards yet.</p>}
         {crewFood && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900" data-testid="inventory-crew-fd-note">You can add, change and remove the Food (F) and Drink (D) cupboards. The skipper looks after the rest.</p>}
       </> : (
-        <InventoryInstructions searching={!!q} online={online} tools={coloured && !q && groups.length > 0 && (
-          <div className="flex shrink-0 flex-col gap-1" data-testid="inventory-zone-fold-tools">
-            <button type="button" className="btn-ghost !min-h-0 h-[23px] justify-start gap-1 px-2 text-[11px]" onClick={() => setFoldList([])} data-testid="inventory-expand-cupboards-btn"><ChevronsUpDown className="h-3.5 w-3.5" />Expand cupboards</button>
-            <button type="button" className="btn-ghost !min-h-0 h-[23px] justify-start gap-1 px-2 text-[11px]" onClick={() => setFoldList(allZoneKeys())} data-testid="inventory-collapse-cupboards-btn"><ChevronsDownUp className="h-3.5 w-3.5" />Collapse cupboards</button>
+        <InventoryInstructions online={online} tools={coloured && !q && groups.length > 0 && (
+          <div className="flex shrink-0 items-stretch gap-2" data-testid="inventory-zone-fold-tools">
+            {/* Narrow phones drop "cupboards" so all three buttons fit on one line. */}
+            <button type="button" className="btn-ghost h-10 !min-h-0 gap-1.5 px-3 text-[13px]" onClick={() => setFoldList([])} data-testid="inventory-expand-cupboards-btn"><ChevronsUpDown className="h-4 w-4 shrink-0" />Expand<span className="hidden min-[460px]:inline"> cupboards</span></button>
+            <button type="button" className="btn-ghost h-10 !min-h-0 gap-1.5 px-3 text-[13px]" onClick={() => setFoldList(allZoneKeys())} data-testid="inventory-collapse-cupboards-btn"><ChevronsDownUp className="h-4 w-4 shrink-0" />Collapse<span className="hidden min-[460px]:inline"> cupboards</span></button>
           </div>
         )} />
       )}
