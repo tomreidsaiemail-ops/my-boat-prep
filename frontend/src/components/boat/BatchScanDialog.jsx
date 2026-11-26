@@ -7,6 +7,7 @@ import { BatchEntry } from "@/components/boat/BatchEntry";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { checkRows } from "@/components/boat/ScanReviewDialog";
 import { ZoneBanner } from "@/components/boat/zone/ZoneBanner";
+import { isGalley, scanReviewLines, WalkList, WalkSection } from "@/components/boat/zone/BatchWalk";
 import { areaZones } from "@/lib/zoneColours";
 
 const same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -29,6 +30,9 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
   const [form, setForm] = useState(true);
   const [doomed, setDoomed] = useState(null);
   const [discard, setDiscard] = useState(false);
+  const [howOpen, setHowOpen] = useState(true);
+  const walkOn = walk && isGalley(zone);
+  const doneLabel = entries.length === 1 ? "Done" : "Confirm Batch";
   // Cupboard names only need to be unique within a zone, so a zone's batch only matches that zone's cupboards.
   const zoneOf = areaZones(boat, areas);
   const pool = areas.filter((a) => !a.parent_id && (!zone || zoneOf[a.id]?.colour === zone.colour));
@@ -52,15 +56,19 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
       <DialogContent guard={false} className="flex max-h-[94vh] w-[calc(100%-1rem)] max-w-lg flex-col gap-3 overflow-hidden rounded-lg border-2 border-[var(--navy)] p-4" data-testid="batch-scan-dialog"
         onInteractOutside={(e) => e.preventDefault()}>
         {zone && <ZoneBanner zone={zone} boat={boat} />}
+        {walkOn && (
+          <WalkSection title="Review a batch of scans" open={howOpen} onToggle={() => setHowOpen(!howOpen)} testId="batch-review-walk">
+            <WalkList lines={scanReviewLines(doneLabel)} testId="batch-review-walk-list" />
+          </WalkSection>
+        )}
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> {zone ? `Scan ${zone.label} cupboards` : "Batch Magic Scan"}</DialogTitle>
-          <DialogDescription>{zone ? `Every cupboard, shelf and drawer you add here goes into ${zone.label} (${zone.colour}). ` : ""}Add each cupboard with a photo. Magic Scans happen in the background, while you take photos and name your cupboards, saving you lots of time. Review each one and tick it, then confirm.</DialogDescription>
-          <p className="text-sm text-[var(--muted)]" data-testid="batch-skipper-tip"><b className="text-[var(--navy)]">Skipper's tip:</b> Remember you can always return later and fix up one specific cupboard for a better result. It is important you commit all that work you did taking photos and naming cupboards, so we recommend a quick review at this stage.</p>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><Sparkles className="h-5 w-5" /> {zone ? `${zone.label} - Batch Magic Scan Review` : "Batch Magic Scan"}</DialogTitle>
+          <DialogDescription>Review each cupboard by ticking its checkbox</DialogDescription>
         </DialogHeader>
         <ul className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1" data-testid="batch-list">
           {entries.length === 0 && <li className="rounded-lg border-[1.5px] border-dashed border-[var(--line)] p-4 text-sm text-[var(--muted)]" data-testid="batch-empty">No cupboards in this batch yet.</li>}
           {entries.map((e, n) => (
-            <BatchEntry key={e.key} entry={e} n={n} existing={existingFor(e.name)} onPatch={(p) => batch.patch(e.key, p)}
+            <BatchEntry key={e.key} entry={e} n={n} existing={existingFor(e.name)} glow={walkOn} onPatch={(p) => batch.patch(e.key, p)}
               onDelete={() => setDoomed(e)} onRetry={() => batch.retry(e.key)} />
           ))}
         </ul>
@@ -70,8 +78,8 @@ export const BatchScanDialog = ({ open, boatId, areas, onClose, onConfirm, zone,
         {entries.length > 0 && <Progress entries={entries} position={batch.position} />}
         <div className="flex gap-2">
           <button type="button" className="btn-ghost h-12 flex-1" onClick={askClose} data-testid="batch-cancel-btn">Cancel</button>
-          <button type="button" className="btn-solid h-12 flex-1 disabled:opacity-40" disabled={!ready} onClick={finish} data-testid="batch-confirm-btn">
-            {entries.length === 1 ? "Done" : "Confirm Batch"}
+          <button type="button" className={`btn-solid h-12 flex-1 disabled:opacity-40 ${walkOn && ready ? "mbp-glow" : ""}`} disabled={!ready} onClick={finish} data-testid="batch-confirm-btn">
+            {doneLabel}
           </button>
         </div>
         <BatchAreaForm open={open && form} zone={zone} boat={boat} existing={pool} batchNames={entries.map((e) => e.name)} full={entries.length + 1 >= BATCH_MAX} walk={walk}

@@ -47,6 +47,14 @@ export const reviewLines = (n) => [
   `You can just review this batch of ${n}`,
   <b className="font-black">Click Review Batch</b>,
 ];
+export const scanReviewLines = (done) => [
+  "Grouped by cupboard below",
+  "Each cupboard has a review tick",
+  "Under the cupboard are its items",
+  "It is best to scroll down and up quickly",
+  "Then just click each cupboard as Reviewed",
+  `And press ${done}`,
+];
 
 // A yellow walkthrough section that folds away.
 export const WalkSection = ({ title, open, onToggle, testId, children }) => (

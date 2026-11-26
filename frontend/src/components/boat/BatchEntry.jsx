@@ -10,7 +10,7 @@ const STATUS = {
   error: { text: "Scan failed", cls: "bg-red-100 text-[var(--red)]" },
 };
 
-export const BatchEntry = ({ entry, n, existing, onPatch, onDelete, onRetry }) => {
+export const BatchEntry = ({ entry, n, existing, glow = false, onPatch, onDelete, onRetry }) => {
   const filled = !!existing && (existing.items || []).length > 0;
   const [error, setError] = useState("");
   const st = entry.ticked ? { text: "Reviewed", cls: "bg-green-100 text-green-900" } : entry.empty ? { text: "Empty cupboard", cls: "bg-amber-100 text-amber-900" } : STATUS[entry.status];
@@ -25,8 +25,10 @@ export const BatchEntry = ({ entry, n, existing, onPatch, onDelete, onRetry }) =
   return (
     <li className={`flex flex-col gap-2 rounded-lg border-[1.5px] p-3 ${entry.ticked ? "border-green-600 bg-green-50" : "border-[var(--line)] bg-white"}`} data-testid={`batch-entry-${n}`}>
       <div className="flex items-center gap-3">
-        <input type="checkbox" checked={!!entry.ticked} disabled={entry.status !== "done"} onChange={(e) => tick(e.target.checked)}
-          className="h-6 w-6 shrink-0 accent-green-700 disabled:opacity-30" aria-label={`Contents of ${entry.name} reviewed`} data-testid={`batch-entry-tick-${n}`} />
+        <span className={`flex shrink-0 rounded-md p-1 ${glow && !entry.ticked ? "mbp-glow" : ""}`} data-testid={`batch-entry-tick-wrap-${n}`}>
+          <input type="checkbox" checked={!!entry.ticked} disabled={entry.status !== "done"} onChange={(e) => tick(e.target.checked)}
+            className="h-6 w-6 shrink-0 accent-green-700 disabled:opacity-30" aria-label={`Contents of ${entry.name} reviewed`} data-testid={`batch-entry-tick-${n}`} />
+        </span>
         {entry.preview ? <img src={entry.preview} alt="" className="h-12 w-12 shrink-0 rounded-md border border-[var(--line)] object-cover" />
           : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-[var(--line)] text-[var(--muted)]" data-testid={`batch-entry-no-photo-${n}`}><PackageOpen className="h-5 w-5" /></span>}
         <div className="min-w-0 flex-1">
