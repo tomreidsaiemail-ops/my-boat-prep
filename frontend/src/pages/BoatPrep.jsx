@@ -239,6 +239,8 @@ export default function BoatPrep({ boatId, boats }) {
   const diet = useMemo(() => (onBoard ? { ...onBoard, text: dietText(onBoard.people) } : null), [onBoard]);
   const gps = useGps();
   const shoreTrack = useShoreTracking(boats.current, gps, online);
+  // The route map's little boat: where shore contacts see this boat.
+  const sharedBoat = { owner_id: boats.current.owner_id || user.user_id, boat_id: boats.current.boat_id };
   const tr = shoreTrack.tracking;
   const broadcast = !tr?.on ? null : user.ignore_300 ? "land" : tr.ashore_since || !tr.relayed ? "b300" : "b300x";
   const shoreAlert = useShoreAlert(boats.current, crew, online, gps);
@@ -1311,7 +1313,7 @@ export default function BoatPrep({ boatId, boats }) {
           ))}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
-              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} done={boat.legs?.[hopTrip]} />
+              weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} done={boat.legs?.[hopTrip]} shared={sharedBoat} />
           )}
         </div>
       );
@@ -1528,7 +1530,7 @@ export default function BoatPrep({ boatId, boats }) {
             onSwitchModel={boats.boats.some((b) => b.model) && !boats.current.model ? () => boats.select(boats.boats.find((b) => b.model).key) : undefined} />}
           {active.id !== "welcome" && !isTripList(active) && checks}
           {!crew && isTripList(active) && (
-            <NavigatorAsk key={`${boatId}-${active.id}`} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
+            <NavigatorAsk key={`${boatId}-${active.id}`} shared={sharedBoat} onLeaving={allLists.some((l) => l.id === "leavingDock") ? () => setActiveId("leavingDock") : undefined}
               onArriving={allLists.some((l) => l.id === "arrivingDest") ? () => setActiveId("arrivingDest") : undefined}
               onReturning={allLists.some((l) => l.id === "returningDock") ? () => setActiveId("returningDock") : undefined} guide={active.id === DEFAULT_TRIP ? guide : null}
               tripId={active.id} provisioned={(state.data.provisions || []).some((i) => i.checked)} endStep={active.id === ended ? archiveStep : null} boat={tripBoat(boat, active.id)} sailed={boat.legs?.[active.id]} departed={departed(active.id)} onChange={tripChange(active.id)} onWeather={tripWeather(active.id)} boatId={boats.current.boat_id} items={items.map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")} />

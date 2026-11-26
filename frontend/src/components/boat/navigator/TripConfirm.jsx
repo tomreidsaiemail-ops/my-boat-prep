@@ -57,7 +57,7 @@ const Stops = ({ legs, sailed }) => {
 };
 
 // Shown once a planned leg returns to the dock, or from the Route bubble (onPlace: with the Stops and Map tabs).
-export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedraw, done }) => {
+export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedraw, done, shared = null }) => {
   const home = arriveType(legs[legs.length - 1]?.arrive_type)?.key === "dock";
   const sailed = sailedFor(legs, done);
   const complete = sailed.filter((r) => r?.arrived_at).length;
@@ -69,7 +69,7 @@ export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedr
           <DialogDescription data-testid="trip-confirm-summary">{legs.length} {legs.length === 1 ? "leg" : "legs"}{home ? ", back at the dock" : ""}{complete ? `, ${complete} of ${legs.length} completed` : ""}. Tap a Prepare to... box to open its arrival checklist.</DialogDescription>
         </DialogHeader>
         {onPlace ? (
-          <RouteTabs stops={<Stops legs={legs} sailed={sailed} />} map={<StopsMap legs={legs} sailed={sailed} onPrepare={openList} />} />
+          <RouteTabs stops={<Stops legs={legs} sailed={sailed} />} map={<StopsMap legs={legs} sailed={sailed} onPrepare={openList} shared={shared} />} />
         ) : <Stops legs={legs} sailed={sailed} />}
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="trip-confirm-done-btn">{onPlace ? "Done" : "Looks good"}</button>
       </DialogContent>

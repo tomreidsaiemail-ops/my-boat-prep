@@ -8,7 +8,7 @@ export const firstLeg = (start, dest, weather = {}) => ({ id: "plan", route_star
   arrive_type: weather.arrive_type || "", start_pos: weather.start_pos, dest_pos: weather.dest_pos, path: weather.path });
 
 // The planned route (Leg 1, then each planned leg) on its Stops and Map tabs, where pins can be moved.
-export const PlannedRouteView = ({ start, dest, weather = {}, name, onChange, onClose, done }) => {
+export const PlannedRouteView = ({ start, dest, weather = {}, name, onChange, onClose, done, shared = null }) => {
   const legs = weather.legs || [];
   // Routes drawn over water can land before the next render, so each builds on the latest legs.
   const latest = useRef(legs);
@@ -25,7 +25,7 @@ export const PlannedRouteView = ({ start, dest, weather = {}, name, onChange, on
   };
   const setPath = (k, pts) => (k === 0 ? onChange({ path: pts }) : putLegs({}, latest.current.map((l, n) => (n === k - 1 ? { ...l, path: pts } : l))));
   const redraw = () => onChange({ path: null, legs: legs.map((l) => ({ ...l, path: null })) });
-  return <TripConfirm open legs={[firstLeg(start, dest, weather), ...legs]} name={name} onClose={onClose} onPlace={place} onPath={setPath} onRedraw={redraw} done={done} />;
+  return <TripConfirm open legs={[firstLeg(start, dest, weather), ...legs]} name={name} onClose={onClose} onPlace={place} onPath={setPath} onRedraw={redraw} done={done} shared={shared} />;
 };
 
 // The "Route" bubble: fast access to the planned route from Route Planning, Arriving at Destination and Returning to Dock.

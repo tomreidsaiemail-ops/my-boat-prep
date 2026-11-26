@@ -19,7 +19,7 @@ const DOCK = L.divIcon({
 });
 
 // The boat at its last recorded position: a little white boat on orange.
-const BOAT = L.divIcon({
+export const SHORE_BOAT = L.divIcon({
   className: "shore-boat-marker",
   html: '<div data-testid="shore-map-boat-marker" style="width:32px;height:32px;border-radius:50%;background:#f97316;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center">'
     + '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 18H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4Z"/><path d="M21 14 10 2 3 14h18Z"/><path d="M10 2v16"/></svg></div>',
@@ -124,7 +124,7 @@ export const ShoreMap = ({ points, alert, route, tlog = null, endLabel = "Last p
     const now = points[points.length - 1];
     points.filter((p) => p.kind === "stop" && p !== now).forEach((p) => L.marker([p.lat, p.lon], { icon: DOCK }).bindTooltip(`Stopped here · ${when(p.at)}`).addTo(g));
     L.circleMarker([first.lat, first.lon], { radius: 6, color: "#0f2a4a", weight: 2, fillColor: "#fff", fillOpacity: 1 }).bindTooltip(`Start · ${when(first.at)}`).addTo(g);
-    L.marker([now.lat, now.lon], { icon: BOAT, zIndexOffset: 1000 })
+    L.marker([now.lat, now.lon], { icon: SHORE_BOAT, zIndexOffset: 1000 })
       .bindTooltip(`${now.kind === "stop" ? "Stopped here" : endLabel} · ${when(now.at)}`, { permanent: true, direction: "top", offset: [0, -16] }).addTo(g);
     if (!fitted.current) {
       fitted.current = true;

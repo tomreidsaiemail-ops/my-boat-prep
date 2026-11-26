@@ -7,6 +7,19 @@ import useGps from "@/hooks/useGps";
 import { drawRoute } from "@/lib/routeDraw";
 import { legLines, legMiles, milesText, stopsOf } from "@/lib/tripStops";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
+import { SHORE_BOAT } from "@/components/boat/shore/ShoreMap";
+import { api } from "@/lib/api";
+
+const sharedWhen = (iso) => new Date(iso).toLocaleString("en-NZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+// The last position shared with shore contacts this trip ({ owner_id, boat_id }), so the skipper sees what they see.
+const useShared = (who) => {
+  const [last, setLast] = useState(null);
+  useEffect(() => {
+    if (!who?.boat_id) return;
+    api.get("/shore/track", { params: who }).then(({ data }) => setLast(data.points?.[data.points.length - 1] || null)).catch(() => {});
+  }, [who?.owner_id, who?.boat_id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return last;
+};
 
 const BOAT = L.divIcon({ className: "", html: '<span class="boat-dot"></span>', iconSize: [18, 18], iconAnchor: [9, 9] });
 const fixOf = (gps) => (gps.status === "ok" ? [gps.lat, gps.lon] : gps.last?.lat != null ? [gps.last.lat, gps.last.lon] : null);
@@ -33,9 +46,10 @@ const MapPopup = ({ at, box, children, testId = "stops-map-popup" }) => {
 // Map tab (read only): only pins are shown; tapping a pin, or a stop in the list, shows its arrival and departure (sailed: the logged legs).
 // quick (Quick Draft Plan): the next stop without a pin is always the one a tap drops, pins can be dragged, and the stop list is hidden.
 // onPinTap / mark (quick): a tapped pin is handed back, and the marked pin is highlighted. overlay: drawn over the map.
-// glow: pins lit yellow. flash: a yellow note shown above its spot ({ pos, node }).
-export const StopsMap = ({ legs, onPlace = () => {}, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null, glow = [], flash = null, sailed = [] }) => {
+// glow: pins lit yellow. flash: a yellow note shown above its spot ({ pos, node }). shared ({ owner_id, boat_id }): show the little boat where shore contacts see it.
+export const StopsMap = ({ legs, onPlace = () => {}, onPrepare = () => {}, quick = false, paused = false, onPinTap = () => {}, mark = null, popup = null, overlay = null, glow = [], flash = null, sailed = [], shared = null }) => {
   const gps = useGps();
+  const seen = useShared(shared);
   const stops = stopsOf(legs);
   const lines = legLines(legs);
   const miles = legMiles(legs);
@@ -94,6 +108,18 @@ export const StopsMap = ({ legs, onPlace = () => {}, onPrepare = () => {}, quick
   }, [gps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { draw(); }, [legs, pick, mark, glow.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !seen) return undefined;
+    const mk = L.marker([seen.lat, seen.lon], { icon: SHORE_BOAT, zIndexOffset: 3000, interactive: false })
+      .bindTooltip(`Shore contacts see<br>${seen.kind === "stop" ? "Stopped here" : "Last position"} ${sharedWhen(seen.at)}`, { permanent: true, direction: "top", offset: [0, -16], className: "text-center" }).addTo(m);
+    // Brought into view with the pins, once, as on the shore contact map.
+    if (!m.getBounds().contains([seen.lat, seen.lon])) {
+      const all = [[seen.lat, seen.lon], ...live.current.stops.filter((s) => s.pos).map((s) => [s.pos.lat, s.pos.lon])];
+      if (all.length > 1) m.fitBounds(all, { padding: [48, 48], maxZoom: 13 }); else m.setView(all[0], 11);
+    }
+    return () => { mk.remove(); };
+  }, [seen?.lat, seen?.lon, seen?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = stops.findIndex((s) => !s.pos);
   useEffect(() => { if (quick) setPick(paused ? -1 : open); }, [quick, paused, open, stops.length]);
 

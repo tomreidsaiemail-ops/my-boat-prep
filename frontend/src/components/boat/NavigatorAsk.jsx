@@ -87,7 +87,7 @@ const TripFlag = ({ label, title, testId }) => (
 // interim: the New departure window on Arriving at Destination (today's leg of the trip). timesNote: shown under its times.
 // guide: the Model Vessel's Trip Planning guide; until the Quick Draft Plan is done only the bubbles, START and DESTINATION show.
 // tripId: this Trip Planning list (for the crew window). provisioned: something on Provisions is ticked. endStep: the trip has ended, its next steps replace Leave.
-export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null, tripId, provisioned, endStep = null }) => {
+export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked, onUpgrade, boatId, interim, timesNote, legNo = 1, onLeaving, onArriving, onReturning, sailed, departed, guide = null, tripId, provisioned, endStep = null, shared = null }) => {
   const start = boat.route_start || "";
   const dest = boat.route_dest || "";
   const auto = useRef(routeText(start, dest));
@@ -180,7 +180,7 @@ export const NavigatorAsk = ({ boat, onChange, onWeather, items, online, locked,
           {onLeaving && <HopBubble icon={Anchor} label="Leave" onClick={onLeaving} departAt={leaveAt} tone={leaveToday ? "today" : "navy"} testId="route-leaving-dock" />}
           {onArriving && <HopBubble icon={Flag} label="Arrive" onClick={onArriving} testId="route-arriving" />}
           {onReturning && <HopBubble icon={Home} label="Return" onClick={onReturning} testId="route-returning-dock" />}
-          <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} done={sailed} />
+          <RouteBubble testId="route-view" start={start.trim()} dest={dest.trim()} weather={w} onChange={onWeather} done={sailed} shared={shared} />
         </div>
       )}
       {!interim && (
