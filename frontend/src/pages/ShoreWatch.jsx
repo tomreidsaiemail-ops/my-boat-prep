@@ -25,10 +25,10 @@ export default function ShoreWatch() {
   const [boats, setBoats] = useState(null);
   const [pick, setPick] = useState(0);
   const [track, setTrack] = useState(null);
-  // "Show me on the map": the transit pass (by when it was shared) shown as a TLOG mark.
+  // "Show me on the map": the transit pass (by when it was shared), or "all", shown as TLOG marks.
   const [shown, setShown] = useState(null);
   const mapBox = useRef(null);
-  const showPass = (p) => { setShown(p.at); mapBox.current?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+  const showPass = (at) => { setShown(at); mapBox.current?.scrollIntoView({ behavior: "smooth", block: "center" }); };
   const shoreHome = !!(user?.shore_only || user?.home === "shore" || user?.shore_contact);
   const [choosing, setChoosing] = useState(() => shoreHome && !readPick(user?.user_id) && !want);
   const boat = choosing ? null : boats?.[pick];
@@ -64,6 +64,8 @@ export default function ShoreWatch() {
   const toShore = (i) => { savePick(user.user_id, "shore"); setPick(i); setChoosing(false); };
   const signOut = () => logout().then(() => navigate("/login"));
   const last = track?.points?.[track.points.length - 1];
+  const mapped = (track?.plan?.passes || []).filter((p) => p.boat);
+  const tlogs = shown === "all" ? mapped : mapped.filter((p) => p.at === shown);
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-4 px-4 py-5" data-testid="shore-watch-page">
       <header className="flex items-center justify-between gap-3">
@@ -102,12 +104,18 @@ export default function ShoreWatch() {
           </div>
           {track?.plan?.passes?.length > 0 && (
             <section className="rounded-lg border-2 border-emerald-700 bg-white p-3.5" data-testid="shore-watch-transits">
-              <p className="field-label">Transit points passed</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="field-label">Transit points passed</p>
+                {mapped.length > 1 && (
+                  <button type="button" onClick={() => showPass("all")} data-testid="shore-watch-transits-all"
+                    className={`btn-ghost min-h-9 gap-1.5 px-2.5 text-xs ${shown === "all" ? "mbp-glow" : ""}`}><MapPin className="h-3.5 w-3.5" /> Show all transits</button>
+                )}
+              </div>
               <ul className="mt-1 flex flex-col gap-2">
                 {[...track.plan.passes].reverse().map((p, i) => (
                   <li key={`${p.at}-${i}`} className="text-sm font-semibold" data-testid={`shore-watch-transit-${i}`}>{p.text}<span className="block text-xs font-normal text-[var(--muted)]">shared {when(p.at)}</span>
                     {p.boat && (
-                      <button type="button" onClick={() => showPass(p)} data-testid={`shore-watch-transit-map-${i}`}
+                      <button type="button" onClick={() => showPass(p.at)} data-testid={`shore-watch-transit-map-${i}`}
                         className={`btn-ghost mt-1.5 min-h-9 gap-1.5 px-2.5 text-xs ${shown === p.at ? "mbp-glow" : ""}`}><MapPin className="h-3.5 w-3.5" /> Show me on the map</button>
                     )}
                   </li>
@@ -122,7 +130,7 @@ export default function ShoreWatch() {
             </section>
           )}
           {track && (track.points.length > 0 || alertOn || track.plan?.route || shown) ? (
-            <div ref={mapBox}><ShoreMap points={track.points} alert={track.alert} route={track.plan?.route} tlog={(track.plan?.passes || []).find((p) => p.at === shown) || null} /></div>
+            <div ref={mapBox}><ShoreMap points={track.points} alert={track.alert} route={track.plan?.route} tlogs={tlogs} /></div>
           ) : (
             <p className="rounded-lg bg-slate-100 p-4 text-sm" data-testid="shore-watch-no-points">No positions yet for this trip. They appear when the skipper turns on sharing and the app is open on a phone aboard.</p>
           )}

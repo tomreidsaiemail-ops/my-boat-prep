@@ -68,8 +68,8 @@ const drawAlert = (g, a) => {
 
 // The boat's path this trip (navy line), where it started (white dot) and its last recorded position (a little boat).
 // route: the skipper's planned route (stops and leg lines), drawn under the boat's path with an arrival label before each stop.
-// tlog: a transit pass to show ("Show me on the map"), drawn as a TLOG mark and zoomed to.
-export const ShoreMap = ({ points, alert, route, tlog = null, endLabel = "Last position", className = "h-[60vh] min-h-[320px]" }) => {
+// tlogs: transit passes to show ("Show me on the map" / "Show all transits"), drawn as TLOG marks and zoomed to.
+export const ShoreMap = ({ points, alert, route, tlogs = [], endLabel = "Last position", className = "h-[60vh] min-h-[320px]" }) => {
   const box = useRef(null);
   const routeLayer = useRef(null);
   const routeRef = useRef(route);
@@ -149,12 +149,12 @@ export const ShoreMap = ({ points, alert, route, tlog = null, endLabel = "Last p
   useEffect(() => {
     const g = tlogLayer.current;
     g.clearLayers();
-    if (!tlog?.boat) return;
-    const spots = drawTlog(g, tlog);
+    const spots = tlogs.filter((t) => t?.boat).flatMap((t) => drawTlog(g, t));
+    if (!spots.length) return;
     fitted.current = true;
     if (spots.length > 1) map.current.fitBounds(spots, { padding: [70, 70], maxZoom: 14 });
     else map.current.setView(spots[0], 13);
-  }, [tlog?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tlogs.map((t) => t.at).join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={box} className={`${className} isolate w-full overflow-hidden rounded-xl border-2 border-[var(--navy)]`} data-testid="shore-map" />;
 };
