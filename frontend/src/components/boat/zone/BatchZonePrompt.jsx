@@ -4,16 +4,19 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { slug } from "@/components/boat/zone/ZoneDialog";
 import { firstBatchWalk, HOW_LINES, isGalley, PLAN_LINES, WalkButton, WalkList, WalkOptIn, WalkSection } from "@/components/boat/zone/BatchWalk";
 import { ZONE_COLOURS } from "@/lib/zoneColours";
+import { isMainZone } from "@/lib/zoneGroups";
 
 // No Galley yet: offered anyway, and made with its usual cupboards when picked.
 const GALLEY = { label: "Galley", colour: "Orange", fresh: true };
-// Main (always open) first, then Cabins, Heads and Engines, folded; the Zone Map's Add cabin / head / engine groups (plurals too, e.g. "Heads Aft").
+// Main Zones (always open, just the Zone Map's Add main five: Galley, Saloon, Cockpit, Nav station, Transom), then folded
+// Cabins, Heads and Engines (plurals too, e.g. "Heads Aft"), then any other zone (Mast Base, Fore Deck...).
+const isMain = (z) => isMainZone(z.label);
 const FOLDED = [
   { key: "cabin", title: "Cabins", test: (z) => /\bcabins?\b/i.test(z.label) && !/cabin top/i.test(z.label) },
   { key: "head", title: "Heads", test: (z) => /\bheads?\b/i.test(z.label) },
   { key: "engine", title: "Engines", test: (z) => /\bengines?\b/i.test(z.label) },
-];
-const isMain = (z) => !FOLDED.some((g) => g.test(z));
+  { key: "other", title: "Other zones", test: () => true },
+].map((g) => ({ ...g, test: (z) => !isMain(z) && g.test(z) }));
 
 const ZoneOption = ({ z, on, glow, count, onPick }) => (
   <button type="button" role="radio" aria-checked={on} onClick={() => onPick(z)}

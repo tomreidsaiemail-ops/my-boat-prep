@@ -200,7 +200,7 @@ export const OverviewMap = ({ boat, map, src, canEdit, online, presets = [], onM
             <Palette className="h-4 w-4" /> Add Zone to schematic window
           </button>
           <ZoneDropdowns presets={presets} used={used} onPick={pick} t={t} />
-          {!win && <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Pick a zone from Add head, Add cabin, Add engine or Add other, then tap the plan where it is (a ticked one is on the plan; pick it again to take it off). For anything unusual, use Add Zone to schematic window. Tap a placed dot or its name to add photos of that zone and scan its cupboards."}</p>}
+          {!win && <p className="text-xs text-[var(--muted)]" data-testid={`${t}-hint`}>{armed ? `Tap the plan where the ${armed.label} is.` : "Pick a zone from Add head, Add cabin, Add engine or Add main, then tap the plan where it is (a ticked one is on the plan; pick it again to take it off). For anything unusual, use Add Zone to schematic window. Tap a placed dot or its name to add photos of that zone and scan its cupboards."}</p>}
           </>}
           <AddZoneWindow open={win} onClose={() => { setWin(false); setArmed(null); }} t={t}>
           {plan(winBox, true)}

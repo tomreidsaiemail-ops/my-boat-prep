@@ -11,7 +11,7 @@ export const firstBatchWalk = () => {
 };
 
 export const HOW_LINES = [
-  "When starting out use this section",
+  "When starting out do one zone at a time",
   "The galley will be used for the walkthrough",
   "Scanning by zone is the function that is part of the new user walkthrough",
   "Scanning the whole boat is best explored later",
