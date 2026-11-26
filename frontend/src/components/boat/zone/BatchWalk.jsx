@@ -19,9 +19,9 @@ export const HOW_LINES = [
 export const PLAN_LINES = [
   "Have an idea what cupboards are in your zone, the galley say",
   "Take as many cupboard contents photos before you get started",
-  "Separately photo boxes or folders, laying out the contents",
+  "Be familiar with scanning boxes and folders and putting them in cupboards (you can easily add them to a well named cupboard)",
+  "Separately photo boxes or folders, laying out the contents\n(you can return the items to their box or folder after photographing them)",
   "If cupboard items are obscured, take them out so they are in the photo",
-  "Be familiar with scanning boxes and putting them in cupboards (you can easily add them to a well named cupboard)",
   "Pick Galley below and we can get started",
 ];
 export const SCAN_LINES = [
@@ -56,7 +56,7 @@ export const WalkList = ({ lines, numbered = false }) => {
   const Tag = numbered ? "ol" : "ul";
   return (
     <Tag className={`flex flex-col gap-1.5 pl-5 font-semibold ${numbered ? "list-decimal" : "list-disc"}`}>
-      {lines.map((l) => <li key={l}>{l}</li>)}
+      {lines.map((l) => <li key={l} className="whitespace-pre-line">{l}</li>)}
     </Tag>
   );
 };
