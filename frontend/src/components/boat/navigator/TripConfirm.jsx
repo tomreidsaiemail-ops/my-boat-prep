@@ -4,6 +4,7 @@ import { dmyt } from "@/lib/allDone";
 import { RouteTabs } from "@/components/boat/navigator/RouteTabs";
 import { arriveType } from "@/components/boat/navigator/ArriveType";
 import { StopsMap } from "@/components/boat/navigator/StopsMap";
+import { localTime } from "@/components/boat/navigator/StopDetails";
 import { legMiles, milesText } from "@/lib/tripStops";
 
 const LIST_NAMES = { arrivingDest: "Arriving at Destination", returningDock: "Returning to Dock" };
@@ -13,7 +14,6 @@ const openList = (t) => window.dispatchEvent(new CustomEvent("mbp:open-arrival",
 const same = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
 // The trip's sailed legs (from Leaving Dock onwards) that match each planned leg, by order and start and destination.
 const sailedFor = (legs, done = []) => legs.map((l, n) => (done[n] && same(done[n].start, l.route_start) && same(done[n].dest, l.route_dest) ? done[n] : null));
-const localTime = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : dmyt(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)); };
 const Done = ({ text, at, testId }) => (
   <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide text-emerald-800 shadow-sm" data-testid={testId}>
     <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {text}{at ? ` ${localTime(at)}` : ""}
@@ -69,7 +69,7 @@ export const TripConfirm = ({ open, legs, name, onClose, onPlace, onPath, onRedr
           <DialogDescription data-testid="trip-confirm-summary">{legs.length} {legs.length === 1 ? "leg" : "legs"}{home ? ", back at the dock" : ""}{complete ? `, ${complete} of ${legs.length} completed` : ""}. Tap a Prepare to... box to open its arrival checklist.</DialogDescription>
         </DialogHeader>
         {onPlace ? (
-          <RouteTabs stops={<Stops legs={legs} sailed={sailed} />} map={<StopsMap legs={legs} onPlace={onPlace} onPath={onPath} onRedraw={onRedraw} onPrepare={openList} />} />
+          <RouteTabs stops={<Stops legs={legs} sailed={sailed} />} map={<StopsMap legs={legs} sailed={sailed} onPrepare={openList} />} />
         ) : <Stops legs={legs} sailed={sailed} />}
         <button type="button" className="btn-solid h-12 justify-center" onClick={onClose} data-testid="trip-confirm-done-btn">{onPlace ? "Done" : "Looks good"}</button>
       </DialogContent>
