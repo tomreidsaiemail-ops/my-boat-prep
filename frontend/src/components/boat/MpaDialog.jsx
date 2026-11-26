@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { Loader2, PawPrint, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
-import { buildShopping, foodStock, initialsFor, keyOf, matchRules, mpaWarnings } from "@/lib/mpa";
+import { buildShopping, foodStock, initialsFor, keyOf, matchRules, mpaWarnings, tripMeals } from "@/lib/mpa";
+import { MpaDaysField, MpaTripPicker } from "@/components/boat/MpaTripDays";
 import { MpaWarningsDialog } from "@/components/boat/MpaWarningsDialog";
 import { AISLE_NAMES, OTHER_AISLE, builtInAisle } from "@/lib/aisles";
 import { FoodBadge, SourceTag } from "@/components/boat/MpaBadges";
@@ -28,7 +29,7 @@ const useMatchRules = (open, online) => {
   return useMemo(() => matchRules(raw), [raw]);
 };
 
-export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate, params }) => {
+export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate, params, trips = [] }) => {
   const rules = useMatchRules(open, online);
   const diet = useCrewDiet()?.text || "";
   const [picked, setPicked] = useState([]);
@@ -36,13 +37,16 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
   const [byAisle, setByAisle] = useState(true);
   const [usePets, setUsePets] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [daysIn, setDaysIn] = useState("");
+  const [tripId, setTripId] = useState("");
   const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim());
-  useEffect(() => { if (open) { setPicked(lists.some((l) => l.id === activeId) ? [activeId] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setPicked(lists.some((l) => l.id === activeId) ? [activeId] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); setDaysIn(boat.trip_days ? String(boat.trip_days) : ""); setTripId(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tags = useMemo(() => Object.fromEntries(lists.map((l, i) => [l.id, initialsFor(lists.map((x) => x.name))[i]])), [lists]);
   const pob = boat.pob || 1;
   const children = Math.min(boat.children || 0, pob - 1);
   const adults = pob - children;
-  const days = boat.trip_days || 0;
+  const days = Math.min(365, Math.max(0, parseInt(daysIn, 10) || 0));
+  const pickTrip = (id) => { setTripId(id); const t = trips.find((x) => x.id === id); if (t) setDaysIn(String(tripMeals(t.departAt, t.endAt).days)); };
   const food = areas.filter((a) => a.food);
   const stock = useMemo(() => foodStock(areas), [areas]);
   const chosen = lists.filter((l) => picked.includes(l.id));
@@ -115,8 +119,9 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Fact label="On board" value={`${adults} ${adults === 1 ? "adult" : "adults"}${children ? `, ${children} ${children === 1 ? "child" : "children"}` : ""}`} testId="mpa-pob" />
-          <Fact label="Trip duration" value={days ? `${days} ${days === 1 ? "day" : "days"}` : "Not set, using 1 day"} warn={!days} testId="mpa-days" />
+          <MpaDaysField value={daysIn} days={days} onChange={(v) => { setDaysIn(v); setTripId(""); }} />
         </div>
+        {trips.length > 0 && <MpaTripPicker trips={trips} tripId={tripId} onPick={pickTrip} />}
         <p className="flex items-center gap-2 text-sm" data-testid="mpa-food-areas">
           <FoodBadge />
           {food.length ? `${food.length} Food ${food.length === 1 ? "area" : "areas"} checked for stock on board` : "No Food areas flagged yet, so nothing is taken off for stock on board"}
@@ -137,7 +142,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
           <input type="checkbox" className="h-5 w-5 accent-[var(--navy)]" checked={byAisle} onChange={(e) => setByAisle(e.target.checked)} data-testid="mpa-aisles-check" />
           Sort by shopping aisle
         </label>
-        <p className="text-xs text-[var(--muted)]">Amounts in recipes are for one adult; a child counts as half. Each meal is cooked once. Change people or trip days in Additional boat details.</p>
+        <p className="text-xs text-[var(--muted)]">Amounts in recipes are for one adult; a child counts as half. Each meal is cooked once. Change people in Additional boat details.</p>
         <MpaWarningsDialog warnings={warnings} onBack={() => setWarnings(null)} onProceed={() => { setWarnings(null); make(); }} />
         <button type="button" className="btn-solid h-12 justify-center gap-2" disabled={busy || !chosen.length} onClick={check} data-testid="mpa-make-btn">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

@@ -140,7 +140,7 @@ import { WeightsContext } from "@/components/boat/weights/WeightsContext";
 import { CrewDietContext, dietText, useOnBoardCrew } from "@/lib/crewDiet";
 import { DietBanner } from "@/components/boat/register/DietBanner";
 import { routeNotes } from "@/lib/routeNotes";
-import { DEFAULT_TRIP, isTripList, tripBoat, tripsWithPlans } from "@/lib/trips";
+import { DEFAULT_TRIP, isTripList, tripBoat, tripsWithPlans, tripWindows } from "@/lib/trips";
 import { shoreRoute } from "@/lib/tripStops";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
@@ -1600,7 +1600,7 @@ export default function BoatPrep({ boatId, boats }) {
         onBatchScan={() => { setDialog(null); startBatchScan(); }} onCreate={saveCocktails} onClose={() => setDialog(null)} />}
       {dialog?.type === "fish" && <FishWhispererDialog open online={online} gps={gps} imperial={boat.units === "ft"} helpItems={helpNamed("admin - help panel - magic fish whisperer")}
         logParams={{ boat_id: boats.current.boat_id, owner_id: crew ? boats.current.owner_id : null }} onLogged={logCatch} onClose={() => setDialog(null)} />}
-      <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} onClose={() => setDialog(null)} onCreate={saveMpa}
+      <MpaDialog open={dialog?.type === "mpa"} activeId={active.id} lists={mealLists} boat={boat} areas={areas} provisions={provisionNames} online={online} trips={dialog?.type === "mpa" ? tripWindows(state.registry, boat) : []} onClose={() => setDialog(null)} onCreate={saveMpa}
         params={crew ? { boat_id: boats.current.boat_id, owner: boats.current.owner_id } : undefined} />
       <CreateListOptions open={dialog?.type === "createOptions"} listName={active.id === FAQ_ID || NO_CLONE[active.id] ? "" : active.name} galleyOnly={crew} onPick={pickCreate} onClose={() => setDialog(null)} />
       <AssignShoppersDialog open={dialog?.type === "shoppers"} items={state.data.provisions || []} people={cooks} onClose={() => setDialog(null)}

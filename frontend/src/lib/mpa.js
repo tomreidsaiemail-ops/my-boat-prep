@@ -274,6 +274,20 @@ export const mpaWarnings = (meals, days) => {
 
 export const itemName = (label) => String(label).split(" – ")[0].trim();
 
+// Meals the boat is out for between departure and end of trip (breakfast 8am, lunch 12:30pm, dinner 6:30pm), and the days it spans.
+export const MEAL_TIMES = [["breakfast", "08:00"], ["lunch", "12:30"], ["dinner", "18:30"]];
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const tripMeals = (departAt, endAt) => {
+  const start = departAt.slice(0, 16);
+  const end = endAt.slice(0, 16);
+  const out = { breakfast: 0, lunch: 0, dinner: 0, days: 0 };
+  for (const d = new Date(`${start.slice(0, 10)}T12:00`); ymd(d) <= end.slice(0, 10) && out.days < 366; d.setDate(d.getDate() + 1)) {
+    out.days += 1;
+    MEAL_TIMES.forEach(([k, t]) => { const at = `${ymd(d)}T${t}`; if (at >= start && at <= end) out[k] += 1; });
+  }
+  return out;
+};
+
 export const buildShopping = ({ lists, adults, children, days, stock, provisions = [], amounts = {}, aisleOf = null, aisleOrder = [], rules = null, petItems = [] }) => {
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
