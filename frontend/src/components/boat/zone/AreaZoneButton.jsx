@@ -24,12 +24,13 @@ export const ZoneIcon = ({ hex }) => (
   </span>
 );
 
-export const AreaZoneButton = ({ area, zone, zones, boatId, onPick }) => {
+// glow: yellow highlight, e.g. on a cupboard not yet on a zone map.
+export const AreaZoneButton = ({ area, zone, zones, boatId, onPick, glow = false }) => {
   const [open, setOpen] = useState(false);
   const t = `inventory-area-zone-${area.id}`;
   return (
     <>
-      <button type="button" className="icon-btn text-[var(--muted)]" onClick={() => setOpen(true)} data-testid={t} data-zone={zone?.colour || ""}
+      <button type="button" className={`icon-btn text-[var(--muted)] ${glow ? "mbp-glow" : ""}`} onClick={() => setOpen(true)} data-testid={t} data-zone={zone?.colour || ""}
         aria-label={zone ? `In ${zone.map} – ${zone.colour}. Change zone` : "No zone yet. Pick a zone"} title={zone ? `${zone.map} – ${zone.colour}` : "No zone yet (tap to pick one)"}>
         <ZoneIcon hex={zone?.hex} />
       </button>

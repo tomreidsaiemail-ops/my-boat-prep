@@ -528,7 +528,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         photoButton={boat ? <CupboardPhotoButton boat={boat} area={a} subs={kids} placeholder={!ro} locked={locked} onToggle={toggleItem} onEdit={(x, i) => setDialog({ type: "item", area: x, item: i })} /> : null}
         onToggleFood={crewSub ? undefined : flag(a, "food", `${a.name} is now a Food area. Its items count as stock for the MPA.`, `${a.name} is no longer a Food area`)}
         onToggleDrinks={crewSub ? undefined : flag(a, "drinks", `${a.name} is now a Drinks area for the Magic Bartender.`, `${a.name} is no longer a Drinks area`)}
-        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} onPick={(z) => {
+        zoneButton={parent || !boat ? null : <AreaZoneButton area={a} zone={zones[a.id]} zones={pickZones} boatId={boat.key || boat.boat_id} glow={coloured && !ro && !zones[a.id]} onPick={(z) => {
           if (zoneTops(z.colour, a.id).some((t) => same(t.name, a.name))) { toast.error(`${z.label} already has a ${a.name}. Rename one of them first.`); return; }
           setArea(a.id, (x) => ({ ...x, zone: { label: z.label, colour: z.colour } })); toast.success(`${a.name} is now in ${z.label} – ${z.colour}`);
         }} />}>
@@ -601,6 +601,11 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
                   <button type="button" onClick={() => setZone(editZone)} className="btn-ghost h-8 shrink-0 gap-1 px-2 text-[11px]" data-testid={`inventory-colour-group-${k.toLowerCase()}-edit-zone-btn`}>
                     <Pencil className="h-3.5 w-3.5" /> Edit zone...
                   </button>
+                )}
+                {k === "none" && !readOnly && g.rows.length > 0 && (
+                  <p className="w-full rounded-lg border-2 border-amber-400 bg-yellow-100 px-3 py-2 text-sm font-bold text-[var(--navy)]" data-testid="inventory-no-zone-hint">
+                    Click the set zone icon on a cupboard (highlighted) to assign the cupboard a zone
+                  </p>
                 )}
               </li>
             ),
