@@ -73,6 +73,7 @@ import { FirstDetailsDialog } from "@/components/boat/welcome/FirstDetailsDialog
 import { glow } from "@/lib/glow";
 import { identityFull } from "@/components/boat/zone/CreateOverviewButton";
 import { InventorySearchDialog } from "@/components/boat/InventorySearchDialog";
+import { findWords, useFindGuide } from "@/lib/findGuide";
 import { TransferStartDialog } from "@/components/boat/transfer/TransferStartDialog";
 import { TransferWizard } from "@/components/boat/transfer/TransferWizard";
 import { TransferPanel } from "@/components/boat/transfer/TransferPanel";
@@ -396,6 +397,9 @@ export default function BoatPrep({ boatId, boats }) {
   const updatedIds = boats.current?.model ? [] : registry.filter((l) => isOutdated(state, l.id, templates)).map((l) => l.id);
   const mediaData = Object.fromEntries(MEDIA_LISTS.map((l) => [l.id, media[l.id].items.map((m) => ({ id: m.id, label: mediaLabel(m) }))]));
   const areas = state.areas || [];
+  // New skipper guide, last step: search for the sample drawer's Fork or Bottle opener (only while the sample is the only photo).
+  const [findStage, setFindStage] = useFindGuide();
+  const findSample = findStage === "search" ? findWords(boats.current, areas) : [];
   const linked = {};
   registry.forEach((l) => (state.data[l.id] || []).forEach((i) => {
     if (i.area && areas.some((a) => a.id === i.area)) (linked[i.area] ||= []).push({ key: `${l.id}-${i.id}`, listId: l.id, listName: l.name, item: i, text: i.label });
@@ -1440,7 +1444,7 @@ export default function BoatPrep({ boatId, boats }) {
       {boats.current.charter && !boats.current.charter.returned_at && <CharterTermsDialog key={boats.current.key} boat={boats.current} areas={areas} online={online} forceOpen={charterTerms} />}
       {crew ? <><CrewBanner boat={boat} owner={boats.current.owner_name} /><CrewAgreement boat={boats.current} vessel={boat.vessel || "this boat"} areas={areas} online={online} />
         <div className="flex items-center gap-2"><CrewOrganiseButton onClick={() => setDialog({ type: "organise" })} /><SpeakButton plan={speakPlan} onConfirm={speakDo} className="btn-ghost h-auto min-h-11 gap-2 px-3 py-2 text-[13px] font-bold" testId="crew-speak" /></div><VoyageCard boat={boats.current} online={online} /><GoDecisionCard boat={boats.current} online={online} />{!mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={boats.current.my_name || ""} />}</>
-        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} onFish={notFor("fish") || !user.show_fish_icon ? undefined : openFish} onBartender={crew || notFor("provision") || !user.show_bar_icon ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
+        : <BoatDetails key={boatId} boat={boat} tone={boats.current.model ? boatTone(boats.current) : undefined} onChange={changeBoatField} speak={{ plan: speakPlan, onConfirm: speakDo }} onOrganise={() => setDialog({ type: "organise" })} onHome={() => pickList(homeList.id)} homeName={homeList.name} onTrip={notFor("trip") ? undefined : () => pickList(hopTrip)} onSearch={notFor("find") ? undefined : () => setDialog({ type: "invSearch" })} findHint={findSample.length && dialog?.type !== "invSearch" ? `Now you can click the magnifying glass icon and search for ${findSample.join(" or ")}` : ""} onFish={notFor("fish") || !user.show_fish_icon ? undefined : openFish} onBartender={crew || notFor("provision") || !user.show_bar_icon ? undefined : openBartender} admin={user.is_admin} onMakeKit={makePetKit}
             onMaintSetup={crew ? undefined : () => setTimeout(() => setDialog({ type: "maint", auto: false }), 250)} maintDone={haveMaint.length === MAINT_LISTS.length}
             zone={crew ? undefined : { count: (boats.current.zone_maps || []).length, premium, onUpgrade: () => needPro("Zone maps"),
               hasMap: (boats.current.zone_maps || []).some((m) => m.kind === "overview"), cupboards: Object.keys(areaZones(boats.current, areas)).length > 0, onSetup: () => setSetupOpen(true) }} />}
@@ -1634,6 +1638,7 @@ export default function BoatPrep({ boatId, boats }) {
       <TransferStartDialog open={dialog?.type === "transferStart"} vessel={boat.vessel} onStart={() => setDialog({ type: "transferWizard" })} onClose={() => setDialog(null)} />
       {dialog?.type === "transferWizard" && <TransferWizard open boat={boats.current} areas={areas} online={online} onAreasChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} onFinish={finishTransfer} onClose={() => setDialog(null)} />}
       {dialog?.type === "invSearch" && <InventorySearchDialog open boat={boats.current} areas={areas} initialQuery={dialog.query || ""} onClose={() => setDialog(null)}
+        guideWords={findSample} onSearched={() => setFindStage("")}
         onOpenItem={(areaId, itemId, query) => { setDialog(null); pickList(INVENTORY_LIST.id); setInvFocus({ areaId, itemId, query, at: Date.now() }); }} />}
       <RequestTransferDialog open={dialog?.type === "requestTransfer"} online={online} onClose={() => setDialog(null)} />
       <NoticeDialog online={online} onOpenBoat={(id) => boats.refresh().then(() => boats.select(id))} />

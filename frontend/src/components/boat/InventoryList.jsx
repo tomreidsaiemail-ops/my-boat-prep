@@ -31,6 +31,7 @@ import { QrScanDialog } from "@/components/boat/inventory/QrScanDialog";
 import { clearQr, pendingQr, qrBoatKey } from "@/lib/qrScan";
 import { applyQr } from "@/lib/qrStock";
 import { useAuth } from "@/context/AuthContext";
+import { useFindGuide } from "@/lib/findGuide";
 import useAdminLists from "@/hooks/useAdminLists";
 import { useFeature } from "@/lib/features";
 import { HelpDialog } from "@/components/boat/HelpMenu";
@@ -112,8 +113,10 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [scanning, setScanning] = useState(null);
   const [scan, setScan] = useState(null);
   const [fresh, setFresh] = useState(null);
-  // One Magic Scan reads every photo given (a new one, or the cupboard's stored photos).
-  const runScan = async (a, blobs, stored) => {
+  const [findStage, findTo] = useFindGuide();
+  const scanGuide = scan?.sample && ["review", "save"].includes(findStage) ? findStage : "";
+  // One Magic Scan reads every photo given (a new one, or the cupboard's stored photos); sample: the new skipper guide's Cutlery Drawer.
+  const runScan = async (a, blobs, stored, sample = false) => {
     if (!online) { toast.error("AI Auto-Scan needs a signal"); return; }
     const form = new FormData();
     form.append("file", blobs[0], "cupboard.jpg");
@@ -121,7 +124,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setScanning(a.id);
     try {
       const { data } = await api.post(`/boats/${boat.boat_id}/scan`, form, { timeout: 90000 });
-      setScan({ area: a, items: data.items, blob: stored ? null : blobs[0] });
+      setScan({ area: a, items: data.items, blob: stored ? null : blobs[0], sample });
       if (data.scans_left <= 3) toast.message(`${data.scans_left} Magic generations left`);
     } catch (err) { toast.error(apiError(err, "The AI scan didn't work, please try again")); } finally { setScanning(null); }
   };
@@ -147,6 +150,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   };
   const saveScan = (list, mode, keepPhoto) => {
     const { area, blob } = scan;
+    if (scanGuide) findTo("done");
     setArea(area.id, (x) => ({ ...x, items: applyQr(x.items || [], list, mode === "add" ? "add" : "replace") }));
     setScan(null);
     if (keepPhoto) storePhotos([[area.id, blob]]);
@@ -430,9 +434,12 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const sampleScan = async () => {
     const a = helpArea();
     if (!a) return;
-    try { runScan(a, [await fetch(SAMPLE_CUTLERY).then((r) => { if (!r.ok) throw new Error(); return r.blob(); })], false); }
+    findTo("review");
+    try { runScan(a, [await fetch(SAMPLE_CUTLERY).then((r) => { if (!r.ok) throw new Error(); return r.blob(); })], false, true); }
     catch { toast.error("Couldn't load the sample image, please try again"); }
   };
+  // The sample scan saved: once its zone window closes, the guide moves on to Search.
+  useEffect(() => { if (findStage === "done" && !zone) findTo("search"); }, [findStage, zone]); // eslint-disable-line react-hooks/exhaustive-deps
   const [qrArea, setQrArea] = useState(null);
   useEffect(() => {
     const qr = pendingQr();
@@ -649,7 +656,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => { setZone(null); if (searchFocus) onSearchDone?.(); }}
         onReturn={zone && searchFocus ? () => { setZone(null); onSearchReturn?.(); } : undefined}
         onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} onUsual={readOnly ? undefined : addUsual}
-        firstHelp={zoneHelp} helpScanning={!!zoneHelp && scanning === zoneHelp.id} onSampleScan={sampleScan} onOwnScan={(e) => { const a = helpArea(); if (a) startScan(a)(e); }} />
+        firstHelp={zoneHelp} helpScanning={!!zoneHelp && scanning === zoneHelp.id} onSampleScan={sampleScan} onOwnScan={(e) => { const a = helpArea(); if (a) startScan(a)(e); }}
+        findDone={findStage === "done" && zoneHelp?.kind === "galley"} />
       {admin && !readOnly && areas.length > 0 && (
         <button type="button" className="btn-ghost h-11 justify-center text-sm" onClick={publish} data-testid="inventory-publish-defaults-btn">
           <UploadCloud className="h-4 w-4" /> Publish these cupboard names as suggestions for every skipper
@@ -676,7 +684,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         onClose={() => setDialog(null)} onConfirm={() => { deleteItem(dialog.area, dialog.item); setDialog(null); }} />
       <DeleteAreaDialog area={dialog?.type === "delete" ? dialog.area : null} subs={dialog?.type === "delete" ? subsOf(dialog.area.id).length : 0}
         onClose={() => setDialog(null)} onDelete={() => { deleteArea(dialog.area); setDialog(null); }} onEmpty={() => { emptyArea(dialog.area); setDialog(null); }} />
-      <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => setScan(null)} />
+      <ScanReviewDialog scan={scan} onSave={saveScan} onClose={() => { if (scanGuide) findTo(""); setScan(null); }} guide={scanGuide} onGuide={findTo} />
       <MoveAreaDialog source={dialog?.type === "move" ? dialog.area : null} areas={labelled} zones={zones} links={dialog?.type === "move" ? linked[dialog.area.id] : []}
         onMove={finishMove} onClose={() => setDialog(null)} />
     </section>

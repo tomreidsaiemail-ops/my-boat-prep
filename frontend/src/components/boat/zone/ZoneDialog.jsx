@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, ChevronDown, ImagePlus, Loader2, PackagePlus, ScanLine, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { ZoneCupboards } from "@/components/boat/zone/ZoneCupboards";
 import { DeleteZone } from "@/components/boat/zone/DeleteZone";
 import { usualCupboards } from "@/lib/zoneDefaults";
 import { ZoneFirstHelp } from "@/components/boat/zone/ZoneFirstHelp";
+import { GUIDE_BOX } from "@/lib/findGuide";
 
 // An empty zone with a usual set (Galley: Fridge, Freezer...): one tap adds them, nothing is added until then.
 const UsualCupboards = ({ zone, onAdd, t }) => {
@@ -72,12 +73,21 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
 // onUsual: shown while the zone has no cupboards, adds its usual set. firstHelp: the first zone window ever opened (see ZoneFirstHelp).
 export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary, coach = false, onUsual,
-  firstHelp = null, helpScanning = false, onSampleScan, onOwnScan, onReturn }) => {
+  firstHelp = null, helpScanning = false, onSampleScan, onOwnScan, onReturn, findDone = false }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
+  const t = zone ? `zone-dialog-${slug(zone.label)}` : "";
+  // Back from saving the sample scan: only Done stays yellow, scrolled to.
+  useEffect(() => {
+    if (!findDone || !t) return undefined;
+    const id = setTimeout(() => {
+      document.querySelectorAll(`[data-testid="${t}"] .mbp-glow`).forEach((e) => { if (e.dataset.testid !== `${t}-done-btn`) e.classList.remove("mbp-glow"); });
+      document.querySelector(`[data-testid="${t}-done-btn"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 400);
+    return () => clearTimeout(id);
+  }, [findDone, t]);
   if (!zone) return null;
   const photos = zonePhotos(boat, zone);
-  const t = `zone-dialog-${slug(zone.label)}`;
   const upload = async (files) => {
     if (!online) { toast.error("You need a signal to save zone photos"); return; }
     let saved = 0;
@@ -107,7 +117,7 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
             <Undo2 className="h-4 w-4" /> Return to result set
           </button>
         )}
-        {firstHelp && <ZoneFirstHelp help={firstHelp} count={(rows || []).length} t={t} scanning={helpScanning} onSample={onSampleScan} onOwn={onOwnScan} />}
+        {firstHelp && !findDone && <ZoneFirstHelp help={firstHelp} count={(rows || []).length} t={t} scanning={helpScanning} onSample={onSampleScan} onOwn={onOwnScan} />}
         {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} startOpen={(!!firstHelp && (rows || []).length > 0) || !!onReturn} />}
         {onUsual && !(rows || []).length && <UsualCupboards zone={zone} onAdd={onUsual} t={t} />}
         {big ? (
@@ -142,7 +152,8 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
         {onQuickAdd && <QuickCupboards zone={zone} onAdd={onQuickAdd} onDone={onQuickDone} t={t} coach={coach} />}
         {areaCount > 0 && <p className="text-center text-xs text-[var(--muted)]" data-testid={`${t}-area-count`}>{areaCount} {areaCount === 1 ? "cupboard" : "cupboards"} already in {zone.label}</p>}
         {onDeleteZone && <DeleteZone zone={zone} summary={deleteSummary} onDelete={onDeleteZone} t={t} />}
-        <button type="button" className="btn-solid h-12 shrink-0 justify-center" disabled={!!busy} onClick={onClose} data-testid={`${t}-done-btn`}>Done</button>
+        {findDone && <p className={GUIDE_BOX} data-testid={`${t}-find-done-hint`}>Click Done and then click the Search icon (magnifying glass icon) just below your vessel name.</p>}
+        <button type="button" className={`btn-solid h-12 shrink-0 justify-center ${findDone ? "mbp-glow" : ""}`} disabled={!!busy} onClick={onClose} data-testid={`${t}-done-btn`}>Done</button>
       </DialogContent>
     </Dialog>
   );

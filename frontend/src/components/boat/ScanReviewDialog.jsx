@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StorePhotoTick } from "@/components/boat/inventory/CupboardPhoto";
+import { GUIDE_BOX, isFindWord } from "@/lib/findGuide";
 
 let seq = 0;
 const row = (name = "", qty = 1) => ({ key: `r${(seq += 1)}`, name, qty: String(qty), keep: true });
@@ -16,13 +17,13 @@ export const checkRows = (rows) => {
   return kept.map((r) => ({ name: r.name.trim().slice(0, 80), qty: +r.qty }));
 };
 
-export const ScanRows = ({ rows, setRows, prefix = "scan" }) => {
+export const ScanRows = ({ rows, setRows, prefix = "scan", hi }) => {
   const set = (key, patch) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   return (
     <>
       <ul className="flex flex-col gap-2" data-testid={`${prefix}-rows`}>
         {rows.map((r, n) => (
-          <li key={r.key} className={`flex items-center gap-2 ${r.keep ? "" : "opacity-50"}`} data-testid={`${prefix}-row-${n}`}>
+          <li key={r.key} className={`flex items-center gap-2 ${r.keep ? "" : "opacity-50"} ${hi?.(r.name) ? "mbp-glow rounded-md p-1" : ""}`} data-testid={`${prefix}-row-${n}`}>
             <input type="checkbox" checked={r.keep} onChange={(e) => set(r.key, { keep: e.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--navy)]" aria-label={`Keep ${r.name}`} data-testid={`${prefix}-row-keep-${n}`} />
             <input value={r.name} maxLength={80} onChange={(e) => set(r.key, { name: e.target.value })} className="field-input h-11 !w-0 min-w-0 flex-1" aria-label="Item name" data-testid={`${prefix}-row-name-${n}`} />
             <input value={r.qty} inputMode="numeric" onChange={(e) => set(r.key, { qty: e.target.value.replace(/\D/g, "") })} className="field-input h-11 !w-16 shrink-0" aria-label="Quantity" data-testid={`${prefix}-row-qty-${n}`} />
@@ -35,8 +36,17 @@ export const ScanRows = ({ rows, setRows, prefix = "scan" }) => {
   );
 };
 
-// Review what the AI spotted, then add it to the cupboard or replace its contents.
-export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
+// The new skipper guide on the sample scan: why Batch Magic Scan helps, then Fork and Bottle opener can be searched once saved.
+const ScanGuide = ({ guide, onGuide }) => (guide === "review" ? (
+  <section className={`${GUIDE_BOX} flex flex-col gap-2`} data-testid="scan-guide-instructions">
+    <h3 className="font-display text-base font-extrabold">Magic Scan Result Instructions</h3>
+    <p className="font-semibold">You will have noticed it took a few moments for the scan - this is why there is a &quot;Batch Magic Scan&quot; feature available to you at the bottom of the Boat Inventory panel. So use this to overlap the time taken for you to name cupboards and upload photos with the scanning of the photos.</p>
+    <button type="button" className="btn-solid h-10 self-start px-6" onClick={() => onGuide("save")} data-testid="scan-guide-continue-btn">Continue</button>
+  </section>
+) : <p className={GUIDE_BOX} data-testid="scan-guide-save-text">&quot;Fork&quot; and &quot;Bottle opener&quot; once added can be searched. Click &quot;Save contents&quot;.</p>);
+
+// Review what the AI spotted, then add it to the cupboard or replace its contents. guide: "review" or "save" on the new skipper's sample scan.
+export const ScanReviewDialog = ({ scan, onSave, onClose, guide = "", onGuide }) => {
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [keepPhoto, setKeepPhoto] = useState(true);
@@ -47,6 +57,7 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
     onSave(res, mode, keepPhoto && !!scan.blob);
   };
   const existing = scan?.area.items?.length || 0;
+  const glowSave = guide === "save" ? "mbp-glow" : "";
   return (
     <Dialog open={!!scan} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dirty={rows.length > 0} className="max-h-[92vh] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto rounded-lg border-2 border-[var(--navy)]" data-testid="scan-review-dialog">
@@ -57,19 +68,20 @@ export const ScanReviewDialog = ({ scan, onSave, onClose }) => {
             {existing > 0 && <b className="mt-1 block text-[var(--navy)]" data-testid="scan-replace-warning">{scan?.area.name} already lists {existing} {existing === 1 ? "item" : "items"}. Add these to what's there (same names add up), or replace everything with this scan.</b>}
           </DialogDescription>
         </DialogHeader>
-        <ScanRows rows={rows} setRows={setRows} />
+        {guide && <ScanGuide guide={guide} onGuide={onGuide} />}
+        <ScanRows rows={rows} setRows={setRows} hi={guide === "save" ? isFindWord : undefined} />
         {scan?.blob && <StorePhotoTick checked={keepPhoto} onChange={setKeepPhoto} what={scan.area?.parent_id ? "box or folder" : "cupboard"} testId="scan-review-store-photo" />}
         {error && <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm font-bold text-[var(--red)]" data-testid="scan-review-error">{error}</p>}
         {existing > 0 ? (
           <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
-            <button type="button" className="btn-solid h-12" onClick={() => save("add")} data-testid="scan-review-merge-btn">Add to {scan?.area.name}</button>
+            <button type="button" className={`btn-solid h-12 ${glowSave}`} onClick={() => save("add")} data-testid="scan-review-merge-btn">Add to {scan?.area.name}</button>
             <button type="button" className="btn-ghost h-12 hover:text-[var(--red)]" onClick={() => save("replace")} data-testid="scan-review-replace-btn">Replace all {existing} {existing === 1 ? "item" : "items"}</button>
             <button type="button" className="btn-ghost h-11 border-transparent" onClick={onClose} data-testid="scan-review-cancel-btn">Cancel</button>
           </DialogFooter>
         ) : (
           <DialogFooter className="flex-row gap-2">
             <button type="button" className="btn-ghost h-12 flex-1" onClick={onClose} data-testid="scan-review-cancel-btn">Cancel</button>
-            <button type="button" className="btn-solid h-12 flex-1" onClick={() => save("replace")} data-testid="scan-review-save-btn">Save contents</button>
+            <button type="button" className={`btn-solid h-12 flex-1 ${glowSave}`} onClick={() => save("replace")} data-testid="scan-review-save-btn">Save contents</button>
           </DialogFooter>
         )}
       </DialogContent>

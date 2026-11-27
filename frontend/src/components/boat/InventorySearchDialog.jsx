@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { matches } from "@/components/boat/Highlight";
 import { areaZones } from "@/lib/zoneColours";
+import { GUIDE_BOX, isFindWord } from "@/lib/findGuide";
 
 // Boat Inventory search from the home screen: the same cupboard, box and item matching, with the results in this window.
 const searchAreas = (boat, areas, q) => {
@@ -20,19 +21,29 @@ const searchAreas = (boat, areas, q) => {
 };
 
 // Tapping a result opens its zone window with the cupboard open and the item highlighted (onOpenItem(areaId, itemId|null, query)).
-export const InventorySearchDialog = ({ open, boat, areas = [], initialQuery = "", onOpenItem, onClose }) => {
+// guideWords: the new skipper guide's Fork / Bottle opener to search for; onSearched once they have searched.
+export const InventorySearchDialog = ({ open, boat, areas = [], initialQuery = "", onOpenItem, onClose, guideWords = [], onSearched }) => {
   const [query, setQuery] = useState(initialQuery);
   const q = query.trim().toLowerCase();
   const rows = searchAreas(boat, areas, q);
   const found = rows.reduce((n, r) => n + r.items.reduce((m, i) => m + (i.qty || 1), 0), 0);
+  const guide = guideWords.length > 0;
+  const searched = useRef(false);
+  if (q) searched.current = true;
+  const done = () => { if (guide && searched.current) onSearched?.(); };
+  const hit = guide && rows.some((r) => r.items.some((i) => isFindWord(i.name)));
+  const close = () => { done(); onClose(); };
+  const openItem = (...a) => { done(); onOpenItem(...a); };
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="flex max-h-[88vh] max-w-lg flex-col border-[1.5px] border-[var(--navy)]" data-testid="inventory-search-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-extrabold">Search Boat Inventory</DialogTitle>
           <DialogDescription>Find what's in which cupboard, box or folder. Tap a result to see it in its zone.</DialogDescription>
         </DialogHeader>
-        <div className="flex items-center gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-white px-3">
+        {guide && <p className={GUIDE_BOX} data-testid="find-guide-search-text">
+          {hit ? `Tap ${guideWords.join(" or ")} below to see where it is on your boat.` : `Type ${guideWords.join(" or ")} in the search box below.`}</p>}
+        <div className={`flex items-center gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-white px-3 ${guide && !hit ? "mbp-glow" : ""}`} data-testid="inventory-search-dialog-box">
           <Search className="h-5 w-5 shrink-0 text-[var(--muted)]" />
           <input autoFocus type="text" enterKeyHint="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find an item, e.g. impeller" aria-label="Search inventory"
             className="h-12 min-w-0 flex-1 bg-transparent text-base outline-none" data-testid="inventory-search-dialog-input" />
@@ -43,14 +54,14 @@ export const InventorySearchDialog = ({ open, boat, areas = [], initialQuery = "
         <ul className="-mx-1 flex flex-col gap-2 overflow-y-auto px-1 pb-1" data-testid="inventory-search-dialog-results">
           {rows.map(({ area, parent, zone, hex, items }) => (
             <li key={area.id} className="rounded-md border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`inventory-search-result-${area.id}`}>
-              <button type="button" onClick={() => onOpenItem(area.id, null, query)} className="flex items-center gap-1.5 text-left text-sm font-extrabold text-[var(--navy)] underline-offset-2 hover:underline" data-testid={`inventory-search-open-${area.id}`}>
+              <button type="button" onClick={() => openItem(area.id, null, query)} className="flex items-center gap-1.5 text-left text-sm font-extrabold text-[var(--navy)] underline-offset-2 hover:underline" data-testid={`inventory-search-open-${area.id}`}>
                 {hex && <span className="h-3.5 w-3.5 shrink-0 rounded-[4px] border border-black/20" style={{ backgroundColor: hex }} data-testid={`inventory-search-colour-${area.id}`} />}
                 <span>{[zone, parent?.name, area.name].filter(Boolean).join(" › ")}</span>
               </button>
               {items.length > 0 && <ul className="mt-1 flex flex-col text-sm">
                 {items.map((i) => (
                   <li key={i.id}>
-                    <button type="button" onClick={() => onOpenItem(area.id, i.id, query)} className={`w-full rounded px-1 py-1 text-left hover:bg-slate-100 ${i.removed ? "text-[var(--muted)] line-through" : ""}`} data-testid={`inventory-search-item-${i.id}`}>
+                    <button type="button" onClick={() => openItem(area.id, i.id, query)} className={`w-full rounded px-1 py-1 text-left hover:bg-slate-100 ${i.removed ? "text-[var(--muted)] line-through" : ""} ${guide && isFindWord(i.name) ? "mbp-glow" : ""}`} data-testid={`inventory-search-item-${i.id}`}>
                       {i.name}{i.qty > 1 ? ` ×${i.qty}` : ""}{i.removed ? " (removed for now)" : ""}
                     </button>
                   </li>

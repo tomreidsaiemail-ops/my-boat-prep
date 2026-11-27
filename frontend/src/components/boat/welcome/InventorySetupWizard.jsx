@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, Loader2, RotateCcw, SkipForward } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -91,9 +91,13 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const maps = boat.zone_maps || [];
   const map = maps.find((m) => m.id === mapId);
+  // One blank schematic per Set Up: a second call while the first is saving (e.g. the open effect running twice) is ignored.
+  const adding = useRef(false);
   const addBlank = async (type) => {
+    if (adding.current) return;
     setStep("loading");
     if (!online) { toast.error("Adding the blank schematic needs a signal"); setStep("failed"); return; }
+    adding.current = true;
     try {
       const form = new FormData();
       form.append("file", await (await fetch(blankFor(type))).blob(), "blank-schematic.png");
@@ -102,7 +106,7 @@ export const InventorySetupWizard = ({ open, onClose, boat, details, online, onF
       const before = new Set(maps.map((m) => m.id));
       onMaps(all); setMapId((all.filter((x) => x.kind === "overview" && !before.has(x.id)).pop() || all.filter((x) => x.kind === "overview").pop())?.id || null);
       setBlank(true); setStep("galley");
-    } catch (e) { toast.error(apiError(e, "Couldn't add the blank schematic")); setStep("failed"); }
+    } catch (e) { toast.error(apiError(e, "Couldn't add the blank schematic")); setStep("failed"); } finally { adding.current = false; }
   };
   // The boat's own schematic if it has one (the one with colours first), else a blank one for its type.
   const go = (d = draft) => {

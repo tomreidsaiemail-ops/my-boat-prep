@@ -10,6 +10,8 @@ import { EMAIL_RE } from "@/hooks/useEmailSender";
 import { AdditionalDetailsDialog, pobText } from "@/components/boat/AdditionalDetailsDialog";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { RESUME_ZONE, identityFull, onAskDetailsForZone } from "@/components/boat/zone/CreateOverviewButton";
+import { useHold } from "@/lib/tripGuide";
+import { GUIDE_BOX } from "@/lib/findGuide";
 
 const petCount = (boat) => (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim()).length;
 
@@ -60,7 +62,7 @@ const Summary = ({ boat, onExpand, tone }) => (
 // TODO is fine in the Skipper's phone for now, just like blank.
 const skipperPhoneError = (v) => (/^todo$/i.test((v || "").trim()) ? "" : phoneError(v));
 
-export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onTrip, onSearch, onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone }) => {
+export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Boat Inventory", onTrip, onSearch, onFish, onBartender, admin, speak, onMakeKit, onDetailsClosed, onMaintSetup, maintDone, zone, tone, findHint = "" }) => {
   const complete = !!(boat.vessel.trim() && boat.callsign.trim() && boat.skipper.trim() && EMAIL_RE.test((boat.log_email || "").trim()));
   const [open, setOpen] = useState(!complete);
   const [more, setMore] = useState(false);
@@ -118,7 +120,16 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
   const pill = "btn-ghost h-auto min-h-11 min-w-0 gap-1.5 px-2 py-2 !text-left text-[13px] font-bold leading-tight";
   const magicIcon = "btn-ghost h-11 min-h-11 w-10 shrink-0 justify-center p-0";
   const navigate = useNavigate();
-  const batchBtn = (speak || onOrganise) && (
+  // New skipper guide, after the sample Cutlery Drawer scan: the magnifying glass stays yellow, scrolled to.
+  const findOn = !!(findHint && onSearch);
+  useHold("boat-details-search-btn", findOn);
+  useEffect(() => {
+    if (!findOn) return undefined;
+    const id = setTimeout(() => document.querySelector('[data-testid="boat-details-search-btn"]')?.scrollIntoView({ behavior: "smooth", block: "center" }), 500);
+    return () => clearTimeout(id);
+  }, [findOn]);
+  const batchBtn = (speak || onOrganise) && (<>
+    {findOn && <p className={GUIDE_BOX} data-testid="find-guide-search-hint">{findHint}</p>}
     <div className="flex flex-nowrap items-center gap-1" data-testid="boat-details-magic-row">
       {speak && <SpeakButton plan={speak.plan} onConfirm={speak.onConfirm} className={`${pill} mr-1`} testId="home-speak" />}
       {onOrganise && <button type="button" onClick={onOrganise} className={pill} data-testid="boat-details-organise-btn">
@@ -133,7 +144,7 @@ export const BoatDetails = ({ boat, onChange, onOrganise, onHome, homeName = "Bo
       {!admin && onFish && <button type="button" onClick={onFish} className={magicIcon} title="Magic Fish Whisperer" aria-label="Magic Fish Whisperer" data-testid="boat-details-fish-btn"><Fish className="h-5 w-5" /></button>}
       {!admin && onBartender && <button type="button" onClick={onBartender} className={magicIcon} title="Magic Bartender" aria-label="Magic Bartender" data-testid="boat-details-bartender-btn"><Martini className="h-5 w-5" /></button>}
     </div>
-  );
+  </>);
 
   if (complete && !open) return <><div className="flex flex-col gap-2"><Summary boat={boat} onExpand={() => setOpen(true)} tone={tone} />{batchBtn}</div>{dialog}</>;
   return (
