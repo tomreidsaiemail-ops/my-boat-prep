@@ -55,7 +55,7 @@ const GoOn = ({ onClick, testId }) => (
 );
 
 // mayday: { ready, onSetup } for the "Prefilled MAYDAY script with GPS" line (skippers only).
-export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen, onOpen, mayday }) => {
+export const WelcomeHelp = ({ welcomeHome, homeName = "Boat Inventory", ack, onAck, onSwitchModel, startOpen, onOpen, mayday }) => {
   const [open, setOpen] = useState(!ack || !!startOpen);
   const [stage, setStage] = useState(!ack ? "home" : "");
   const [homeOpen, setHomeOpen] = useState(true);
@@ -80,14 +80,12 @@ export const WelcomeHelp = ({ welcomeHome, ack, onAck, onSwitchModel, startOpen,
       {open && <>
         <FoldHeader open={homeOpen} onToggle={() => setHomeOpen((o) => !o)} testId="welcome-home-toggle" mixed>Home Button Setting</FoldHeader>
         {homeOpen && <div className="flex flex-col gap-2 border-l-4 border-amber-400 pl-3" data-testid="welcome-home-help">
-          {welcomeHome
-            ? <>
-              <P testId="welcome-home-made">The Welcome screen has been made your home screen.<ShowMe onClick={showHome} testId="welcome-show-home-btn" /></P>
-              <P testId="welcome-home-cross">Selecting Boat Inventory the home icon would get a cross.<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
-              <P testId="welcome-home-remains">Welcome remains your home screen.<ShowMe onClick={() => glow("boat-details-home-btn", 5000)} testId="welcome-show-remains-btn" /></P>
-              <P testId="welcome-home-set-new">If cross icon showing, click it sets new home.<ShowMe onClick={() => showCross(true)} testId="welcome-show-set-new-btn" /></P>
-            </>
-            : <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
+          {/* The points always show; when another list is home, they name it. */}
+          <P testId="welcome-home-made">{welcomeHome ? "The Welcome screen has been made your home screen." : `${homeName} is your home screen.`}<ShowMe onClick={showHome} testId="welcome-show-home-btn" /></P>
+          <P testId="welcome-home-cross">{welcomeHome ? "Selecting Boat Inventory the home icon would get a cross." : `Selecting any list other than ${homeName}, the home icon gets a cross.`}<ShowMe onClick={showCross} testId="welcome-show-cross-btn" /></P>
+          <P testId="welcome-home-remains">{welcomeHome ? "Welcome" : homeName} remains your home screen.<ShowMe onClick={() => glow("boat-details-home-btn", 5000)} testId="welcome-show-remains-btn" /></P>
+          <P testId="welcome-home-set-new">If cross icon showing, click it sets new home.<ShowMe onClick={() => showCross(true)} testId="welcome-show-set-new-btn" /></P>
+          {!welcomeHome && <P testId="welcome-home-other">This will be showing the Home icon with a cross, not a tick. It will change to your Home icon with a tick and the &quot;Welcome&quot; button will change to your list.</P>}
           {stage === "home" && <GoOn onClick={toCrew} testId="welcome-home-continue-btn" />}
         </div>}
         <FoldHeader open={crewOpen} onToggle={() => setCrewOpen((o) => !o)} testId="welcome-crew-toggle" mixed>Do you want to make your crew safer?</FoldHeader>

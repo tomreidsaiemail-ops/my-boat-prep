@@ -106,7 +106,7 @@ const AddArea = ({ onAdd, onBatch, batchHelp, placeholder = "Add a cupboard, a b
   );
 };
 
-export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, onWalkStars, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, batchHelp, onSyncStores, onSignOff, vessel = "", loaded = true }) => {
+export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, admin, online, shared, onSharedChange, boat, details, onBoatMaps, onWalkStars, linked = {}, onToggleLinked, onMoveItems, batchRequest, onBatchHandled, batchHelp, onSyncStores, onSignOff, vessel = "", loaded = true, searchFocus = null, onSearchDone, onSearchReturn }) => {
   const [dialog, setDialog] = useState(null);
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(null);
@@ -316,6 +316,18 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [zonePrompt, setZonePrompt] = useState(false);
   const [batchWalk, setBatchWalk] = useState(false);
   const boatZoneList = boat && !boat.owner_id && !readOnly ? boatZones(boat) : [];
+  // From Search Boat Inventory: open the result's zone window with its cupboard open and the item highlighted (skippers; else just scroll to it).
+  useEffect(() => {
+    if (!searchFocus) return;
+    const a = areas.find((x) => x.id === searchFocus.areaId);
+    const top = a?.parent_id && a.parent_id !== a.id ? a.parent_id : searchFocus.areaId;
+    const z = zones[top];
+    if (!a || !z || readOnly || !boat || boat.owner_id) { openArea(searchFocus.areaId); onSearchDone?.(); return; }
+    setZone(boatZoneList.find((x) => x.colour === z.colour) || { label: z.map, colour: z.colour });
+    setFocus({ id: searchFocus.areaId, at: Date.now() });
+    const tid = searchFocus.itemId ? `inventory-item-${searchFocus.itemId}` : `inventory-area-${searchFocus.areaId}`;
+    setTimeout(() => document.querySelector(`[role="dialog"] [data-testid="${tid}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 700);
+  }, [searchFocus?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   // The Batch Magic Scan zones: the Zone Map's, plus any a cupboard was filed under (e.g. a Galley made by Batch Magic Scan).
   const promptZones = boat && !boat.owner_id && !readOnly
     ? [...boatZoneList, ...areas.filter((a) => !a.parent_id && a.zone && ZONE_COLOURS[a.zone.colour]).map((a) => ({ label: a.zone.label, colour: a.zone.colour }))]
@@ -397,7 +409,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
   const [zoneHelp, setZoneHelp] = useState(null);
   useEffect(() => {
     if (!zone) { setZoneHelp(null); return; }
-    if (readOnly || !boat || boat.owner_id) return;
+    // Opened from a Search Boat Inventory result: the found cupboard opens, not the first-time help.
+    if (readOnly || !boat || boat.owner_id || searchFocus) return;
     const galley = same(zone.label || "", "Galley");
     const inZone = (a) => zoneKey(a) === zone.colour || zoneKey(areas.find((p) => p.id === a.parent_id) || {}) === zone.colour;
     const bare = galley && !zonePhotos(boat, zone).length && !areas.some((a) => areaPhotos(a).length && inZone(a));
@@ -519,7 +532,7 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
         path={q ? [zones[a.id]?.map, parent?.name].filter(Boolean).join(" › ") : ""}
         linked={linked[a.id]} visibleLinked={visibleLinked} onToggleLinked={onToggleLinked}
         onScan={boat && !boat.owner_id ? startScan(a) : undefined} onScanPhotos={boat && !boat.owner_id && areaPhotos(a).length ? () => scanStored(a) : undefined} scanning={scanning === a.id} defaultOpen={!parent && fresh === a.id} coach={coach?.id === a.id ? coach : null}
-        focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0}
+        focusAt={focus && (focus.id === a.id || kids.some((k) => k.id === focus.id)) ? focus.at : 0} hiItem={zone && searchFocus ? searchFocus.itemId : null}
         onShowOnMap={pin ? () => setMapFocus({ ...pin, at: Date.now() }) : undefined}
         onToggle={(i) => toggleItem(a.id, i)}
         onEditItem={(i) => setDialog({ type: "item", area: a, item: i })}
@@ -633,7 +646,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
       {batchOpen && <BatchScanDialog open boatId={boat.boat_id} areas={areas} zone={batchZone} boat={boat} walk={batchWalk} onClose={closeBatch} onConfirm={applyBatch} />}
       <ZoneDialog zone={zone} boat={boat} online={online} areaCount={zone ? zoneCounts[zone.colour] || 0 : 0} onMaps={onBoatMaps}
         onDeleteZone={!readOnly && boat && !boat.owner_id ? deleteZone : undefined} deleteSummary={zone ? zoneSummary(zone) : null}
-        rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => setZone(null)}
+        rows={zone ? zoneTops(zone.colour).map((a) => ({ ...hit(a, true), subs: subsOf(a.id).map((x) => hit(x, true)) })) : []} renderArea={(r) => renderArea(r)} onScan={scanZone} onClose={() => { setZone(null); if (searchFocus) onSearchDone?.(); }}
+        onReturn={zone && searchFocus ? () => { setZone(null); onSearchReturn?.(); } : undefined}
         onQuickAdd={zone ? quickAdd(zone) : undefined} onQuickDone={(firstId) => quickDone(zone, firstId)} coach={zoneCoach} onUsual={readOnly ? undefined : addUsual}
         firstHelp={zoneHelp} helpScanning={!!zoneHelp && scanning === zoneHelp.id} onSampleScan={sampleScan} onOwnScan={(e) => { const a = helpArea(); if (a) startScan(a)(e); }} />
       {admin && !readOnly && areas.length > 0 && (

@@ -14,13 +14,14 @@ const searchAreas = (boat, areas, q) => {
     const whole = matches(a.name, q) || (parent && matches(parent.name, q));
     const items = (a.items || []).filter((i) => whole || matches(i.name, q));
     if (!items.length && !matches(a.name, q)) return [];
-    const zone = zones[a.id]?.map || (parent && zones[parent.id]?.map) || "";
-    return [{ area: a, parent, zone, items }];
+    const z = zones[a.id] || (parent && zones[parent.id]) || null;
+    return [{ area: a, parent, zone: z?.map || "", hex: z?.hex || "", items }];
   });
 };
 
-export const InventorySearchDialog = ({ open, boat, areas = [], onOpenArea, onClose }) => {
-  const [query, setQuery] = useState("");
+// Tapping a result opens its zone window with the cupboard open and the item highlighted (onOpenItem(areaId, itemId|null, query)).
+export const InventorySearchDialog = ({ open, boat, areas = [], initialQuery = "", onOpenItem, onClose }) => {
+  const [query, setQuery] = useState(initialQuery);
   const q = query.trim().toLowerCase();
   const rows = searchAreas(boat, areas, q);
   const found = rows.reduce((n, r) => n + r.items.reduce((m, i) => m + (i.qty || 1), 0), 0);
@@ -29,7 +30,7 @@ export const InventorySearchDialog = ({ open, boat, areas = [], onOpenArea, onCl
       <DialogContent className="flex max-h-[88vh] max-w-lg flex-col border-[1.5px] border-[var(--navy)]" data-testid="inventory-search-dialog">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl font-extrabold">Search Boat Inventory</DialogTitle>
-          <DialogDescription>Find what's in which cupboard, box or folder.</DialogDescription>
+          <DialogDescription>Find what's in which cupboard, box or folder. Tap a result to see it in its zone.</DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-2 rounded-md border-[1.5px] border-[var(--navy)] bg-white px-3">
           <Search className="h-5 w-5 shrink-0 text-[var(--muted)]" />
@@ -40,14 +41,19 @@ export const InventorySearchDialog = ({ open, boat, areas = [], onOpenArea, onCl
         {q && <p className="text-sm font-bold text-[var(--muted)]" data-testid="inventory-search-dialog-count">
           {rows.length ? `${found} found in ${rows.length} ${rows.length === 1 ? "place" : "places"}` : `Nothing matches "${query.trim()}"`}</p>}
         <ul className="-mx-1 flex flex-col gap-2 overflow-y-auto px-1 pb-1" data-testid="inventory-search-dialog-results">
-          {rows.map(({ area, parent, zone, items }) => (
+          {rows.map(({ area, parent, zone, hex, items }) => (
             <li key={area.id} className="rounded-md border-[1.5px] border-[var(--line)] bg-white p-3" data-testid={`inventory-search-result-${area.id}`}>
-              <button type="button" onClick={() => onOpenArea(parent?.id || area.id)} className="text-left text-sm font-extrabold text-[var(--navy)] underline-offset-2 hover:underline" data-testid={`inventory-search-open-${area.id}`}>
-                {[zone, parent?.name, area.name].filter(Boolean).join(" › ")}
+              <button type="button" onClick={() => onOpenItem(area.id, null, query)} className="flex items-center gap-1.5 text-left text-sm font-extrabold text-[var(--navy)] underline-offset-2 hover:underline" data-testid={`inventory-search-open-${area.id}`}>
+                {hex && <span className="h-3.5 w-3.5 shrink-0 rounded-[4px] border border-black/20" style={{ backgroundColor: hex }} data-testid={`inventory-search-colour-${area.id}`} />}
+                <span>{[zone, parent?.name, area.name].filter(Boolean).join(" › ")}</span>
               </button>
-              {items.length > 0 && <ul className="mt-1 flex flex-col gap-0.5 text-sm">
+              {items.length > 0 && <ul className="mt-1 flex flex-col text-sm">
                 {items.map((i) => (
-                  <li key={i.id} className={i.removed ? "text-[var(--muted)] line-through" : ""}>{i.name}{i.qty > 1 ? ` ×${i.qty}` : ""}{i.removed ? " (removed for now)" : ""}</li>
+                  <li key={i.id}>
+                    <button type="button" onClick={() => onOpenItem(area.id, i.id, query)} className={`w-full rounded px-1 py-1 text-left hover:bg-slate-100 ${i.removed ? "text-[var(--muted)] line-through" : ""}`} data-testid={`inventory-search-item-${i.id}`}>
+                      {i.name}{i.qty > 1 ? ` ×${i.qty}` : ""}{i.removed ? " (removed for now)" : ""}
+                    </button>
+                  </li>
                 ))}
               </ul>}
             </li>

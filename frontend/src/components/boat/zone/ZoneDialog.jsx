@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, ChevronDown, ImagePlus, Loader2, PackagePlus, ScanLine, X } from "lucide-react";
+import { Camera, ChevronDown, ImagePlus, Loader2, PackagePlus, ScanLine, Undo2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { api, apiError } from "@/lib/api";
 import { shrink } from "@/components/boat/PhotoPicker";
@@ -72,7 +72,7 @@ const AddPhotos = ({ zone, busy, onFiles, t }) => {
 // One zone (e.g. Galley, orange): its Zone Map Photos, what to capture, then batch scan its cupboards.
 // onUsual: shown while the zone has no cupboards, adds its usual set. firstHelp: the first zone window ever opened (see ZoneFirstHelp).
 export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea, onMaps, onScan, onClose, onQuickAdd, onQuickDone, onDeleteZone, deleteSummary, coach = false, onUsual,
-  firstHelp = null, helpScanning = false, onSampleScan, onOwnScan }) => {
+  firstHelp = null, helpScanning = false, onSampleScan, onOwnScan, onReturn }) => {
   const [busy, setBusy] = useState("");
   const [big, setBig] = useState(null);
   if (!zone) return null;
@@ -101,8 +101,14 @@ export const ZoneDialog = ({ zone, boat, online, areaCount = 0, rows, renderArea
           <DialogTitle className="flex items-center gap-2 font-display text-xl font-extrabold uppercase tracking-tight"><ZoneChip zone={zone} className="text-sm" testId={`${t}-chip`} /> zone</DialogTitle>
           <DialogDescription>{zone.colour} zone. Photos of {zone.label} take {zone.colour}, and every cupboard you scan here is filed under {zone.label}.</DialogDescription>
         </DialogHeader>
+        {/* Opened from a Search Boat Inventory result: glows yellow until this window closes. */}
+        {onReturn && (
+          <button type="button" className="btn-ghost mbp-glow min-h-11 shrink-0 justify-center gap-2 text-sm" onClick={onReturn} data-testid={`${t}-return-search-btn`}>
+            <Undo2 className="h-4 w-4" /> Return to result set
+          </button>
+        )}
         {firstHelp && <ZoneFirstHelp help={firstHelp} count={(rows || []).length} t={t} scanning={helpScanning} onSample={onSampleScan} onOwn={onOwnScan} />}
-        {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} startOpen={!!firstHelp && (rows || []).length > 0} />}
+        {renderArea && <ZoneCupboards zone={zone} rows={rows || []} render={renderArea} t={t} startOpen={(!!firstHelp && (rows || []).length > 0) || !!onReturn} />}
         {onUsual && !(rows || []).length && <UsualCupboards zone={zone} onAdd={onUsual} t={t} />}
         {big ? (
           <div className="flex flex-col gap-2" data-testid={`${t}-big`}>

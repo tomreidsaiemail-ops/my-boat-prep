@@ -7,7 +7,7 @@ const PILL = "inline-flex h-8 items-center gap-1.5 rounded-full border-2 px-3 te
 export const TripMealBubbles = ({ plan, onPick, onShop, onOpenPlan }) => (
   <>
     <button type="button" onClick={onShop} className={`${PILL} border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-slate-100`} data-testid="provisions-trip-shop-btn">
-      <ShoppingCart className="h-3.5 w-3.5" /> Trip Shopping List
+      <ShoppingCart className="h-3.5 w-3.5" /> Shopping
     </button>
     {plan ? (
       <span className="inline-flex flex-col items-center gap-0.5">

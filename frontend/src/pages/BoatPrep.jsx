@@ -313,6 +313,8 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const [warn, showWarn] = useWarn();
   const [dialog, setDialog] = useState(null);
+  // A Search Boat Inventory result being looked at in its zone window: { areaId, itemId, query, at }.
+  const [invFocus, setInvFocus] = useState(null);
   const [interim, setInterim] = useState(false);
   const [printMode, setPrintMode] = useState(null);
   const [tripDate, setTripDate] = useState(todayISO);
@@ -1550,7 +1552,9 @@ export default function BoatPrep({ boatId, boats }) {
               linked={linked} onMoveItems={(plan) => guard() && mutate((s) => applyMove(s, plan))}
               onToggleLinked={(l) => guard() && mutate((s) => ({ ...s, data: { ...s.data, [l.listId]: s.data[l.listId].map((i) => (i.id === l.item.id ? { ...i, checked: !i.checked } : i)) } }))}
               boat={boats.current} details={boat} onWalkStars={(stars) => boats.patch(boats.current.key, { walk_stars: stars })} onBoatMaps={(maps) => boats.patch(boats.current.key, { zone_maps: maps })}
-              batchRequest={batchRequest} batchHelp={batchHelp} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough} />
+              batchRequest={batchRequest} batchHelp={batchHelp} onSyncStores={syncOn && (!crew || crewPro) ? () => openStores("syncStores") : undefined} onBatchHandled={() => setBatchRequest(false)} onSignOff={signOffWalkthrough}
+              searchFocus={invFocus} onSearchDone={() => setInvFocus(null)}
+              onSearchReturn={() => { const query = invFocus?.query || ""; setInvFocus(null); setDialog({ type: "invSearch", query }); }} />
           : <InventoryLocked onUpgrade={() => askUpgrade("Boat inventory")} />)
         : active.kind === BUDGET_KIND && !crew ? <BudgetList key={active.id} items={items} setItems={setItems} boat={boat} onBoatChange={updateBoat} premium={premium} online={online}
             onUpgrade={() => askUpgrade("Magic Mariner budgeting comments")} guard={guard} onDeleteList={askDeleteList} />
@@ -1560,7 +1564,7 @@ export default function BoatPrep({ boatId, boats }) {
             ctx={{ units: boat.units, yearBuilt: boat.year_built, currency: budgetCurrency(boat), boatId: boats.current.boat_id, owner: crew ? boats.current.owner_id : null, listId: active.id, online, readOnly: crew, onMove: active.imported && !crew ? (item) => setDialog({ type: "moveItem", item }) : undefined }} />
         : active.kind === BARTENDER_KIND ? <CocktailList items={items} readOnly={crew} onToggle={toggle} onDelete={remove} onRemix={openBartender} provisions={provisionNames} onAddProvisions={addProvisions} /> : (
         <>
-          {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id}
+          {active.id === "welcome" && <WelcomeScreen key={welcomeRun} online={online} welcomeHome={homeList.id === "welcome"} homeId={homeList.id} homeName={homeList.name}
             mayday={crew ? undefined : { ready: radioReady, onSetup: () => setMaydaySetup(true) }}
             onMakeHome={crew ? () => toast.info("Only the skipper can change the home list") : (id, open = false) => {
               changeBoatField("home_list", id); toast.success("Home list changed");
@@ -1627,8 +1631,8 @@ export default function BoatPrep({ boatId, boats }) {
       {dialog?.type === "excel" && <ExcelExportDialog open listName={active.name} title={boat.vessel.trim() || "My Boat Prep"} buildSheets={buildSheets} online={online} onClose={() => setDialog(null)} />}
       <TransferStartDialog open={dialog?.type === "transferStart"} vessel={boat.vessel} onStart={() => setDialog({ type: "transferWizard" })} onClose={() => setDialog(null)} />
       {dialog?.type === "transferWizard" && <TransferWizard open boat={boats.current} areas={areas} online={online} onAreasChange={(fn) => mutate((s) => ({ ...s, areas: fn(s.areas || []) }))} onFinish={finishTransfer} onClose={() => setDialog(null)} />}
-      {dialog?.type === "invSearch" && <InventorySearchDialog open boat={boats.current} areas={areas} onClose={() => setDialog(null)}
-        onOpenArea={(id) => { setDialog(null); pickList(INVENTORY_LIST.id); setTimeout(() => document.querySelector(`[data-testid="inventory-area-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 500); }} />}
+      {dialog?.type === "invSearch" && <InventorySearchDialog open boat={boats.current} areas={areas} initialQuery={dialog.query || ""} onClose={() => setDialog(null)}
+        onOpenItem={(areaId, itemId, query) => { setDialog(null); pickList(INVENTORY_LIST.id); setInvFocus({ areaId, itemId, query, at: Date.now() }); }} />}
       <RequestTransferDialog open={dialog?.type === "requestTransfer"} online={online} onClose={() => setDialog(null)} />
       <NoticeDialog online={online} onOpenBoat={(id) => boats.refresh().then(() => boats.select(id))} />
       {dialog?.type === "import" && <ImportDialog names={registry.map((l) => l.name)} ctx={{ units: boat.units, currency: budgetCurrency(boat) }} onImport={importLists} onClose={() => setDialog(null)} />}

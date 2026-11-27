@@ -3,8 +3,8 @@ import { Highlight } from "@/components/boat/Highlight";
 import { glow, wait } from "@/lib/glow";
 import { Check, ChevronDown, Folder, Link2, Loader2, MapPin, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
-const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query }) => (
-  <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"}>
+const ContentRow = ({ item, readOnly, onToggle, onEdit, onDelete, query, hi = false }) => (
+  <li className={`flex items-center border-t border-[var(--line)] ${item.removed ? "bg-red-100" : ""} ${hi ? "mbp-glow" : ""}`} data-testid={`inventory-item-${item.id}`} data-removed={item.removed ? "true" : "false"} data-hi={hi ? "true" : undefined}>
     <button type="button" role="checkbox" aria-checked={!!item.removed} aria-label={`${item.name}: ${item.removed ? "removed for now" : "in place"}`} onClick={readOnly ? undefined : onToggle} disabled={readOnly}
       className={`flex min-h-[52px] flex-1 items-center gap-3 py-2 pl-3 text-left ${readOnly ? "pr-3" : ""}`} data-testid={`inventory-item-toggle-${item.id}`}>
       <span className={`tick-box ${item.removed ? "!border-[var(--red)] !bg-[var(--red)] text-white" : ""}`}>{item.removed && <Check className="h-5 w-5" strokeWidth={3.5} />}</span>
@@ -61,7 +61,7 @@ const AddContent = ({ areaId, onAdd }) => {
   );
 };
 
-export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, expand, coach = null, children }) => {
+export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onDeleteItem, onRename, onDelete, photoButton, onToggleFood, onToggleDrinks, query = "", visible, linked = [], visibleLinked, onToggleLinked, onScan, scanning, defaultOpen = false, focusAt = 0, onShowOnMap, colour, path, subCount = 0, subItems = 0, sub = false, zoneButton, onScanPhotos, expand, coach = null, hiItem = null, children }) => {
   const [openState, setOpen] = useState(defaultOpen);
   useEffect(() => { if (focusAt) setOpen(true); }, [focusAt]);
   // Expand all / Collapse all on the zone row.
@@ -139,7 +139,7 @@ export const InventoryArea = ({ area, readOnly, onAdd, onToggle, onEditItem, onD
           )}
           <ul>
             {listed.map((i) => (
-              <ContentRow key={i.id} item={i} readOnly={readOnly} query={query} onToggle={() => onToggle(i)} onEdit={() => onEditItem(i)} onDelete={() => onDeleteItem(i)} />
+              <ContentRow key={i.id} item={i} readOnly={readOnly} query={query} hi={hiItem === i.id} onToggle={() => onToggle(i)} onEdit={() => onEditItem(i)} onDelete={() => onDeleteItem(i)} />
             ))}
             {shownLinks.map((l) => <LinkedRow key={l.key} link={l} query={query} onToggle={onToggleLinked && (() => onToggleLinked(l))} />)}
           </ul>
