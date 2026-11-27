@@ -25,8 +25,8 @@ api.interceptors.request.use((config) => {
   if (tz) config.headers["X-Timezone"] = tz;
   return config;
 });
-api.interceptors.response.use((res) => { nudgeLowBalance(res); return res; }, (e) => {
-  if (e?.response?.status === 429 && e.response.data?.code === "daily_limit") window.dispatchEvent(new CustomEvent(MAGIC_LIMIT_EVENT, { detail: e.response.data }));
+api.interceptors.response.use((res) => { if (!res.config?.quiet) nudgeLowBalance(res); return res; }, (e) => {
+  if (!e?.config?.quiet && e?.response?.status === 429 && e.response.data?.code === "daily_limit") window.dispatchEvent(new CustomEvent(MAGIC_LIMIT_EVENT, { detail: e.response.data }));
   return Promise.reject(e);
 });
 

@@ -8,9 +8,9 @@ import { allBatteries, batteriesOf, batteryName, tankUnit } from "@/lib/telemetr
 // A small labelled number box that sits on the tank's title line, e.g. "Fuel  TANK SIZE [200] L".
 const Cap = ({ label, unit, value, onChange, testId, digits = 5 }) => (
   <label className="flex items-center gap-1.5">
-    <span className="font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</span>
+    <span className="whitespace-nowrap font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{label}</span>
     <input value={value ?? ""} onChange={(e) => new RegExp(`^\\d{0,${digits}}([.,]\\d?)?$`).test(e.target.value) && onChange(e.target.value)} inputMode="decimal"
-      className="field-input !h-8 w-16 px-1.5 text-sm" aria-label={label} data-testid={testId} />
+      className="field-input !h-8 !w-16 px-1.5 text-sm" aria-label={label} data-testid={testId} />
     {unit && <span className="text-xs font-semibold text-[var(--muted)]">{unit}</span>}
   </label>
 );
