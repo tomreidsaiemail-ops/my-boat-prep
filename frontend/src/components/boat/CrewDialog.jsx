@@ -204,7 +204,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
                 <JoinCrewBadge jc={m.joincrew} testId={tid(`crew-member-${m.user_id}-joincrew`, g)} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
-                <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} sent={m.shopping_sent} shopRows={shopRows} online={online} testId={`crew-member-${m.user_id}`} />
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} sent={m.shopping_sent} shopRows={shopRows} online={online} onSent={load} testId={`crew-member-${m.user_id}`} />
               </>}
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
@@ -215,7 +215,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-invite-${i.invite_id}-trip`} />}
               badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} shopRows={shopRows} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
-                <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} sent={i.shopping_sent} shopRows={shopRows} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} sent={i.shopping_sent} shopRows={shopRows} online={online} onSent={load} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), i.quick ? "Quick Invite removed" : "Invite cancelled")} />
           ))}
           </TripGroup>)); })()}

@@ -10,7 +10,7 @@ import { ShopPeekDialog } from "@/components/boat/crew/ShopPeekDialog";
 const BTN = "btn-ghost h-8 gap-1 bg-white px-2 text-xs";
 
 // A crew member's Trip Shopping List (the aisles given to them), grouped in grey: email it, copy it for WhatsApp, or peek at it.
-export const SendShoppingButton = ({ boat, vessel, person, sent, shopRows, online, testId }) => {
+export const SendShoppingButton = ({ boat, vessel, person, sent, shopRows, online, onSent, testId }) => {
   const { user } = useAuth();
   const skipper = user.name || user.email;
   const [busy, setBusy] = useState(false);
@@ -23,6 +23,7 @@ export const SendShoppingButton = ({ boat, vessel, person, sent, shopRows, onlin
     try {
       await api.post(`/boats/${boat.boat_id}/crew/shopping`, { email: person.email, name: person.name, items, groups }, { timeout: 20000 });
       toast.success(`Shopping list emailed to ${person.name}`);
+      onSent?.();
     } catch (e) { toast.error(apiError(e, "Couldn't send the shopping list")); }
     setBusy(false);
   };
