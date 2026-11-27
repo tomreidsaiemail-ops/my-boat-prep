@@ -154,7 +154,6 @@ import { LogEventTime } from "@/components/boat/shipslog/LogEventTime";
 import { eventAt, eventError, loggedAt, logWhen, stampLog, toLocalInput } from "@/lib/logTime";
 import { ExpandAllButton } from "@/components/boat/shipslog/ClampText";
 import { PrintView } from "@/components/boat/PrintView";
-import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
 import { ServiceLogPanel } from "@/components/boat/ServiceLogPanel";
 import { ConfirmDelete } from "@/components/boat/ConfirmDelete";
 import { DeleteGroupDialog } from "@/components/boat/DeleteGroupDialog";
@@ -560,7 +559,9 @@ export default function BoatPrep({ boatId, boats }) {
   const movable = tagging && !isTips && active.id !== FAQ_ID && !active.isMedia && !MEDIA_KINDS.includes(active.kind) && !active.isInventory;
   const areaName = (item) => areas.find((a) => a.id === item.area)?.name || null;
   const filterAreas = areas.filter((a) => items.some((i) => i.area === a.id));
-  const shownByArea = !areaFilter ? items : items.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
+  // Ship's Log: the 'Record any noteworthy event' prompt shows only until the first log is made.
+  const listItems = active.id === "shipsLog" && items.some((i) => i.dynamic !== "logPrompt") ? items.filter((i) => i.dynamic !== "logPrompt") : items;
+  const shownByArea = !areaFilter ? listItems : listItems.filter((i) => (areaFilter === NO_AREA ? !areaName(i) : i.area === areaFilter));
   const [listQuery, setListQuery] = useState("");
   const listQ = listQuery.trim().toLowerCase();
   const listSearch = searchableList(active.name) && !active.isInventory;
@@ -711,7 +712,7 @@ export default function BoatPrep({ boatId, boats }) {
       setDialog({ type: "deleteGroup", group: { head: items[i], subs, depth: Object.fromEntries(subs.map((s) => [s.id, all[s.id].depth - info.depth])) } });
       return;
     }
-    if (!promptDelete) { remove(id); return; }
+    if (!promptDelete && active.id !== "shipsLog") { remove(id); return; }
     setDialog({ type: "deleteItem", item: items.find((i) => i.id === id) });
   };
   // Indenting a group's main item merges the whole group into the one above, so check first.
@@ -1381,9 +1382,10 @@ export default function BoatPrep({ boatId, boats }) {
           )}
         </div>
       );
-  // The Ship's Log has its Add box at the top of the panel; every other list at the bottom.
+  // The Ship's Log has its Add box under its help, with no ordering icons and always a prompt on delete; every other list has it at the bottom.
+  const log = active.id === "shipsLog";
   const addForm = (
-    <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
+    <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={log ? undefined : setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
       hideArea={hideArea} onHideAreaChange={user.show_hide_area && premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
       placeholder={{ shipsLog: "e.g. Stopped for an hour to observe dolphins", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />
   );
@@ -1418,7 +1420,7 @@ export default function BoatPrep({ boatId, boats }) {
         </button>
       )}
       {canEditList && active.id === "shipsLog" && addForm}
-      {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
+      {logOn && !crew && <ShipsLogPanel paperScan={user.show_magic_paper_logs !== false} items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
         help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
       {active.id === "shipsLog" && shown.length > 0 && (
         <ExpandAllButton anyOpen={logOpen.length > 0} onAll={(on) => setLogOpen(on ? (logOn ? logFolders.visible : shown).filter((i) => !i.folder).map((i) => i.id) : [])} />
@@ -1427,7 +1429,7 @@ export default function BoatPrep({ boatId, boats }) {
       {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
       <Checklist items={logOn ? logFolders.visible : active.id === "provisions" ? withProvShoppers(shown, provWho) : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
         onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setEditEventAt(active.id === "shipsLog" && loggedAt(item) ? toLocalInput(eventAt(item)) : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
-        ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
+        ordering={ordering && !areaFilter && !listQ && active.id !== "shipsLog"} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
         mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : active.id === tripShop?.id && myShopName ? (i) => myAisleIds.has(i.id) : undefined}
         clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} logTime={active.id === "shipsLog" ? logWhen : undefined} />)}
       {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
@@ -1521,11 +1523,6 @@ export default function BoatPrep({ boatId, boats }) {
       {!crew && updatedIds.includes(active.id) && (
         <TemplateUpdateNote key={`tpl-${active.id}`} listName={active.name} onMerge={() => guard() && setDialog({ type: "merge" })}
           onKeepMine={keepMineOnly} />
-      )}
-      {!crew && active.id === "shipsLog" && (
-        <EmailLogPanel email={boat.log_email || ""} shore={boat.shore_email || ""} onShoreChange={(v) => updateBoat("shore_email", v)}
-          shoreOn={!!boat.shore_enabled} onShoreToggle={(v) => updateBoat("shore_enabled", v)} online={online} logSent={state.log_sent} busy={mail.sending}
-          onSend={() => needPro("Email Ship's Log") && guard() && mail.requestSend(["shipsLog"], "Ship's Log")} locked={!premium} />
       )}
       {passingBtn && (
         <button type="button" className="btn-solid h-12 justify-center" onClick={() => doneGuard() && allDone.openTransit()} data-testid="transit-passed-btn">

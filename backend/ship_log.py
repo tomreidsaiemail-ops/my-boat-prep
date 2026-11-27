@@ -153,6 +153,9 @@ def arrange_log(items: list) -> list:
 
 
 def render_items(items: list, ctx: dict, log: bool = False) -> list:
+    # Ship's Log: the 'Record any noteworthy event' prompt only goes out while there are no logs.
+    if log and any(it.get("dynamic") != "logPrompt" for it in items):
+        items = [it for it in items if it.get("dynamic") != "logPrompt"]
     items = arrange_log(items)
     return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
              "depth": it.get("_depth") or ((it.get("level") if isinstance(it.get("level"), int) and 1 <= it.get("level") <= 3 else 1) if it.get("indent") and n > 0 else 0), **({"folder": True} if it.get("folder") else {}),

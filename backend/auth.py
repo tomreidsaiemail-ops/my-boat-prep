@@ -70,6 +70,7 @@ class UserOut(BaseModel):
     show_magic_electrical: bool = True
     show_magic_engine: bool = True
     show_magic_budget: bool = True
+    show_magic_paper_logs: bool = True
     tide_datum: str = "CD"
     show_tides: bool = False
     tide_ack_date: str = ""
@@ -79,7 +80,7 @@ class UserOut(BaseModel):
 
 
 HIDDEN_FEATURES = ("show_fish_icon", "show_bar_icon", "show_print_cards", "show_hide_area", "show_nav_ask", "show_weather_photos", "show_topup", "show_post_departure")
-SHOWN_FEATURES = ("show_magic_provisions", "show_magic_meal_plan", "show_magic_doctor", "show_magic_electrical", "show_magic_engine", "show_magic_budget")
+SHOWN_FEATURES = ("show_magic_provisions", "show_magic_meal_plan", "show_magic_doctor", "show_magic_electrical", "show_magic_engine", "show_magic_budget", "show_magic_paper_logs")
 
 
 def provider_of(u: dict) -> str:

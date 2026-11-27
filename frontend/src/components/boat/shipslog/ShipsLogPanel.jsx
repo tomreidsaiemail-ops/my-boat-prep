@@ -6,8 +6,8 @@ import { FoldYearDialog } from "@/components/boat/shipslog/FoldYearDialog";
 import { PaperLogScanDialog } from "@/components/boat/shipslog/PaperLogScanDialog";
 import { foldYear, groupPassage } from "@/lib/logFolders";
 
-// Skipper tools above the Ship's Log: passage folders, year folders and paper log scans.
-export const ShipsLogPanel = ({ items, setItems, labelFor, boat, boatId, guard, help, online, needPro, folders }) => {
+// Skipper tools above the Ship's Log: passage folders, year folders and paper log scans (paperScan: the Batch Magic Scan Paper Logs feature setting).
+export const ShipsLogPanel = ({ items, setItems, labelFor, boat, boatId, guard, help, online, needPro, folders, paperScan = true }) => {
   const [open, setOpen] = useState(null);
   const undoable = (next, text) => {
     const before = items;
@@ -34,7 +34,7 @@ export const ShipsLogPanel = ({ items, setItems, labelFor, boat, boatId, guard, 
   return (
     <>
       <ShipsLogTools hasFolders={folders.hasFolders} anyOpen={folders.anyOpen} onAll={folders.setAll}
-        onGroup={() => guard() && setOpen("group")} onYear={() => guard() && setOpen("year")} onScan={scan} />
+        onGroup={() => guard() && setOpen("group")} onYear={() => guard() && setOpen("year")} onScan={paperScan ? scan : undefined} />
       {open === "group" && <PassageGroupDialog items={items} labelFor={labelFor} boat={boat} help={help} onGroup={group} onClose={() => setOpen(null)} />}
       {open === "year" && <FoldYearDialog items={items} onFold={year} onClose={() => setOpen(null)} />}
       {open === "scan" && <PaperLogScanDialog boatId={boatId} onAdd={addLogs} onClose={() => setOpen(null)} />}
