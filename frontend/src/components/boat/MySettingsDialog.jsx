@@ -31,6 +31,7 @@ const MAGIC_ON = [
   ["show_magic_doctor", "MAGIC MARINE DOCTOR on First Aid nodes", ""],
   ["show_magic_electrical", "MAGIC MARINE ENGINEER on Electrical Service node", ""],
   ["show_magic_engine", "MAGIC MARINE ENGINEER on Engine Service node", ""],
+  ["show_magic_budget", "MAGIC MARINER BUDGETING COMMENTS on Boat Budget node", ""],
 ];
 const MAGIC_MORE = [
   ["show_nav_ask", "\"ASK THE MAGIC MARINE NAVIGATOR\" after START and DESTINATION in Trip Planning", ""],

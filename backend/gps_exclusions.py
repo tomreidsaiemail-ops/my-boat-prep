@@ -43,6 +43,7 @@ class FeaturesIn(BaseModel):
     show_magic_doctor: Optional[bool] = None
     show_magic_electrical: Optional[bool] = None
     show_magic_engine: Optional[bool] = None
+    show_magic_budget: Optional[bool] = None
 
 
 @router.put("/me/features")

@@ -4,8 +4,10 @@ import { BudgetHeader } from "@/components/boat/budget/BudgetHeader";
 import { BudgetComments } from "@/components/boat/budget/BudgetComments";
 import { BudgetTable } from "@/components/boat/budget/BudgetTable";
 import { budgetCurrency, budgetYears, thisYear, withYears } from "@/lib/budget";
+import { useAuth } from "@/context/AuthContext";
 
 export const BudgetList = ({ items, setItems, boat, onBoatChange, premium, online, onUpgrade, guard, onDeleteList }) => {
+  const { user } = useAuth();
   const [editing, setEditing] = useState(false);
   const currency = budgetCurrency(boat);
   const [year, setYear] = useState(thisYear());
@@ -13,7 +15,7 @@ export const BudgetList = ({ items, setItems, boat, onBoatChange, premium, onlin
   return (
     <section className="flex flex-col gap-4" data-testid="budget-list">
       <BudgetHeader boat={boat} currency={currency} onBoatChange={onBoatChange} open={editing} onOpenChange={setEditing} />
-      <BudgetComments boat={boat} currency={currency} paused={editing} onBoatChange={onBoatChange} premium={premium} online={online} onUpgrade={onUpgrade} />
+      {user?.show_magic_budget !== false && <BudgetComments boat={boat} currency={currency} paused={editing} onBoatChange={onBoatChange} premium={premium} online={online} onUpgrade={onUpgrade} />}
       <label className="flex items-center gap-2 self-start text-sm font-bold" htmlFor="budget-year">
         Budget year
         <select id="budget-year" value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input !h-10 !w-44 py-0 text-sm" data-testid="budget-year-select">
