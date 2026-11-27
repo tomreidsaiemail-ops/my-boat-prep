@@ -24,18 +24,19 @@ export const logWhen = (i) => {
 
 const pad = (n) => String(n).padStart(2, "0");
 export const toLocalInput = (s) => { const d = new Date(s); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-export const eventRange = (logged) => {
+// paper: a Batch Magic Scan Paper Log, whose event can be any time in the past.
+export const eventRange = (logged, paper = false) => {
   const t = new Date(logged);
   const min = new Date(t);
   min.setMonth(min.getMonth() - 1);
-  return [min, new Date(t.getTime() + 5 * DAY)];
+  return [paper ? null : min, new Date(t.getTime() + 5 * DAY)];
 };
 // The event time typed in the edit window (datetime-local): an error message, or "".
-export const eventError = (logged, local) => {
+export const eventError = (logged, local, paper = false) => {
   const d = new Date(local);
   if (!local || Number.isNaN(d.getTime())) return "Pick the date and time of the event";
-  const [min, max] = eventRange(logged);
-  if (d < new Date(min.getTime() - 60000)) return `The event can be no earlier than ${fmtLog(min)}, a month before the entry was made`;
+  const [min, max] = eventRange(logged, paper);
+  if (min && d < new Date(min.getTime() - 60000)) return `The event can be no earlier than ${fmtLog(min)}, a month before the entry was made`;
   if (d > max) return `The event can be no later than ${fmtLog(max)}, 5 days after the entry was made`;
   return "";
 };

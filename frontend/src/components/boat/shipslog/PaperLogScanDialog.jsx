@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, CheckCircle2, Clock, Loader2, RotateCw, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { niceDate } from "@/lib/logFolders";
+import { stampLog } from "@/lib/logTime";
 import usePaperQueue from "@/components/boat/shipslog/usePaperQueue";
 
 const MAX = 20;
@@ -81,7 +82,10 @@ export const PaperLogScanDialog = ({ boatId, onAdd, onClose }) => {
   };
   const commit = () => {
     if (done.some((p) => !p.title.trim() || !p.date)) { setError("Give every log row a title and a date."); return; }
-    onAdd(done.map((p, k) => ({ id: Date.now() + k, label: `${p.title.trim()} - ${niceDate(p.date)}: ${p.text.trim()}`.slice(0, 2000), log_date: p.date, paper: true, checked: false })));
+    // Entry made now; the event defaults to the page's date (midday, as paper logs rarely give a time).
+    const now = Date.now();
+    onAdd(done.map((p, k) => ({ id: now + k, label: `${p.title.trim()} - ${niceDate(p.date)}: ${p.text.trim()}`.slice(0, 2000), log_date: p.date, paper: true, checked: false,
+      ...stampLog(now), ...(p.date ? { event_at: new Date(`${p.date}T12:00`).toISOString() } : {}) })));
   };
   const review = step === "review";
   return (

@@ -903,7 +903,7 @@ export default function BoatPrep({ boatId, boats }) {
     if (log && item.dynamic === "logPrompt") { const res = addItem(text); if (res === true) setDialog(null); return res; }
     if (!log && isDup(text, item.id)) return `${text} already exists`;
     const logged = log ? loggedAt(item) : "";
-    const timeErr = logged ? eventError(logged, editEventAt) : "";
+    const timeErr = logged ? eventError(logged, editEventAt, !!item.paper) : "";
     if (timeErr) return timeErr;
     const when = logged ? { logged_at: logged, event_at: editEventAt === toLocalInput(eventAt(item)) ? eventAt(item) : new Date(editEventAt).toISOString() } : {};
     const mealHead = isMealHead(items, item.id);
@@ -1695,7 +1695,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <CookPicker value={editCook ?? cookOf(dialog.item.label)} cooks={cooks} onChange={setEditCook} />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
-        {dialog?.type === "edit" && active.id === "shipsLog" && loggedAt(dialog.item) && <LogEventTime logged={loggedAt(dialog.item)} value={editEventAt} onChange={setEditEventAt} />}
+        {dialog?.type === "edit" && active.id === "shipsLog" && loggedAt(dialog.item) && <LogEventTime logged={loggedAt(dialog.item)} value={editEventAt} onChange={setEditEventAt} paper={!!dialog.item.paper} />}
       </TextDialog>
       <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} leaving={leftBy} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}
