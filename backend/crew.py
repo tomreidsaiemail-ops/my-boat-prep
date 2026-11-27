@@ -129,10 +129,16 @@ class InviteIn(BaseModel):
     walk_skip: Optional[List[Annotated[str, Field(max_length=120)]]] = Field(default=None, max_length=600)
 
 
+class ShopAisle(BaseModel):
+    aisle: str = Field(max_length=120)
+    items: List[Annotated[str, Field(max_length=200)]] = Field(max_length=150)
+
+
 class ShoppingIn(BaseModel):
     email: str = Field(max_length=254)
     name: str = Field(default="", max_length=60)
     items: List[Annotated[str, Field(max_length=200)]] = Field(min_length=1, max_length=150)
+    groups: List[ShopAisle] = Field(default_factory=list, max_length=40)
 
 
 class NotesIn(BaseModel):
@@ -140,7 +146,11 @@ class NotesIn(BaseModel):
     trip_id: TripId = DEFAULT_TRIP
 
 
-def shopping_html(items: List[str]) -> str:
+def shopping_html(items: List[str], groups: List[ShopAisle] = None) -> str:
+    if groups:
+        body = "".join(f'<p style="margin:8px 0 2px"><b>{escape(g.aisle)}</b></p><ul style="margin:0 0 8px;padding-left:20px">'
+                       + "".join(f"<li>{escape(i)}</li>" for i in g.items if i.strip()) + "</ul>" for g in groups if any(i.strip() for i in g.items))
+        return f'<p><b>Food to bring on board, aisle by aisle:</b></p>{body}'
     rows = "".join(f"<li>{escape(i)}</li>" for i in items)
     return f'<p><b>Food to bring on board:</b></p><ul style="margin:0 0 12px;padding-left:20px">{rows}</ul>' if items else ""
 
@@ -246,7 +256,7 @@ async def send_shopping(boat_id: BoatPath, payload: ShoppingIn, user: dict = Dep
     html = ('<div style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.6">'
             f'<h2 style="margin:0 0 12px">{f"Hi {escape(name)}, h" if name else "H"}ere\'s your shopping for {escape(vessel)}</h2>'
             f'<p>{escape(skipper)} has asked you to buy these and bring them on board:</p>'
-            f'{shopping_html([i.strip() for i in payload.items if i.strip()])}'
+            f'{shopping_html([i.strip() for i in payload.items if i.strip()], payload.groups)}'
             '<p style="font-size:13px;color:#64748b">Sent from My Boat Prep.</p></div>')
     await send_email(to=[to], subject=f"Your shopping for {vessel}", html=html)
     await db.shopping_sends.insert_one({"owner_id": user["user_id"], "at": datetime.now(timezone.utc)})

@@ -66,7 +66,7 @@ const Row = ({ title, sub, bubbles, rsvp, after, badge, onRemove, onEdit, label,
   </li>
 );
 
-export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGroups = [], briefings = {}, provisions = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas, shoreEmail, onShoreEmail, trip = null, onSingleHand, shoreName = "" }) => {
+export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGroups = [], briefings = {}, shopRows = [], weightBoat, onSaveBriefing, knownRole, startInvite, online, premium, onUpgrade, onPhoto, onClose, areas, onWalkSkip, onCharterChange, onMaps, onAddAreas, shoreEmail, onShoreEmail, trip = null, onSingleHand, shoreName = "" }) => {
   const [info, setInfo] = useState({ crew: [], invites: [], role_options: [], voyage_notes: "" });
   const [loaded, setLoaded] = useState(false);
   const [inviting, setInviting] = useState(false);
@@ -179,7 +179,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Check before sailing
-            {info.crew.length > 0 && (() => { const n = info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], provisions)).length; return (
+            {info.crew.length > 0 && (() => { const n = info.crew.filter((m) => readyToSail(m, reg[(m.email || "").toLowerCase()], shopRows)).length; return (
               <span className={`ml-1 normal-case ${n === info.crew.length ? "text-[var(--green)]" : "text-amber-800"}`} data-testid="crew-ready-count">· {n} of {info.crew.length} ready to sail</span>
             ); })()}
           </p>
@@ -197,14 +197,14 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
             <Row key={m.user_id} avatar={<CrewAvatar userId={m.user_id} v={m.photo_v} name={m.name} testId={`crew-member-${m.user_id}-photo`} />} title={m.name || m.email} sub={m.email} bubbles={bubblesFor(m, true, `crew-member-${m.user_id}`)} rsvp={m.trip_rsvp?.[g.id] || null} label="Remove from crew" testId={tid(`crew-member-${m.user_id}`, g)}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-member-${m.user_id}-trip-${g.id}`} />}
               badge={<>
-                {readyToSail(m, reg[(m.email || "").toLowerCase()], provisions) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
+                {readyToSail(m, reg[(m.email || "").toLowerCase()], shopRows) && <><ReadyBadge testId={`crew-member-${m.user_id}-ready`} /><br /></>}
                 {regBadge(m.email, `crew-member-${m.user_id}`, !m.agreement?.accepted_at)}
-                <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined provisions={provisions} quick={!!m.trip_quick?.[g.id]} testId={`crew-member-${m.user_id}`} />
+                <CrewFacts person={m} reg={reg[(m.email || "").toLowerCase()]} joined shopRows={shopRows} quick={!!m.trip_quick?.[g.id]} testId={`crew-member-${m.user_id}`} />
                 <AgreementBadge agreement={m.agreement} shore={info?.shore_contacts > 0} testId={`crew-member-${m.user_id}-agreement`} />
                 <JoinCrewBadge jc={m.joincrew} testId={tid(`crew-member-${m.user_id}-joincrew`, g)} />
                 <PrepBadge prep={m.prep} testId={`crew-member-${m.user_id}-prep`} />
                 <CrewMemberTools boat={boat} member={m} online={online} sending={sending} onBriefing={sendBriefings} testId={`crew-member-${m.user_id}`} />
-                <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} provisions={provisions} online={online} testId={`crew-member-${m.user_id}`} />
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: m.name, email: m.email }} sent={m.shopping_sent} shopRows={shopRows} online={online} testId={`crew-member-${m.user_id}`} />
               </>}
               onEdit={() => setEditing(m)}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/crew/${m.user_id}`), `${m.name || m.email} removed from the crew`)} />
@@ -213,9 +213,9 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
             <Row key={i.invite_id} title={i.name || i.email} sub={i.declined_at ? `${i.email} · Declined the invite` : i.email} bubbles={bubblesFor(i, false, `crew-invite-${i.invite_id}`)} rsvp={i.quick ? "in" : null} label={i.quick ? "Remove Quick Invite" : "Cancel invite"} testId={`crew-invite-${i.invite_id}`}
               after={<button type="button" onClick={() => setPreviewing(i)} className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full border-[1.5px] border-[var(--navy)] bg-white px-2 text-[11px] font-extrabold text-[var(--navy)] hover:bg-slate-100 [transition:background-color_.15s]" data-testid={`crew-invite-${i.invite_id}-preview-btn`}><Eye className="h-3 w-3" /> Preview Invite</button>}
               top={<TripLink trip={g} onOpen={(id) => { onClose(); openList(id); }} testId={`crew-invite-${i.invite_id}-trip`} />}
-              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} provisions={provisions} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
+              badge={<>{regBadge(i.email, `crew-invite-${i.invite_id}`, i.quick)}<CrewFacts person={i} reg={reg[(i.email || "").toLowerCase()]} joined={false} shopRows={shopRows} quick={i.quick} testId={`crew-invite-${i.invite_id}`} />
                 <PrepBadge prep={i.prep} testId={`crew-invite-${i.invite_id}-prep`} />
-                <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} provisions={provisions} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
+                <SendShoppingButton boat={boat} vessel={name} person={{ name: i.name, email: i.email }} sent={i.shopping_sent} shopRows={shopRows} online={online} testId={`crew-invite-${i.invite_id}`} /></>}
               onRemove={() => run(() => api.delete(`/boats/${boat.boat_id}/invites/${i.invite_id}`), i.quick ? "Quick Invite removed" : "Invite cancelled")} />
           ))}
           </TripGroup>)); })()}
@@ -229,7 +229,7 @@ export const CrewDialog = ({ open, boat, details, name, plan, trips = [], roleGr
         <EmailPartiesButton boatId={boat.boat_id} online={online} premium={premium} onUpgrade={onUpgrade} testId="crew-email-parties-btn" />
         <BoatTermsField boat={boat} value={info.boat_terms || ""} online={online} onSaved={load} />
         <button type="button" className="btn-solid h-12 shrink-0 justify-center" onClick={onClose} data-testid="crew-dialog-done-btn">Done</button>
-        <InviteCrewDialog open={inviting} boat={boat} details={details} areas={areas} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} provisions={provisions} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
+        <InviteCrewDialog open={inviting} boat={boat} details={details} areas={areas} name={name} info={info} plan={plan} trips={trips} roleGroups={roleGroups} briefings={briefings} shopRows={shopRows} onSaveBriefing={onSaveBriefing} knownRole={knownRole} online={online} premium={premium} onUpgrade={onUpgrade}
           onInvited={load} onClose={() => setInviting(false)}
           onChangeAvailable={(draft) => {
             sessionStorage.setItem(INVITE_DRAFT, JSON.stringify(draft));

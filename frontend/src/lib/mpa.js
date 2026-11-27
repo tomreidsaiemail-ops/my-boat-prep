@@ -10,7 +10,10 @@ const UNITS = {
   slice: ["slice", 1], slices: ["slice", 1], x: ["count", 1], pcs: ["count", 1], pc: ["count", 1],
 };
 export const MPA_KIND = "mpa";
-export const MPA_NAME = "MPA Shopping List";
+export const MPA_NAME = "Trip Shopping List";
+export const OLD_MPA_NAME = "MPA Shopping List";
+export const tripShopList = (registry = []) => registry.find((l) => l.kind === MPA_KIND) || null;
+export const tripShopRows = (state) => { const l = tripShopList(state?.registry || []); return l ? state?.data?.[l.id] || [] : []; };
 
 const groupsOf = (items) => items.reduce((gs, it, i) => {
   if (i > 0 && it.indent && gs.length) gs[gs.length - 1].push(it);

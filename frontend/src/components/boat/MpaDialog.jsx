@@ -29,7 +29,7 @@ const useMatchRules = (open, online) => {
   return useMemo(() => matchRules(raw), [raw]);
 };
 
-export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, online, onClose, onCreate, params, trips = [] }) => {
+export const MpaDialog = ({ open, activeId, pick, lists, boat, areas, provisions, online, onClose, onCreate, params, trips = [] }) => {
   const rules = useMatchRules(open, online);
   const diet = useCrewDiet()?.text || "";
   const [picked, setPicked] = useState([]);
@@ -40,7 +40,7 @@ export const MpaDialog = ({ open, activeId, lists, boat, areas, provisions, onli
   const [daysIn, setDaysIn] = useState("");
   const [tripId, setTripId] = useState("");
   const pets = (boat.pets || []).filter((p) => p.type?.trim() || p.name?.trim());
-  useEffect(() => { if (open) { setPicked(lists.some((l) => l.id === activeId) ? [activeId] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); setDaysIn(boat.trip_days ? String(boat.trip_days) : ""); setTripId(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { const first = (pick || []).filter((id) => lists.some((l) => l.id === id)); setPicked(first.length ? first : lists.some((l) => l.id === activeId) ? [activeId] : []); setUseProv(provisions.length > 0); setByAisle(true); setUsePets(true); setDaysIn(boat.trip_days ? String(boat.trip_days) : ""); setTripId(""); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const tags = useMemo(() => Object.fromEntries(lists.map((l, i) => [l.id, initialsFor(lists.map((x) => x.name))[i]])), [lists]);
   const pob = boat.pob || 1;
   const children = Math.min(boat.children || 0, pob - 1);

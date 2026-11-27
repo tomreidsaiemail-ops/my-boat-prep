@@ -39,7 +39,7 @@ export const archivePayload = (s, id) => {
 
 // Clean slate: every tick, date, route and weather note on the trip is cleared (crew are taken off on the server).
 export const resetTrip = (s, id) => ({
-  ...s, boat: { ...withDetails(s.boat, id, {}), ...(s.boat.trip_ended === id ? { trip_ended: "" } : {}) },
+  ...s, boat: { ...withDetails(s.boat, id, {}), ...(s.boat.trip_ended === id ? { trip_ended: "" } : {}), trip_meal_plan: "" },
   data: { ...s.data, [id]: (s.data[id] || []).map(({ checked_by: _c, ...i }) => ({ ...i, checked: false })) }, // eslint-disable-line no-unused-vars
 });
 

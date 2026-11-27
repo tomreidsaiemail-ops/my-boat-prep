@@ -37,7 +37,7 @@ const copy = async (text) => { try { await navigator.clipboard.writeText(text); 
 // Invite toasts show at the top, clear of the Done button.
 const TOP = { position: "top-center" };
 
-export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, provisions = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
+export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, plan = "", trips = [], roleGroups = [], briefings = {}, shopRows = [], knownRole, onSaveBriefing, online, premium, onUpgrade, onInvited, onClose, onChangeAvailable }) => {
   const { user } = useAuth();
   const [crewName, setCrewName] = useState("");
   const [email, setEmail] = useState("");
@@ -91,7 +91,7 @@ export const InviteCrewDialog = ({ open, boat, details, areas = [], name, info, 
   useEffect(() => { if (open && !touched) setNotes(savedFor(trip) || tripPlan); }, [info.voyage_notes, info.trip_notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const editNotes = (v) => { setTouched(true); setNotes(v); };
 
-  const shopping = shoppingFor(provisions, crewName);
+  const shopping = shoppingFor(shopRows, crewName);
   const message = crewMessage({ vessel: name, skipper: user.name || user.email, roles, notes, email: email.trim(), name: crewName.trim(), briefings, shopping, offer: !!info.joincrew_live, details: details || {} });
   // The briefings on this phone go with the invite, so a briefing typed moments ago is in the email even before it has synced.
   const mine = Object.fromEntries(roles.filter((r) => briefings[r.toLowerCase()]).map((r) => [r.slice(0, 40), briefings[r.toLowerCase()].slice(0, 2000)]));

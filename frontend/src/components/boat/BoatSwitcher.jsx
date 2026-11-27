@@ -15,6 +15,7 @@ import { apiError } from "@/lib/api";
 import { roleBriefings, roleGroups } from "@/lib/crewRoles";
 import { routeNotes } from "@/lib/routeNotes";
 import { DEFAULT_TRIP, tripBoat, tripsWithPlans } from "@/lib/trips";
+import { tripShopRows } from "@/lib/mpa";
 
 export const nameOf = (b) => b.vessel?.trim() || "New boat (add a name)";
 const BTN = "flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-[var(--navy)] bg-white text-[var(--navy)] hover:bg-[var(--navy)] hover:text-white active:scale-95 [transition:background-color_.15s,color_.15s,transform_.1s]";
@@ -144,7 +145,7 @@ export const BoatSwitcher = ({ boats, state, premium, online, onUpgrade, onInvit
         const tw = tid ? tripBoat(b, tid).weather || {} : {};
         const trip = tid ? { name: String(tw.event_name || "").trim() || trips.find((t) => t.id === tid).name, single: !!tw.single_hand } : null;
         return (
-        <CrewDialog open={crewOpen} boat={cur} details={state?.boat} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={trips} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state?.data?.provisions || []} weightBoat={state?.boat} shoreEmail={state?.boat?.shore_email || ""} shoreName={state?.boat?.shore_name || ""} onShoreEmail={onShoreEmail} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
+        <CrewDialog open={crewOpen} boat={cur} details={state?.boat} name={currentName} areas={state?.areas || []} onWalkSkip={(skip) => boats.patch(cur.key, { walk_skip: skip })} onMaps={(maps) => boats.patch(cur.key, { zone_maps: maps })} onAddAreas={onAddAreas} onCharterChange={() => boats.refresh()} plan={routeNotes(state.boat)} trips={trips} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} shopRows={tripShopRows(state)} weightBoat={state?.boat} shoreEmail={state?.boat?.shore_email || ""} shoreName={state?.boat?.shore_name || ""} onShoreEmail={onShoreEmail} onSaveBriefing={onSaveBriefing} knownRole={knownRole} startInvite={startInvite} online={online} premium={premium} onUpgrade={onInviteUpgrade}
           trip={trip} onSingleHand={onSingleHand && tid ? (v) => onSingleHand(tid, v) : undefined}
           onPhoto={(v) => boats.patch(cur.key, { photo_v: v })} onClose={() => { setCrewOpen(false); setStartInvite(false); setCrewTrip(""); }} />
         );
