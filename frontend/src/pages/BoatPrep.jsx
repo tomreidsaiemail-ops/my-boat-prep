@@ -1367,6 +1367,11 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {!areaFilter && (
         <div className="flex flex-wrap items-center justify-end gap-2" data-testid="list-top-tools">
+          {canEditList && active.id === "provisions" && (
+            <button type="button" className="btn-ghost h-10 gap-1.5 px-3 text-sm" onClick={openShoppers} data-testid="assign-shoppers-btn">
+              <ShoppingBasket className="h-4 w-4 shrink-0" /> Assign shoppers
+            </button>
+          )}
           {showMpa && mpaOn && (
             <button type="button" className="btn-solid h-10 gap-1.5 px-3 text-sm" onClick={openMpa} title="Magic Provisioning Assistant" data-testid="mpa-open-top-btn">
               <Sparkles className="h-4 w-4 shrink-0" /> Magic Provisioning Assistant
@@ -1377,11 +1382,6 @@ export default function BoatPrep({ boatId, boats }) {
       )}
       {showMpa && <DietBanner />}
       {mealLists.some((l) => l.id === active.id) && <CooksRota lists={mealLists} data={state.data} me={crew ? boats.current.my_name || "" : ""} />}
-      {canEditList && active.id === "provisions" && (
-        <button type="button" className="btn-ghost h-11 justify-center gap-2" onClick={openShoppers} data-testid="assign-shoppers-btn">
-          <ShoppingBasket className="h-5 w-5 shrink-0" /> Assign shoppers
-        </button>
-      )}
       {canEditList && user.show_magic_meal_plan && mealLists.some((l) => l.id === active.id) && (
         <button type="button" className="btn-solid h-12 justify-center gap-2" onClick={openMpa} data-testid="meal-plan-shopping-btn">
           <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
