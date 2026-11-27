@@ -295,8 +295,8 @@ export const buildShopping = ({ lists, adults, children, days, stock, provisions
   const portions = Math.max(0.5, adults + children * 0.5);
   const multi = lists.length > 1;
   const { meals, items } = ingredientRows(lists, portions, stock, rules);
-  const keys = new Set(items.map((i) => keyOf(itemName(i.base))));
-  const extra = provisions.map(withoutYouTube).filter((p) => p && !keys.has(keyOf(p)));
+  // Every Provisions item gets its own row, even when a meal plan ingredient has the same name.
+  const extra = provisions.map(withoutYouTube).filter(Boolean);
   const people = `${adults} ${adults === 1 ? "adult" : "adults"}${children ? ` and ${children} ${children === 1 ? "child" : "children"}` : ""}`;
   const row = (mpa, checked = false) => ({ label: mpaLabel(mpa), checked, indent: true, mpa });
   const onBoard = (areas = [], subs = []) => ({ ...(areas.length ? { areas } : {}), ...(subs.length ? { subs } : {}) });
