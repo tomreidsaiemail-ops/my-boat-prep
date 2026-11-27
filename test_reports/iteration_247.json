@@ -1,0 +1,43 @@
+{
+  "summary": "Ship's Log 'Record any noteworthy event, or observation' + editable event time feature tested end to end (backend unit + API + live email/PDF, frontend at 390x844 and 1920x1080 as test-user-pro/main). Everything requested works. Backend 12/12 pytest pass. Frontend: all 7 requested flows pass. Only minor/cosmetic notes below.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "ship_log.log_when vs frontend logWhen", "issue": "The format differs a little: the email/PDF show 'Event: Wed 4 Nov 2026, 7:11 PM' and the app shows 'Event: Wed, 4 Nov 2026, 6:11 am' (comma, am/pm case). Cosmetic only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Ship's Log help panel", "issues": ["The help text still says 'A Ship's Log can be as simple as editing the departure details below filling out Date Time Destination and Persons on Board', which describes the old Departed template line. It should be reworded to match 'Record any noteworthy event, or observation' (it is probably admin-editable help content)."]},
+      {"screen": "Edit item dialog (Ship's Log)", "issues": ["log-event-time-input is the browser's native datetime-local picker, not a shadcn calendar/time picker. The 'Cupboard: No area' select is also native and shows on Ship's Log entries, where it does little (this was there before)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_ships_log_event_time.py", "/app/test_reports/pytest/ships_log_event_time.xml"],
+  "action_items": [
+    "Optional: update the Ship's Log help text that still mentions the old departure details/POB template line",
+    "Optional: on the 29th-31st, eventRange's setMonth(-1) overflows (e.g. an entry made 31 Mar gets a minimum of 3 Mar, only 28 days back). Clamp the date to the last day of the previous month if a full calendar month is wanted",
+    "Optional: make the event time format the same in the app and in the email/PDF"
+  ],
+  "critical_code_review_comments": [
+    "logTime.js eventRange: Date.setMonth(getMonth()-1) overflows at month end (31 Mar -> 3 Mar). The frontend is the only place this rule is checked, and the backend does not check event_at on PUT /me/boat. That is acceptable for an MVP, but a crafted client could store any event_at.",
+    "eventError allows 60 s of slack on the min but none on the max. That is fine because datetime-local drops seconds, so the max boundary still passes (verified that +5d exactly is accepted and +5d+1min is rejected).",
+    "I did not check whether the crew merge (merge_crew) keeps event_at when crew edit a Ship's Log entry."
+  ],
+  "updated_files": ["/app/backend/tests/test_ships_log_event_time.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Backed up test-user-pro/main (mongoexport) and restored it afterwards (upsert). Restored state: 19 shipsLog rows, no TEST_ entries. Deleted the one ship_logs doc I created (log_id f8028ac4-...). One email was sent to delivered@resend.dev (shore contact disabled).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Cookie session_token=test_session_pro_1. list-selector -> list-option-shipsLog. Prompt row id 1 (dynamic logPrompt, checked). Rows: checklist-item-<id>, checklist-item-text-<id>, checklist-item-when-<id>, checklist-item-edit-<id>. Edit dialog: edit-item-dialog, log-event-time-input, log-entry-made, Save/Cancel by role. Boat log_email is delivered@resend.dev and shore is disabled, so POST /api/me/email-log with X-Timezone is safe. Browser tz in the automation is UTC.",
+  "verified": [
+    "Migration ships_log_prompt_v1 ran: 0 boats/templates with logDate, 70 with logPrompt; no 'Departed' text on the pro boat",
+    "Add form is above the passage folders panel and entries on the Ship's Log (phone and desktop) and at the bottom on Provisions; placeholder is correct",
+    "Adding a TEST entry stamps logged_at = event_at (stored in Mongo), scrolls the new row into view and shows 'Event: Fri, 27 Nov 2026, 7:58 pm'. The same text added twice is allowed; on Provisions 'Bread already exists' blocks it",
+    "Edit: prefilled datetime-local with min/max; earlier than a month -> 'The event can be no earlier than ...'; later than 5 days -> 'no later than ...'; empty -> 'Pick the date and time of the event'. Exactly -1 month and exactly +5 days are accepted. A valid time gives 'Event: X · Entry made: Y'; logged_at is unchanged and persists after reload",
+    "Automatic ts-based entries (Batch Magic Scan, Decision to go) show the Event line and use the same edit rules",
+    "Pencil on the prompt: no time field; Save adds a new entry with times; the prompt label is unchanged",
+    "Email Ship's Log with X-Timezone Pacific/Auckland: the stored lists/email HTML/PDF show 'Event: ...' and 'Entry made: ...' when the time was moved, in NZ time; the prompt row has no when; the PDF text was checked with pypdf"
+  ]
+}
