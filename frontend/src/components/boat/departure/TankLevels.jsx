@@ -1,5 +1,5 @@
 import { LevelPicker } from "@/components/boat/departure/LevelPicker";
-import { LEVELS, batteriesOf } from "@/lib/telemetry";
+import { LEVELS, batLevel, batteriesOf } from "@/lib/telemetry";
 import { BatteryStatus, CollapseToggle, unsetTone, useCollapsed } from "@/components/boat/departure/BatteryStatus";
 
 const FUEL_HINT = "The 1/3rd rule: 1/3 to get there, 1/3 to get back, 1/3 held in reserve.";
@@ -32,4 +32,4 @@ export const TankLevels = ({ boat, levels, onLevel, details = {}, prefix = "", a
   );
 };
 
-export const allLevelsPicked = (boat, levels = {}) => ["fuel", "gas", "water", ...batteriesOf(boat).map((b) => `bat_${b.id}`)].every((k) => levels[k]);
+export const allLevelsPicked = (boat, levels = {}) => ["fuel", "gas", "water"].every((k) => levels[k]) && batteriesOf(boat).every((b) => batLevel(b, levels));

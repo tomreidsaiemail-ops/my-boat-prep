@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUpgrade } from "@/context/UpgradeContext";
 import { AdBanner } from "@/components/boat/AdBanner";
 import { toast } from "sonner";
+import { useTankGuess } from "@/hooks/useTankGuess";
 import { planCommand, runPlan } from "@/lib/voiceCommand";
 import { SpeakButton } from "@/components/boat/voice/SpeakButton";
 import { CharterBanner, CharterTermsDialog } from "@/components/boat/charter/CharterTermsDialog";
@@ -1162,6 +1163,7 @@ export default function BoatPrep({ boatId, boats }) {
     setTimeout(() => document.querySelector('[data-testid="list-selector"]')?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   const updateBoat = (key, value) => mutate((s) => ({ ...s, boat: { ...s.boat, [key]: value } }), { count: false });
+  useTankGuess({ boat, mutate, on: loaded && online && !crew && premium && !boats.current.model });
   // The Magic Mariner layout pick (Zone Map Overviews) is saved on the boat details.
   useEffect(() => {
     const f = (e) => { if (!crew) Object.entries(e.detail).forEach(([k, v]) => updateBoat(k, v)); };
@@ -1680,7 +1682,8 @@ export default function BoatPrep({ boatId, boats }) {
         onConfirm={(how) => { const p = allDone.plan; allDone.confirm(how); guideLogged(p?.kind === "depart" ? "depart" : p?.listId); }}
         help={!guide ? null : allDone.plan?.kind === "depart" && between(guide.stage, "leave", "leaveOk") ? <DepartGuide guide={guide} />
           : allDone.plan?.kind === "arrive" && allDone.plan.listId === "arrivingDest" && between(guide.stage, "underway", "click") ? <EndTripGuide /> : null} />
-      <LevelsConfirmDialog ask={allDone.levelsAsk.ask} boat={boat} onConfirm={allDone.levelsAsk.confirm} onClose={allDone.levelsAsk.close} />
+      <LevelsConfirmDialog ask={allDone.levelsAsk.ask} boat={boat} onConfirm={allDone.levelsAsk.confirm} onClose={allDone.levelsAsk.close}
+        onBoat={(patch) => mutate((s) => ({ ...s, boat: { ...s.boat, ...patch } }), { count: false })} />
       <DepartureLogDialog open={dialog?.type === "departLog"} boat={boat} boatId={boats.current.boat_id} onLog={logDecision} onClose={() => setDialog(null)} />
       {dialog?.type === "crewClone" && <CrewPrepCloneDialog boat={boats.current} details={boat} vessel={boat.vessel || "your boat"} plan={routeNotes(boat)} trips={tripsWithPlans(state)} roleGroups={roleGroups(state)} briefings={roleBriefings(state)} provisions={state.data.provisions || []} onSaveBriefing={saveRoleBriefing} knownRole={(r) => hasRole(state, r)} online={online} premium={premium}
         onUpgrade={() => askUpgrade("Crew sharing")} listName={dialog.list.name} exists={listExists} onClone={(names) => cloneMany(dialog.list, names)} onClose={() => setDialog(null)} />}

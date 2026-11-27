@@ -21,12 +21,21 @@ export const tankUnit = (boat) => (boat.tank_units === "gal" ? "gal" : "L");
 export const ROLES = { engine: "Engine battery", house: "House bank", portable: "Portable battery" };
 export const CHEMS = { lithium: "Lithium", flooded: "Flooded lead acid", agm: "AGM", gel: "Gel" };
 const DEFAULT_BATTERIES = [{ id: "engine", role: "engine", make: "", volts: "", ah: "", chem: "", notes: "" }, { id: "house", role: "house", make: "", volts: "", ah: "", chem: "", notes: "" }];
-export const batteriesOf = (boat) => (boat.batteries?.length ? boat.batteries : DEFAULT_BATTERIES);
+// Every battery set up (for editing); batteriesOf is the ones checked and logged: the engine battery comes last, and drops out when "Using an engine battery" is off.
+export const allBatteries = (boat) => (boat.batteries?.length ? boat.batteries : DEFAULT_BATTERIES);
+export const usesEngineBattery = (boat) => !boat.engine_battery_off;
+export const batteriesOf = (boat) => {
+  const list = allBatteries(boat);
+  return [...list.filter((b) => b.role !== "engine"), ...(usesEngineBattery(boat) ? list.filter((b) => b.role === "engine") : [])];
+};
+// The engine battery is always Full, with the alternator monitored during the trip.
+export const batLevel = (b, levels = {}) => (b.role === "engine" ? "full" : levels[`bat_${b.id}`]);
+export const batLevelText = (b, levels = {}) => (b.role === "engine" ? "Full (monitor alternator during trip)" : levelLabel(levels[`bat_${b.id}`]));
 export const batteryName = (b) => `${ROLES[b.role] || "Battery"}${b.make ? ` (${b.make})` : ""}`;
 const batterySpec = (b) => [b.volts && `${b.volts}V`, num(b.ah) && `${num(b.ah)}Ah`, CHEMS[b.chem]].filter(Boolean).join(" ");
 
 export const telemetryConfigured = (boat) => num(boat.fuel_tank) > 0 && num(boat.water_tank) > 0 && num(boat.gas_bottles) > 0 && num(boat.gas_kg) > 0
-  && !!boat.batteries?.length && boat.batteries.every((b) => b.volts && num(b.ah) && b.chem);
+  && batteriesOf(boat).every((b) => b.volts && num(b.ah) && b.chem);
 
 // A blank can or bottle size means the usual one: 20 L (5 gal) jerry cans, 4.5 kg gas bottles.
 export const canSize = (boat, key) => num(boat[key]) || (tankUnit(boat) === "gal" ? 5 : 20);
@@ -70,14 +79,19 @@ export const passagePlan = (boat, depart) => {
   return { unit, speed, rate, distance, hours, fuelNeed, fuel, range, water, gas, warnings, missing };
 };
 
+// Tank amounts only when the tank (or cans / bottles) has a size, so an unset tank never reads "about 0 L".
+const sized = (boat) => ({ fuel: num(boat.fuel_tank) + num(boat.fuel_jerry) > 0, water: num(boat.water_tank) + num(boat.water_jerry) > 0, gas: num(boat.gas_bottles) + num(boat.gas_extra) > 0 });
+const about = (on, n, u, tail = "") => (on ? ` (about ${round(n)} ${u}${tail})` : "");
+
 export const departureSummary = (boat, depart, plan, when) => {
   const unit = tankUnit(boat);
   const l = depart.levels || {};
+  const has = sized(boat);
   const parts = [
-    `Departure check ${when}: Fuel ${levelLabel(l.fuel)} (about ${round(plan.fuel)} ${unit}${num(boat.fuel_jerry) ? ` incl. ${num(boat.fuel_jerry)} jerry cans` : ""})`,
-    `Water ${levelLabel(l.water)} (about ${round(plan.water)} ${unit})`,
-    `LPG ${levelLabel(l.gas)} (about ${round(plan.gas)} kg)`,
-    `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)}${batterySpec(b) ? ` ${batterySpec(b)}` : ""} ${levelLabel(l[`bat_${b.id}`])}`).join(", ")}`,
+    `Departure check ${when}: Fuel ${levelLabel(l.fuel)}${about(has.fuel, plan.fuel, unit, num(boat.fuel_jerry) ? ` incl. ${num(boat.fuel_jerry)} jerry cans` : "")}`,
+    `Water ${levelLabel(l.water)}${about(has.water, plan.water, unit)}`,
+    `LPG ${levelLabel(l.gas)}${about(has.gas, plan.gas, "kg")}`,
+    `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)}${batterySpec(b) ? ` ${batterySpec(b)}` : ""} ${batLevelText(b, l)}`).join(", ")}`,
   ];
   if (plan.distance && plan.rate) {
     const src = num(depart.rate_override) ? "skipper's figure" : depart.rate_reviewed ? "Magic Mariner estimate, reviewed by the skipper" : "Magic Mariner estimate";
@@ -111,12 +125,15 @@ export const usedText = (n, u) => (n === null ? "not known yet (pick the arrival
 export const arrivalSummary = (boat, depart, arrive, use, when, listName) => {
   const u = use.unit;
   const l = arrive.levels || {};
+  const has = sized(boat);
+  const used = [has.fuel && `fuel ${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${round(use.plan.fuelNeed)} ${u})` : ""}`,
+    has.water && `water ${usedText(use.waterUsed, u)}`, has.gas && `LPG ${usedText(use.gasUsed, "kg")}`].filter(Boolean);
   const parts = [
-    `Arrival check (${listName}) ${when}: Fuel ${levelLabel(l.fuel)} (about ${round(use.fuelNow)} ${u} left)`,
-    `Water ${levelLabel(l.water)} (about ${round(use.waterNow)} ${u} left)`,
-    `LPG ${levelLabel(l.gas)} (about ${round(use.gasNow)} kg left)`,
-    `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)} ${levelLabel(l[`bat_${b.id}`])}${depart.levels?.[`bat_${b.id}`] ? ` (was ${levelLabel(depart.levels[`bat_${b.id}`])})` : ""}`).join(", ")}`,
-    `Used on the passage${boat.route_start && boat.route_dest ? ` ${boat.route_start} to ${boat.route_dest}` : ""}: fuel ${usedText(use.fuelUsed, u)}${use.plan.fuelNeed ? ` (planned about ${round(use.plan.fuelNeed)} ${u})` : ""}, water ${usedText(use.waterUsed, u)}, LPG ${usedText(use.gasUsed, "kg")}`,
+    `Arrival check (${listName}) ${when}: Fuel ${levelLabel(l.fuel)}${about(has.fuel, use.fuelNow, u, " left")}`,
+    `Water ${levelLabel(l.water)}${about(has.water, use.waterNow, u, " left")}`,
+    `LPG ${levelLabel(l.gas)}${about(has.gas, use.gasNow, "kg", " left")}`,
+    `Batteries: ${batteriesOf(boat).map((b) => `${batteryName(b)} ${batLevelText(b, l)}${b.role !== "engine" && depart.levels?.[`bat_${b.id}`] ? ` (was ${levelLabel(depart.levels[`bat_${b.id}`])})` : ""}`).join(", ")}`,
+    ...(used.length ? [`Used on the passage${boat.route_start && boat.route_dest ? ` ${boat.route_start} to ${boat.route_dest}` : ""}: ${used.join(", ")}`] : []),
   ];
   if (use.actualRate) parts.push(`Actual fuel use about ${round(use.actualRate)} ${u}/h against ${round(use.plan.rate)} ${u}/h planned`);
   return `${parts.join(". ")}.`;

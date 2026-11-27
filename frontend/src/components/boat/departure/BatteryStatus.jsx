@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { LevelPicker } from "@/components/boat/departure/LevelPicker";
-import { LEVELS } from "@/lib/telemetry";
+import { LEVELS, batLevel } from "@/lib/telemetry";
 import { batteriesOf, batteryName } from "@/lib/telemetry";
+import { EngineBatteryRow } from "@/components/boat/departure/EngineBatteryRow";
 
 const levelLabel = (v) => LEVELS.find((l) => l.key === v)?.label || "not set";
 
@@ -28,7 +29,7 @@ export const CollapseToggle = ({ label, collapsed, onToggle, testId }) => (
 
 // Orange until every level is picked: they must be set before ARRIVED, ALL CHECKS DONE.
 export const unsetTone = (parts) => (parts.some((t) => t.endsWith(": not set")) ? "rounded-md bg-orange-200 px-2 py-1 text-orange-950" : "");
-export const batterySummary = (boat, levels = {}) => batteriesOf(boat).map((b) => `${batteryName(b)}: ${levelLabel(levels[`bat_${b.id}`])}`);
+export const batterySummary = (boat, levels = {}) => batteriesOf(boat).map((b) => `${batteryName(b)}: ${levelLabel(batLevel(b, levels))}`);
 
 // The big battery level buttons, saved in the Leaving the Dock levels so both lists show the same status.
 export const BatteryStatus = ({ boat, levels = {}, onLevel, prefix = "", lowText }) => {
@@ -40,7 +41,9 @@ export const BatteryStatus = ({ boat, levels = {}, onLevel, prefix = "", lowText
       <CollapseToggle label="Battery status" collapsed={collapsed} onToggle={toggle} testId={`${prefix}battery-status-toggle`} />
       {collapsed
         ? <p className={`text-sm font-semibold ${unsetTone(batterySummary(boat, levels))}`} data-testid={`${prefix}battery-status-summary`}>{batterySummary(boat, levels).join(" · ")}</p>
-        : bats.map((b) => <LevelPicker key={b.id} id={`${prefix}bat-${b.id}`} label={batteryName(b)} value={levels[`bat_${b.id}`]} onChange={(v) => onLevel(`bat_${b.id}`, v)} lowText={lowText} />)}
+        : bats.map((b) => (b.role === "engine"
+          ? <EngineBatteryRow key={b.id} id={`${prefix}bat-${b.id}`} label={batteryName(b)} />
+          : <LevelPicker key={b.id} id={`${prefix}bat-${b.id}`} label={batteryName(b)} value={levels[`bat_${b.id}`]} onChange={(v) => onLevel(`bat_${b.id}`, v)} lowText={lowText} />))}
     </div>
   );
 };

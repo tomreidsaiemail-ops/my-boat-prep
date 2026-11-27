@@ -735,3 +735,46 @@ async def passage_estimate(body: PassageIn, user: dict = Depends(require_premium
               + f"\nCruising speed: {body.cruise_kn:g} knots\nGive fuel_rate in {unit} per hour.")
     est, left = await _run(user, "passage", prompt, parse_passage, {"name": "Passage fuel plan", "route": f"{body.start} to {body.dest}"[:120]}, PASSAGE, "Magic Mariner passage plan")
     return {**est, "asks_left": left}
+
+
+TANKS = ("You are the Magic Marine Navigator in the My Boat Prep app. From a boat's make, model and year, give the usual factory figures for that boat: "
+         "fuel tank and fresh water tank capacity, the number of LPG gas bottles and kg in each, and the house battery bank in amp hours. "
+         "Be realistic; if unsure, give the typical figure for a boat of this make, model and size. Use 0 for anything this boat doesn't have. "
+         'Reply with JSON only, no code fences: {"fuel": 0, "water": 0, "lpg_bottles": 0, "lpg_kg": 0, "house_ah": 0}')
+
+
+class TankGuessIn(BaseModel):
+    make: str = Field(min_length=1, max_length=60)
+    model: str = Field(min_length=1, max_length=60)
+    year_built: str = Field(pattern=r"^\d{4}$")
+    boat_type: str = Field(default="", max_length=60)
+    loa: str = Field(default="", max_length=8)
+    units: str = Field(default="m", pattern="^(m|ft)$")
+    tank_units: str = Field(default="L", pattern="^(L|gal)$")
+
+
+def parse_tanks(text: str) -> dict:
+    match = re.search(r"\{.*\}", text, re.S)
+    if not match:
+        raise ValueError("no json")
+    d = json.loads(match.group(0))
+
+    def val(k, hi):
+        v = float(d.get(k) or 0)
+        return round(v, 1) if 0 < v <= hi else 0
+
+    out = {"fuel": val("fuel", 20000), "water": val("water", 20000), "lpg_bottles": int(val("lpg_bottles", 10)), "lpg_kg": val("lpg_kg", 50), "house_ah": int(val("house_ah", 10000))}
+    if not any(out.values()):
+        raise ValueError("no numbers")
+    return out
+
+
+@router.post("/ai/tank-guess")
+async def tank_guess(body: TankGuessIn, user: dict = Depends(require_premium)):
+    unit = "US gallons" if body.tank_units == "gal" else "litres"
+    prompt = (f"Boat: {body.make.strip()} {body.model.strip()}, built {body.year_built}"
+              + (f", {body.boat_type.strip()}" if body.boat_type.strip() else "")
+              + (f", LOA {body.loa.strip()} {body.units}" if body.loa.strip() else "")
+              + f"\nGive fuel and water in {unit}.")
+    est, left = await _run(user, "tanks", prompt, parse_tanks, {"name": "Tank and battery guess", "boat": f"{body.make} {body.model}"[:120]}, TANKS, "Magic Marine Navigator")
+    return {**est, "asks_left": left}

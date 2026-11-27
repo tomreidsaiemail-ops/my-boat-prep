@@ -179,6 +179,8 @@ class BoatDetails(BaseModel):
     boat_weight: str = ""
     crew_weight: str = ""
     batteries: List[Battery] = Field(default_factory=list, max_length=12)
+    engine_battery_off: bool = False
+    tank_guess_for: str = Field(default="", max_length=200)
     depart: Dict[str, Any] = Field(default_factory=dict)
     arrive: Dict[str, Any] = Field(default_factory=dict)
     weather: Dict[str, Any] = Field(default_factory=dict)

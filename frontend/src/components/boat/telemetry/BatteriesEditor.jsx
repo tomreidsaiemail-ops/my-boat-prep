@@ -1,5 +1,6 @@
 import { Plus, X } from "lucide-react";
-import { CHEMS, ROLES, batteriesOf } from "@/lib/telemetry";
+import { CHEMS, ROLES, allBatteries } from "@/lib/telemetry";
+import { UsingEngineBattery } from "@/components/boat/departure/EngineBatteryRow";
 
 const Select = ({ value, onChange, options, testId, label }) => (
   <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className="field-input !h-10 min-w-0 px-1.5 text-sm" data-testid={testId}>
@@ -25,14 +26,19 @@ const BatteryRow = ({ b, onChange, onDelete }) => (
   </li>
 );
 
+// The engine battery row sits under "Using an engine battery"; unticked, it's hidden and not checked or logged.
 export const BatteriesEditor = ({ boat, onChange }) => {
-  const list = batteriesOf(boat);
+  const list = allBatteries(boat);
   const set = (next) => onChange("batteries", next);
+  const using = !boat.engine_battery_off;
+  const row = (b) => <BatteryRow key={b.id} b={b} onChange={(p) => set(list.map((x) => (x.id === b.id ? { ...x, ...p } : x)))} onDelete={() => set(list.filter((x) => x.id !== b.id))} />;
   return (
     <div className="col-span-2 flex flex-col gap-2" data-testid="batteries-editor">
       <span className="field-label">Batteries</span>
       <ul className="flex flex-col gap-2">
-        {list.map((b) => <BatteryRow key={b.id} b={b} onChange={(p) => set(list.map((x) => (x.id === b.id ? { ...x, ...p } : x)))} onDelete={() => set(list.filter((x) => x.id !== b.id))} />)}
+        {list.filter((b) => b.role !== "engine").map(row)}
+        {list.some((b) => b.role === "engine") && <li><UsingEngineBattery on={using} onChange={(on) => onChange("engine_battery_off", !on)} testId="telemetry-using-engine-battery" /></li>}
+        {using && list.filter((b) => b.role === "engine").map(row)}
       </ul>
       <button type="button" className="btn-ghost h-10 justify-center gap-1.5 text-sm" disabled={list.length >= 12}
         onClick={() => set([...list, { id: `p${Date.now()}`, role: "portable", make: "", volts: "", ah: "", chem: "", notes: "" }])} data-testid="battery-add-portable-btn">
