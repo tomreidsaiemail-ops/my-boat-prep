@@ -570,7 +570,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
     }
     ctx = {"vessel": log["vessel"], "callsign": log["callsign"], "position": payload.position.strip(), "local_date": log["local_date"], "pob": log["pob"],
            "boat_type": log["boat_type"], "children": log["children"], "mmsi": log["mmsi"], "pets": [p.model_dump() for p in b.pets],
-           "hull": b.hull_colour, "deck": b.deck_colour, "length": f"{b.loa.strip()} {b.units}" if b.loa.strip() else ""}
+           "hull": b.hull_colour, "deck": b.deck_colour, "length": f"{b.loa.strip()} {b.units}" if b.loa.strip() else "", "tz": quota.current_tz.get() or ""}
     names = {"shipsLog": "Ship's Log", **{r.get("id"): r.get("name", "") for r in state.registry if r.get("name") != "Ship Log"}}
     numbered = {r.get("id") for r in state.registry if r.get("kind") in ("youtube", "movies", "tips")}
     tips = (await load_tips())["items"] if "skippersTips" in payload.list_ids else []
@@ -579,7 +579,7 @@ async def email_ship_log(payload: EmailLogIn, request: Request, user: dict = Dep
         else await media_list_for_pdf(i) if i in MEDIA_LISTS
         else await faq_list_for_pdf() if i == FAQ_ID
         else inventory_list_for_pdf(state.areas, state.registry, state.data) if i == INVENTORY_ID
-        else {"name": names[i], "items": render_items(state.data.get(i, []), ctx), "numbered": i in numbered}
+        else {"name": names[i], "items": render_items(state.data.get(i, []), ctx, log=i == "shipsLog"), "numbered": i in numbered}
         for i in payload.list_ids if i in names or i in ("skippersTips", FAQ_ID, INVENTORY_ID) or i in MEDIA_LISTS
     ]
     if not log["lists"]:
@@ -779,6 +779,7 @@ async def create_indexes():
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.password_reset_tokens.create_index("token_hash", unique=True)
     await _upgrade_pob_lines()
+    await _log_prompt_line()
     await add_racing_roles()
     await seed_trim_briefings()
     await seed_role_safety_briefings()
@@ -891,3 +892,13 @@ async def _upgrade_pob_lines():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+async def _log_prompt_line():
+    # Runs once: the old 'Departed [DATE] at <Time>...' Ship's Log template line becomes the noteworthy event prompt on every boat and template.
+    if await db.migrations.find_one({"_id": "ships_log_prompt_v1"}):
+        return
+    new = {"label": "Record any noteworthy event, or observation", "dynamic": "logPrompt"}
+    await db.user_boats.update_many({"data.shipsLog.dynamic": "logDate"}, {"$set": {f"data.shipsLog.$[t].{k}": v for k, v in new.items()}}, array_filters=[{"t.dynamic": "logDate"}])
+    await db.list_templates.update_many({"items.dynamic": "logDate"}, {"$set": {f"items.$[t].{k}": v for k, v in new.items()}}, array_filters=[{"t.dynamic": "logDate"}])
+    await db.migrations.insert_one({"_id": "ships_log_prompt_v1", "at": datetime.now(timezone.utc).isoformat()})

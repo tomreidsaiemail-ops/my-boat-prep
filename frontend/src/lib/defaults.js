@@ -5,6 +5,7 @@ import { budgetLabel, budgetResetOption } from "@/lib/budget";
 import { maintLabel } from "@/lib/maint";
 import { cocktailLabel } from "@/lib/bartender";
 import { fillRadio, phonetic, radioItems } from "@/lib/radioScript";
+import { LOG_PROMPT } from "@/lib/logTime";
 const mk = (start, labels) => { let n = start; return labels.map((l) => (typeof l === "string" ? { id: n++, label: l, checked: false } : { id: l.id ?? n++, checked: false, ...l })); };
 const POB_LABEL = "There are <PERSONS ON BOARD> persons on board POB. The boat is a white <BOAT_TYPE>. NOTE: If not white state correct colour of boat.";
 const PANPAN_VESSEL = "This is [Vessel Name], [Vessel Name], [Vessel Name]. Callsign <Callsign>";
@@ -73,7 +74,7 @@ export const DEFAULT_DATA = {
   engineService: mk(129, ["Fuel filter", "Oil filter", "Alternator belt", "Impeller", "Oil change", "Leak check", "Gearbox oil change", "Engine anode", "Exhaust elbow check"]),
   electricalService: mk(300, ["Battery terminals clean and tight", "Battery voltage and charge check", "Battery water levels", "Shore power lead and plug", "Battery charger and inverter check", "Fuses and breakers", "Wiring chafe and corrosion check", "Navigation and deck lights", "Bilge pump and float switch", "Solar panel and regulator connections", "Alternator output check", "Anchor windlass", "VHF and antenna connections"]),
   myTodo: [],
-  shipsLog: mk(87, [{ dynamic: "logDate", label: "Departed [DATE] at <Time> for <Destination> with <Persons on Board> POB, expected arrival time <Time>." }]),
+  shipsLog: mk(87, [{ dynamic: "logPrompt", label: LOG_PROMPT }]),
   grabBag: mk(88, ["EPIRB Activate and ensure it stays clear of obstructions", "Handheld VHF Radio Set to Channel 16 High Power", "Handheld GPS and spare batteries", "SART Search and Rescue Transponder", "Distress Flares Hand flares parachute rockets smoke signals", "Thermal Protective Aids TPAs Space blankets", "Waterproof torch flashlight and spare batteries", "Vessel documentation crew passports and ship logs", "Emergency drinking water and high energy rations", "First aid kit and critical personal medications", "Multi tool pocket knife and signaling mirror", "Handheld laser flare whistle"]),
   mayDay: radioItems("mayDay"),
   panPan: radioItems("panPan"),
@@ -201,9 +202,13 @@ const upgradeMealPlan = (data) => {
 // "Route Planning" (and its "Route Planning - 2" copies) became "Trip Planning".
 const isOldTripName = (l) => /^\s*route planning\b/i.test(l.name || "");
 
+// The old 'Departed [DATE] at <Time>...' Ship's Log template line became the 'Record any noteworthy event' prompt on every boat.
+const upgradeLogPrompt = (data) => (data?.shipsLog?.some((i) => i.dynamic === "logDate")
+  ? { ...data, shipsLog: data.shipsLog.map((i) => (i.dynamic === "logDate" ? { ...i, dynamic: "logPrompt", label: LOG_PROMPT } : i)) } : data);
+
 export const migrateState = (s) => s && addMissingLists({
   ...s,
-  data: autoTypeData(upgradeMealPlan(upgradePob(s.data))),
+  data: autoTypeData(upgradeMealPlan(upgradePob(upgradeLogPrompt(s.data)))),
   registry: renameRadioLists(s.registry.map((l) => (l.id === "shipsLog" && l.name === "Ship Log" ? { ...l, name: "Ship's Log" }
     : l.id === "routeHazards" && l.name === "Route Hazards" ? { ...l, name: "Trip Planning" }
     : isOldTripName(l) ? { ...l, name: l.name.replace(/^\s*route planning/i, "Trip Planning") } : l))),

@@ -33,7 +33,7 @@ const FoldButton = ({ id, folded, onFold }) => (
   </button>
 );
 
-const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0, clamp, mine }) => {
+const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, tools, number, tickOnly, area, fold, pick, photo, logPhotoUrl, depth = 0, clamp, mine, when }) => {
   const [long, setLong] = useState(false);
   const open = !!clamp?.open.includes(item.id);
   const expand = clamp && long ? <ExpandButton id={item.id} open={open} onToggle={() => clamp.toggle(item.id)} /> : null;
@@ -50,6 +50,7 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
         <span className="flex min-w-0 flex-col items-start gap-1 pt-0.5">
           <ClampText on={!!clamp} open={open} onLong={setLong} title={typeof text === "string" ? text : undefined}
             className={`item-text ${emergency ? "text-[17px] font-semibold" : ""}`} testId={`checklist-item-text-${item.id}`}><MpaText item={item} text={text} /></ClampText>
+          {when && <span className="text-xs font-semibold text-[var(--muted)]" data-testid={`checklist-item-when-${item.id}`}>{when}</span>}
           {item.checked && !pick && <TickBadge item={item} />}
           {area && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-900" data-testid={`checklist-item-area-${item.id}`}><MapPin className="h-3 w-3" />{area}</span>}
           {meal && <MealTypeBadge id={item.id} type={item.meal_type} />}
@@ -76,7 +77,8 @@ const Row = ({ item, text, info, meal, onToggle, onEdit, onDelete, emergency, to
 };
 
 // `outline` is off while an area filter shows only part of the list, so groups and numbers would be misleading.
-export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow, clamp, onPlacePath, mine }) => {
+// logTime: Ship's Log only, the event (and entry) time shown under each entry.
+export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDelete, onDeleteList, emergency, ordering, outline = true, onFlag, onMove, onPlace, onIndent, tickOnly, areaOf = () => null, folded = [], onFold, picks = false, photos = null, logPhotoUrl, depthOf, folderRow, clamp, onPlacePath, mine, logTime }) => {
   const tools = ordering && !tickOnly;
   const info = outline ? outlineInfo(items) : {};
   const hidden = (item) => outline && info[item.id]?.ancestors?.some((a) => folded.includes(a));
@@ -106,7 +108,7 @@ export const Checklist = ({ items, labelFor, onToggle, onTickAll, onEdit, onDele
         const inf = info[item.id];
         if (item.folder && folderRow) return folderRow(item);
         return (
-          <Row key={item.id} item={item} mine={!!mine?.(item)} clamp={clamp} depth={depthOf ? depthOf(item.id) : 0} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
+          <Row key={item.id} item={item} mine={!!mine?.(item)} when={logTime?.(item)} clamp={clamp} depth={depthOf ? depthOf(item.id) : 0} pick={picks} logPhotoUrl={logPhotoUrl} info={inf} meal={!!item.meal_type && isMealHead(items, item.id)} text={labelFor(item)} emergency={emergency} tickOnly={tickOnly} area={areaOf(item)}
             fold={inf?.subs > 0 && onFold ? { folded: folded.includes(item.id), onFold: (f) => onFold(item.id, f) } : null}
             onToggle={() => onToggle(item.id)} onEdit={() => onEdit(item)} onDelete={() => onDelete(item.id)}
             photo={photos && (item.photo_id || item.after_id || photos.canEdit) && <ItemPhoto item={item} name={labelFor(item)} photos={photos} />}

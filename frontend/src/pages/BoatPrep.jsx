@@ -150,6 +150,8 @@ import { shoreRoute } from "@/lib/tripStops";
 import { weighUp } from "@/lib/weights";
 import useLogFolders from "@/components/boat/shipslog/useLogFolders";
 import { ShipsLogPanel } from "@/components/boat/shipslog/ShipsLogPanel";
+import { LogEventTime } from "@/components/boat/shipslog/LogEventTime";
+import { eventAt, eventError, loggedAt, logWhen, stampLog, toLocalInput } from "@/lib/logTime";
 import { ExpandAllButton } from "@/components/boat/shipslog/ClampText";
 import { PrintView } from "@/components/boat/PrintView";
 import { EmailLogPanel } from "@/components/boat/EmailLogPanel";
@@ -331,6 +333,7 @@ export default function BoatPrep({ boatId, boats }) {
   const [editMeal, setEditMeal] = useState(null);
   const [editCook, setEditCook] = useState(null);
   const [editBriefing, setEditBriefing] = useState("");
+  const [editEventAt, setEditEventAt] = useState("");
   const { boat, registry } = state;
   const missingTemplates = loaded && !crew && !!addTemplateLists(state, templates);
   useEffect(() => { if (missingTemplates) mutate((s) => addTemplateLists(s, templates) || s); }, [missingTemplates, templates, mutate]);
@@ -872,14 +875,19 @@ export default function BoatPrep({ boatId, boats }) {
   const addItem = (text) => {
     if (!guard("bottom")) return null;
     if (!text) return "Nothing to add";
-    if (isDup(text)) return `${text} already exists`;
+    const log = active.id === "shipsLog";
+    if (!log && isDup(text)) return `${text} already exists`;
     if (active.id === "myTodo" && !premium && items.filter((i) => !String(i.id).startsWith("due_")).length >= FREE_TODO_LIMIT) {
       askUpgrade("More than 5 To Do items");
       return `The Free plan holds ${FREE_TODO_LIMIT} To Do items. Go Pro for unlimited.`;
     }
     const id = Date.now();
-    setItems((list) => [...list, { id, label: text, checked: false }]);
-    if (active.id === "shipsLog") mutate((s) => ({ ...s, boat: withTripLog(s.boat || {}, id) }));
+    // Ship's Log: when the entry was made, and the event time (the same until the skipper changes it).
+    setItems((list) => [...list, { id, label: text, checked: false, ...(log ? stampLog(id) : {}) }]);
+    if (log) {
+      mutate((s) => ({ ...s, boat: withTripLog(s.boat || {}, id) }));
+      setTimeout(() => document.querySelector(`[data-testid="checklist-item-${id}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    }
     return true;
   };
   // Roles (not the group headings) in the Crew Roles list carry a Role Briefing.
@@ -889,7 +897,14 @@ export default function BoatPrep({ boatId, boats }) {
   };
   const saveEdit = (item) => (text) => {
     if (!text) return "Item text cannot be empty";
-    if (isDup(text, item.id)) return `${text} already exists`;
+    const log = active.id === "shipsLog";
+    // The Ship's Log prompt line stays: what's typed on it becomes a new entry.
+    if (log && item.dynamic === "logPrompt") { const res = addItem(text); if (res === true) setDialog(null); return res; }
+    if (!log && isDup(text, item.id)) return `${text} already exists`;
+    const logged = log ? loggedAt(item) : "";
+    const timeErr = logged ? eventError(logged, editEventAt) : "";
+    if (timeErr) return timeErr;
+    const when = logged ? { logged_at: logged, event_at: editEventAt === toLocalInput(eventAt(item)) ? eventAt(item) : new Date(editEventAt).toISOString() } : {};
     const mealHead = isMealHead(items, item.id);
     if (mealHead && editCook !== null) text = withCook(text, editCook);
     // Shoppers are given Trip Shopping List aisles: an aisle heading keeps its shopper; other items drop any old one.
@@ -904,7 +919,7 @@ export default function BoatPrep({ boatId, boats }) {
       const meal = picked ? editMeal : mt;
       // A blanked briefing stays "" so default Role Briefings from the Crew Roles template never refill it.
       const keep = briefing || (isRoleItem(item) && (item.briefing !== undefined || editBriefing !== (item.briefing || "")));
-      return { ...rest, label: text, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(keep ? { briefing: briefing || "" } : {}), ...(shopper ? { shopper } : {}) };
+      return { ...rest, label: text, ...when, ...(editArea ? { area: editArea } : {}), ...(meal ? { meal_type: meal, ...(auto && !picked ? { meal_type_auto: true } : {}) } : {}), ...(keep ? { briefing: briefing || "" } : {}), ...(shopper ? { shopper } : {}) };
     }));
     setDialog(null);
     return true;
@@ -1366,6 +1381,13 @@ export default function BoatPrep({ boatId, boats }) {
           )}
         </div>
       );
+  // The Ship's Log has its Add box at the top of the panel; every other list at the bottom.
+  const addForm = (
+    <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
+      hideArea={hideArea} onHideAreaChange={user.show_hide_area && premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
+      placeholder={{ shipsLog: "e.g. Stopped for an hour to observe dolphins", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />
+  );
+
   const checks = (
     <>
       {crewPrepName(active.name) && <CrewPrepProgress name={crewPrepName(active.name)} items={items} />}
@@ -1395,6 +1417,7 @@ export default function BoatPrep({ boatId, boats }) {
           <ShoppingCart className="h-5 w-5 shrink-0" /> Make shopping list
         </button>
       )}
+      {canEditList && active.id === "shipsLog" && addForm}
       {logOn && !crew && <ShipsLogPanel items={items} setItems={setItems} labelFor={labelFor} boat={boat} boatId={boats.current.boat_id} guard={guard} online={online} needPro={needPro}
         help={helpNamed("admin - help panel - ships log passage folders")} folders={logFolders} />}
       {active.id === "shipsLog" && shown.length > 0 && (
@@ -1403,19 +1426,17 @@ export default function BoatPrep({ boatId, boats }) {
       {listSearch && items.length > 0 && <ListSearch value={listQuery} onChange={setListQuery} shown={shown.length} total={shownByArea.length} placeholder={`Search ${active.name}`} testId="checklist-search" />}
       {(areaFilter || listQ) && shown.length === 0 ? <p className="rounded-lg border-[1.5px] border-[var(--line)] bg-white p-4 text-sm text-[var(--muted)]" data-testid="area-filter-empty">{listQ ? "No items match your search." : "No items in this area."}</p> : (
       <Checklist items={logOn ? logFolders.visible : active.id === "provisions" ? withProvShoppers(shown, provWho) : shown} depthOf={logOn ? logFolders.depthOf : undefined} folderRow={logOn ? logFolders.folderRow : undefined} labelFor={labelFor} logPhotoUrl={active.id === "shipsLog" ? weatherUrl(boats.current.boat_id, crew ? boats.current.owner_id : null) : undefined} emergency={EMERGENCY[active.id]} tickOnly={!canEditList} photos={ITEM_PHOTO_LISTS.includes(active.id) ? itemPhotos : null} areaOf={premium ? areaName : undefined} picks={CREW_ROLES.test(active.name.trim())}
-        onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
+        onToggle={toggle} onTickAll={crew || active.id === "shipsLog" || EMERGENCY[active.id] || /crew roles/i.test(active.name) ? undefined : tickAll} onDelete={askRemove} onEdit={(item) => { if (guard()) { setEditArea(item.area && areaName(item) ? item.area : ""); setEditMeal(null); setEditCook(null); if (isMealHead(items, item.id)) loadCooks(); setEditBriefing(fillDetails(item.briefing || "", boat)); setEditEventAt(active.id === "shipsLog" && loggedAt(item) ? toLocalInput(eventAt(item)) : ""); setDialog({ type: "edit", item }); } }} onDeleteList={askDeleteList}
         ordering={ordering && !areaFilter && !listQ} outline={!areaFilter && !listQ} onFlag={flag} onMove={move} onPlace={place} onPlacePath={placePath} onIndent={indent} folded={folded} onFold={setFold}
         mine={active.id === "provisions" && myShopName ? (i) => sameShopper(i.shopper, myShopName) : active.id === tripShop?.id && myShopName ? (i) => myAisleIds.has(i.id) : undefined}
-        clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} />)}
+        clamp={active.id === "shipsLog" ? { open: logOpen, toggle: (id) => setLogOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])) } : null} logTime={active.id === "shipsLog" ? logWhen : undefined} />)}
       {!crew && ordering && areaFilter && <p className="text-sm font-semibold text-[var(--muted)]" data-testid="ordering-filter-note">Clear the area filter to reorder items.</p>}
       {active.id === "provisions" && tripShop && !areaFilter && !listQ && <MealPlanExtras rows={shopRows} onOpen={() => pickList(tripShop.id)} />}
       {backToInvite && CREW_ROLES.test(active.name.trim()) && (
         <BackToInviteBar onBack={() => { setBackToInvite(false); window.dispatchEvent(new Event("mbp:open-invite")); }}
           onDismiss={() => { setBackToInvite(false); sessionStorage.removeItem(INVITE_DRAFT); }} />
       )}
-      {canEditList && <AddItemForm key={`add-${active.id}`} onAdd={addItem} ordering={ordering} onOrderingChange={setOrdering} promptDelete={promptDelete} onPromptDeleteChange={setPromptDelete}
-        hideArea={hideArea} onHideAreaChange={user.show_hide_area && premium && (tagging || filterAreas.length > 0) ? (v) => { setHideArea(v); if (v) setAreaFilter(""); } : undefined}
-        placeholder={{ shipsLog: "My own Ship's Log...", myTodo: "Note a little issue to fix..." }[active.id] || (active.kind === "tips" ? "Add a Skipper's Tip..." : `My own ${active.name} task name...`)} />}
+      {canEditList && active.id !== "shipsLog" && addForm}
       {!crew && premium && user.show_topup && !NO_TOPUP.includes(active.id) && <TopUpButton online={online} onClick={() => guard() && setDialog({ type: "topup" })} />}
     </>
   );
@@ -1677,6 +1698,7 @@ export default function BoatPrep({ boatId, boats }) {
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <MealTypePicker value={editMeal ?? dialog.item.meal_type ?? ""} onChange={setEditMeal} />}
         {dialog?.type === "edit" && isMealHead(items, dialog.item.id) && <CookPicker value={editCook ?? cookOf(dialog.item.label)} cooks={cooks} onChange={setEditCook} />}
         {dialog?.type === "edit" && isRoleItem(dialog.item) && <RoleBriefingField value={editBriefing} onChange={setEditBriefing} />}
+        {dialog?.type === "edit" && active.id === "shipsLog" && loggedAt(dialog.item) && <LogEventTime logged={loggedAt(dialog.item)} value={editEventAt} onChange={setEditEventAt} />}
       </TextDialog>
       <InterimDepartureDialog open={interim} onClose={() => setInterim(false)} trip={interim ? allDone.interimTrip() : null} next={interim ? nextLeg(boat, allDone.interimTrip()) : null} leaving={leftBy} legNo={(boat.legs?.[allDone.interimTrip()?.id] || []).length + 1} boat={boat} boatId={boats.current.boat_id}
         items={(state.data[allDone.interimTrip()?.id] || []).map((i) => labelFor(i)).filter(Boolean)} online={online} locked={!premium} onUpgrade={() => askUpgrade("Magic Marine Navigator")}

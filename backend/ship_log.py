@@ -1,5 +1,7 @@
 from io import BytesIO
 from html import escape
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import ParagraphStyle
@@ -86,6 +88,42 @@ def _key(v):
     return str(v) if isinstance(v, (int, float, str)) else None
 
 
+def _logged_at(it: dict) -> str:
+    """When a Ship's Log entry was made: logged_at, else ts, else its id (ms, or ms * 1000 + 3 random digits)."""
+    if it.get("folder") or it.get("dynamic"):
+        return ""
+    if it.get("logged_at") or it.get("ts"):
+        return str(it.get("logged_at") or it.get("ts"))
+    n = it.get("id")
+    if not isinstance(n, (int, float)) or isinstance(n, bool):
+        return ""
+    ms = n // 1000 if n > 1e15 else n
+    return datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat() if 1e12 < ms < 1e13 else ""
+
+
+def _fmt_when(s: str, tz) -> str:
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).astimezone(tz).strftime("%a %-d %b %Y, %-I:%M %p")
+
+
+def log_when(it: dict, tz_name: str = "") -> str:
+    """'Event: ...' (and 'Entry made: ...' when the skipper moved the event time) under a Ship's Log entry."""
+    logged = _logged_at(it)
+    if not logged:
+        return ""
+    try:
+        tz = ZoneInfo(tz_name) if tz_name else timezone.utc
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = timezone.utc
+    e, made = _fmt_when(str(it.get("event_at") or logged), tz), _fmt_when(logged, tz)
+    if not e:
+        return ""
+    return f"Event: {e}" if e == made or not made else f"Event: {e} · Entry made: {made}"
+
+
 def arrange_log(items: list) -> list:
     """Ship's Log folders: each passage or year folder is followed by its logs (items point at their folder with `in`)."""
     if not any(isinstance(it, dict) and it.get("folder") for it in items):
@@ -114,10 +152,11 @@ def arrange_log(items: list) -> list:
     return out
 
 
-def render_items(items: list, ctx: dict) -> list:
+def render_items(items: list, ctx: dict, log: bool = False) -> list:
     items = arrange_log(items)
     return [{"label": _with_badges(it, _label(it, ctx)), "checked": bool(it.get("checked")), "flagged": bool(it.get("flagged")), "indent": bool(it.get("indent")) and n > 0,
              "depth": it.get("_depth") or ((it.get("level") if isinstance(it.get("level"), int) and 1 <= it.get("level") <= 3 else 1) if it.get("indent") and n > 0 else 0), **({"folder": True} if it.get("folder") else {}),
+             **({"when": w} if log and (w := log_when(it, ctx.get("tz") or "")) else {}),
              **({"answer": str(it.get("mmd_answer") or it.get("detail"))} if it.get("mmd_answer") or it.get("detail") else {}),
              **({"photos": [{"photo_id": str(ph.get("photo_id", "")), "note": str(ph.get("note") or "")[:600]} for ph in it["weather_photos"][:5] if isinstance(ph, dict)]}
                 if isinstance(it.get("weather_photos"), list) and it["weather_photos"] else {})}
@@ -130,7 +169,8 @@ def _item_para(i: dict) -> Paragraph:
     if i.get("flagged"):
         return Paragraph("FLAGGED: " + escape(i["label"]), FLAG)
     answer = f'<br/><font size="9" color="#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</font>' if i.get("answer") else ""
-    return Paragraph(escape(i["label"]) + answer, DONE if i["checked"] else ITEM)
+    when = f'<br/><font size="9" color="#475569">{escape(i["when"])}</font>' if i.get("when") else ""
+    return Paragraph(escape(i["label"]) + when + answer, DONE if i["checked"] else ITEM)
 
 
 def _photos_block(i: dict, images: dict) -> list:
@@ -217,10 +257,11 @@ def _item_rows(items: list) -> str:
 
 
 def _answer_html(i: dict) -> str:
+    when = f'<br/><span style="font-size:13px;color:#475569">{escape(i["when"])}</span>' if i.get("when") else ""
     pics = f'<br/><span style="font-size:13px;color:#475569">+ {len(i["photos"])} weather and routing photos with notes (see the PDF)</span>' if i.get("photos") else ""
     if not i.get("answer"):
-        return pics
-    return f'<br/><span style="font-size:13px;color:#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</span>{pics}'
+        return when + pics
+    return f'{when}<br/><span style="font-size:13px;color:#475569">{escape(i["answer"]).replace(chr(10), "<br/>")}</span>{pics}'
 
 
 def _wrap(log: dict, heading: str, rows: str, pdf_url: str, from_name: str) -> str:
