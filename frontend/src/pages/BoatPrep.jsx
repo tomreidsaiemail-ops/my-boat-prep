@@ -223,11 +223,11 @@ const useWarn = () => {
 };
 
 // One-tap hops between the trip lists ("trip" = the Trip Planning in use).
-const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"], provisions: ["trip"] };
-const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck };
+const HOPS = { leavingDock: ["trip", "arrivingDest"], arrivingDest: ["trip", "returningDock"], returningDock: ["trip"], crewPrep: ["trip"], crewRoles: ["trip"], crewPrepClone: ["trip", "crewPrep"], provisions: ["trip"], mealHop: ["provisions"] };
+const HOP_ICON = { arrivingDest: Flag, returningDock: Home, crewPrep: ClipboardCheck, provisions: ShoppingBasket };
 const HOP_TONE = { crewPrep: "crew" };
 const HOP_LABEL = { arrivingDest: "Arrive", returningDock: "Return" };
-const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone", "provisions"];
+const CREW_HOPS = ["crewPrep", "crewRoles", "crewPrepClone", "provisions", "mealHop"];
 
 
 export default function BoatPrep({ boatId, boats }) {
@@ -1292,7 +1292,9 @@ export default function BoatPrep({ boatId, boats }) {
   const weights = weighUp({ boat, registry, data: state.data, defs: maintDefs, areas, engineType, crewWeights: (onBoard?.people || []).map((p) => p.weight_kg) });
   // Leaving Dock's "Trip Planning" bubble goes to the trip underway, else the trip picked for leaving, else the main Trip Planning.
   const hopTrip = boat.underway?.trip_id || boat.route_trip || DEFAULT_TRIP;
-  const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : crewPrepName(active.name) ? "crewPrepClone" : active.id;
+  // The Trip Shopping List and every meal plan get a "Provisions" return bubble.
+  const hopKey = CREW_ROLES.test(active.name.trim()) ? "crewRoles" : crewPrepName(active.name) ? "crewPrepClone"
+    : active.kind === MPA_KIND || mealLists.some((l) => l.id === active.id) ? "mealHop" : active.id;
   // Crew members' own Crew Prep lists, as bubbles on Crew Prep: light red, green once they've ticked everything.
   const prepClones = active.id === "crewPrep" ? allLists.filter((l) => crewPrepName(l.name)) : [];
   // A list's checks (Select All .. Ask The Magic Mariner); on Trip Planning they sit below Archived Trips.
@@ -1344,12 +1346,12 @@ export default function BoatPrep({ boatId, boats }) {
   const leftBy = arrivedLegs(hopTrip).at(-1)?.arrival || "";
   const archiveStep = ended && <NextStep prefix="Next steps:" label="Archive Trip, crew debriefing, review ship's log" testId="archive-next-step" onClick={() => { setArchiveGo(true); setArchivedId(""); pickList(ended); }} />;
   const hopRow = !crew && HOPS[hopKey] && (
-        <div className="flex flex-wrap items-center gap-2" data-testid={`${active.id}-hop`}>
-          {active.id === "provisions" && <TripMealBubbles plan={tripPlan} onPick={() => guard() && setDialog({ type: "tripMeal" })} onShop={openTripShop} />}
+        <div className={`flex flex-wrap gap-2 ${active.id === "provisions" ? "items-start" : "items-center"}`} data-testid={`${active.id}-hop`}>
           {HOPS[hopKey].map((id) => (id === "trip" ? hopTrip : id)).filter((id) => allLists.some((l) => l.id === id)).map((id) => (
             <HopBubble key={id} icon={HOP_ICON[id] || Route} label={HOP_ICON[id] ? HOP_LABEL[id] || allLists.find((l) => l.id === id).name : "Trip Planning"} tone={HOP_TONE[id]} onClick={() => setActiveId(id)}
               departAt={HOP_ICON[id] || active.id !== "leavingDock" || ended ? undefined : daysFor(id)} testId={`${active.id}-hop-${HOP_ICON[id] ? id : "route"}`} />
           ))}
+          {active.id === "provisions" && <TripMealBubbles plan={tripPlan} onPick={() => guard() && setDialog({ type: "tripMeal" })} onShop={openTripShop} onOpenPlan={() => tripPlan && setActiveId(tripPlan.id)} />}
           {!CREW_HOPS.includes(hopKey) && allLists.some((l) => l.id === hopTrip) && (
             <RouteBubble testId={`${active.id}-hop-view`} start={(tripBoat(boat, hopTrip).route_start || "").trim()} dest={(tripBoat(boat, hopTrip).route_dest || "").trim()}
               weather={tripBoat(boat, hopTrip).weather || {}} name={allLists.find((l) => l.id === hopTrip)?.name} onChange={tripWeather(hopTrip)} done={boat.legs?.[hopTrip]} shared={sharedBoat} />
