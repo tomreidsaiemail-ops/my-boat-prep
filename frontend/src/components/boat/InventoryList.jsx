@@ -154,6 +154,8 @@ export const InventoryList = ({ areas, onChange, readOnly, crewFood = false, adm
     setArea(area.id, (x) => ({ ...x, items: applyQr(x.items || [], list, mode === "add" ? "add" : "replace") }));
     setScan(null);
     if (keepPhoto) storePhotos([[area.id, blob]]);
+    // During the new skipper guide the toast would cover the yellow Done button.
+    if (scanGuide) return;
     toast.success(mode === "add" ? `${list.length} ${list.length === 1 ? "item" : "items"} added to ${area.name}` : `${area.name} now lists ${list.length} ${list.length === 1 ? "item" : "items"}`);
   };
   const q = query.trim().toLowerCase();
